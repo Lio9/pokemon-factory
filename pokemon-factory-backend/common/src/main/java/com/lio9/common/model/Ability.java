@@ -27,6 +27,7 @@ public class Ability {
     /**
      * 所属世代
      */
+    // @TableField(exist = false) // 临时注释，待数据库更新后再启用
     private String generation;
     
     /**

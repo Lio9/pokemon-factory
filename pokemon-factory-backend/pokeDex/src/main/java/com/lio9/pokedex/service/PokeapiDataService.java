@@ -139,6 +139,13 @@ public class PokeapiDataService {
             pokemonFormService.remove(new QueryWrapper<>());
             pokemonService.remove(new QueryWrapper<>());
             
+            // 清空基础数据表
+            typeService.remove(new QueryWrapper<>());
+            abilityService.remove(new QueryWrapper<>());
+            moveService.remove(new QueryWrapper<>());
+            eggGroupService.remove(new QueryWrapper<>());
+            growthRateService.remove(new QueryWrapper<>());
+            
             return "✅ 已清空所有表数据";
         } catch (Exception e) {
             return "清空失败: " + e.getMessage();
@@ -450,17 +457,24 @@ public class PokeapiDataService {
                                 "fighting", "poison", "ground", "flying", "psychic", 
                                 "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy"};
             
+            int importedCount = 0;
             for (String typeName : typeNames) {
-                Type type = new Type();
-                type.setName(getChineseTypeName(typeName));
-                type.setNameEn(typeName);
-                type.setNameJp(getJapaneseTypeName(typeName));
-                type.setColor(getTypeColor(typeName));
-                type.setCreatedAt(LocalDateTime.now());
-                type.setUpdatedAt(LocalDateTime.now());
-                typeService.save(type);
+                // 检查是否已存在
+                QueryWrapper<Type> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("name_en", typeName);
+                if (typeService.getOne(queryWrapper) == null) {
+                    Type type = new Type();
+                    type.setName(getChineseTypeName(typeName));
+                    type.setNameEn(typeName);
+                    type.setNameJp(getJapaneseTypeName(typeName));
+                    type.setColor(getTypeColor(typeName));
+                    type.setCreatedAt(LocalDateTime.now());
+                    type.setUpdatedAt(LocalDateTime.now());
+                    typeService.save(type);
+                    importedCount++;
+                }
             }
-            System.out.println("✅ 已导入 " + typeNames.length + " 个属性");
+            System.out.println("✅ 已导入 " + importedCount + " 个新属性，总共 " + typeNames.length + " 个");
         } catch (Exception e) {
             System.err.println("导入属性数据失败: " + e.getMessage());
         }
@@ -501,17 +515,24 @@ public class PokeapiDataService {
         try {
             String[] growthRates = {"slow", "medium", "fast", "medium-slow", "slow-then-very-fast", "fast-then-very-slow"};
             
+            int importedCount = 0;
             for (String rate : growthRates) {
-                GrowthRate growthRate = new GrowthRate();
-                growthRate.setName(getChineseGrowthRate(rate));
-                growthRate.setNameEn(rate);
-                growthRate.setNameJp(getJapaneseGrowthRate(rate));
-                growthRate.setFormula(getGrowthRateFormula(rate));
-                growthRate.setCreatedAt(LocalDateTime.now());
-                growthRate.setUpdatedAt(LocalDateTime.now());
-                growthRateService.save(growthRate);
+                // 检查是否已存在
+                QueryWrapper<GrowthRate> queryWrapper = new QueryWrapper<>();
+                queryWrapper.eq("name_en", rate);
+                if (growthRateService.getOne(queryWrapper) == null) {
+                    GrowthRate growthRate = new GrowthRate();
+                    growthRate.setName(getChineseGrowthRate(rate));
+                    growthRate.setNameEn(rate);
+                    growthRate.setNameJp(getJapaneseGrowthRate(rate));
+                    growthRate.setFormula(getGrowthRateFormula(rate));
+                    growthRate.setCreatedAt(LocalDateTime.now());
+                    growthRate.setUpdatedAt(LocalDateTime.now());
+                    growthRateService.save(growthRate);
+                    importedCount++;
+                }
             }
-            System.out.println("✅ 已导入 " + growthRates.length + " 个经验类型");
+            System.out.println("✅ 已导入 " + importedCount + " 个新经验类型，总共 " + growthRates.length + " 个");
         } catch (Exception e) {
             System.err.println("导入经验类型数据失败: " + e.getMessage());
         }

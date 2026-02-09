@@ -1,6 +1,7 @@
 package com.lio9.common.model;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -82,6 +83,7 @@ public class Pokemon {
     /**
      * 排序
      */
+    @TableField(value = "`order`") // 使用反引号转义MySQL关键字
     private int order;
     
     /**
@@ -167,9 +169,9 @@ public class Pokemon {
         this.generationId = generationId;
     }
     
-    public void setOrder(int order) {
-        this.order = order;
-    }
+    // public void setOrder(int order) {
+    //     this.order = order;
+    // }
     
     public void setIsBaby(boolean isBaby) {
         this.isBaby = isBaby;
