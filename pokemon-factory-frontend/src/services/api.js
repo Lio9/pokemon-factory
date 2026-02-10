@@ -32,8 +32,7 @@ export const pokemonApi = {
     const queryParams = new URLSearchParams({
       current: params.current || 1,
       size: params.size || 20,
-      ...(params.name && { name: params.name }),
-      ...(params.typeId && { typeId: params.typeId })
+      ...(params.name && { name: params.name })
     })
     return request(`${API_BASE}/pokemon/list?${queryParams}`)
   },
@@ -53,9 +52,9 @@ export const pokemonApi = {
     return request(`${API_BASE}/pokemon/search?${queryParams}`)
   },
   
-  // 获取属性统计
-  getTypeStatistics: () => {
-    return request(`${API_BASE}/pokemon/statistics/types`)
+  // 根据编号获取宝可梦
+  getByIndexNumber: (indexNumber) => {
+    return request(`${API_BASE}/pokemon/number/${indexNumber}`)
   },
   
   // 获取进化链

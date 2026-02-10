@@ -40,14 +40,9 @@ public class PokemonMove {
     private Integer level;
     
     /**
-     * 技能机器编号
+     * 版本组
      */
-    private String machine;
-    
-    /**
-     * 游戏版本
-     */
-    private String gameVersion;
+    private String versionGroup;
     
     /**
      * 创建时间
@@ -76,12 +71,8 @@ public class PokemonMove {
         this.level = level;
     }
     
-    public void setMachine(String machine) {
-        this.machine = machine;
-    }
-    
-    public void setGameVersion(String gameVersion) {
-        this.gameVersion = gameVersion;
+    public void setVersionGroup(String versionGroup) {
+        this.versionGroup = versionGroup;
     }
     
     public void setCreatedAt(LocalDateTime createdAt) {

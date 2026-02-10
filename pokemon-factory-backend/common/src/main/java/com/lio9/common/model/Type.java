@@ -40,16 +40,6 @@ public class Type {
     private String color;
     
     /**
-     * 被伤害倍数
-     */
-    private String damageFrom;
-    
-    /**
-     * 伤害倍数
-     */
-    private String damageTo;
-    
-    /**
      * 创建时间
      */
     private LocalDateTime createdAt;

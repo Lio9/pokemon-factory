@@ -12,7 +12,8 @@
     "element-plus": "^2.2.0",
     "lucide-vue-next": "^0.562.0",
     "pokemon": "^3.3.0",
-    "vue": "^3.2.13"
+    "vue": "^3.2.13",
+    "vue-router": "^4.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.0.0",

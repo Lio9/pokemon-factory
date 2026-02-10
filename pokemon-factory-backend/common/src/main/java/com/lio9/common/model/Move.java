@@ -45,29 +45,34 @@ public class Move {
     private String nameEn;
     
     /**
-     * 技能属性
+     * 属性ID
      */
-    private String type;
+    private Long typeId;
     
     /**
-     * 技能类别
+     * 威力
      */
-    private String category;
+    private Integer power;
     
     /**
-     * 技能威力
+     * PP值
      */
-    private String power;
+    private Integer pp;
     
     /**
-     * 技能命中率
+     * 命中率
      */
-    private String accuracy;
+    private Integer accuracy;
     
     /**
-     * 技能PP值
+     * 优先级
      */
-    private String pp;
+    private Integer priority;
+    
+    /**
+     * 伤害类型(physical/special/status)
+     */
+    private String damageClass;
     
     /**
      * 技能描述
@@ -78,6 +83,21 @@ public class Move {
      * 技能效果
      */
     private String effect;
+    
+    /**
+     * 效果几率
+     */
+    private Integer effectChance;
+    
+    /**
+     * 华丽大赛类型
+     */
+    private String contestType;
+    
+    /**
+     * 华丽大赛效果
+     */
+    private String contestEffect;
     
     /**
      * 创建时间

@@ -169,9 +169,9 @@ public class Pokemon {
         this.generationId = generationId;
     }
     
-    // public void setOrder(int order) {
-    //     this.order = order;
-    // }
+    public void setOrder(int order) {
+        this.order = order;
+    }
     
     public void setIsBaby(boolean isBaby) {
         this.isBaby = isBaby;

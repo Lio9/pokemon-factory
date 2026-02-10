@@ -744,17 +744,28 @@ public class PokeapiDataService {
             
             // 获取技能属性
             if (moveData.has("type") && !moveData.get("type").isNull()) {
-                move.setType(moveData.get("type").get("name").asText());
+                String typeName = moveData.get("type").get("name").asText();
+                Type type = getTypeByName(typeName);
+                if (type != null) {
+                    move.setTypeId(type.getId());
+                }
             }
             
             // 获取技能分类
             if (moveData.has("damage_class") && !moveData.get("damage_class").isNull()) {
-                move.setCategory(moveData.get("damage_class").get("name").asText());
+                move.setDamageClass(moveData.get("damage_class").get("name").asText());
             }
             
-            move.setPower(getStringValue(moveData, "power"));
-            move.setAccuracy(getStringValue(moveData, "accuracy"));
-            move.setPp(getStringValue(moveData, "pp"));
+            // 设置数值字段
+            if (moveData.has("power") && !moveData.get("power").isNull()) {
+                move.setPower(moveData.get("power").asInt());
+            }
+            if (moveData.has("accuracy") && !moveData.get("accuracy").isNull()) {
+                move.setAccuracy(moveData.get("accuracy").asInt());
+            }
+            if (moveData.has("pp") && !moveData.get("pp").isNull()) {
+                move.setPp(moveData.get("pp").asInt());
+            }
             move.setDescription(getMoveDescription(moveData));
             move.setEffect(getMoveEffect(moveData));
             move.setCreatedAt(LocalDateTime.now());

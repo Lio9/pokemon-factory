@@ -20,17 +20,13 @@
         </div>
         <div class="w-48">
           <el-select
-            v-model="selectedType"
-            placeholder="选择属性"
-            clearable
-            @change="handleTypeChange"
+            v-model="sortBy"
+            placeholder="排序方式"
+            @change="handleSortChange"
           >
-            <el-option
-              v-for="type in types"
-              :key="type.id"
-              :label="type.name"
-              :value="type.id"
-            />
+            <el-option label="按ID升序" value="id_asc" />
+            <el-option label="按ID降序" value="id_desc" />
+            <el-option label="按名称" value="name" />
           </el-select>
         </div>
       </div>
@@ -87,7 +83,7 @@
                 <h3 class="text-lg font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
                   {{ pokemon.name }}
                 </h3>
-                <p class="text-gray-500 text-sm truncate">{{ pokemon.genus }}</p>
+                <p class="text-gray-500 text-sm">{{ pokemon.indexNumber }}</p>
                 <p class="text-gray-600 text-xs mt-1 line-clamp-2">{{ pokemon.profile || '暂无描述' }}</p>
               </div>
             </div>
@@ -125,72 +121,57 @@
       <p class="text-gray-500 text-lg">没有找到相关宝可梦</p>
       <p class="text-gray-400 text-sm mt-2">试试其他搜索条件</p>
     </div>
-
-    <!-- 详情弹窗 -->
-    <el-dialog
-      v-model="showDetailDialog"
-      :title="currentPokemon?.name || '宝可梦详情'"
-      width="800px"
-      destroy-on-close
-    >
-      <PokemonDetail 
-        :pokemon="currentPokemon" 
-        @close="showDetailDialog = false"
-      />
-    </el-dialog>
   </div>
 </template>
 
 <script>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, ChevronRight } from 'lucide-vue-next'
-import PokemonDetail from './PokemonDetail.vue'
-import { useRoute, useRouter } from 'vue-router'
 import { pokemonApi } from '../services/api.js'
 
 export default {
   name: 'PokemonList',
   components: {
     Search,
-    ChevronRight,
-    PokemonDetail
+    ChevronRight
   },
   setup() {
     // 响应式数据
     const loading = ref(false)
     const pokemons = ref([])
-    const types = ref([])
+    const sortBy = ref('id_asc')
     const searchKeyword = ref('')
-    const selectedType = ref('')
     
     // 分页数据
     const currentPage = ref(1)
     const pageSize = ref(12)
     const totalPokemons = ref(0)
     const totalPages = ref(0)
-    
-    // 详情弹窗
-    const showDetailDialog = ref(false)
-    const currentPokemon = ref(null)
 
     // 获取宝可梦列表
     const fetchPokemons = async () => {
       loading.value = true
       try {
-        const params = {
-          current: currentPage.value,
-          size: pageSize.value,
-          name: searchKeyword.value || undefined,
-          typeId: selectedType.value || undefined
+        let result
+        
+        // 如果有搜索关键词，使用搜索接口
+        if (searchKeyword.value) {
+          result = await pokemonApi.search(searchKeyword.value, currentPage.value, pageSize.value)
+        } else {
+          // 否则使用列表接口
+          const params = {
+            current: currentPage.value,
+            size: pageSize.value,
+            name: undefined
+          }
+          result = await pokemonApi.getList(params)
         }
         
-        const result = await pokemonApi.getList(params)
-        
         if (result.code === 200) {
-          pokemons.value = result.data.records
-          totalPokemons.value = result.data.total
-          totalPages.value = result.data.pages
+          pokemons.value = result.data.records || result.data
+          totalPokemons.value = result.data.total || pokemons.value.length
+          totalPages.value = Math.ceil(totalPokemons.value / pageSize.value)
         } else {
           ElMessage.error(result.message || '获取数据失败')
         }
@@ -202,44 +183,15 @@ export default {
       }
     }
 
-    // 获取属性列表
-    const fetchTypes = async () => {
-      try {
-        const result = await pokemonApi.getTypeStatistics()
-        
-        if (result.code === 200) {
-          types.value = result.data.types || []
-        }
-      } catch (error) {
-        console.error('获取属性列表失败:', error)
-      }
-    }
-
-    // 显示详情
-    const showDetail = async (id) => {
-      try {
-        const result = await pokemonApi.getDetail(id)
-        
-        if (result.code === 200) {
-          currentPokemon.value = result.data
-          showDetailDialog.value = true
-        } else {
-          ElMessage.error(result.message || '获取详情失败')
-        }
-      } catch (error) {
-        console.error('获取宝可梦详情失败:', error)
-        ElMessage.error('网络错误，请稍后重试')
-      }
-    }
-
-    // 搜索处理
-    const handleSearch = () => {
+    // 排序处理
+    const handleSortChange = () => {
+      // 简化处理，实际可以根据排序重新获取数据
       currentPage.value = 1
       fetchPokemons()
     }
 
-    // 类型筛选处理
-    const handleTypeChange = () => {
+    // 搜索处理
+    const handleSearch = () => {
       currentPage.value = 1
       fetchPokemons()
     }
@@ -261,43 +213,27 @@ export default {
       event.target.style.display = 'none'
     }
 
-    // 获取路由和路由器实例
-    const route = useRoute()
-    const router = useRouter()
-
-    // 监听路由变化，如果路由参数变化则刷新数据
-    watch(() => route.params.id, (newId) => {
-      if (newId) {
-        showDetail(newId)
-      }
-    }, { immediate: true })
-
     // 组件挂载时获取数据
     onMounted(() => {
       fetchPokemons()
-      fetchTypes()
     })
 
     return {
       // 数据
       loading,
       pokemons,
-      types,
+      sortBy,
       searchKeyword,
-      selectedType,
       currentPage,
       pageSize,
       totalPokemons,
       totalPages,
-      showDetailDialog,
-      currentPokemon,
       
       // 方法
       handleSearch,
-      handleTypeChange,
+      handleSortChange,
       handleSizeChange,
       handleCurrentChange,
-      showDetail,
       handleImageError
     }
   }
