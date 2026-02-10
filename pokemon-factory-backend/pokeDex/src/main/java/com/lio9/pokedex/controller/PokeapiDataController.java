@@ -27,7 +27,7 @@ public class PokeapiDataController {
     @PostMapping("/import-all")
     public ResponseEntity<Map<String, Object>> importAllPokemonData() {
         Map<String, Object> result = new HashMap<>();
-        String importResult = pokeapiDataService.importAllPokemonData();
+        Map<String, Object> importResult = pokeapiDataService.importAllPokemonData();
         result.put("code", 200);
         result.put("message", "导入完成");
         result.put("data", importResult);

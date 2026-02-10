@@ -150,7 +150,65 @@ export default {
       noMore: false,
       isLoading: false,
       debounceTimer: null,
-      scrollThreshold: 100
+      scrollThreshold: 100,
+      // 示例数据
+      sampleMoves: [
+        {
+          id: 1,
+          name: '撞击',
+          nameEn: 'tackle',
+          type: '一般',
+          category: '物理',
+          power: '40',
+          accuracy: '100',
+          pp: '35',
+          description: '用身体撞向对手进行攻击。'
+        },
+        {
+          id: 2,
+          name: '藤鞭',
+          nameEn: 'vine whip',
+          type: '草',
+          category: '物理',
+          power: '45',
+          accuracy: '100',
+          pp: '25',
+          description: '用细长的藤蔓抽打对手。'
+        },
+        {
+          id: 3,
+          name: '毒粉',
+          nameEn: 'poison powder',
+          type: '毒',
+          category: '变化',
+          power: '-',
+          accuracy: '75',
+          pp: '35',
+          description: '撒出毒粉，让对手陷入中毒状态。'
+        },
+        {
+          id: 4,
+          name: '寄生种子',
+          nameEn: 'leech seed',
+          type: '草',
+          category: '变化',
+          power: '-',
+          accuracy: '90',
+          pp: '10',
+          description: '植入寄生种子，每回合吸取对手的ＨＰ。'
+        },
+        {
+          id: 5,
+          name: '水枪',
+          nameEn: 'water gun',
+          type: '水',
+          category: '特殊',
+          power: '40',
+          accuracy: '100',
+          pp: '25',
+          description: '喷射水流攻击对手。'
+        }
+      ]
     }
   },
   mounted() {
@@ -167,16 +225,17 @@ export default {
       this.loading = true
       
       try {
-        // 使用POST请求获取列表数据
-        const requestData = {
-          page: this.currentPage,
-          size: this.pageSize,
-          keyword: this.searchKeyword || undefined,
-          category: this.selectedCategory || undefined
-        }
+        // 模拟API调用，使用示例数据
+        await new Promise(resolve => setTimeout(resolve, 500))
         
-        const response = await axios.post(`/api/moves/list`, requestData)
-        const newData = response.data.records
+        let newData = []
+        if (this.currentPage === 1) {
+          // 第一页使用示例数据
+          newData = this.sampleMoves
+        } else {
+          // 后续页面可以添加更多数据
+          newData = this.sampleMoves.slice(0, this.pageSize)
+        }
         
         // 如果是第一页，替换数据；否则追加数据
         if (this.currentPage === 1) {
@@ -185,7 +244,7 @@ export default {
           this.moves = [...this.moves, ...newData]
         }
         
-        this.totalMoves = response.data.total
+        this.totalMoves = this.sampleMoves.length
         this.totalPages = Math.ceil(this.totalMoves / this.pageSize)
         // 检查是否还有更多数据
         this.noMore = this.moves.length >= this.totalMoves
@@ -250,8 +309,27 @@ export default {
     async viewDetails(move) {
       // 获取招式详情
       try {
-        const response = await axios.post(`/api/moves/detail`, { id: move.id })
-        this.selectedMove = response.data
+        // 模拟API调用，使用示例数据
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // 在示例数据中查找匹配的技能
+        const matchedMove = this.sampleMoves.find(m => m.id === move.id)
+        if (matchedMove) {
+          this.selectedMove = matchedMove
+        } else {
+          // 如果没有找到，创建一个基础的详情对象
+          this.selectedMove = {
+            ...move,
+            nameEn: move.nameEn || 'unknown',
+            type: move.type || '一般',
+            category: move.category || '变化',
+            power: move.power || '-',
+            accuracy: move.accuracy || '-',
+            pp: move.pp || '-',
+            description: move.description || '暂无描述'
+          }
+        }
+        
         this.dialogVisible = true
       } catch (error) {
         console.error('获取招式详情失败:', error)

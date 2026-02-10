@@ -3,7 +3,11 @@ package com.lio9.pokedex.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lio9.common.model.Pokemon;
+import com.lio9.common.model.Move;
+import com.lio9.common.model.Item;
 import com.lio9.common.service.PokemonService;
+import com.lio9.common.service.MoveService;
+import com.lio9.common.service.ItemService;
 import com.lio9.common.vo.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +25,12 @@ public class PokemonController {
     
     @Autowired
     private PokemonService pokemonService;
+    
+    @Autowired
+    private MoveService moveService;
+    
+    @Autowired
+    private ItemService itemService;
     
     /**
      * 分页获取宝可梦列表
@@ -291,5 +301,74 @@ public class PokemonController {
         
         detail.setForms(formVOs);
         return detail;
+    }
+    
+    /**
+     * 手动初始化数据库
+     */
+    @GetMapping("/init-data")
+    public Map<String, Object> initDatabase() {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            // 初始化技能数据
+            initMoveData();
+            // 初始化物品数据
+            initItemData();
+            result.put("code", 200);
+            result.put("message", "数据库初始化成功！");
+        } catch (Exception e) {
+            result.put("code", 500);
+            result.put("message", "数据库初始化失败：" + e.getMessage());
+        }
+        return result;
+    }
+    
+    /**
+     * 初始化技能数据
+     */
+    private void initMoveData() {
+        // 检查是否已有数据
+        if (moveService.count() > 0) {
+            return;
+        }
+        
+        // 创建示例技能数据
+        List<Move> moves = Arrays.asList(
+            new Move().setId(1L).setName("撞击").setNameEn("tackle").setCategory("物理").setPower(40).setAccuracy(100).setPp(35).setDescription("用身体撞向对手进行攻击。"),
+            new Move().setId(2L).setName("藤鞭").setNameEn("vine whip").setCategory("物理").setPower(45).setAccuracy(100).setPp(25).setDescription("用细长的藤蔓抽打对手。"),
+            new Move().setId(3L).setName("毒粉").setNameEn("poison powder").setCategory("变化").setPower(null).setAccuracy(75).setPp(35).setDescription("撒出毒粉，让对手陷入中毒状态。"),
+            new Move().setId(4L).setName("寄生种子").setNameEn("leech seed").setCategory("变化").setPower(null).setAccuracy(90).setPp(10).setDescription("植入寄生种子，每回合吸取对手的ＨＰ。"),
+            new Move().setId(5L).setName("水枪").setNameEn("water gun").setCategory("特殊").setPower(40).setAccuracy(100).setPp(25).setDescription("喷射水流攻击对手。"),
+            new Move().setId(6L).setName("火焰拳").setNameEn("fire punch").setCategory("物理").setPower(75).setAccuracy(100).setPp(15).setDescription("让拳头燃烧火焰向对手突击，有时会让对手陷入灼伤状态。")
+        );
+        
+        // 批量插入技能数据
+        for (Move move : moves) {
+            moveService.save(move);
+        }
+    }
+    
+    /**
+     * 初始化物品数据
+     */
+    private void initItemData() {
+        // 检查是否已有数据
+        if (itemService.count() > 0) {
+            return;
+        }
+        
+        // 创建示例物品数据
+        List<Item> items = Arrays.asList(
+            new Item().setId(1L).setName("精灵球").setNameEn("Poké Ball").setCategory("其他").setPrice(200).setDescription("用于捕捉宝可梦的球。"),
+            new Item().setId(2L).setName("高级球").setNameEn("Great Ball").setCategory("其他").setPrice(600).setDescription("比精灵球更好用的捕捉球。"),
+            new Item().setId(3L).setName("超级球").setNameEn("Ultra Ball").setCategory("其他").setPrice(1200).setDescription("最强大的捕捉球。"),
+            new Item().setId(4L).setName("生命球").setNameEn("Potion").setCategory("药水").setPrice(300).setDescription("回复宝可梦的一般ＨＰ。"),
+            new Item().setId(5L).setName("全复球").setNameEn("Full Restore").setCategory("药水").setPrice(3000).setDescription("回复宝可梦的所有ＨＰ和状态。")
+        );
+        
+        // 批量插入物品数据
+        for (Item item : items) {
+            itemService.save(item);
+        }
     }
 }

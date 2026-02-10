@@ -1,0 +1,47 @@
+[
+  {
+    "name": "测试精灵球",
+    "nameEn": "Test Poké Ball",
+    "nameJp": "テストモンスターボール",
+    "category": "其他",
+    "price": 100,
+    "effect": "用于测试捕捉宝可梦",
+    "description": "用于测试的数据"
+  },
+  {
+    "name": "测试高级球",
+    "nameEn": "Test Great Ball",
+    "nameJp": "テストハイパーボール",
+    "category": "其他",
+    "price": 300,
+    "effect": "测试用的高级捕捉球",
+    "description": "用于测试的高级捕捉球"
+  },
+  {
+    "name": "测试药水",
+    "nameEn": "Test Potion",
+    "nameJp": "テストポーション",
+    "category": "药水",
+    "price": 150,
+    "effect": "测试回复宝可梦ＨＰ",
+    "description": "用于测试的回复药水"
+  },
+  {
+    "name": "测试全复球",
+    "nameEn": "Test Full Restore",
+    "nameJp": "テスト全回復薬",
+    "category": "药水",
+    "price": 1500,
+    "effect": "测试回复宝可梦所有ＨＰ和状态",
+    "description": "用于测试的全恢复药水"
+  },
+  {
+    "name": "测试宝石",
+    "nameEn": "Test Gem",
+    "nameJp": "テストジュエル",
+    "category": "宝石",
+    "price": 250,
+    "effect": "测试增加宝可梦的属性威力",
+    "description": "用于测试的属性宝石"
+  }
+]

@@ -3,6 +3,7 @@ import PokemonList from '../components/PokemonList.vue'
 import PokemonDetail from '../components/PokemonDetail.vue'
 import MoveList from '../components/MoveList.vue'
 import AbilityList from '../components/AbilityList.vue'
+import ItemList from '../components/ItemList.vue'
 
 const routes = [
   {
@@ -30,6 +31,11 @@ const routes = [
     path: '/abilities',
     name: 'Abilities',
     component: AbilityList
+  },
+  {
+    path: '/items',
+    name: 'Items',
+    component: ItemList
   }
 ]
 

@@ -15,7 +15,7 @@
 ### 环境要求
 
 - Java 17+
-- MySQL 8.0+
+- MySQL 8.0+ (当前配置: 192.168.134.129:3306)
 - Node.js 16+
 - Python 3.8+
 
@@ -23,7 +23,7 @@
 
 ```bash
 # 1. 创建数据库
-mysql -u root -p < schema.sql
+mysql -u root -p < complete_database_init.sql
 
 # 2. 启动后端服务
 cd pokemon-factory-backend/pokeDex
@@ -49,31 +49,65 @@ npm run dev
 pokemon-factory/
 ├── pokemon-factory-backend/     # 后端Spring Boot项目
 │   ├── common/                  # 通用模块
+│   │   └── src/main/java/com/lio9/common/
+│   │       ├── model/           # 实体类
+│   │       │   ├── Pokemon.java
+│   │       │   ├── Type.java
+│   │       │   ├── Move.java
+│   │       │   ├── Ability.java
+│   │       │   ├── EvolutionChain.java
+│   │       │   ├── PokemonForm.java
+│   │       │   └── ...
+│   │       ├── mapper/          # MyBatis映射器
+│   │       └── service/         # 服务层
 │   └── pokeDex/                 # 主应用模块
+│       ├── src/main/java/com/lio9/pokedex/
+│       │   ├── controller/      # 控制器
+│       │   │   ├── PokemonController.java
+│       │   │   ├── PokeapiDataController.java
+│       │   │   ├── MoveController.java
+│       │   │   └── AbilityController.java
+│       │   └── service/         # 服务实现
+│       └── src/main/resources/
+│           ├── application.yml  # 配置文件
+│           └── mapper/          # MyBatis映射文件
 ├── pokemon-factory-frontend/    # 前端Vue.js项目
 │   ├── src/
-│   └── scripts/                 # 图片下载脚本
-├── schema.sql                   # 数据库表结构
-├── batch_download.py            # 图片下载脚本
-├── verify_paths.py              # 路径验证脚本
+│   │   ├── components/          # 组件
+│   │   │   ├── PokemonList.vue
+│   │   │   ├── PokemonDetail.vue
+│   │   │   ├── MoveList.vue
+│   │   │   └── AbilityList.vue
+│   │   ├── router/              # 路由配置
+│   │   ├── services/            # API服务
+│   │   └── main.js              # 入口文件
+│   └── package.json
+├── scripts/                     # 数据处理脚本
+│   ├── batch_download.py        # 图片下载脚本
+│   ├── verify_paths.py          # 路径验证脚本
+│   └── utils.py                 # 工具函数
+├── complete_database_init.sql   # 完整数据库初始化脚本
 ├── README.md                    # 项目说明
-└── 脚本使用说明.md               # 详细脚本说明
+└── .gitignore                   # Git忽略文件
 ```
 
 ## 🛠️ 主要脚本
 
-### 数据处理脚本
+### 图片下载脚本
 
 - `batch_download.py` - 统一的宝可梦图片下载脚本
   ```bash
-  # 全量下载
-  python batch_download.py 1
+  # 全量下载（从1到1025）
+  python scripts/batch_download.py 1
   
-  # 增量下载
-  python batch_download.py 2 1 100
+  # 增量下载（指定范围）
+  python scripts/batch_download.py 2 1 100
   
-  # 验证路径
-  python verify_paths.py
+  # 验证图片路径
+  python scripts/verify_paths.py
+  
+  # 重新下载缺失图片
+  python scripts/batch_download.py 3
   ```
 
 ### 数据导入脚本
@@ -85,6 +119,16 @@ pokemon-factory/
   
   # 清空所有表数据
   curl -X POST http://localhost:8080/api/pokeapi/clear-all
+  
+  # 获取导入状态
+  curl -X GET http://localhost:8080/api/pokeapi/import-status
+  ```
+
+### 数据验证脚本
+
+- `verify_paths.py` - 验证已下载图片的完整性
+  ```bash
+  python scripts/verify_paths.py
   ```
 
 ## 📊 数据库设计
@@ -112,10 +156,23 @@ pokemon-factory/
 
 ### 宝可梦数据接口
 
-- `GET /api/pokemon/list` - 获取宝可梦列表
+- `GET /api/pokemon/list` - 获取宝可梦列表（支持分页和搜索）
 - `GET /api/pokemon/{id}` - 获取宝可梦详情
 - `GET /api/pokemon/search` - 搜索宝可梦
 - `GET /api/pokemon/number/{indexNumber}` - 根据编号获取宝可梦
+- `GET /api/pokemon/{id}/evolution` - 获取进化链信息
+
+### 招式数据接口
+
+- `GET /api/moves/list` - 获取招式列表
+- `GET /api/moves/{id}` - 获取招式详情
+- `GET /api/moves/search` - 搜索招式
+
+### 特性数据接口
+
+- `GET /api/abilities/list` - 获取特性列表
+- `GET /api/abilities/{id}` - 获取特性详情
+- `GET /api/abilities/search` - 搜索特性
 
 ### 数据导入接口
 
@@ -192,9 +249,7 @@ npm run build
 
 ## 📚 详细文档
 
-- [PokeAPI数据导入功能总结](./PokeAPI数据导入功能总结.md) - 数据导入完整说明
-- [脚本使用说明](./脚本使用说明.md) - 详细的脚本使用指南
-- [数据库结构说明](./数据库结构说明.md) - 数据库表结构详细说明
+- [PokeAPI统一下载功能说明](./scripts/PokeAPI统一下载功能说明.md) - 图片下载详细说明
 
 ## 🤝 贡献指南
 

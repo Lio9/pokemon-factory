@@ -121,8 +121,38 @@ export const abilityApi = {
   }
 }
 
+// 物品相关API
+export const itemApi = {
+  // 获取物品列表
+  getList: (params) => {
+    const queryParams = new URLSearchParams({
+      current: params.current || 1,
+      size: params.size || 20,
+      ...(params.name && { name: params.name }),
+      ...(params.category && { category: params.category })
+    })
+    return request(`${API_BASE}/items/list?${queryParams}`)
+  },
+  
+  // 获取物品详情
+  getDetail: (id) => {
+    return request(`${API_BASE}/items/${id}`)
+  },
+  
+  // 搜索物品
+  search: (keyword, current = 1, size = 20) => {
+    const queryParams = new URLSearchParams({
+      keyword,
+      current,
+      size
+    })
+    return request(`${API_BASE}/items/search?${queryParams}`)
+  }
+}
+
 export default {
   pokemon: pokemonApi,
   moves: moveApi,
-  abilities: abilityApi
+  abilities: abilityApi,
+  items: itemApi
 }
