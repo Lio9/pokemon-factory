@@ -129,7 +129,7 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search } from 'lucide-vue-next'
 import { itemApi } from '../services/api.js'
@@ -140,92 +140,38 @@ export default {
     Search
   },
   setup() {
-    // 响应式数据
     const loading = ref(false)
     const items = ref([])
-    const sortBy = ref('id_asc')
     const searchKeyword = ref('')
     const selectedCategory = ref('')
-    
-    // 分页数据
     const currentPage = ref(1)
     const pageSize = ref(12)
     const totalItems = ref(0)
     const totalPages = ref(0)
-
-    // 对话框数据
     const dialogVisible = ref(false)
     const selectedItem = ref(null)
-    
-    // 示例数据
-    const sampleItems = [
-      {
-        id: 1,
-        name: '精灵球',
-        nameEn: 'Poké Ball',
-        category: '其他',
-        price: 200,
-        description: '用于捕捉宝可梦的球。'
-      },
-      {
-        id: 2,
-        name: '高级球',
-        nameEn: 'Great Ball',
-        category: '其他',
-        price: 600,
-        description: '比精灵球更好用的捕捉球。'
-      },
-      {
-        id: 3,
-        name: '超级球',
-        nameEn: 'Ultra Ball',
-        category: '其他',
-        price: 1200,
-        description: '最强大的捕捉球。'
-      },
-      {
-        id: 4,
-        name: '生命球',
-        nameEn: 'Potion',
-        category: '药水',
-        price: 300,
-        description: '回复宝可梦的一般ＨＰ。'
-      },
-      {
-        id: 5,
-        name: '全复球',
-        nameEn: 'Full Restore',
-        category: '药水',
-        price: 3000,
-        description: '回复宝可梦的所有ＨＰ和状态。'
-      }
-    ]
 
-    // 获取物品列表
     const fetchItems = async () => {
       loading.value = true
       try {
-        // 模拟API调用，使用示例数据
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        let newItems = []
-        if (currentPage.value === 1) {
-          // 第一页使用示例数据
-          newItems = sampleItems
+        let result
+        if (searchKeyword.value) {
+          result = await itemApi.search(searchKeyword.value, currentPage.value, pageSize.value)
         } else {
-          // 后续页面可以添加更多数据
-          newItems = sampleItems.slice(0, pageSize.value)
+          result = await itemApi.getList({
+            current: currentPage.value,
+            size: pageSize.value,
+            category: selectedCategory.value || undefined
+          })
         }
-        
-        // 如果是第一页，替换数据；否则追加数据
-        if (currentPage.value === 1) {
-          items.value = newItems
+
+        if (result.code === 200) {
+          items.value = result.data.records || result.data
+          totalItems.value = result.data.total || items.value.length
+          totalPages.value = Math.ceil(totalItems.value / pageSize.value)
         } else {
-          items.value = [...items.value, ...newItems]
+          ElMessage.error(result.message || '获取数据失败')
         }
-        
-        totalItems.value = sampleItems.length
-        totalPages.value = Math.ceil(totalItems.value / pageSize.value)
       } catch (error) {
         console.error('获取物品列表失败:', error)
         ElMessage.error('网络错误，请稍后重试')
@@ -234,26 +180,16 @@ export default {
       }
     }
 
-    // 排序处理
-    const handleSortChange = () => {
-      // 简化处理，实际可以根据排序重新获取数据
-      currentPage.value = 1
-      fetchItems()
-    }
-
-    // 搜索处理
     const handleSearch = () => {
       currentPage.value = 1
       fetchItems()
     }
 
-    // 分类处理
     const handleCategoryChange = () => {
       currentPage.value = 1
       fetchItems()
     }
 
-    // 分页处理
     const handleSizeChange = (val) => {
       pageSize.value = val
       currentPage.value = 1
@@ -265,42 +201,28 @@ export default {
       fetchItems()
     }
 
-    // 查看详情
     const viewDetails = async (item) => {
       try {
-        // 模拟API调用，使用示例数据
-        await new Promise(resolve => setTimeout(resolve, 300))
-        
-        // 在示例数据中查找匹配的物品
-        const matchedItem = sampleItems.find(i => i.id === item.id)
-        if (matchedItem) {
-          selectedItem.value = matchedItem
+        const result = await itemApi.getDetail(item.id)
+        if (result.code === 200) {
+          selectedItem.value = result.data
+          dialogVisible.value = true
         } else {
-          // 如果没有找到，创建一个基础的详情对象
-          selectedItem.value = {
-            ...item,
-            nameEn: item.nameEn || 'unknown',
-            category: item.category || '其他',
-            price: item.price || 0,
-            description: item.description || '暂无描述'
-          }
+          ElMessage.error('获取详情失败')
         }
-        
-        dialogVisible.value = true
       } catch (error) {
         console.error('获取物品详情失败:', error)
         ElMessage.error('网络错误，请稍后重试')
       }
     }
 
-    // 组件挂载时获取数据
-    fetchItems()
+    onMounted(() => {
+      fetchItems()
+    })
 
     return {
-      // 数据
       loading,
       items,
-      sortBy,
       searchKeyword,
       selectedCategory,
       currentPage,
@@ -309,10 +231,7 @@ export default {
       totalPages,
       dialogVisible,
       selectedItem,
-      
-      // 方法
       handleSearch,
-      handleSortChange,
       handleCategoryChange,
       handleSizeChange,
       handleCurrentChange,

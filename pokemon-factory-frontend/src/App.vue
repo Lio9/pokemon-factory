@@ -5,7 +5,7 @@
       <el-header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 !p-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-gradient-to-tr from-red-500 to-orange-500 rounded-lg shadow-lg flex items-center justify-center text-white font-bold text-sm">
+            <div class="w-8 h-8 bg-gradient-to-tr from-red-500 to-orange-500 rounded-lg shadow-lg flex items-center justify-center text-white font-bold text-sm" @click="goToImportManager">
               P
             </div>
             <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">
@@ -22,7 +22,7 @@
       </el-header>
       
       <el-main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 !pb-0 w-full">
-        <div class="nav-menu mb-8">
+        <div class="nav-menu mb-8" v-if="!isImportManager">
           <el-menu 
             mode="horizontal" 
             :default-active="$route.path" 
@@ -61,9 +61,31 @@ export default {
       activeMenu: 'pokemon'
     }
   },
+  computed: {
+    isImportManager() {
+      return this.$route.path === '/admin/import'
+    }
+  },
   methods: {
     handleMenuSelect(index) {
       this.$router.push(index)
+    },
+    goToImportManager() {
+      // 隐藏的访问方式：点击Logo 3次进入导入管理页面
+      if (!this.importClickCount) {
+        this.importClickCount = 0
+      }
+      this.importClickCount++
+      
+      if (this.importClickCount >= 3) {
+        this.$router.push('/admin/import')
+        this.importClickCount = 0
+      }
+      
+      // 3秒后重置计数
+      setTimeout(() => {
+        this.importClickCount = 0
+      }, 3000)
     }
   }
 }

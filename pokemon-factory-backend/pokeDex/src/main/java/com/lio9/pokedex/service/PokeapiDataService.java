@@ -3,6 +3,8 @@ package com.lio9.pokedex.service;
 import com.lio9.common.mapper.PokemonMapper;
 import com.lio9.common.model.*;
 import com.lio9.common.service.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,8 @@ import java.time.LocalDateTime;
  */
 @Service
 public class PokeapiDataService {
+
+    private static final Logger logger = LoggerFactory.getLogger(PokeapiDataService.class);
     
     @Autowired
     private PokemonMapper pokemonMapper;
@@ -80,50 +84,195 @@ public class PokeapiDataService {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     
     /**
-     * 导入物品数据
+     * 导入单个宝可梦数据
      */
     @Transactional
-    public void importItems() {
+    public void importPokemonById(int id) {
         try {
-            // 检查是否已有数据
-            if (itemService.count() > 0) {
-                System.out.println("物品数据已存在，跳过导入");
-                return;
+            JsonNode pokemonData = fetchPokemonData(id);
+            JsonNode speciesData = fetchPokemonSpeciesData(id);
+            if (pokemonData != null && speciesData != null) {
+                savePokemonData(pokemonData, speciesData);
+                logger.debug("成功导入宝可梦 ID: {}", id);
+            } else {
+                throw new RuntimeException("无法获取宝可梦数据");
             }
-            
-            // 从SQL文件导入示例数据
-            importItemsFromSql();
         } catch (Exception e) {
-            System.err.println("导入物品数据失败: " + e.getMessage());
+            logger.error("导入宝可梦 {} 失败: {}", id, e.getMessage());
+            throw new RuntimeException("导入宝可梦 " + id + " 失败: " + e.getMessage());
         }
     }
-    
+
     /**
-     * 从SQL文件导入物品数据
+     * 导入物品数据
      */
-    private void importItemsFromSql() {
+    
+    public List<Integer> importItems() {
+        List<Integer> failedIds = new ArrayList<>();
         try {
-            // 这里可以实现从SQL文件或数据库脚本导入数据的逻辑
-            // 目前使用示例数据
-            System.out.println("从SQL导入物品数据...");
-            
-            // 创建示例物品数据
-            List<Item> items = Arrays.asList(
-                new Item().setId(1L).setName("精灵球").setNameEn("Poké Ball").setCategory("其他").setPrice(200),
-                new Item().setId(2L).setName("高级球").setNameEn("Great Ball").setCategory("其他").setPrice(600),
-                new Item().setId(3L).setName("超级球").setNameEn("Ultra Ball").setCategory("其他").setPrice(1200),
-                new Item().setId(4L).setName("生命球").setNameEn("Potion").setCategory("药水").setPrice(300),
-                new Item().setId(5L).setName("全复球").setNameEn("Full Restore").setCategory("药水").setPrice(3000)
-            );
-            
-            for (Item item : items) {
-                itemService.save(item);
+            logger.info("开始导入物品数据");
+            // 获取物品总数
+            int totalCount = 2500;
+            int successCount = 0;
+
+            for (int i = 1; i <= totalCount; i++) {
+                try {
+                    JsonNode itemData = fetchItemData(i);
+                    if (itemData != null) {
+                        saveItemData(itemData);
+                        successCount++;
+                    } else {
+                        failedIds.add(i);
+                    }
+
+                    // 每100个显示一次进度
+                    if (i % 100 == 0) {
+                        logger.info("已处理 {}/{} 个物品 (成功: {}, 失败: {})", i, totalCount, successCount, failedIds.size());
+                    }
+                } catch (Exception e) {
+                    failedIds.add(i);
+                    logger.error("导入第 {} 个物品失败: {}", i, e.getMessage());
+                }
             }
-            
-            System.out.println("物品数据导入完成");
+
+            logger.info("物品数据导入完成: 成功 {}/{}，失败 {}", successCount, totalCount, failedIds.size());
         } catch (Exception e) {
-            System.err.println("从SQL导入物品数据失败: " + e.getMessage());
+            logger.error("导入物品数据失败: {}", e.getMessage());
         }
+        return failedIds;
+    }
+
+    /**
+     * 从PokeAPI获取物品数据
+     */
+    private JsonNode fetchItemData(int id) {
+        try {
+            String url = POKEAPI_BASE_URL + "item/" + id;
+            String response = restTemplate.getForObject(url, String.class);
+            return objectMapper.readTree(response);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 保存物品数据
+     */
+    private void saveItemData(JsonNode itemData) {
+        try {
+            Item item = new Item();
+            item.setIndexNumber(String.format("%04d", itemData.get("id").asInt()));
+            item.setName(getChineseItemNameFromData(itemData));
+            item.setNameEn(itemData.get("name").asText());
+            item.setNameJp(getJapaneseItemNameFromData(itemData));
+
+            // 获取物品分类
+            if (itemData.has("category") && !itemData.get("category").isNull()) {
+                item.setCategory(itemData.get("category").get("name").asText());
+            }
+
+            // 获取物品价格
+            if (itemData.has("cost") && !itemData.get("cost").isNull()) {
+                item.setPrice(itemData.get("cost").asInt());
+            }
+
+            // 获取物品效果和描述
+            item.setEffect(getItemEffect(itemData));
+            item.setDescription(getItemDescription(itemData));
+
+            item.setCreatedAt(LocalDateTime.now());
+            item.setUpdatedAt(LocalDateTime.now());
+            itemService.save(item);
+        } catch (Exception e) {
+            logger.error("保存物品数据失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 获取物品效果
+     */
+    private String getItemEffect(JsonNode itemData) {
+        try {
+            JsonNode effectEntries = itemData.get("effect_entries");
+            if (effectEntries != null && effectEntries.isArray()) {
+                // 先尝试中文
+                for (JsonNode entry : effectEntries) {
+                    if (entry.get("language").get("name").asText().equals("zh-Hans")) {
+                        return entry.get("effect").asText();
+                    }
+                }
+                // 如果没有中文，使用英文
+                for (JsonNode entry : effectEntries) {
+                    if (entry.get("language").get("name").asText().equals("en")) {
+                        return entry.get("effect").asText();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error("获取物品效果失败: {}", e.getMessage());
+        }
+        return "暂无效果说明";
+    }
+
+    /**
+     * 获取物品描述
+     */
+    private String getItemDescription(JsonNode itemData) {
+        try {
+            JsonNode flavorTextEntries = itemData.get("flavor_text_entries");
+            if (flavorTextEntries != null && flavorTextEntries.isArray()) {
+                for (JsonNode entry : flavorTextEntries) {
+                    if (entry.get("language").get("name").asText().equals("zh-Hans")) {
+                        return entry.get("text").asText();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error("获取物品描述失败: {}", e.getMessage());
+        }
+        return "暂无描述";
+    }
+
+    /**
+     * 获取物品中文名称
+     */
+    private String getChineseItemName(String englishName) {
+        // 这里可以添加物品名称映射，或者返回英文原名
+        return englishName.replace("-", " ");
+    }
+
+    /**
+     * 获取物品日文名称
+     */
+    private String getJapaneseItemName(String englishName) {
+        // 这里可以添加日文名称映射，或者返回英文原名
+        return englishName;
+    }
+
+    // 从itemData获取中文名称
+    private String getChineseItemNameFromData(JsonNode itemData) {
+        JsonNode names = itemData.get("names");
+        if (names != null && names.isArray()) {
+            for (JsonNode name : names) {
+                if (name.get("language").get("name").asText().equals("zh-Hans")) {
+                    return name.get("name").asText();
+                }
+            }
+        }
+        // 如果没有中文，返回英文名
+        return itemData.get("name").asText().replace("-", " ");
+    }
+
+    private String getJapaneseItemNameFromData(JsonNode itemData) {
+        JsonNode names = itemData.get("names");
+        if (names != null && names.isArray()) {
+            for (JsonNode name : names) {
+                if (name.get("language").get("name").asText().equals("ja")) {
+                    return name.get("name").asText();
+                }
+            }
+        }
+        return itemData.get("name").asText();
     }
     
     /**
@@ -133,27 +282,43 @@ public class PokeapiDataService {
     public Map<String, Object> importAllPokemonData() {
         Map<String, Object> result = new HashMap<>();
         try {
-            // 清空相关表数据
+            logger.info("开始导入所有宝可梦数据");
+
+            // 清空所有相关表数据
+            logger.info("开始清空数据库表...");
             clearTableData("pokemon");
+            clearTableData("pokemon_form");
+            clearTableData("pokemon_stats");
+            clearTableData("pokemon_iv");
+            clearTableData("pokemon_ev");
+            clearTableData("pokemon_form_type");
+            clearTableData("pokemon_form_ability");
+            clearTableData("pokemon_move");
+            clearTableData("pokemon_egg_group");
+            clearTableData("evolution_chain");
             clearTableData("item");
             clearTableData("move");
             clearTableData("ability");
             clearTableData("type");
-            
-            // 导入基础数据
+            clearTableData("egg_group");
+            clearTableData("growth_rate");
+            logger.info("数据库表清空完成");
+
+            // 导入基础数据，记录失败的ID
+            List<Integer> failedAbilities = importAbilities();
+            List<Integer> failedMoves = importMoves();
+            List<Integer> failedItems = importItems();
             importTypes();
-            importAbilities();
-            importMoves();
             importEggGroups();
             importGrowthRates();
-            
+
             // 获取宝可梦总数
             int totalCount = 1350; // 根据PokeAPI文档，目前宝可梦总数为1350
-            
-            // 导入宝可梦数据
+
+            // 导入宝可梦数据，记录失败的ID
             int successCount = 0;
-            int failCount = 0;
-            
+            List<Integer> failedPokemonIds = new ArrayList<>();
+
             for (int i = 1; i <= totalCount; i++) {
                 try {
                     JsonNode pokemonData = fetchPokemonData(i);
@@ -162,22 +327,108 @@ public class PokeapiDataService {
                         savePokemonData(pokemonData, speciesData);
                         successCount++;
                     } else {
-                        failCount++;
+                        failedPokemonIds.add(i);
                     }
-                    
+
                     // 每50个显示一次进度
                     if (i % 50 == 0) {
-                        System.out.println("已处理 " + i + "/" + totalCount + " 个宝可梦 (成功: " + successCount + ", 失败: " + failCount + ")");
+                        logger.info("已处理 {}/{} 个宝可梦 (成功: {}, 失败: {})", i, totalCount, successCount, failedPokemonIds.size());
                     }
                 } catch (Exception e) {
-                    failCount++;
-                    System.err.println("导入第 " + i + " 个宝可梦失败: " + e.getMessage());
+                    failedPokemonIds.add(i);
+                    logger.error("导入第 {} 个宝可梦失败: {}", i, e.getMessage());
                 }
             }
+
+            logger.info("第一轮导入完成，成功: {}，失败: {}", successCount, failedPokemonIds.size());
+
+            // 重试失败的导入
+            if (!failedPokemonIds.isEmpty() || !failedAbilities.isEmpty() || 
+                !failedMoves.isEmpty() || !failedItems.isEmpty()) {
+                logger.info("开始重试失败的导入...");
+                
+                // 重试宝可梦
+                int retrySuccessCount = 0;
+                for (Integer id : failedPokemonIds) {
+                    try {
+                        JsonNode pokemonData = fetchPokemonData(id);
+                        JsonNode speciesData = fetchPokemonSpeciesData(id);
+                        if (pokemonData != null && speciesData != null) {
+                            savePokemonData(pokemonData, speciesData);
+                            retrySuccessCount++;
+                        }
+                    } catch (Exception e) {
+                        logger.error("重试导入宝可梦 {} 失败: {}", id, e.getMessage());
+                    }
+                }
+                
+                // 重试特性
+                int retryAbilitySuccess = 0;
+                for (Integer id : failedAbilities) {
+                    try {
+                        JsonNode abilityData = fetchAbilityData(id);
+                        if (abilityData != null) {
+                            saveAbilityData(abilityData);
+                            retryAbilitySuccess++;
+                        }
+                    } catch (Exception e) {
+                        logger.error("重试导入特性 {} 失败: {}", id, e.getMessage());
+                    }
+                }
+                
+                // 重试技能
+                int retryMoveSuccess = 0;
+                for (Integer id : failedMoves) {
+                    try {
+                        JsonNode moveData = fetchMoveData(id);
+                        if (moveData != null) {
+                            saveMoveData(moveData);
+                            retryMoveSuccess++;
+                        }
+                    } catch (Exception e) {
+                        logger.error("重试导入技能 {} 失败: {}", id, e.getMessage());
+                    }
+                }
+                
+                // 重试物品
+                int retryItemSuccess = 0;
+                for (Integer id : failedItems) {
+                    try {
+                        JsonNode itemData = fetchItemData(id);
+                        if (itemData != null) {
+                            saveItemData(itemData);
+                            retryItemSuccess++;
+                        }
+                    } catch (Exception e) {
+                        logger.error("重试导入物品 {} 失败: {}", id, e.getMessage());
+                    }
+                }
+                
+                logger.info("重试完成 - 宝可梦: {}/{} 成功, 特性: {}/{} 成功, 技能: {}/{} 成功, 物品: {}/{} 成功",
+                    retrySuccessCount, failedPokemonIds.size(),
+                    retryAbilitySuccess, failedAbilities.size(),
+                    retryMoveSuccess, failedMoves.size(),
+                    retryItemSuccess, failedItems.size());
+                
+                successCount += retrySuccessCount;
+            }
+
+            logger.info("所有宝可梦数据导入完成，成功: {}/{}，最终失败: {}", 
+                successCount, totalCount, 
+                failedPokemonIds.size() - (successCount - (totalCount - failedPokemonIds.size())));
             
-            return "成功导入 " + successCount + "/" + totalCount + " 个宝可梦的数据，失败 " + failCount + " 个";
+            result.put("success", true);
+            result.put("pokemonCount", successCount);
+            result.put("moveCount", 1000 - failedMoves.size());
+            result.put("itemCount", 2500 - failedItems.size());
+            result.put("abilityCount", 350 - failedAbilities.size());
+            result.put("message", "成功导入 " + successCount + "/" + totalCount + " 个宝可梦的数据");
+            return result;
         } catch (Exception e) {
-            return "导入失败: " + e.getMessage();
+            logger.error("导入所有宝可梦数据失败: {}", e.getMessage());
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            return result;
         }
     }
     
@@ -186,6 +437,8 @@ public class PokeapiDataService {
      */
     public String clearAllData() {
         try {
+            logger.info("开始清空所有表数据");
+
             // 清空关联表
             pokemonFormTypeService.remove(new QueryWrapper<>());
             pokemonFormAbilityService.remove(new QueryWrapper<>());
@@ -195,20 +448,22 @@ public class PokeapiDataService {
             pokemonStatsService.remove(new QueryWrapper<>());
             pokemonIvService.remove(new QueryWrapper<>());
             pokemonEvService.remove(new QueryWrapper<>());
-            
+
             // 清空主表
             pokemonFormService.remove(new QueryWrapper<>());
             pokemonService.remove(new QueryWrapper<>());
-            
+
             // 清空基础数据表
             typeService.remove(new QueryWrapper<>());
             abilityService.remove(new QueryWrapper<>());
             moveService.remove(new QueryWrapper<>());
             eggGroupService.remove(new QueryWrapper<>());
             growthRateService.remove(new QueryWrapper<>());
-            
+
+            logger.info("已清空所有表数据");
             return "✅ 已清空所有表数据";
         } catch (Exception e) {
+            logger.error("清空数据失败: {}", e.getMessage());
             return "清空失败: " + e.getMessage();
         }
     }
@@ -222,11 +477,11 @@ public class PokeapiDataService {
             String response = restTemplate.getForObject(url, String.class);
             return objectMapper.readTree(response);
         } catch (Exception e) {
-            System.err.println("获取宝可梦 " + id + " 数据失败: " + e.getMessage());
+            logger.error("获取宝可梦 {} 数据失败: {}", id, e.getMessage());
             return null;
         }
     }
-    
+
     /**
      * 从PokeAPI获取宝可梦物种数据
      */
@@ -236,7 +491,7 @@ public class PokeapiDataService {
             String response = restTemplate.getForObject(url, String.class);
             return objectMapper.readTree(response);
         } catch (Exception e) {
-            System.err.println("获取宝可梦 " + id + " 物种数据失败: " + e.getMessage());
+            logger.error("获取宝可梦 {} 物种数据失败: {}", id, e.getMessage());
             return null;
         }
     }
@@ -248,9 +503,9 @@ public class PokeapiDataService {
         // 保存宝可梦基本信息
         Pokemon pokemon = new Pokemon();
         pokemon.setIndexNumber(String.format("%04d", pokemonData.get("id").asInt()));
-        pokemon.setName(getChineseName(pokemonData.get("name").asText()));
+        pokemon.setName(getChinesePokemonNameFromSpeciesData(speciesData));
         pokemon.setNameEn(pokemonData.get("name").asText());
-        pokemon.setNameJp(getJapaneseName(pokemonData.get("name").asText()));
+        pokemon.setNameJp(getJapanesePokemonNameFromSpeciesData(speciesData));
         pokemon.setHeight(pokemonData.get("height").asDouble() / 10.0); // 转换为米
         pokemon.setWeight(pokemonData.get("weight").asDouble() / 10.0); // 转换为公斤
         pokemon.setBaseExperience(pokemonData.get("base_experience").asInt(0));
@@ -281,7 +536,10 @@ public class PokeapiDataService {
         
         // 保存种族值
         savePokemonStats(form.getId(), pokemonData.get("stats"));
-        
+
+        // 保存进化链
+        savePokemonEvolutionChain(pokemon.getId(), speciesData);
+
         // 保存个体值和努力值（随机生成）
         savePokemonIvAndEv(form.getId());
     }
@@ -393,6 +651,30 @@ public class PokeapiDataService {
     }
     
     /**
+     * 保存进化链数据
+     */
+    private void savePokemonEvolutionChain(Long pokemonId, JsonNode speciesData) {
+        try {
+            JsonNode evolutionChainUrl = speciesData.get("evolution_chain");
+            if (evolutionChainUrl != null && !evolutionChainUrl.isNull()) {
+                String url = evolutionChainUrl.get("url").asText();
+                // 从URL中提取进化链ID
+                String evolutionChainId = url.substring(url.lastIndexOf("/") - 1, url.lastIndexOf("/"));
+
+                EvolutionChain evolutionChain = new EvolutionChain();
+                evolutionChain.setPokemonId(pokemonId);
+                evolutionChain.setChainId(Long.parseLong(evolutionChainId));
+                evolutionChain.setEvolutionDetails(url);
+                evolutionChain.setCreatedAt(LocalDateTime.now());
+                evolutionChain.setUpdatedAt(LocalDateTime.now());
+                evolutionChainService.save(evolutionChain);
+            }
+        } catch (Exception e) {
+            logger.error("保存进化链数据失败: {}", e.getMessage());
+        }
+    }
+
+    /**
      * 保存个体值和努力值
      */
     private void savePokemonIvAndEv(Long formId) {
@@ -486,18 +768,41 @@ public class PokeapiDataService {
     private String getPokemonDescriptionFromSpeciesData(JsonNode speciesData) {
         try {
             JsonNode flavorTextEntries = speciesData.get("flavor_text_entries");
-            
             if (flavorTextEntries != null && flavorTextEntries.isArray()) {
                 for (JsonNode entry : flavorTextEntries) {
                     if (entry.get("language").get("name").asText().equals("zh-Hans")) {
-                        return entry.get("flavor_text").asText();
+                        return entry.get("flavor_text").asText().replace("\\n", " ").replace("\\f", " ");
                     }
                 }
             }
         } catch (Exception e) {
-            System.err.println("获取宝可梦描述失败: " + e.getMessage());
+            logger.error("获取宝可梦描述失败: {}", e.getMessage());
         }
         return "暂无描述";
+    }
+
+    private String getChinesePokemonNameFromSpeciesData(JsonNode speciesData) {
+        JsonNode names = speciesData.get("names");
+        if (names != null && names.isArray()) {
+            for (JsonNode name : names) {
+                if (name.get("language").get("name").asText().equals("zh-Hans")) {
+                    return name.get("name").asText();
+                }
+            }
+        }
+        return "未知宝可梦";
+    }
+
+    private String getJapanesePokemonNameFromSpeciesData(JsonNode speciesData) {
+        JsonNode names = speciesData.get("names");
+        if (names != null && names.isArray()) {
+            for (JsonNode name : names) {
+                if (name.get("language").get("name").asText().equals("ja")) {
+                    return name.get("name").asText();
+                }
+            }
+        }
+        return speciesData.get("name").asText();
     }
     
     private String getPokemonDescription(String speciesUrl) {
@@ -506,7 +811,7 @@ public class PokeapiDataService {
             JsonNode speciesData = objectMapper.readTree(response);
             return getPokemonDescriptionFromSpeciesData(speciesData);
         } catch (Exception e) {
-            System.err.println("获取宝可梦描述失败: " + e.getMessage());
+            logger.error("获取宝可梦描述失败: {}", e.getMessage());
         }
         return "暂无描述";
     }
@@ -514,10 +819,11 @@ public class PokeapiDataService {
     // 导入基础数据的方法
     public void importTypes() {
         try {
-            String[] typeNames = {"normal", "fire", "water", "electric", "grass", "ice", 
-                                "fighting", "poison", "ground", "flying", "psychic", 
+            logger.info("开始导入属性数据");
+            String[] typeNames = {"normal", "fire", "water", "electric", "grass", "ice",
+                                "fighting", "poison", "ground", "flying", "psychic",
                                 "bug", "rock", "ghost", "dragon", "dark", "steel", "fairy"};
-            
+
             int importedCount = 0;
             for (String typeName : typeNames) {
                 // 检查是否已存在
@@ -535,28 +841,89 @@ public class PokeapiDataService {
                     importedCount++;
                 }
             }
-            System.out.println("✅ 已导入 " + importedCount + " 个新属性，总共 " + typeNames.length + " 个");
+            logger.info("已导入 {} 个新属性，总共 {} 个", importedCount, typeNames.length);
         } catch (Exception e) {
-            System.err.println("导入属性数据失败: " + e.getMessage());
+            logger.error("导入属性数据失败: {}", e.getMessage());
         }
     }
     
-    private void importAbilities() {
-        // 这里可以添加具体的特性导入逻辑
-        System.out.println("✅ 特性数据导入完成");
-    }
-    
-    private void importMoves() {
-        // 这里可以添加具体的技能导入逻辑
-        System.out.println("✅ 技能数据导入完成");
-    }
-    
-    private void importEggGroups() {
+    public List<Integer> importAbilities() {
+        List<Integer> failedIds = new ArrayList<>();
         try {
-            String[] eggGroupNames = {"monster", "water1", "bug", "flying", "ground", 
-                                    "fairy", "plant", "humanshape", "water3", "mineral", 
+            logger.info("开始导入特性数据");
+            // 获取特性总数
+            int totalCount = 350;
+            int successCount = 0;
+
+            for (int i = 1; i <= totalCount; i++) {
+                try {
+                    JsonNode abilityData = fetchAbilityData(i);
+                    if (abilityData != null) {
+                        saveAbilityData(abilityData);
+                        successCount++;
+                    } else {
+                        failedIds.add(i);
+                    }
+
+                    // 每50个显示一次进度
+                    if (i % 50 == 0) {
+                        logger.info("已处理 {}/{} 个特性 (成功: {}, 失败: {})", i, totalCount, successCount, failedIds.size());
+                    }
+                } catch (Exception e) {
+                    failedIds.add(i);
+                    logger.error("导入第 {} 个特性失败: {}", i, e.getMessage());
+                }
+            }
+
+            logger.info("特性数据导入完成: 成功 {}/{}，失败 {}", successCount, totalCount, failedIds.size());
+        } catch (Exception e) {
+            logger.error("导入特性数据失败: {}", e.getMessage());
+        }
+        return failedIds;
+    }
+
+    public List<Integer> importMoves() {
+        List<Integer> failedIds = new ArrayList<>();
+        try {
+            logger.info("开始导入技能数据");
+            // 获取技能总数
+            int totalCount = 1000;
+            int successCount = 0;
+
+            for (int i = 1; i <= totalCount; i++) {
+                try {
+                    JsonNode moveData = fetchMoveData(i);
+                    if (moveData != null) {
+                        saveMoveData(moveData);
+                        successCount++;
+                    } else {
+                        failedIds.add(i);
+                    }
+
+                    // 每50个显示一次进度
+                    if (i % 50 == 0) {
+                        logger.info("已处理 {}/{} 个技能 (成功: {}, 失败: {})", i, totalCount, successCount, failedIds.size());
+                    }
+                } catch (Exception e) {
+                    failedIds.add(i);
+                    logger.error("导入第 {} 个技能失败: {}", i, e.getMessage());
+                }
+            }
+
+            logger.info("技能数据导入完成: 成功 {}/{}，失败 {}", successCount, totalCount, failedIds.size());
+        } catch (Exception e) {
+            logger.error("导入技能数据失败: {}", e.getMessage());
+        }
+        return failedIds;
+    }
+    
+    public void importEggGroups() {
+        try {
+            logger.info("开始导入蛋群数据");
+            String[] eggGroupNames = {"monster", "water1", "bug", "flying", "ground",
+                                    "fairy", "plant", "humanshape", "water3", "mineral",
                                     "indeterminate", "water2", "ditto", "dragon", "no-eggs"};
-            
+
             for (String groupName : eggGroupNames) {
                 EggGroup eggGroup = new EggGroup();
                 eggGroup.setName(getChineseEggGroupName(groupName));
@@ -566,16 +933,17 @@ public class PokeapiDataService {
                 eggGroup.setUpdatedAt(LocalDateTime.now());
                 eggGroupService.save(eggGroup);
             }
-            System.out.println("✅ 已导入 " + eggGroupNames.length + " 个蛋群");
+            logger.info("已导入 {} 个蛋群", eggGroupNames.length);
         } catch (Exception e) {
-            System.err.println("导入蛋群数据失败: " + e.getMessage());
+            logger.error("导入蛋群数据失败: {}", e.getMessage());
         }
     }
     
-    private void importGrowthRates() {
+    public void importGrowthRates() {
         try {
+            logger.info("开始导入经验类型数据");
             String[] growthRates = {"slow", "medium", "fast", "medium-slow", "slow-then-very-fast", "fast-then-very-slow"};
-            
+
             int importedCount = 0;
             for (String rate : growthRates) {
                 // 检查是否已存在
@@ -593,9 +961,9 @@ public class PokeapiDataService {
                     importedCount++;
                 }
             }
-            System.out.println("✅ 已导入 " + importedCount + " 个新经验类型，总共 " + growthRates.length + " 个");
+            logger.info("已导入 {} 个新经验类型，总共 {} 个", importedCount, growthRates.length);
         } catch (Exception e) {
-            System.err.println("导入经验类型数据失败: " + e.getMessage());
+            logger.error("导入经验类型数据失败: {}", e.getMessage());
         }
     }
     
@@ -777,9 +1145,9 @@ public class PokeapiDataService {
         try {
             Ability ability = new Ability();
             ability.setIndexNumber(String.format("%04d", abilityData.get("id").asInt()));
-            ability.setName(getChineseAbilityName(abilityData.get("name").asText()));
+            ability.setName(getChineseAbilityNameFromData(abilityData));
             ability.setNameEn(abilityData.get("name").asText());
-            ability.setNameJp(getJapaneseAbilityName(abilityData.get("name").asText()));
+            ability.setNameJp(getJapaneseAbilityNameFromData(abilityData));
             ability.setDescription(getAbilityDescription(abilityData));
             ability.setEffect(getAbilityEffect(abilityData));
             ability.setCommonCount(0);
@@ -788,10 +1156,10 @@ public class PokeapiDataService {
             ability.setUpdatedAt(LocalDateTime.now());
             abilityService.save(ability);
         } catch (Exception e) {
-            System.err.println("保存特性数据失败: " + e.getMessage());
+            logger.error("保存特性数据失败: {}", e.getMessage());
         }
     }
-    
+
     /**
      * 保存技能数据
      */
@@ -799,10 +1167,10 @@ public class PokeapiDataService {
         try {
             Move move = new Move();
             move.setIndexNumber(String.format("%04d", moveData.get("id").asInt()));
-            move.setName(getChineseMoveName(moveData.get("name").asText()));
+            move.setName(getChineseMoveNameFromData(moveData));
             move.setNameEn(moveData.get("name").asText());
-            move.setNameJp(getJapaneseMoveName(moveData.get("name").asText()));
-            
+            move.setNameJp(getJapaneseMoveNameFromData(moveData));
+
             // 获取技能属性
             if (moveData.has("type") && !moveData.get("type").isNull()) {
                 String typeName = moveData.get("type").get("name").asText();
@@ -811,12 +1179,12 @@ public class PokeapiDataService {
                     move.setTypeId(type.getId());
                 }
             }
-            
+
             // 获取技能分类
             if (moveData.has("damage_class") && !moveData.get("damage_class").isNull()) {
                 move.setDamageClass(moveData.get("damage_class").get("name").asText());
             }
-            
+
             // 设置数值字段
             if (moveData.has("power") && !moveData.get("power").isNull()) {
                 move.setPower(moveData.get("power").asInt());
@@ -833,10 +1201,10 @@ public class PokeapiDataService {
             move.setUpdatedAt(LocalDateTime.now());
             boolean saved = moveService.save(move);
             if (!saved) {
-                System.err.println("保存技能数据失败: 保存操作返回false");
+                logger.error("保存技能数据失败: 保存操作返回false");
             }
         } catch (Exception e) {
-            System.err.println("保存技能数据失败: " + e.getMessage());
+            logger.error("保存技能数据失败: {}", e.getMessage());
         }
     }
     
@@ -849,11 +1217,22 @@ public class PokeapiDataService {
     }
     
     private String getAbilityDescription(JsonNode abilityData) {
-        JsonNode effectEntries = abilityData.get("effect_entries");
-        if (effectEntries != null && effectEntries.isArray()) {
-            for (JsonNode entry : effectEntries) {
+        // 从names字段获取中文名称
+        JsonNode names = abilityData.get("names");
+        if (names != null && names.isArray()) {
+            for (JsonNode name : names) {
+                if (name.get("language").get("name").asText().equals("zh-Hans")) {
+                    return name.get("name").asText();
+                }
+            }
+        }
+
+        // 如果没有中文，尝试从flavor_text_entries获取
+        JsonNode flavorEntries = abilityData.get("flavor_text_entries");
+        if (flavorEntries != null && flavorEntries.isArray()) {
+            for (JsonNode entry : flavorEntries) {
                 if (entry.get("language").get("name").asText().equals("zh-Hans")) {
-                    return entry.get("short_effect").asText();
+                    return entry.get("flavor_text").asText().replace("\\n", " ");
                 }
             }
         }
@@ -863,8 +1242,15 @@ public class PokeapiDataService {
     private String getAbilityEffect(JsonNode abilityData) {
         JsonNode effectEntries = abilityData.get("effect_entries");
         if (effectEntries != null && effectEntries.isArray()) {
+            // 先尝试中文
             for (JsonNode entry : effectEntries) {
                 if (entry.get("language").get("name").asText().equals("zh-Hans")) {
+                    return entry.get("effect").asText();
+                }
+            }
+            // 如果没有中文，使用英文
+            for (JsonNode entry : effectEntries) {
+                if (entry.get("language").get("name").asText().equals("en")) {
                     return entry.get("effect").asText();
                 }
             }
@@ -875,20 +1261,34 @@ public class PokeapiDataService {
     private String getMoveDescription(JsonNode moveData) {
         JsonNode effectEntries = moveData.get("effect_entries");
         if (effectEntries != null && effectEntries.isArray()) {
+            // 先尝试中文
             for (JsonNode entry : effectEntries) {
                 if (entry.get("language").get("name").asText().equals("zh-Hans")) {
+                    return entry.get("short_effect").asText();
+                }
+            }
+            // 如果没有中文，使用英文
+            for (JsonNode entry : effectEntries) {
+                if (entry.get("language").get("name").asText().equals("en")) {
                     return entry.get("short_effect").asText();
                 }
             }
         }
         return "暂无描述";
     }
-    
+
     private String getMoveEffect(JsonNode moveData) {
         JsonNode effectEntries = moveData.get("effect_entries");
         if (effectEntries != null && effectEntries.isArray()) {
+            // 先尝试中文
             for (JsonNode entry : effectEntries) {
                 if (entry.get("language").get("name").asText().equals("zh-Hans")) {
+                    return entry.get("effect").asText();
+                }
+            }
+            // 如果没有中文，使用英文
+            for (JsonNode entry : effectEntries) {
+                if (entry.get("language").get("name").asText().equals("en")) {
                     return entry.get("effect").asText();
                 }
             }
@@ -900,6 +1300,58 @@ public class PokeapiDataService {
     private String getChineseAbilityName(String englishName) {
         // 这里可以添加更多特性名称映射
         return englishName.replace("-", " ");
+    }
+
+    // 从moveData获取中文名称
+    private String getChineseMoveNameFromData(JsonNode moveData) {
+        JsonNode names = moveData.get("names");
+        if (names != null && names.isArray()) {
+            for (JsonNode name : names) {
+                if (name.get("language").get("name").asText().equals("zh-Hans")) {
+                    return name.get("name").asText();
+                }
+            }
+        }
+        // 如果没有中文，返回英文名
+        return moveData.get("name").asText().replace("-", " ");
+    }
+
+    private String getJapaneseMoveNameFromData(JsonNode moveData) {
+        JsonNode names = moveData.get("names");
+        if (names != null && names.isArray()) {
+            for (JsonNode name : names) {
+                if (name.get("language").get("name").asText().equals("ja")) {
+                    return name.get("name").asText();
+                }
+            }
+        }
+        return moveData.get("name").asText();
+    }
+
+    // 从abilityData获取中文名称的新方法
+    private String getChineseAbilityNameFromData(JsonNode abilityData) {
+        JsonNode names = abilityData.get("names");
+        if (names != null && names.isArray()) {
+            for (JsonNode name : names) {
+                if (name.get("language").get("name").asText().equals("zh-Hans")) {
+                    return name.get("name").asText();
+                }
+            }
+        }
+        // 如果没有中文，返回英文名
+        return abilityData.get("name").asText().replace("-", " ");
+    }
+
+    private String getJapaneseAbilityNameFromData(JsonNode abilityData) {
+        JsonNode names = abilityData.get("names");
+        if (names != null && names.isArray()) {
+            for (JsonNode name : names) {
+                if (name.get("language").get("name").asText().equals("ja")) {
+                    return name.get("name").asText();
+                }
+            }
+        }
+        return abilityData.get("name").asText();
     }
     
     private String getJapaneseAbilityName(String englishName) {
@@ -928,12 +1380,12 @@ public class PokeapiDataService {
             int endId = startId + count - 1;
             int successCount = 0;
             int failCount = 0;
-            
-            System.out.println("开始导入宝可梦数据，范围: " + startId + " - " + endId);
-            
+
+            logger.info("开始导入宝可梦数据，范围: {} - {}", startId, endId);
+
             for (int id = startId; id <= endId; id++) {
                 try {
-                    System.out.println("正在导入宝可梦: " + id);
+                    logger.debug("正在导入宝可梦: {}", id);
                     JsonNode pokemonData = fetchPokemonData(id);
                     JsonNode speciesData = fetchPokemonSpeciesData(id);
                     if (pokemonData != null && speciesData != null) {
@@ -943,71 +1395,29 @@ public class PokeapiDataService {
                         failCount++;
                     }
                 } catch (Exception e) {
-                    System.err.println("导入宝可梦 " + id + " 失败: " + e.getMessage());
+                    logger.error("导入宝可梦 {} 失败: {}", id, e.getMessage());
                     failCount++;
                 }
             }
-            
+
             result.put("successCount", successCount);
             result.put("failCount", failCount);
             result.put("startId", startId);
             result.put("endId", endId);
             result.put("totalCount", count);
-            
-            System.out.println("宝可梦数据导入完成: 成功 " + successCount + ", 失败 " + failCount);
-            
+
+            logger.info("宝可梦数据导入完成: 成功 {}, 失败 {}", successCount, failCount);
+
             result.put("pokemonCount", successCount);
             result.put("moveCount", 625);
             result.put("itemCount", 1120);
             result.put("abilityCount", 247);
             result.put("typeCount", 18);
             result.put("success", true);
-            
+
         } catch (Exception e) {
             result.put("error", e.getMessage());
-            System.err.println("导入宝可梦数据失败: " + e.getMessage());
-        }
-        return result;
-    }
-    
-    /**
-     * 导入技能数据
-     */
-    @Transactional
-    public Map<String, Object> importMoveData() {
-        Map<String, Object> result = new HashMap<>();
-        try {
-            System.out.println("开始导入技能数据...");
-            
-            // 获取技能总数
-            int totalCount = 905; // 根据PokeAPI文档，目前技能总数为905
-            int successCount = 0;
-            int failCount = 0;
-            
-            for (int i = 1; i <= totalCount; i++) {
-                try {
-                    JsonNode moveData = fetchMoveData(i);
-                    if (moveData != null) {
-                        saveMoveData(moveData);
-                        successCount++;
-                    } else {
-                        failCount++;
-                    }
-                    
-                    // 每50个显示一次进度
-                    if (i % 50 == 0) {
-                        System.out.println("已处理 " + i + "/" + totalCount + " 个技能 (成功: " + successCount + ", 失败: " + failCount + ")");
-                    }
-                } catch (Exception e) {
-                    failCount++;
-                    System.err.println("导入第 " + i + " 个技能失败: " + e.getMessage());
-                }
-            }
-            
-            result.put("message", "成功导入 " + successCount + "/" + totalCount + " 个技能的数据，失败 " + failCount + " 个");
-        } catch (Exception e) {
-            result.put("error", e.getMessage());
-            System.err.println("导入技能数据失败: " + e.getMessage());
+            logger.error("导入宝可梦数据失败: {}", e.getMessage());
         }
         return result;
     }
@@ -1019,12 +1429,12 @@ public class PokeapiDataService {
     public Map<String, Object> importItemData() {
         Map<String, Object> result = new HashMap<>();
         try {
-            System.out.println("开始导入物品数据...");
+            logger.info("开始导入物品数据...");
             importItems();
             result.put("message", "物品数据导入完成");
         } catch (Exception e) {
             result.put("error", e.getMessage());
-            System.err.println("导入物品数据失败: " + e.getMessage());
+            logger.error("导入物品数据失败: {}", e.getMessage());
         }
         return result;
     }
@@ -1035,11 +1445,38 @@ public class PokeapiDataService {
     @Transactional
     public void clearTableData(String tableName) {
         try {
-            System.out.println("开始清空表: " + tableName);
-            
+            logger.info("开始清空表: {}", tableName);
+
             switch (tableName.toLowerCase()) {
                 case "pokemon":
                     pokemonService.remove(null);
+                    break;
+                case "pokemon_form":
+                    pokemonFormService.remove(null);
+                    break;
+                case "pokemon_stats":
+                    pokemonStatsService.remove(null);
+                    break;
+                case "pokemon_iv":
+                    pokemonIvService.remove(null);
+                    break;
+                case "pokemon_ev":
+                    pokemonEvService.remove(null);
+                    break;
+                case "pokemon_form_type":
+                    pokemonFormTypeService.remove(null);
+                    break;
+                case "pokemon_form_ability":
+                    pokemonFormAbilityService.remove(null);
+                    break;
+                case "pokemon_move":
+                    pokemonMoveService.remove(null);
+                    break;
+                case "pokemon_egg_group":
+                    pokemonEggGroupService.remove(null);
+                    break;
+                case "evolution_chain":
+                    evolutionChainService.remove(null);
                     break;
                 case "item":
                     itemService.remove(null);
@@ -1053,14 +1490,20 @@ public class PokeapiDataService {
                 case "type":
                     typeService.remove(null);
                     break;
+                case "egg_group":
+                    eggGroupService.remove(null);
+                    break;
+                case "growth_rate":
+                    growthRateService.remove(null);
+                    break;
                 default:
-                    System.err.println("未知的表名: " + tableName);
+                    logger.error("未知的表名: {}", tableName);
                     return;
             }
-            
-            System.out.println("表 " + tableName + " 数据清空完成");
+
+            logger.info("表 {} 数据清空完成", tableName);
         } catch (Exception e) {
-            System.err.println("清空表 " + tableName + " 失败: " + e.getMessage());
+            logger.error("清空表 {} 失败: {}", tableName, e.getMessage());
         }
     }
 }

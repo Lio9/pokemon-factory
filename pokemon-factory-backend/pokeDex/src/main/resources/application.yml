@@ -5,8 +5,8 @@ spring:
   main:
     allow-bean-definition-overriding: true
   datasource:
-    url: jdbc:mysql://192.168.134.129:3306/pokemon_factory?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
-    username: root
+    url: jdbc:mysql://10.144.199.29:3306/pokemon_factory?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: lio9
     password: 753951
     driver-class-name: com.mysql.cj.jdbc.Driver
   jackson:

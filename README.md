@@ -4,20 +4,20 @@
 
 ## 🎯 核心功能
 
-- ✅ **完整宝可梦数据** - 支持1025个宝可梦的完整数据
+- ✅ **完整宝可梦数据** - 支持1350个宝可梦的完整数据（从PokeAPI导入）
 - ✅ **对战系统** - 支持个体值、努力值、进化链等对战机制
-- ✅ **图片下载** - 从PokeAPI自动下载宝可梦图片
-- ✅ **前端图鉴** - 现代化Vue.js前端应用
+- ✅ **异步数据导入** - 支持异步导入和失败重试机制
+- ✅ **前端图鉴** - 现代化Vue.js前端应用，支持宝可梦、招式、特性、物品查询
 - ✅ **后端API** - 完整的REST API服务
+- ✅ **日志系统** - 完整的日志记录，错误信息输出到logs文件夹
 
 ## 🚀 快速开始
 
 ### 环境要求
 
 - Java 17+
-- MySQL 8.0+ (当前配置: 192.168.134.129:3306)
+- MySQL 8.0+
 - Node.js 16+
-- Python 3.8+
 
 ### 启动步骤
 
@@ -25,22 +25,32 @@
 # 1. 创建数据库
 mysql -u root -p < complete_database_init.sql
 
-# 2. 启动后端服务
+# 2. 配置数据库连接
+# 编辑 pokemon-factory-backend/pokeDex/src/main/resources/application.yml
+# 修改数据库连接信息
+
+# 3. 启动后端服务
 cd pokemon-factory-backend/pokeDex
 mvn spring-boot:run
-
-# 3. 导入宝可梦数据
-curl -X POST http://localhost:8080/api/pokeapi/import-all
 
 # 4. 启动前端应用
 cd pokemon-factory-frontend
 npm install
 npm run dev
+
+# 5. 导入数据（可选）
+# 方式1：通过前端导入管理页面（推荐）
+# 访问 http://localhost:3000/admin/import
+# 或在前端页面快速点击左上角Logo 3次进入导入管理页面
+
+# 方式2：通过API接口
+curl -X POST http://localhost:8080/api/import/all
 ```
 
 ### 访问应用
 
 - **前端应用**: http://localhost:3000/
+- **导入管理页面**: http://localhost:3000/admin/import
 - **后端API**: http://localhost:8080/
 
 ## 📁 项目结构
@@ -55,6 +65,7 @@ pokemon-factory/
 │   │       │   ├── Type.java
 │   │       │   ├── Move.java
 │   │       │   ├── Ability.java
+│   │       │   ├── Item.java
 │   │       │   ├── EvolutionChain.java
 │   │       │   ├── PokemonForm.java
 │   │       │   └── ...
@@ -63,23 +74,33 @@ pokemon-factory/
 │   └── pokeDex/                 # 主应用模块
 │       ├── src/main/java/com/lio9/pokedex/
 │       │   ├── controller/      # 控制器
-│       │   │   ├── PokemonController.java
-│       │   │   ├── PokeapiDataController.java
-│       │   │   ├── MoveController.java
-│       │   │   └── AbilityController.java
+│       │   │   ├── ImportController.java       # 统一导入控制器
+│       │   │   ├── PokemonController.java      # 宝可梦控制器
+│       │   │   ├── MoveController.java         # 招式控制器
+│       │   │   ├── AbilityController.java      # 特性控制器
+│       │   │   └── ItemController.java         # 物品控制器
 │       │   └── service/         # 服务实现
-│       └── src/main/resources/
-│           ├── application.yml  # 配置文件
-│           └── mapper/          # MyBatis映射文件
+│       │       └── PokeapiDataService.java     # PokeAPI数据服务
+│       ├── src/main/resources/
+│       │   ├── application.yml  # 配置文件
+│       │   ├── log4j2.xml       # 日志配置
+│       │   └── mapper/          # MyBatis映射文件
+│       └── logs/                # 日志文件夹（自动创建）
+│           ├── data-import.log  # 数据导入日志
+│           └── error.log        # 错误日志
 ├── pokemon-factory-frontend/    # 前端Vue.js项目
 │   ├── src/
 │   │   ├── components/          # 组件
 │   │   │   ├── PokemonList.vue
 │   │   │   ├── PokemonDetail.vue
 │   │   │   ├── MoveList.vue
-│   │   │   └── AbilityList.vue
+│   │   │   ├── AbilityList.vue
+│   │   │   ├── ItemList.vue
+│   │   │   └── ImportManager.vue         # 导入管理组件（隐藏）
 │   │   ├── router/              # 路由配置
+│   │   │   └── index.js
 │   │   ├── services/            # API服务
+│   │   │   └── api.js
 │   │   └── main.js              # 入口文件
 │   └── package.json
 ├── scripts/                     # 数据处理脚本
@@ -91,59 +112,31 @@ pokemon-factory/
 └── .gitignore                   # Git忽略文件
 ```
 
-## 🛠️ 主要脚本
-
-### 图片下载脚本
-
-- `batch_download.py` - 统一的宝可梦图片下载脚本
-  ```bash
-  # 全量下载（从1到1025）
-  python scripts/batch_download.py 1
-  
-  # 增量下载（指定范围）
-  python scripts/batch_download.py 2 1 100
-  
-  # 验证图片路径
-  python scripts/verify_paths.py
-  
-  # 重新下载缺失图片
-  python scripts/batch_download.py 3
-  ```
-
-### 数据导入脚本
-
-- `PokeapiDataController.java` - REST API接口
-  ```bash
-  # 导入所有宝可梦数据
-  curl -X POST http://localhost:8080/api/pokeapi/import-all
-  
-  # 清空所有表数据
-  curl -X POST http://localhost:8080/api/pokeapi/clear-all
-  
-  # 获取导入状态
-  curl -X GET http://localhost:8080/api/pokeapi/import-status
-  ```
-
-### 数据验证脚本
-
-- `verify_paths.py` - 验证已下载图片的完整性
-  ```bash
-  python scripts/verify_paths.py
-  ```
-
 ## 📊 数据库设计
 
 ### 核心表结构
 
+**主表**
 - `pokemon` - 宝可梦主表
 - `type` - 属性表
 - `ability` - 特性表
 - `move` - 招式表
+- `item` - 物品表
+- `egg_group` - 蛋群表
+- `growth_rate` - 经验类型表
+
+**宝可梦相关表**
 - `pokemon_form` - 宝可梦形态表
-- `evolution_chain` - 进化链表
 - `pokemon_stats` - 种族值表
 - `pokemon_iv` - 个体值表
 - `pokemon_ev` - 努力值表
+- `evolution_chain` - 进化链表
+
+**关联表**
+- `pokemon_form_type` - 宝可梦形态与属性的关联表
+- `pokemon_form_ability` - 宝可梦形态与特性的关联表
+- `pokemon_move` - 宝可梦与招式的关联表
+- `pokemon_egg_group` - 宝可梦与蛋群的关联表
 
 ### 特色功能
 
@@ -154,13 +147,20 @@ pokemon-factory/
 
 ## 🌐 API接口
 
+### 数据导入接口
+
+- `POST /api/import/all` - 统一导入所有数据（异步）
+- `GET /api/import/status/{taskId}` - 查询导入任务状态
+- `GET /api/import/tasks` - 获取所有导入任务列表
+- `POST /api/import/pokemon/range` - 导入指定范围的宝可梦数据（异步）
+- `DELETE /api/import/all` - 清空所有数据
+
 ### 宝可梦数据接口
 
 - `GET /api/pokemon/list` - 获取宝可梦列表（支持分页和搜索）
 - `GET /api/pokemon/{id}` - 获取宝可梦详情
 - `GET /api/pokemon/search` - 搜索宝可梦
 - `GET /api/pokemon/number/{indexNumber}` - 根据编号获取宝可梦
-- `GET /api/pokemon/{id}/evolution` - 获取进化链信息
 
 ### 招式数据接口
 
@@ -174,27 +174,68 @@ pokemon-factory/
 - `GET /api/abilities/{id}` - 获取特性详情
 - `GET /api/abilities/search` - 搜索特性
 
-### 数据导入接口
+### 物品数据接口
 
-- `POST /api/pokeapi/import-all` - 导入所有宝可梦数据
-- `POST /api/pokeapi/clear-all` - 清空所有表数据
-- `GET /api/pokeapi/import-status` - 获取导入状态
+- `GET /api/items/list` - 获取物品列表
+- `GET /api/items/{id}` - 获取物品详情
+- `GET /api/items/search` - 搜索物品
 
-## 数据库设计
+## 📥 数据导入说明
 
-### 主要表结构
+### 导入流程
 
-- `pokemon` - 宝可梦基础信息表
-- `pokemon_form` - 宝可梦形态表
-- `type` - 属性表
-- `move` - 招式表
-- `ability` - 特性表
-- `evolution_chain` - 进化链表
-- `pokemon_move` - 宝可梦招式关联表
+1. **清空数据** - 自动清空所有相关数据表（17个表）
+2. **导入基础数据** - 类型、蛋群、经验类型
+3. **导入特性数据** - 从PokeAPI导入350个特性
+4. **导入技能数据** - 从PokeAPI导入1000个技能
+5. **导入物品数据** - 从PokeAPI导入2500个物品
+6. **导入宝可梦数据** - 从PokeAPI导入1350个宝可梦
+7. **失败重试** - 自动重试所有失败的导入记录
+8. **完成统计** - 输出最终导入统计结果
 
-详细的表结构请查看 [database-design.sql](database-design.sql) 文件。
+### 数据来源
 
-## 开发指南
+所有数据均从[PokeAPI](https://pokeapi.co/)获取，包括：
+- 宝可梦基本信息、形态、属性、特性、技能、种族值
+- 进化链信息
+- 技能的属性、分类、威力、命中、PP值等
+- 特性的描述和效果
+- 物品的分类、价格、效果等
+
+### 日志记录
+
+- **数据导入日志**: `pokemon-factory-backend/pokeDex/logs/data-import.log`
+- **错误日志**: `pokemon-factory-backend/pokeDex/logs/error.log`
+- 日志文件会按日期滚动，最多保留10个历史文件
+
+### 导入特性
+
+- ✅ 异步导入，不阻塞主线程
+- ✅ 失败记录和自动重试机制
+- ✅ 实时进度跟踪
+- ✅ 完整的日志记录
+- ✅ 支持中文、英文、日文数据
+- ✅ 每次导入前自动清空旧数据
+
+## 🎨 前端功能
+
+### 主要页面
+
+- **宝可梦列表** - `/pokemon` - 查看所有宝可梦，支持搜索和分页
+- **宝可梦详情** - `/pokemon/:id` - 查看宝可梦详细信息
+- **招式列表** - `/moves` - 查看所有招式
+- **特性列表** - `/abilities` - 查看所有特性
+- **物品列表** - `/items` - 查看所有物品
+- **导入管理** - `/admin/import` - 数据导入管理页面（隐藏入口）
+
+### 隐藏功能
+
+- **导入管理页面**：
+  - 访问方式1：快速点击页面左上角Logo 3次
+  - 访问方式2：直接访问 `/admin/import`
+  - 功能：启动全量导入、清空数据、查看导入进度、查看任务历史
+
+## 🛠️ 开发指南
 
 ### 后端开发
 
@@ -224,7 +265,7 @@ npm run build
 npm run preview
 ```
 
-## 部署说明
+## 🚀 部署说明
 
 ### 生产环境部署
 
@@ -247,9 +288,28 @@ npm run build
 # 将dist目录部署到Nginx或其它Web服务器
 ```
 
-## 📚 详细文档
+3. **配置生产环境**
+- 修改数据库连接信息
+- 配置日志输出路径
+- 设置合适的JVM参数
 
-- [PokeAPI统一下载功能说明](./scripts/PokeAPI统一下载功能说明.md) - 图片下载详细说明
+## 📚 技术栈
+
+### 后端技术栈
+- Spring Boot 3.3.5
+- Java 17
+- MyBatis Plus 3.5.5
+- MySQL 9.5.0
+- Maven
+- Log4j2
+
+### 前端技术栈
+- Vue 3.2.13
+- Vite 4.0
+- Element Plus 2.2.0
+- Tailwind CSS 3.4.19
+- Vue Router 4.0
+- Axios
 
 ## 🤝 贡献指南
 

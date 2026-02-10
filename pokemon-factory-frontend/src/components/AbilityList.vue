@@ -65,133 +65,95 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { abilityApi } from '../services/api.js'
 
 export default {
   name: 'AbilityList',
-  data() {
-    return {
-      abilityList: [], // 存储所有已加载的数据
-      displayedAbilityList: [], // 存储当前显示的数据
-      loading: false,
-      searchKeyword: '',
-      currentPage: 1,
-      pageSize: 20,
-      total: 0,
-      dialogVisible: false,
-      selectedAbility: null,
-      noMore: false,
-      isLoading: false,
-      debounceTimer: null,
-      scrollThreshold: 100
-    }
-  },
-  mounted() {
-    this.fetchAbilityList()
-  },
-  methods: {
-    async fetchAbilityList() {
-      // 防止重复加载
-      if (this.isLoading || this.noMore) {
-        return
-      }
-      
-      this.isLoading = true
-      this.loading = true
-      
+  setup() {
+    const abilityList = ref([])
+    const displayedAbilityList = ref([])
+    const loading = ref(false)
+    const searchKeyword = ref('')
+    const currentPage = ref(1)
+    const pageSize = ref(20)
+    const total = ref(0)
+    const dialogVisible = ref(false)
+    const selectedAbility = ref(null)
+
+    const fetchAbilityList = async () => {
+      loading.value = true
       try {
-        // 使用POST请求获取列表数据
-        const requestData = {
-          page: this.currentPage,
-          size: this.pageSize,
-          keyword: this.searchKeyword || undefined
-        }
-        
-        const response = await axios.post(`/api/abilities/list`, requestData)
-        const newData = response.data.records
-        
-        // 如果是第一页，替换数据；否则追加数据
-        if (this.currentPage === 1) {
-          this.abilityList = newData
-          this.displayedAbilityList = newData
+        let result
+        if (searchKeyword.value) {
+          result = await abilityApi.search(searchKeyword.value, currentPage.value, pageSize.value)
         } else {
-          this.abilityList = [...this.abilityList, ...newData]
-          // 只显示新数据的一部分以获得更好的性能
-          this.displayedAbilityList = this.abilityList.slice(0, this.currentPage * this.pageSize)
+          result = await abilityApi.getList({
+            current: currentPage.value,
+            size: pageSize.value
+          })
         }
-        
-        this.total = response.data.total
-        // 检查是否还有更多数据
-        this.noMore = this.abilityList.length >= this.total
-        
-        // 如果是第一页且没有数据，显示空状态
-        if (this.currentPage === 1 && newData.length === 0) {
-          this.noMore = true
+
+        if (result.code === 200) {
+          abilityList.value = result.data.records || result.data
+          displayedAbilityList.value = abilityList.value
+          total.value = result.data.total || abilityList.value.length
+        } else {
+          ElMessage.error(result.message || '获取数据失败')
         }
       } catch (error) {
         console.error('获取特性列表失败:', error)
-        this.noMore = true // 出错时停止加载更多
+        ElMessage.error('网络错误，请稍后重试')
       } finally {
-        this.loading = false
-        this.isLoading = false
-      }
-    },
-    
-    // 处理滚动事件，添加防抖
-    handleScroll() {
-      clearTimeout(this.debounceTimer)
-      this.debounceTimer = setTimeout(() => {
-        this.checkScroll()
-      }, 100) // 100ms 防抖
-    },
-    
-    // 检查是否需要加载更多
-    checkScroll() {
-      const container = this.$refs.scrollContainer
-      if (!container) return
-      
-      const { scrollTop, scrollHeight, clientHeight } = container
-      // 当距离底部小于阈值时加载更多
-      if (scrollTop + clientHeight >= scrollHeight - this.scrollThreshold) {
-        this.loadMore()
-      }
-    },
-    
-    async loadMore() {
-      if (this.noMore || this.isLoading) return
-      this.currentPage++
-      await this.fetchAbilityList()
-    },
-    
-    async searchAbilities() {
-      // 搜索时重置到第一页
-      this.currentPage = 1
-      this.noMore = false
-      await this.fetchAbilityList()
-    },
-    
-    resetSearch() {
-      this.searchKeyword = ''
-      this.currentPage = 1
-      this.noMore = false
-      this.fetchAbilityList()
-    },
-    
-    async viewDetails(ability) {
-      // 获取特性详情
-      try {
-        const response = await axios.post(`/api/abilities/detail`, { id: ability.id })
-        this.selectedAbility = response.data
-        this.dialogVisible = true
-      } catch (error) {
-        console.error('获取特性详情失败:', error)
+        loading.value = false
       }
     }
-  },
-  beforeUnmount() {
-    // 清除定时器
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer)
+
+    const searchAbilities = () => {
+      currentPage.value = 1
+      fetchAbilityList()
+    }
+
+    const resetSearch = () => {
+      searchKeyword.value = ''
+      currentPage.value = 1
+      fetchAbilityList()
+    }
+
+    const viewDetails = async (ability) => {
+      try {
+        const result = await abilityApi.getDetail(ability.id)
+        if (result.code === 200) {
+          selectedAbility.value = result.data
+          dialogVisible.value = true
+        } else {
+          ElMessage.error('获取详情失败')
+        }
+      } catch (error) {
+        console.error('获取特性详情失败:', error)
+        ElMessage.error('网络错误，请稍后重试')
+      }
+    }
+
+    onMounted(() => {
+      fetchAbilityList()
+    })
+
+    return {
+      abilityList,
+      displayedAbilityList,
+      loading,
+      searchKeyword,
+      currentPage,
+      pageSize,
+      total,
+      dialogVisible,
+      selectedAbility,
+      fetchAbilityList,
+      searchAbilities,
+      resetSearch,
+      viewDetails
     }
   }
 }

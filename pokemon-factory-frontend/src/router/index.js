@@ -4,6 +4,7 @@ import PokemonDetail from '../components/PokemonDetail.vue'
 import MoveList from '../components/MoveList.vue'
 import AbilityList from '../components/AbilityList.vue'
 import ItemList from '../components/ItemList.vue'
+import ImportManager from '../components/ImportManager.vue'
 
 const routes = [
   {
@@ -36,6 +37,14 @@ const routes = [
     path: '/items',
     name: 'Items',
     component: ItemList
+  },
+  {
+    path: '/admin/import',
+    name: 'ImportManager',
+    component: ImportManager,
+    meta: {
+      hidden: true
+    }
   }
 ]
 

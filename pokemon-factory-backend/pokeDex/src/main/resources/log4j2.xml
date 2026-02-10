@@ -2,15 +2,41 @@
 <Configuration status="WARN">
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
         </Console>
+        
+        <RollingFile name="ImportLog" fileName="logs/data-import.log"
+                     filePattern="logs/data-import-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+        
+        <RollingFile name="ErrorLog" fileName="logs/error.log"
+                     filePattern="logs/error-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
     </Appenders>
     <Loggers>
-        <Logger name="com.lio9.pokemon" level="debug" additivity="false">
+        <Logger name="com.lio9.pokedex" level="debug" additivity="false">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="ImportLog"/>
+        </Logger>
+        <Logger name="com.lio9.pokedex.service.PokeapiDataService" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ImportLog"/>
         </Logger>
         <Root level="info">
             <AppenderRef ref="Console"/>
+            <AppenderRef ref="ErrorLog"/>
         </Root>
     </Loggers>
 </Configuration>

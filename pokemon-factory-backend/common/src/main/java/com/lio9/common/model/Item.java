@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
+import lombok.experimental.Accessors;
 
 import java.io.Serializable;
 
@@ -12,6 +13,7 @@ import java.io.Serializable;
  * 创建人: Lio9
  */
 @Data
+@Accessors(chain = true)
 @TableName("item")
 public class Item implements Serializable {
     
@@ -57,4 +59,19 @@ public class Item implements Serializable {
      * 物品描述
      */
     private String description;
+
+    /**
+     * 物品编号
+     */
+    private String indexNumber;
+
+    /**
+     * 创建时间
+     */
+    private java.time.LocalDateTime createdAt;
+
+    /**
+     * 更新时间
+     */
+    private java.time.LocalDateTime updatedAt;
 }

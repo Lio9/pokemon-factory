@@ -131,215 +131,106 @@
 </template>
 
 <script>
-import axios from 'axios'
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { Search } from 'lucide-vue-next'
+import { moveApi } from '../services/api.js'
 
 export default {
   name: 'MoveList',
-  data() {
-    return {
-      moves: [], // 存储所有已加载的数据
-      loading: false,
-      searchKeyword: '',
-      selectedCategory: '',
-      currentPage: 1,
-      pageSize: 20,
-      totalMoves: 0,
-      totalPages: 0,
-      dialogVisible: false,
-      selectedMove: null,
-      noMore: false,
-      isLoading: false,
-      debounceTimer: null,
-      scrollThreshold: 100,
-      // 示例数据
-      sampleMoves: [
-        {
-          id: 1,
-          name: '撞击',
-          nameEn: 'tackle',
-          type: '一般',
-          category: '物理',
-          power: '40',
-          accuracy: '100',
-          pp: '35',
-          description: '用身体撞向对手进行攻击。'
-        },
-        {
-          id: 2,
-          name: '藤鞭',
-          nameEn: 'vine whip',
-          type: '草',
-          category: '物理',
-          power: '45',
-          accuracy: '100',
-          pp: '25',
-          description: '用细长的藤蔓抽打对手。'
-        },
-        {
-          id: 3,
-          name: '毒粉',
-          nameEn: 'poison powder',
-          type: '毒',
-          category: '变化',
-          power: '-',
-          accuracy: '75',
-          pp: '35',
-          description: '撒出毒粉，让对手陷入中毒状态。'
-        },
-        {
-          id: 4,
-          name: '寄生种子',
-          nameEn: 'leech seed',
-          type: '草',
-          category: '变化',
-          power: '-',
-          accuracy: '90',
-          pp: '10',
-          description: '植入寄生种子，每回合吸取对手的ＨＰ。'
-        },
-        {
-          id: 5,
-          name: '水枪',
-          nameEn: 'water gun',
-          type: '水',
-          category: '特殊',
-          power: '40',
-          accuracy: '100',
-          pp: '25',
-          description: '喷射水流攻击对手。'
-        }
-      ]
-    }
+  components: {
+    Search
   },
-  mounted() {
-    this.fetchMoveList()
-  },
-  methods: {
-    async fetchMoveList() {
-      // 防止重复加载
-      if (this.isLoading || this.noMore) {
-        return
-      }
-      
-      this.isLoading = true
-      this.loading = true
-      
+  setup() {
+    const loading = ref(false)
+    const moves = ref([])
+    const searchKeyword = ref('')
+    const selectedCategory = ref('')
+    const currentPage = ref(1)
+    const pageSize = ref(20)
+    const totalMoves = ref(0)
+    const totalPages = ref(0)
+    const dialogVisible = ref(false)
+    const selectedMove = ref(null)
+
+    const fetchMoveList = async () => {
+      loading.value = true
       try {
-        // 模拟API调用，使用示例数据
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        let newData = []
-        if (this.currentPage === 1) {
-          // 第一页使用示例数据
-          newData = this.sampleMoves
+        let result
+        if (searchKeyword.value) {
+          result = await moveApi.search(searchKeyword.value, currentPage.value, pageSize.value)
         } else {
-          // 后续页面可以添加更多数据
-          newData = this.sampleMoves.slice(0, this.pageSize)
+          result = await moveApi.getList({
+            current: currentPage.value,
+            size: pageSize.value,
+            category: selectedCategory.value || undefined
+          })
         }
-        
-        // 如果是第一页，替换数据；否则追加数据
-        if (this.currentPage === 1) {
-          this.moves = newData
+
+        if (result.code === 200) {
+          moves.value = result.data.records || result.data
+          totalMoves.value = result.data.total || moves.value.length
+          totalPages.value = Math.ceil(totalMoves.value / pageSize.value)
         } else {
-          this.moves = [...this.moves, ...newData]
-        }
-        
-        this.totalMoves = this.sampleMoves.length
-        this.totalPages = Math.ceil(this.totalMoves / this.pageSize)
-        // 检查是否还有更多数据
-        this.noMore = this.moves.length >= this.totalMoves
-        
-        // 如果是第一页且没有数据，显示空状态
-        if (this.currentPage === 1 && newData.length === 0) {
-          this.noMore = true
+          ElMessage.error(result.message || '获取数据失败')
         }
       } catch (error) {
         console.error('获取招式列表失败:', error)
-        this.noMore = true // 出错时停止加载更多
+        ElMessage.error('网络错误，请稍后重试')
       } finally {
-        this.loading = false
-        this.isLoading = false
-      }
-    },
-    
-    // 处理滚动事件，添加防抖
-    handleScroll() {
-      clearTimeout(this.debounceTimer)
-      this.debounceTimer = setTimeout(() => {
-        this.checkScroll()
-      }, 100) // 100ms 防抖
-    },
-    
-    // 检查是否需要加载更多
-    checkScroll() {
-      const container = this.$refs.scrollContainer
-      if (!container) return
-      
-      const { scrollTop, scrollHeight, clientHeight } = container
-      // 当距离底部小于阈值时加载更多
-      if (scrollTop + clientHeight >= scrollHeight - this.scrollThreshold) {
-        this.loadMore()
-      }
-    },
-    
-    async loadMore() {
-      if (this.noMore || this.isLoading) return
-      this.currentPage++
-      await this.fetchMoveList()
-    },
-    
-    async handleSearch() {
-      // 搜索时重置到第一页
-      this.currentPage = 1
-      this.noMore = false
-      await this.fetchMoveList()
-    },
-    
-    handleCategoryChange() {
-      this.currentPage = 1
-      this.noMore = false
-      this.fetchMoveList()
-    },
-    
-    handlePageChange(page) {
-      this.currentPage = page
-      this.fetchMoveList()
-    },
-    
-    async viewDetails(move) {
-      // 获取招式详情
-      try {
-        // 模拟API调用，使用示例数据
-        await new Promise(resolve => setTimeout(resolve, 300))
-        
-        // 在示例数据中查找匹配的技能
-        const matchedMove = this.sampleMoves.find(m => m.id === move.id)
-        if (matchedMove) {
-          this.selectedMove = matchedMove
-        } else {
-          // 如果没有找到，创建一个基础的详情对象
-          this.selectedMove = {
-            ...move,
-            nameEn: move.nameEn || 'unknown',
-            type: move.type || '一般',
-            category: move.category || '变化',
-            power: move.power || '-',
-            accuracy: move.accuracy || '-',
-            pp: move.pp || '-',
-            description: move.description || '暂无描述'
-          }
-        }
-        
-        this.dialogVisible = true
-      } catch (error) {
-        console.error('获取招式详情失败:', error)
+        loading.value = false
       }
     }
-  },
-  beforeUnmount() {
-    // 清除定时器
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer)
+
+    const handleSearch = () => {
+      currentPage.value = 1
+      fetchMoveList()
+    }
+
+    const handleCategoryChange = () => {
+      currentPage.value = 1
+      fetchMoveList()
+    }
+
+    const handlePageChange = (page) => {
+      currentPage.value = page
+      fetchMoveList()
+    }
+
+    const viewDetails = async (move) => {
+      try {
+        const result = await moveApi.getDetail(move.id)
+        if (result.code === 200) {
+          selectedMove.value = result.data
+          dialogVisible.value = true
+        } else {
+          ElMessage.error('获取详情失败')
+        }
+      } catch (error) {
+        console.error('获取招式详情失败:', error)
+        ElMessage.error('网络错误，请稍后重试')
+      }
+    }
+
+    onMounted(() => {
+      fetchMoveList()
+    })
+
+    return {
+      loading,
+      moves,
+      searchKeyword,
+      selectedCategory,
+      currentPage,
+      pageSize,
+      totalMoves,
+      totalPages,
+      dialogVisible,
+      selectedMove,
+      handleSearch,
+      handleCategoryChange,
+      handlePageChange,
+      viewDetails
     }
   }
 }
