@@ -7,57 +7,129 @@
       <el-input 
         v-model="searchKeyword" 
         placeholder="搜索特性..." 
-        @keyup.enter="searchAbilities"
         style="width: 300px; margin-right: 10px;"
+        @keyup.enter="searchAbilities"
       />
-      <el-button type="primary" @click="searchAbilities">搜索</el-button>
-      <el-button @click="resetSearch">重置</el-button>
+      <el-button
+        type="primary"
+        @click="searchAbilities"
+      >
+        搜索
+      </el-button>
+      <el-button @click="resetSearch">
+        重置
+      </el-button>
     </div>
     
     <!-- 特性列表 -->
     <div 
       ref="scrollContainer"
-      @scroll="handleScroll"
       style="overflow-y: auto; max-height: 600px;"
+      @scroll="handleScroll"
     >
-      <el-table :data="displayedAbilityList" style="width: 100%" v-loading="loading && currentPage === 1">
-        <el-table-column prop="name" label="特性名"></el-table-column>
-        <el-table-column prop="generation" label="世代"></el-table-column>
-        <el-table-column label="操作" width="150">
+      <el-table
+        v-loading="loading && currentPage === 1"
+        :data="displayedAbilityList"
+        style="width: 100%"
+      >
+        <el-table-column
+          prop="name"
+          label="特性名"
+        />
+        <el-table-column
+          prop="generation"
+          label="世代"
+        />
+        <el-table-column
+          label="操作"
+          width="150"
+        >
           <template #default="scope">
-            <el-button size="mini" @click="viewDetails(scope.row)">查看详情</el-button>
+            <el-button
+              size="mini"
+              @click="viewDetails(scope.row)"
+            >
+              查看详情
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
-      <p v-if="loading && currentPage > 1" style="text-align: center; padding: 20px;">加载中...</p>
-      <p v-if="noMore && displayedAbilityList.length > 0" style="text-align: center; padding: 20px;">没有更多数据了</p>
+      <p
+        v-if="loading && currentPage > 1"
+        style="text-align: center; padding: 20px;"
+      >
+        加载中...
+      </p>
+      <p
+        v-if="noMore && displayedAbilityList.length > 0"
+        style="text-align: center; padding: 20px;"
+      >
+        没有更多数据了
+      </p>
     
       <!-- 初始加载指示器 -->
-      <div v-if="loading && currentPage === 1" style="text-align: center; padding: 40px;">
+      <div
+        v-if="loading && currentPage === 1"
+        style="text-align: center; padding: 40px;"
+      >
         <div style="display: inline-block;">
-          <div style="width: 30px; height: 30px; border: 2px solid #eee; border-top-color: #409eff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-          <p style="margin-top: 10px; color: #909399;">正在加载特性数据...</p>
+          <div style="width: 30px; height: 30px; border: 2px solid #eee; border-top-color: #409eff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;" />
+          <p style="margin-top: 10px; color: #909399;">
+            正在加载特性数据...
+          </p>
         </div>
       </div>
     
       <!-- 空状态 -->
-      <div v-if="!loading && noMore && displayedAbilityList.length === 0" style="text-align: center; padding: 40px; color: #909399;">
+      <div
+        v-if="!loading && noMore && displayedAbilityList.length === 0"
+        style="text-align: center; padding: 40px; color: #909399;"
+      >
         没有找到相关特性
       </div>
     </div>
     
     <!-- 特性详情对话框 -->
-    <el-dialog :title="selectedAbility?.name" v-model="dialogVisible" width="50%">
+    <el-dialog
+      v-model="dialogVisible"
+      :title="selectedAbility?.name"
+      width="50%"
+    >
       <div v-if="selectedAbility">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="中文名">{{ selectedAbility.name }}</el-descriptions-item>
-          <el-descriptions-item label="英文名">{{ selectedAbility.nameEn }}</el-descriptions-item>
-          <el-descriptions-item label="日文名">{{ selectedAbility.nameJp }}</el-descriptions-item>
-          <el-descriptions-item label="世代">{{ selectedAbility.generation }}</el-descriptions-item>
-          <el-descriptions-item label="描述" :span="2">{{ selectedAbility.description }}</el-descriptions-item>
-          <el-descriptions-item label="效果" :span="2">{{ selectedAbility.effect }}</el-descriptions-item>
-          <el-descriptions-item label="普通特性宝可梦数">{{ selectedAbility.commonCount }}</el-descriptions-item>
-          <el-descriptions-item label="隐藏特性宝可梦数">{{ selectedAbility.hiddenCount }}</el-descriptions-item>
+        <el-descriptions
+          :column="2"
+          border
+        >
+          <el-descriptions-item label="中文名">
+            {{ selectedAbility.name }}
+          </el-descriptions-item>
+          <el-descriptions-item label="英文名">
+            {{ selectedAbility.nameEn }}
+          </el-descriptions-item>
+          <el-descriptions-item label="日文名">
+            {{ selectedAbility.nameJp }}
+          </el-descriptions-item>
+          <el-descriptions-item label="世代">
+            {{ selectedAbility.generation }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            label="描述"
+            :span="2"
+          >
+            {{ selectedAbility.description }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            label="效果"
+            :span="2"
+          >
+            {{ selectedAbility.effect }}
+          </el-descriptions-item>
+          <el-descriptions-item label="普通特性宝可梦数">
+            {{ selectedAbility.commonCount }}
+          </el-descriptions-item>
+          <el-descriptions-item label="隐藏特性宝可梦数">
+            {{ selectedAbility.hiddenCount }}
+          </el-descriptions-item>
         </el-descriptions>
       </div>
     </el-dialog>

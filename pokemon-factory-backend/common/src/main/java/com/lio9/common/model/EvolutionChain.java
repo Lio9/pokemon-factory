@@ -67,6 +67,27 @@ public class EvolutionChain {
      */
     private LocalDateTime updatedAt;
 
+    // 手动添加setter方法以确保编译通过
+    public EvolutionChain setChainId(Long chainId) {
+        this.chainId = chainId;
+        return this;
+    }
+
+    public EvolutionChain setEvolutionDetails(String evolutionDetails) {
+        this.evolutionDetails = evolutionDetails;
+        return this;
+    }
+
+    public EvolutionChain setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+        return this;
+    }
+
+    public EvolutionChain setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+        return this;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

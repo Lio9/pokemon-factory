@@ -5,6 +5,7 @@ import MoveList from '../components/MoveList.vue'
 import AbilityList from '../components/AbilityList.vue'
 import ItemList from '../components/ItemList.vue'
 import ImportManager from '../components/ImportManager.vue'
+import DamageCalculator from '../components/DamageCalculator.vue'
 
 const routes = [
   {
@@ -45,6 +46,11 @@ const routes = [
     meta: {
       hidden: true
     }
+  },
+  {
+    path: '/calculator',
+    name: 'DamageCalculator',
+    component: DamageCalculator
   }
 ]
 

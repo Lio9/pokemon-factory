@@ -49,5 +49,13 @@
             ${ew.sqlSegment}
         </if>
     </select>
+    
+    <!-- 查询技能 -->
+    <select id="selectMoves" resultType="com.lio9.common.model.Move">
+        SELECT m.* FROM move m
+        <if test="ew != null">
+            ${ew.sqlSegment}
+        </if>
+    </select>
 
 </mapper>

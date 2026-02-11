@@ -3,6 +3,7 @@ package com.lio9.common.mapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lio9.common.model.Pokemon;
+import com.lio9.common.model.Move;
 import com.lio9.common.model.PokemonForm;
 import com.lio9.common.model.PokemonFormType;
 import com.lio9.common.model.PokemonFormAbility;
@@ -49,4 +50,9 @@ public interface PokemonMapper extends BaseMapper<Pokemon> {
      * 查询进化链
      */
     List<EvolutionChain> selectEvolutionChains(@Param("ew") QueryWrapper<EvolutionChain> queryWrapper);
+    
+    /**
+     * 查询技能
+     */
+    List<Move> selectMoves(@Param("ew") QueryWrapper<Move> queryWrapper);
 }

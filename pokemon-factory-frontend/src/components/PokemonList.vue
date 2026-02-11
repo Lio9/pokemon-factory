@@ -24,9 +24,18 @@
             placeholder="排序方式"
             @change="handleSortChange"
           >
-            <el-option label="按ID升序" value="id_asc" />
-            <el-option label="按ID降序" value="id_desc" />
-            <el-option label="按名称" value="name" />
+            <el-option
+              label="按ID升序"
+              value="id_asc"
+            />
+            <el-option
+              label="按ID降序"
+              value="id_desc"
+            />
+            <el-option
+              label="按名称"
+              value="name"
+            />
           </el-select>
         </div>
       </div>
@@ -36,27 +45,49 @@
     <div class="stats-section mb-6">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-blue-600">{{ totalPokemons }}</div>
-          <div class="text-gray-600 text-sm">总宝可梦数</div>
+          <div class="text-2xl font-bold text-blue-600">
+            {{ totalPokemons }}
+          </div>
+          <div class="text-gray-600 text-sm">
+            总宝可梦数
+          </div>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-green-600">{{ totalPages }}</div>
-          <div class="text-gray-600 text-sm">总页数</div>
+          <div class="text-2xl font-bold text-green-600">
+            {{ totalPages }}
+          </div>
+          <div class="text-gray-600 text-sm">
+            总页数
+          </div>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-purple-600">{{ currentPage }}</div>
-          <div class="text-gray-600 text-sm">当前页</div>
+          <div class="text-2xl font-bold text-purple-600">
+            {{ currentPage }}
+          </div>
+          <div class="text-gray-600 text-sm">
+            当前页
+          </div>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-orange-600">{{ pageSize }}</div>
-          <div class="text-gray-600 text-sm">每页显示</div>
+          <div class="text-2xl font-bold text-orange-600">
+            {{ pageSize }}
+          </div>
+          <div class="text-gray-600 text-sm">
+            每页显示
+          </div>
         </div>
       </div>
     </div>
 
     <!-- 宝可梦列表 -->
-    <div v-if="loading" class="text-center py-12">
-      <el-skeleton :rows="5" animated />
+    <div
+      v-if="loading"
+      class="text-center py-12"
+    >
+      <el-skeleton
+        :rows="5"
+        animated
+      />
     </div>
     
     <div v-else-if="pokemons.length > 0">
@@ -76,15 +107,19 @@
                     :alt="pokemon.name"
                     class="w-full h-full object-cover"
                     @error="handleImageError"
-                  />
+                  >
                 </div>
               </div>
               <div class="flex-1 min-w-0">
                 <h3 class="text-lg font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
                   {{ pokemon.name }}
                 </h3>
-                <p class="text-gray-500 text-sm">{{ pokemon.indexNumber }}</p>
-                <p class="text-gray-600 text-xs mt-1 line-clamp-2">{{ pokemon.profile || '暂无描述' }}</p>
+                <p class="text-gray-500 text-sm">
+                  {{ pokemon.indexNumber }}
+                </p>
+                <p class="text-gray-600 text-xs mt-1 line-clamp-2">
+                  {{ pokemon.profile || '暂无描述' }}
+                </p>
               </div>
             </div>
           </div>
@@ -105,21 +140,38 @@
           :page-sizes="[12, 24, 48, 96]"
           :total="totalPokemons"
           layout="total, sizes, prev, pager, next, jumper"
+          background
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
-          background
         />
       </div>
     </div>
 
-    <div v-else class="text-center py-12">
+    <div
+      v-else
+      class="text-center py-12"
+    >
       <div class="text-gray-400 mb-4">
-        <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.334M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path>
+        <svg
+          class="w-16 h-16 mx-auto"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.334M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+          />
         </svg>
       </div>
-      <p class="text-gray-500 text-lg">没有找到相关宝可梦</p>
-      <p class="text-gray-400 text-sm mt-2">试试其他搜索条件</p>
+      <p class="text-gray-500 text-lg">
+        没有找到相关宝可梦
+      </p>
+      <p class="text-gray-400 text-sm mt-2">
+        试试其他搜索条件
+      </p>
     </div>
   </div>
 </template>

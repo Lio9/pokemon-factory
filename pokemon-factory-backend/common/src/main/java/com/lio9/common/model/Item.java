@@ -74,4 +74,20 @@ public class Item implements Serializable {
      * 更新时间
      */
     private java.time.LocalDateTime updatedAt;
+
+    // 手动添加setter方法以确保编译通过
+    public Item setIndexNumber(String indexNumber) {
+        this.indexNumber = indexNumber;
+        return this;
+    }
+
+    public Item setCreatedAt(java.time.LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+        return this;
+    }
+
+    public Item setUpdatedAt(java.time.LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+        return this;
+    }
 }

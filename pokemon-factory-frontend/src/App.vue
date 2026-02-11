@@ -1,11 +1,17 @@
 <template>
-  <div id="app" class="min-h-screen bg-slate-50 text-slate-800 font-sans">
+  <div
+    id="app"
+    class="min-h-screen bg-slate-50 text-slate-800 font-sans"
+  >
     <el-container>
       <!-- Header -->
       <el-header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 !p-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-gradient-to-tr from-red-500 to-orange-500 rounded-lg shadow-lg flex items-center justify-center text-white font-bold text-sm" @click="goToImportManager">
+            <div
+              class="w-8 h-8 bg-gradient-to-tr from-red-500 to-orange-500 rounded-lg shadow-lg flex items-center justify-center text-white font-bold text-sm"
+              @click="goToImportManager"
+            >
               P
             </div>
             <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">
@@ -14,7 +20,12 @@
           </div>
           
           <div class="flex items-center gap-4">
-            <a href="https://github.com" target="_blank" rel="noreferrer" class="text-slate-400 hover:text-slate-800 transition-colors">
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noreferrer"
+              class="text-slate-400 hover:text-slate-800 transition-colors"
+            >
               <Github class="w-5 h-5" />
             </a>
           </div>
@@ -22,16 +33,40 @@
       </el-header>
       
       <el-main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 !pb-0 w-full">
-        <div class="nav-menu mb-8" v-if="!isImportManager">
+        <div
+          v-if="!isImportManager"
+          class="nav-menu mb-8"
+        >
           <el-menu 
             mode="horizontal" 
             :default-active="$route.path" 
-            @select="handleMenuSelect"
             class="!border-0 !rounded-xl bg-white p-1 shadow-sm"
+            @select="handleMenuSelect"
           >
-            <el-menu-item index="/pokemon" class="!rounded-lg">宝可梦</el-menu-item>
-            <el-menu-item index="/moves" class="!rounded-lg">招式</el-menu-item>
-            <el-menu-item index="/abilities" class="!rounded-lg">特性</el-menu-item>
+            <el-menu-item
+              index="/pokemon"
+              class="!rounded-lg"
+            >
+              宝可梦
+            </el-menu-item>
+            <el-menu-item
+              index="/moves"
+              class="!rounded-lg"
+            >
+              招式
+            </el-menu-item>
+            <el-menu-item
+              index="/abilities"
+              class="!rounded-lg"
+            >
+              特性
+            </el-menu-item>
+            <el-menu-item
+              index="/calculator"
+              class="!rounded-lg"
+            >
+              伤害计算器
+            </el-menu-item>
           </el-menu>
         </div>
         <div class="content bg-white rounded-2xl shadow-sm p-4 sm:p-6 min-h-[calc(100vh-180px)]">
@@ -46,6 +81,7 @@
 import PokemonList from './components/PokemonList.vue'
 import MoveList from './components/MoveList.vue'
 import AbilityList from './components/AbilityList.vue'
+import DamageCalculator from './components/DamageCalculator.vue'
 import { Github } from 'lucide-vue-next'
 
 export default {
@@ -54,6 +90,7 @@ export default {
     PokemonList,
     MoveList,
     AbilityList,
+    DamageCalculator,
     Github
   },
   data() {

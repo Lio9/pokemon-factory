@@ -60,6 +60,11 @@ export const pokemonApi = {
   // 获取进化链
   getEvolutionChain: (id) => {
     return request(`${API_BASE}/pokemon/${id}/evolution`)
+  },
+  
+  // 获取宝可梦技能
+  getMoves: (id) => {
+    return request(`${API_BASE}/pokemon/${id}/moves`)
   }
 }
 

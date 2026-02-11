@@ -3,6 +3,7 @@ package com.lio9.common.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.lio9.common.model.Pokemon;
+import com.lio9.common.model.Move;
 import com.lio9.common.vo.EvolutionVO;
 import com.lio9.common.vo.PokemonDetailVO;
 import com.lio9.common.vo.PokemonQueryVO;
@@ -39,4 +40,9 @@ public interface PokemonService extends IService<Pokemon> {
      * 获取宝可梦进化链
      */
     List<EvolutionVO> getEvolutionChain(Long pokemonId);
+    
+    /**
+     * 获取宝可梦技能列表
+     */
+    List<Move> getMoves(Long pokemonId);
 }

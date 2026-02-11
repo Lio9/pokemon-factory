@@ -1,5 +1,8 @@
 <template>
-  <div v-if="pokemon" class="pokemon-detail">
+  <div
+    v-if="pokemon"
+    class="pokemon-detail"
+  >
     <!-- 头部信息 -->
     <div class="detail-header bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-6">
       <div class="flex flex-col md:flex-row items-start gap-6">
@@ -10,28 +13,53 @@
         </div>
         <div class="flex-1">
           <div class="flex items-center gap-3 mb-2">
-            <h1 class="text-3xl font-bold text-gray-900">{{ pokemon.name }}</h1>
+            <h1 class="text-3xl font-bold text-gray-900">
+              {{ pokemon.name }}
+            </h1>
             <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
               #{{ pokemon.indexNumber }}
             </span>
           </div>
-          <p class="text-gray-600 mb-3">{{ pokemon.nameEn }} / {{ pokemon.nameJp }}</p>
-          <p class="text-gray-700 leading-relaxed">{{ pokemon.profile || '暂无描述' }}</p>
+          <p class="text-gray-600 mb-3">
+            {{ pokemon.nameEn }} / {{ pokemon.nameJp }}
+          </p>
+          <p class="text-gray-700 leading-relaxed">
+            {{ pokemon.profile || '暂无描述' }}
+          </p>
         </div>
       </div>
     </div>
 
     <!-- 形态信息 -->
-    <div v-if="pokemon.forms && pokemon.forms.length > 0" class="section mb-6">
+    <div
+      v-if="pokemon.forms && pokemon.forms.length > 0"
+      class="section mb-6"
+    >
       <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        <svg
+          class="w-5 h-5 text-purple-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+          />
         </svg>
         形态信息
       </h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div v-for="form in pokemon.forms" :key="form.id" class="bg-white rounded-lg border border-gray-200 p-4">
-          <h3 class="font-semibold text-gray-900 mb-2">{{ form.name }}</h3>
+        <div
+          v-for="form in pokemon.forms"
+          :key="form.id"
+          class="bg-white rounded-lg border border-gray-200 p-4"
+        >
+          <h3 class="font-semibold text-gray-900 mb-2">
+            {{ form.name }}
+          </h3>
           <div class="grid grid-cols-2 gap-2 text-sm">
             <div>
               <span class="text-gray-500">生命值:</span>
@@ -63,10 +91,23 @@
     </div>
 
     <!-- 属性信息 -->
-    <div v-if="pokemon.forms && pokemon.forms.length > 0 && pokemon.forms[0].types" class="section mb-6">
+    <div
+      v-if="pokemon.forms && pokemon.forms.length > 0 && pokemon.forms[0].types"
+      class="section mb-6"
+    >
       <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+        <svg
+          class="w-5 h-5 text-yellow-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+          />
         </svg>
         属性信息
       </h2>
@@ -83,10 +124,23 @@
     </div>
 
     <!-- 特性信息 -->
-    <div v-if="abilities && abilities.length > 0" class="section mb-6">
+    <div
+      v-if="abilities && abilities.length > 0"
+      class="section mb-6"
+    >
       <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+        <svg
+          class="w-5 h-5 text-green-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+          />
         </svg>
         特性信息
       </h2>
@@ -97,7 +151,9 @@
           class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
         >
           <div class="flex items-start justify-between mb-2">
-            <h3 class="font-semibold text-gray-900">{{ ability.name }}</h3>
+            <h3 class="font-semibold text-gray-900">
+              {{ ability.name }}
+            </h3>
             <span 
               v-if="ability.isHidden" 
               class="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full"
@@ -105,16 +161,31 @@
               隐藏特性
             </span>
           </div>
-          <p class="text-gray-600 text-sm">{{ ability.description }}</p>
+          <p class="text-gray-600 text-sm">
+            {{ ability.description }}
+          </p>
         </div>
       </div>
     </div>
 
     <!-- 技能信息 -->
-    <div v-if="moves && moves.length > 0" class="section mb-6">
+    <div
+      v-if="moves && moves.length > 0"
+      class="section mb-6"
+    >
       <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+        <svg
+          class="w-5 h-5 text-red-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M13 10V3L4 14h7v7l9-11h-7z"
+          />
         </svg>
         技能信息
       </h2>
@@ -122,14 +193,30 @@
         <table class="min-w-full bg-white border border-gray-200 rounded-lg">
           <thead class="bg-gray-50">
             <tr>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">技能名称</th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">属性</th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">分类</th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">学习方式</th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">等级/机器</th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">威力</th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">命中</th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PP</th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                技能名称
+              </th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                属性
+              </th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                分类
+              </th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                学习方式
+              </th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                等级/机器
+              </th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                威力
+              </th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                命中
+              </th>
+              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                PP
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
@@ -138,9 +225,15 @@
               :key="move.id"
               class="hover:bg-gray-50 transition-colors"
             >
-              <td class="py-3 px-4 text-sm font-medium text-gray-900">{{ move.name }}</td>
-              <td class="py-3 px-4 text-sm text-gray-500">{{ move.type }}</td>
-              <td class="py-3 px-4 text-sm text-gray-500">{{ move.category }}</td>
+              <td class="py-3 px-4 text-sm font-medium text-gray-900">
+                {{ move.name }}
+              </td>
+              <td class="py-3 px-4 text-sm text-gray-500">
+                {{ move.type }}
+              </td>
+              <td class="py-3 px-4 text-sm text-gray-500">
+                {{ move.category }}
+              </td>
               <td class="py-3 px-4 text-sm text-gray-500">
                 <span 
                   :class="{
@@ -155,10 +248,18 @@
                   {{ move.learnMethod }}
                 </span>
               </td>
-              <td class="py-3 px-4 text-sm text-gray-500">{{ move.level || move.levelOrMachine || '-' }}</td>
-              <td class="py-3 px-4 text-sm text-gray-500">{{ move.power || '-' }}</td>
-              <td class="py-3 px-4 text-sm text-gray-500">{{ move.accuracy || '-' }}</td>
-              <td class="py-3 px-4 text-sm text-gray-500">{{ move.pp || '-' }}</td>
+              <td class="py-3 px-4 text-sm text-gray-500">
+                {{ move.level || move.levelOrMachine || '-' }}
+              </td>
+              <td class="py-3 px-4 text-sm text-gray-500">
+                {{ move.power || '-' }}
+              </td>
+              <td class="py-3 px-4 text-sm text-gray-500">
+                {{ move.accuracy || '-' }}
+              </td>
+              <td class="py-3 px-4 text-sm text-gray-500">
+                {{ move.pp || '-' }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -166,10 +267,23 @@
     </div>
 
     <!-- 进化链信息 -->
-    <div v-if="evolutions && evolutions.length > 0" class="section mb-6">
+    <div
+      v-if="evolutions && evolutions.length > 0"
+      class="section mb-6"
+    >
       <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        <svg
+          class="w-5 h-5 text-blue-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
         </svg>
         进化链
       </h2>
@@ -195,7 +309,10 @@
               >
                 {{ evol.pokemonName }}
               </router-link>
-              <div v-if="evol.evolvesFromName" class="text-xs text-gray-500 mt-1">
+              <div
+                v-if="evol.evolvesFromName"
+                class="text-xs text-gray-500 mt-1"
+              >
                 {{ evol.evolutionMethod }}: {{ evol.evolutionValue !== '-1' ? evol.evolutionValue + '级' : '最终形态' }}
               </div>
             </div>
@@ -206,19 +323,37 @@
 
     <!-- 返回按钮 -->
     <div class="text-center mt-8">
-      <button @click="goBack" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+      <button
+        class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+        @click="goBack"
+      >
         返回列表
       </button>
     </div>
   </div>
   
-  <div v-else class="text-center py-12">
+  <div
+    v-else
+    class="text-center py-12"
+  >
     <div class="text-gray-400 mb-4">
-      <svg class="w-12 h-12 mx-auto animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+      <svg
+        class="w-12 h-12 mx-auto animate-spin"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+        />
       </svg>
     </div>
-    <p class="text-gray-500">加载中...</p>
+    <p class="text-gray-500">
+      加载中...
+    </p>
   </div>
 </template>
 

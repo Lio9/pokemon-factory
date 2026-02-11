@@ -1,31 +1,35 @@
 <template>
   <div class="import-manager">
     <div class="container mx-auto px-4 py-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-8">数据导入管理</h1>
+      <h1 class="text-3xl font-bold text-gray-900 mb-8">
+        数据导入管理
+      </h1>
 
       <!-- 导入控制区 -->
       <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4">导入控制</h2>
+        <h2 class="text-xl font-semibold mb-4">
+          导入控制
+        </h2>
         <div class="flex flex-wrap gap-4">
           <button
-            @click="startImport"
             :disabled="currentTask && currentTask.status === 'running'"
             class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            @click="startImport"
           >
             <span v-if="currentTask && currentTask.status === 'running'">导入中...</span>
             <span v-else>开始全量导入</span>
           </button>
 
           <button
-            @click="clearAllData"
             class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            @click="clearAllData"
           >
             清空所有数据
           </button>
 
           <button
-            @click="refreshStatus"
             class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            @click="refreshStatus"
           >
             刷新状态
           </button>
@@ -33,8 +37,13 @@
       </div>
 
       <!-- 当前任务状态 -->
-      <div v-if="currentTask" class="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4">当前任务</h2>
+      <div
+        v-if="currentTask"
+        class="bg-white rounded-xl shadow-lg p-6 mb-6"
+      >
+        <h2 class="text-xl font-semibold mb-4">
+          当前任务
+        </h2>
         <div class="space-y-4">
           <div class="flex justify-between items-center">
             <span class="text-gray-600">任务ID:</span>
@@ -58,7 +67,7 @@
             <div
               class="bg-blue-600 h-4 rounded-full transition-all duration-300"
               :style="{ width: currentTask.progress + '%' }"
-            ></div>
+            />
           </div>
           <div class="flex justify-between items-center">
             <span class="text-gray-600">消息:</span>
@@ -66,24 +75,45 @@
           </div>
 
           <!-- 导入结果统计 -->
-          <div v-if="currentTask.data && Object.keys(currentTask.data).length > 0" class="mt-4 p-4 bg-gray-50 rounded-lg">
-            <h3 class="font-semibold mb-2">导入结果</h3>
+          <div
+            v-if="currentTask.data && Object.keys(currentTask.data).length > 0"
+            class="mt-4 p-4 bg-gray-50 rounded-lg"
+          >
+            <h3 class="font-semibold mb-2">
+              导入结果
+            </h3>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div v-if="currentTask.data.pokemonCount !== undefined">
-                <div class="text-gray-600">宝可梦</div>
-                <div class="font-bold text-blue-600">{{ currentTask.data.pokemonCount }}</div>
+                <div class="text-gray-600">
+                  宝可梦
+                </div>
+                <div class="font-bold text-blue-600">
+                  {{ currentTask.data.pokemonCount }}
+                </div>
               </div>
               <div v-if="currentTask.data.moveCount !== undefined">
-                <div class="text-gray-600">技能</div>
-                <div class="font-bold text-green-600">{{ currentTask.data.moveCount }}</div>
+                <div class="text-gray-600">
+                  技能
+                </div>
+                <div class="font-bold text-green-600">
+                  {{ currentTask.data.moveCount }}
+                </div>
               </div>
               <div v-if="currentTask.data.itemCount !== undefined">
-                <div class="text-gray-600">物品</div>
-                <div class="font-bold text-purple-600">{{ currentTask.data.itemCount }}</div>
+                <div class="text-gray-600">
+                  物品
+                </div>
+                <div class="font-bold text-purple-600">
+                  {{ currentTask.data.itemCount }}
+                </div>
               </div>
               <div v-if="currentTask.data.abilityCount !== undefined">
-                <div class="text-gray-600">特性</div>
-                <div class="font-bold text-orange-600">{{ currentTask.data.abilityCount }}</div>
+                <div class="text-gray-600">
+                  特性
+                </div>
+                <div class="font-bold text-orange-600">
+                  {{ currentTask.data.abilityCount }}
+                </div>
               </div>
             </div>
           </div>
@@ -92,11 +122,19 @@
 
       <!-- 任务列表 -->
       <div class="bg-white rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">任务历史</h2>
-        <div v-if="taskList.length === 0" class="text-gray-500 text-center py-8">
+        <h2 class="text-xl font-semibold mb-4">
+          任务历史
+        </h2>
+        <div
+          v-if="taskList.length === 0"
+          class="text-gray-500 text-center py-8"
+        >
           暂无任务记录
         </div>
-        <div v-else class="space-y-3">
+        <div
+          v-else
+          class="space-y-3"
+        >
           <div
             v-for="task in taskList"
             :key="task.taskId"
@@ -106,11 +144,16 @@
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-2">
                   <span class="font-mono text-sm text-gray-600">{{ task.taskId }}</span>
-                  <span :class="getStatusClass(task.status)" class="px-2 py-1 rounded text-xs">
+                  <span
+                    :class="getStatusClass(task.status)"
+                    class="px-2 py-1 rounded text-xs"
+                  >
                     {{ getStatusText(task.status) }}
                   </span>
                 </div>
-                <div class="text-sm text-gray-600">{{ task.message }}</div>
+                <div class="text-sm text-gray-600">
+                  {{ task.message }}
+                </div>
                 <div class="text-xs text-gray-500 mt-1">
                   开始时间: {{ formatTime(task.startTime) }}
                   <span v-if="task.endTime">
@@ -119,7 +162,9 @@
                 </div>
               </div>
               <div class="text-right">
-                <div class="text-2xl font-bold">{{ task.progress }}%</div>
+                <div class="text-2xl font-bold">
+                  {{ task.progress }}%
+                </div>
               </div>
             </div>
           </div>

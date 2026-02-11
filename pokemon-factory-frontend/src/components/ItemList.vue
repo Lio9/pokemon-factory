@@ -25,9 +25,18 @@
             clearable
             @change="handleCategoryChange"
           >
-            <el-option label="药水" value="药水" />
-            <el-option label="宝石" value="宝石" />
-            <el-option label="其他" value="其他" />
+            <el-option
+              label="药水"
+              value="药水"
+            />
+            <el-option
+              label="宝石"
+              value="宝石"
+            />
+            <el-option
+              label="其他"
+              value="其他"
+            />
           </el-select>
         </div>
       </div>
@@ -37,23 +46,41 @@
     <div class="stats-section mb-6">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-blue-600">{{ totalItems }}</div>
-          <div class="text-gray-600 text-sm">总物品数</div>
+          <div class="text-2xl font-bold text-blue-600">
+            {{ totalItems }}
+          </div>
+          <div class="text-gray-600 text-sm">
+            总物品数
+          </div>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-green-600">{{ totalPages }}</div>
-          <div class="text-gray-600 text-sm">总页数</div>
+          <div class="text-2xl font-bold text-green-600">
+            {{ totalPages }}
+          </div>
+          <div class="text-gray-600 text-sm">
+            总页数
+          </div>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-purple-600">{{ currentPage }}</div>
-          <div class="text-gray-600 text-sm">当前页</div>
+          <div class="text-2xl font-bold text-purple-600">
+            {{ currentPage }}
+          </div>
+          <div class="text-gray-600 text-sm">
+            当前页
+          </div>
         </div>
       </div>
     </div>
 
     <!-- 物品列表 -->
-    <div v-if="loading" class="text-center py-12">
-      <el-skeleton :rows="5" animated />
+    <div
+      v-if="loading"
+      class="text-center py-12"
+    >
+      <el-skeleton
+        :rows="5"
+        animated
+      />
     </div>
     
     <div v-else-if="items.length > 0">
@@ -70,31 +97,60 @@
               </div>
             </div>
             <div class="flex-1 min-w-0">
-              <h3 class="text-lg font-semibold text-gray-900 truncate">{{ item.name }}</h3>
+              <h3 class="text-lg font-semibold text-gray-900 truncate">
+                {{ item.name }}
+              </h3>
               <div class="flex items-center gap-2 mt-1">
                 <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">{{ item.category }}</span>
               </div>
-              <p class="text-gray-600 text-sm mt-2 line-clamp-2">{{ item.description || '暂无描述' }}</p>
+              <p class="text-gray-600 text-sm mt-2 line-clamp-2">
+                {{ item.description || '暂无描述' }}
+              </p>
             </div>
           </div>
           <div class="mt-4 flex justify-between items-center">
-            <div class="text-sm text-gray-500">#{{
-              item.id
-            }}</div>
-            <el-button type="primary" size="small" @click="viewDetails(item)">查看详情</el-button>
+            <div class="text-sm text-gray-500">
+              #{{
+                item.id
+              }}
+            </div>
+            <el-button
+              type="primary"
+              size="small"
+              @click="viewDetails(item)"
+            >
+              查看详情
+            </el-button>
           </div>
         </div>
       </div>
     </div>
 
-    <div v-else class="text-center py-12">
+    <div
+      v-else
+      class="text-center py-12"
+    >
       <div class="text-gray-400 mb-4">
-        <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+        <svg
+          class="w-16 h-16 mx-auto"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+          />
         </svg>
       </div>
-      <p class="text-gray-500 text-lg">没有找到相关物品</p>
-      <p class="text-gray-400 text-sm mt-2">试试其他搜索条件</p>
+      <p class="text-gray-500 text-lg">
+        没有找到相关物品
+      </p>
+      <p class="text-gray-400 text-sm mt-2">
+        试试其他搜索条件
+      </p>
     </div>
 
     <!-- 分页 -->
@@ -105,23 +161,47 @@
         :page-sizes="[12, 24, 48, 96]"
         :total="totalItems"
         layout="total, sizes, prev, pager, next, jumper"
+        background
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        background
       />
     </div>
 
     <!-- 物品详情对话框 -->
-    <el-dialog :title="selectedItem?.name" v-model="dialogVisible" width="50%">
+    <el-dialog
+      v-model="dialogVisible"
+      :title="selectedItem?.name"
+      width="50%"
+    >
       <div v-if="selectedItem">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="中文名">{{ selectedItem.name }}</el-descriptions-item>
-          <el-descriptions-item label="英文名">{{ selectedItem.nameEn }}</el-descriptions-item>
-          <el-descriptions-item label="日文名">{{ selectedItem.nameJp }}</el-descriptions-item>
-          <el-descriptions-item label="分类">{{ selectedItem.category }}</el-descriptions-item>
-          <el-descriptions-item label="价格">{{ selectedItem.price }}</el-descriptions-item>
-          <el-descriptions-item label="效果">{{ selectedItem.effect }}</el-descriptions-item>
-          <el-descriptions-item label="描述" :span="2">{{ selectedItem.description }}</el-descriptions-item>
+        <el-descriptions
+          :column="2"
+          border
+        >
+          <el-descriptions-item label="中文名">
+            {{ selectedItem.name }}
+          </el-descriptions-item>
+          <el-descriptions-item label="英文名">
+            {{ selectedItem.nameEn }}
+          </el-descriptions-item>
+          <el-descriptions-item label="日文名">
+            {{ selectedItem.nameJp }}
+          </el-descriptions-item>
+          <el-descriptions-item label="分类">
+            {{ selectedItem.category }}
+          </el-descriptions-item>
+          <el-descriptions-item label="价格">
+            {{ selectedItem.price }}
+          </el-descriptions-item>
+          <el-descriptions-item label="效果">
+            {{ selectedItem.effect }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            label="描述"
+            :span="2"
+          >
+            {{ selectedItem.description }}
+          </el-descriptions-item>
         </el-descriptions>
       </div>
     </el-dialog>

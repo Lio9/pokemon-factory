@@ -8,6 +8,22 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 基础数据表
 -- ==========================================
 
+-- 物品表
+DROP TABLE IF EXISTS `item`;
+CREATE TABLE `item` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '物品ID',
+    `index_number` VARCHAR(20) COMMENT '物品编号',
+    `name` VARCHAR(100) NOT NULL COMMENT '物品名称(中文)',
+    `name_en` VARCHAR(100) NOT NULL UNIQUE COMMENT '物品名称(英文)',
+    `name_jp` VARCHAR(100) COMMENT '物品名称(日文)',
+    `category` VARCHAR(50) COMMENT '物品分类',
+    `price` INT DEFAULT 0 COMMENT '物品价格',
+    `effect` TEXT COMMENT '物品效果',
+    `description` TEXT COMMENT '物品描述',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物品表';
+
 -- 属性表
 DROP TABLE IF EXISTS `type`;
 CREATE TABLE `type` (

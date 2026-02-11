@@ -5,10 +5,20 @@ spring:
   main:
     allow-bean-definition-overriding: true
   datasource:
-    url: jdbc:mysql://10.144.199.29:3306/pokemon_factory?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
-    username: lio9
+    url: jdbc:mysql://10.144.55.168:3306/pokemon_factory?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true&useServerPrepStmts=false&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useLocalSessionState=true&useLocalTransactionState=true&useCursorFetch=true&allowMultiQueries=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10&initialTimeout=2&connectTimeout=60000&socketTimeout=60000
+    username: root
     password: 753951
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 20
+      connection-timeout: 60000
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      auto-commit: true
+      pool-name: PokemonFactoryHikariCP
+      validation-timeout: 5000
+      leak-detection-threshold: 60000
   jackson:
     property-naming-strategy: SNAKE_CASE
 
@@ -19,13 +29,25 @@ mybatis-plus:
     map-underscore-to-camel-case: true
     cache-enabled: false
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    default-executor-type: BATCH
   global-config:
     db-config:
       id-type: auto
       logic-delete-value: 1
       logic-not-delete-value: 0
+      sql-injector: com.baomidou.mybatisplus.core.injector.DefaultSqlInjector
+
+# 导入任务配置
+import:
+  timeout:
+    minutes: 120  # 导入任务超时时间（分钟）
 
 logging:
   level:
     com.lio9.common: debug
+    com.lio9.pokedex: info
+    org.springframework.web: info
+    org.mybatis: info
   config: classpath:log4j2.xml
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

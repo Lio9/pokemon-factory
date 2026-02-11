@@ -114,4 +114,29 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
             return evolutionVO;
         }).collect(Collectors.toList());
     }
+    
+    /**
+     * 获取宝可梦技能列表
+     */
+    public List<Move> getMoves(Long pokemonId) {
+        // 查询该宝可梦的所有技能
+        QueryWrapper<PokemonMove> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("pokemon_id", pokemonId);
+        
+        List<PokemonMove> pokemonMoves = pokemonMapper.selectPokemonMoves(queryWrapper);
+        
+        // 获取技能ID列表
+        List<Long> moveIds = pokemonMoves.stream()
+            .map(PokemonMove::getMoveId)
+            .collect(Collectors.toList());
+        
+        if (moveIds.isEmpty()) {
+            return List.of();
+        }
+        
+        // 查询技能详情
+        QueryWrapper<Move> moveQueryWrapper = new QueryWrapper<>();
+        moveQueryWrapper.in("id", moveIds);
+        return pokemonMapper.selectMoves(moveQueryWrapper);
+    }
 }
