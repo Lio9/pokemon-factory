@@ -529,7 +529,7 @@ class EfficientImportManager:
 
     async def import_abilities(self):
         """导入特性数据"""
-        logger.info("导入特性数据...")
+        logger.info("开始导入特性数据...")
         try:
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
@@ -556,7 +556,7 @@ class EfficientImportManager:
             conn.commit()
             cursor.close()
             conn.close()
-            logger.info("✅ 特性数据导入完成")
+            logger.info("特性数据导入完成")
         except Exception as e:
             logger.error(f"导入特性数据失败: {e}")
 
@@ -618,16 +618,24 @@ class EfficientImportManager:
                     effect = ""
                     effect_entries = ability_data.get('effect_entries', [])
                     if isinstance(effect_entries, list):
-                        for effect_entry in effect_entries:
-                            if isinstance(effect_entry, dict) and effect_entry.get('language', {}).get('name') == 'en':
-                                effect = effect_entry.get('short_effect', '').replace('\n', ' ').replace('  ', ' ').strip()
-                                break
+                        for i, effect_entry in enumerate(effect_entries):
+                            if isinstance(effect_entry, dict):
+                                lang_name = effect_entry.get('language', {}).get('name', '')
+                                effect = effect_entry.get('effect', '')
+                                if lang_name == 'en':
+                                    effect = effect.replace('\n', ' ').replace('  ', ' ').strip()
+                                    logger.info(f"✅ 特性 {ability_data.get('name')} 效果: {effect[:100]}...")
+                                    break
                     
                     # 如果没有英文效果，使用第一个语言作为fallback
                     if not effect and effect_entries:
                         first_effect = effect_entries[0]
                         if isinstance(first_effect, dict):
-                            effect = first_effect.get('short_effect', '').replace('\n', ' ').replace('  ', ' ').strip()
+                            effect = first_effect.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
+                            logger.info(f"⚠️ 特性 {ability_data.get('name')} 使用fallback效果: {effect[:100]}...")
+                    
+                    if not effect:
+                        logger.warning(f"❌ 特性 {ability_data.get('name')} 没有获取到效果")
                     
                     # 获取世代
                     generation = "1"
@@ -654,9 +662,9 @@ class EfficientImportManager:
                     # 保存到数据库
                     cursor.execute("""
                         INSERT IGNORE INTO ability 
-                        (index_number, generation, name, name_en, name_jp, description, created_at, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """, (name, generation, name_cn, name_en, name_jp, description,
+                        (index_number, generation, name, name_en, name_jp, description, effect, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (name, generation, name_cn, name_en, name_jp, description, effect,
                           time.strftime('%Y-%m-%d %H:%M:%S'),
                           time.strftime('%Y-%m-%d %H:%M:%S')))
                     
@@ -664,7 +672,7 @@ class EfficientImportManager:
                     cursor.close()
                     conn.close()
         except Exception as e:
-            logger.error(f"导入特性失败 {ability_url}: {e}")
+            logger.error(f"特性导入失败: {ability_url.split('/')[-1]}")
 
     async def import_moves(self):
         """导入技能数据"""
@@ -695,7 +703,7 @@ class EfficientImportManager:
             conn.commit()
             cursor.close()
             conn.close()
-            logger.info("✅ 技能数据导入完成")
+            logger.info("技能数据导入完成")
         except Exception as e:
             logger.error(f"导入技能数据失败: {e}")
 
@@ -747,18 +755,13 @@ class EfficientImportManager:
                     description = "暂无描述"
                     effect_entries = move_data.get('effect_entries', [])
                     if isinstance(effect_entries, list):
-                        logger.info(f"技能 {move_data.get('name')} 有 {len(effect_entries)} 个effect_entries")
                         for i, effect in enumerate(effect_entries):
                             if isinstance(effect, dict):
                                 lang_name = effect.get('language', {}).get('name', '')
-                                lang_url = effect.get('language', {}).get('url', '')
-                                logger.info(f"  effect_entries[{i}]: 语言代码={lang_name}, URL={lang_url}")
                                 if lang_name in ['zh-hans', 'zh-hant', 'zh']:
                                     description = effect.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
-                                    logger.info(f"✅ 获取到中文技能描述: {description[:100]}...")
+                                    logger.info(f"✅ 技能 {move_data.get('name')} 中文描述: {description[:100]}...")
                                     break
-                                else:
-                                    logger.info(f"  跳过语言: {lang_name}")
                     
                     # 获取技能效果
                     effect = ""
@@ -768,28 +771,29 @@ class EfficientImportManager:
                             if isinstance(effect_text, dict):
                                 lang_name = effect_text.get('language', {}).get('name', '')
                                 if lang_name in ['zh-hans', 'zh-hant', 'zh']:
-                                    effect = effect_text.get('short_effect', '').replace('\n', ' ').replace('  ', ' ').strip()
-                                    logger.info(f"获取到中文技能效果: {effect[:100]}...")
+                                    effect = effect_text.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
+                                    logger.info(f"✅ 技能 {move_data.get('name')} 中文效果: {effect[:100]}...")
                                     break
                     
                     # 如果没有中文，使用英文作为fallback
-                    if description == "暂无描述":
-                        effect_entries = move_data.get('effect_entries', [])
-                        if isinstance(effect_entries, list):
-                            for effect in effect_entries:
-                                if isinstance(effect, dict) and effect.get('language', {}).get('name') == 'en':
-                                    description = effect.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
-                                    logger.info(f"使用英文技能描述作为fallback: {description[:100]}...")
-                                    break
-                    
                     if not effect:
                         effect_entries = move_data.get('effect_entries', [])
                         if isinstance(effect_entries, list):
                             for effect_text in effect_entries:
                                 if isinstance(effect_text, dict) and effect_text.get('language', {}).get('name') == 'en':
-                                    effect = effect_text.get('short_effect', '').replace('\n', ' ').replace('  ', ' ').strip()
-                                    logger.info(f"使用英文技能效果作为fallback: {effect[:100]}...")
+                                    effect = effect_text.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
+                                    logger.info(f"⚠️ 技能 {move_data.get('name')} 英文效果: {effect[:100]}...")
                                     break
+                    
+                    # 如果没有英文效果，使用第一个语言作为fallback
+                    if not effect and effect_entries:
+                        first_effect = effect_entries[0]
+                        if isinstance(first_effect, dict):
+                            effect = first_effect.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
+                            logger.info(f"⚠️ 技能 {move_data.get('name')} fallback效果: {effect[:100]}...")
+                    
+                    if not effect:
+                        logger.warning(f"❌ 技能 {move_data.get('name')} 没有获取到效果")
                     
                     # 保存到数据库
                     cursor.execute("""
@@ -809,11 +813,11 @@ class EfficientImportManager:
                     cursor.close()
                     conn.close()
         except Exception as e:
-            logger.error(f"导入技能失败 {move_url}: {e}")
+            logger.error(f"技能导入失败: {move_url.split('/')[-1]}")
 
     async def import_items(self):
         """导入道具数据"""
-        logger.info("导入道具数据...")
+        logger.info("开始导入道具数据...")
         try:
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
@@ -840,7 +844,7 @@ class EfficientImportManager:
             conn.commit()
             cursor.close()
             conn.close()
-            logger.info("✅ 道具数据导入完成")
+            logger.info("道具数据导入完成")
         except Exception as e:
             logger.error(f"导入道具数据失败: {e}")
 
@@ -883,7 +887,7 @@ class EfficientImportManager:
                         for effect in effect_entries:
                             if isinstance(effect, dict) and effect.get('language', {}).get('name') == 'zh':
                                 description = effect.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
-                                logger.info(f"获取到中文道具描述: {description[:100]}...")
+                                logger.info(f"✅ 道具 {item_data.get('name')} 中文描述: {description[:100]}...")
                                 break
                     
                     # 如果没有中文，使用英文作为fallback
@@ -893,7 +897,7 @@ class EfficientImportManager:
                             for effect in effect_entries:
                                 if isinstance(effect, dict) and effect.get('language', {}).get('name') == 'en':
                                     description = effect.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
-                                    logger.info(f"使用英文道具描述作为fallback: {description[:100]}...")
+                                    logger.info(f"⚠️ 道具 {item_data.get('name')} 英文描述: {description[:100]}...")
                                     break
                     
                     # 保存到数据库
@@ -904,6 +908,8 @@ class EfficientImportManager:
                     
                     # 获取效果
                     effect = item_data.get('effect', '')
+                    if effect:
+                        logger.info(f"✅ 道具 {item_data.get('name')} 效果: {effect[:100]}...")
                     
                     cursor.execute("""
                         INSERT IGNORE INTO item 
@@ -921,7 +927,7 @@ class EfficientImportManager:
                     cursor.close()
                     conn.close()
         except Exception as e:
-            logger.error(f"导入道具失败 {item_url}: {e}")
+            logger.error(f"道具导入失败: {item_url.split('/')[-1]}")
 
     async def import_egg_groups(self):
         """导入蛋群数据"""
@@ -1000,7 +1006,7 @@ class EfficientImportManager:
 
     async def import_evolution_chains(self):
         """导入进化链数据"""
-        logger.info("导入进化链数据...")
+        logger.info("开始导入进化链数据...")
         try:
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
@@ -1027,7 +1033,7 @@ class EfficientImportManager:
             conn.commit()
             cursor.close()
             conn.close()
-            logger.info("✅ 进化链数据导入完成")
+            logger.info("进化链数据导入完成")
         except Exception as e:
             logger.error(f"导入进化链数据失败: {e}")
 
@@ -1101,10 +1107,14 @@ class EfficientImportManager:
             await self.import_base_data()
             
             # 3. 导入宝可梦数据
+            logger.info("开始导入宝可梦数据...")
             await self.import_all_pokemon()
+            logger.info("宝可梦数据导入完成")
             
             # 4. 处理进化链数据
+            logger.info("开始处理进化链数据...")
             await self.process_evolution_chains_after_pokemon()
+            logger.info("进化链数据处理完成")
             
             end_time = time.time()
             

@@ -74,46 +74,90 @@ public class OptimizedImportController {
     }
 
     /**
-     * 使用高效混合导入方案导入所有数据
-     * 结合Python异步网络请求和Java数据库操作的优势
+     * 使用新的Python调度脚本导入所有数据
      */
-    @PostMapping("/efficient-import")
-    public ResponseEntity<Map<String, Object>> efficientImportAllData() {
+    @PostMapping("/python-scheduler")
+    public ResponseEntity<Map<String, Object>> pythonSchedulerImport() {
         Map<String, Object> result = new HashMap<>();
-        String taskId = "EFFICIENT-IMPORT-" + System.currentTimeMillis();
+        String taskId = "PYTHON-SCHEDULER-" + System.currentTimeMillis();
         
         try {
-            logger.info("启动高效混合导入任务，任务ID: {}", taskId);
+            logger.info("启动Python调度导入任务，任务ID: {}", taskId);
             
             // 异步执行导入任务，避免超时
             CompletableFuture.runAsync(() -> {
                 try {
-                    // 调用EfficientImportService执行导入
-                    Map<String, Object> importResult = efficientImportService.callEfficientPythonImport();
+                    // 调用EfficientImportService执行新的Python调度脚本
+                    Map<String, Object> importResult = efficientImportService.callPythonSchedulerImport();
                     
                     if ((Boolean) importResult.get("success")) {
-                        logger.info("高效混合导入任务 {} 执行成功", taskId);
+                        logger.info("Python调度导入任务 {} 执行成功", taskId);
                     } else {
-                        logger.error("高效混合导入任务 {} 执行失败: {}", taskId, importResult.get("error"));
+                        logger.error("Python调度导入任务 {} 执行失败: {}", taskId, importResult.get("error"));
                     }
                 } catch (Exception e) {
-                    logger.error("高效混合导入任务 {} 执行异常: {}", taskId, e.getMessage(), e);
+                    logger.error("Python调度导入任务 {} 执行异常: {}", taskId, e.getMessage(), e);
                 }
             });
             
             result.put("code", 200);
-            result.put("message", "高效混合导入任务已启动");
+            result.put("message", "Python调度导入任务已启动");
             result.put("data", Map.of(
                 "taskId", taskId,
                 "statusUrl", "/api/import-optimized/import-status/" + taskId,
                 "status", "running",
-                "message", "正在执行高效混合导入..."
+                "message", "正在执行Python调度导入..."
             ));
             
         } catch (Exception e) {
-            logger.error("启动高效混合导入任务失败: {}", e.getMessage(), e);
+            logger.error("启动Python调度导入任务失败: {}", e.getMessage(), e);
             result.put("code", 500);
-            result.put("message", "启动高效混合导入任务失败: " + e.getMessage());
+            result.put("message", "启动Python调度导入任务失败: " + e.getMessage());
+        }
+        
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 使用Python调度脚本导入特定类型数据
+     */
+    @PostMapping("/python-scheduler/{type}")
+    public ResponseEntity<Map<String, Object>> pythonSchedulerImportType(@PathVariable String type) {
+        Map<String, Object> result = new HashMap<>();
+        String taskId = "PYTHON-SCHEDULER-" + type.toUpperCase() + "-" + System.currentTimeMillis();
+        
+        try {
+            logger.info("启动Python调度导入任务，任务ID: {}, 类型: {}", taskId, type);
+            
+            // 异步执行导入任务，避免超时
+            CompletableFuture.runAsync(() -> {
+                try {
+                    // 调用EfficientImportService执行新的Python调度脚本
+                    Map<String, Object> importResult = efficientImportService.callPythonSchedulerImportType(type);
+                    
+                    if ((Boolean) importResult.get("success")) {
+                        logger.info("Python调度导入任务 {} 执行成功", taskId);
+                    } else {
+                        logger.error("Python调度导入任务 {} 执行失败: {}", taskId, importResult.get("error"));
+                    }
+                } catch (Exception e) {
+                    logger.error("Python调度导入任务 {} 执行异常: {}", taskId, e.getMessage(), e);
+                }
+            });
+            
+            result.put("code", 200);
+            result.put("message", "Python调度导入任务已启动");
+            result.put("data", Map.of(
+                "taskId", taskId,
+                "statusUrl", "/api/import-optimized/import-status/" + taskId,
+                "status", "running",
+                "message", "正在执行Python调度导入: " + type
+            ));
+            
+        } catch (Exception e) {
+            logger.error("启动Python调度导入任务失败: {}", e.getMessage(), e);
+            result.put("code", 500);
+            result.put("message", "启动Python调度导入任务失败: " + e.getMessage());
         }
         
         return ResponseEntity.ok(result);

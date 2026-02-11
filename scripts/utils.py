@@ -2,6 +2,28 @@ import base64
 import json
 import os
 import requests
+import logging
+
+def setup_logging():
+    """设置日志配置"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('D:\\learn\\pokemon-factory\\logs\\import.log', encoding='utf-8'),
+            logging.StreamHandler()
+        ]
+    )
+
+def get_db_config():
+    """获取数据库配置"""
+    return {
+        'host': 'localhost',
+        'user': 'root',
+        'password': '123456',
+        'database': 'pokemon_factory',
+        'charset': 'utf8mb4'
+    }
 
 def save_to_file(file_path, data):
   # 确保目录存在

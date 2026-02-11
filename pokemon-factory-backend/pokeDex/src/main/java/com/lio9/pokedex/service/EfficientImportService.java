@@ -90,6 +90,134 @@ public class EfficientImportService {
     }
     
     /**
+     * 调用新的Python调度脚本导入所有数据
+     */
+    public Map<String, Object> callPythonSchedulerImport() {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            logger.info("调用新的Python调度脚本导入所有数据，超时时间: {} 分钟", importTimeoutMinutes);
+            
+            // 检查Python调度脚本是否存在
+            File scriptFile = new File("D:\\learn\\pokemon-factory\\scripts\\import_scheduler.py");
+            if (!scriptFile.exists()) {
+                logger.error("Python调度脚本不存在: {}", scriptFile.getAbsolutePath());
+                result.put("success", false);
+                result.put("error", "Python调度脚本不存在");
+                return result;
+            }
+            
+            // 执行Python调度脚本
+            ProcessBuilder pb = new ProcessBuilder(
+                "python", 
+                scriptFile.getAbsolutePath(),
+                "--type", "all"
+            );
+            
+            // 设置工作目录
+            pb.directory(new File("D:\\learn\\pokemon-factory\\scripts"));
+            
+            // 重定向输出到日志文件
+            File logFile = new File("D:\\learn\\pokemon-factory\\logs\\python_scheduler.log");
+            pb.redirectErrorStream(true);
+            pb.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile));
+            
+            Process process = pb.start();
+            
+            // 等待进程完成，使用配置的超时时间
+            boolean completed = process.waitFor(importTimeoutMinutes, TimeUnit.MINUTES);
+            
+            if (completed) {
+                int exitCode = process.exitValue();
+                if (exitCode == 0) {
+                    logger.info("Python调度脚本执行成功");
+                    result.put("success", true);
+                    result.put("message", "Python调度脚本执行成功");
+                } else {
+                    logger.error("Python调度脚本执行失败，退出码: {}", exitCode);
+                    result.put("success", false);
+                    result.put("error", "Python调度脚本执行失败，退出码: " + exitCode);
+                }
+            } else {
+                logger.error("Python调度脚本执行超时，超时时间: {} 分钟", importTimeoutMinutes);
+                result.put("success", false);
+                result.put("error", "Python调度脚本执行超时，超时时间: " + importTimeoutMinutes + " 分钟");
+                process.destroyForcibly();
+            }
+            
+        } catch (Exception e) {
+            logger.error("调用Python调度脚本异常: {}", e.getMessage(), e);
+            result.put("success", false);
+            result.put("error", "调用Python调度脚本异常: " + e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 调用新的Python调度脚本导入特定类型数据
+     */
+    public Map<String, Object> callPythonSchedulerImportType(String type) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            logger.info("调用新的Python调度脚本导入类型: {}, 超时时间: {} 分钟", type, importTimeoutMinutes);
+            
+            // 检查Python调度脚本是否存在
+            File scriptFile = new File("D:\\learn\\pokemon-factory\\scripts\\import_scheduler.py");
+            if (!scriptFile.exists()) {
+                logger.error("Python调度脚本不存在: {}", scriptFile.getAbsolutePath());
+                result.put("success", false);
+                result.put("error", "Python调度脚本不存在");
+                return result;
+            }
+            
+            // 执行Python调度脚本
+            ProcessBuilder pb = new ProcessBuilder(
+                "python", 
+                scriptFile.getAbsolutePath(),
+                "--type", type
+            );
+            
+            // 设置工作目录
+            pb.directory(new File("D:\\learn\\pokemon-factory\\scripts"));
+            
+            // 重定向输出到日志文件
+            File logFile = new File("D:\\learn\\pokemon-factory\\logs\\python_scheduler_" + type + ".log");
+            pb.redirectErrorStream(true);
+            pb.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile));
+            
+            Process process = pb.start();
+            
+            // 等待进程完成，使用配置的超时时间
+            boolean completed = process.waitFor(importTimeoutMinutes, TimeUnit.MINUTES);
+            
+            if (completed) {
+                int exitCode = process.exitValue();
+                if (exitCode == 0) {
+                    logger.info("Python调度脚本执行成功");
+                    result.put("success", true);
+                    result.put("message", "Python调度脚本执行成功");
+                } else {
+                    logger.error("Python调度脚本执行失败，退出码: {}", exitCode);
+                    result.put("success", false);
+                    result.put("error", "Python调度脚本执行失败，退出码: " + exitCode);
+                }
+            } else {
+                logger.error("Python调度脚本执行超时，超时时间: {} 分钟", importTimeoutMinutes);
+                result.put("success", false);
+                result.put("error", "Python调度脚本执行超时，超时时间: " + importTimeoutMinutes + " 分钟");
+                process.destroyForcibly();
+            }
+            
+        } catch (Exception e) {
+            logger.error("调用Python调度脚本异常: {}", e.getMessage(), e);
+            result.put("success", false);
+            result.put("error", "调用Python调度脚本异常: " + e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
      * 获取导入状态
      */
     public Map<String, Object> getImportStatus(String taskId) {
