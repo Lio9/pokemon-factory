@@ -16,6 +16,12 @@ import java.util.stream.Collectors;
 
 /**
  * 宝可梦服务实现类
+ * 提供宝可梦数据的分页查询、搜索和管理功能
+ * 继承MyBatis-Plus的ServiceImpl，实现PokemonService接口
+ * 
+ * @author Lio9
+ * @version 1.0
+ * @since 2024-01-01
  */
 @Service
 public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> implements PokemonService {
@@ -23,6 +29,14 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
     @Resource
     private PokemonMapper pokemonMapper;
     
+    /**
+     * 获取宝可梦分页列表
+     * 根据分页参数和查询条件获取宝可梦数据，支持按名称模糊搜索
+     * 
+     * @param page 分页参数
+     * @param vo 查询条件对象，包含名称搜索条件
+     * @return 宝可梦分页数据
+     */
     @Override
     public Page<Pokemon> getPokemonPage(Page<Pokemon> page, PokemonQueryVO vo) {
         QueryWrapper<Pokemon> queryWrapper = new QueryWrapper<>();
@@ -37,6 +51,13 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         return this.page(page, queryWrapper);
     }
     
+    /**
+     * 获取宝可梦详细信息
+     * 根据宝可梦ID获取宝可梦的详细信息，包括形态、属性等关联数据
+     * 
+     * @param id 宝可梦ID
+     * @return 宝可梦详细信息VO
+     */
     @Override
     public PokemonDetailVO getPokemonDetail(Long id) {
         Pokemon pokemon = this.getById(id);

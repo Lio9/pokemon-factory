@@ -1,4 +1,4 @@
-package com.lio9.common.service.impl;
+package com.lio9.pokedex.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lio9.common.mapper.ItemMapper;
@@ -14,11 +14,23 @@ import java.util.List;
 
 /**
  * 物品服务实现类
- * 创建人: Lio9
+ * 提供物品数据的批量导入和JSON导入功能
+ * 继承MyBatis-Plus的ServiceImpl，实现ItemService接口
+ * 
+ * @author Lio9
+ * @version 1.0
+ * @since 2024-01-01
  */
 @Service
 public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements ItemService {
     
+    /**
+     * 批量导入物品数据
+     * 使用MyBatis-Plus的saveBatch方法进行批量插入
+     * 
+     * @param items 物品列表，不能为null或空
+     * @return 导入是否成功
+     */
     @Override
     @Transactional
     public boolean batchImport(List<Item> items) {
@@ -33,6 +45,13 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         }
     }
     
+    /**
+     * 从JSON文件导入物品数据
+     * 读取指定路径的JSON文件，解析内容并批量导入
+     * 
+     * @param filePath JSON文件路径，不能为null或空
+     * @return 导入是否成功
+     */
     @Override
     @Transactional
     public boolean importFromJson(String filePath) {
@@ -59,6 +78,14 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         }
     }
     
+    /**
+     * 从CSV文件导入物品数据
+     * 读取指定路径的CSV文件，解析内容并批量导入
+     * CSV格式：name,name_en,name_jp,category,price,effetct[,description]
+     * 
+     * @param filePath CSV文件路径，不能为null或空
+     * @return 导入是否成功
+     */
     @Override
     @Transactional
     public boolean importFromCsv(String filePath) {
@@ -102,6 +129,13 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         }
     }
     
+    /**
+     * 解析JSON字符串为物品列表
+     * 处理JSON格式的字符串，提取物品信息并创建Item对象
+     * 
+     * @param json JSON字符串
+     * @return 物品列表
+     */
     private List<Item> parseJson(String json) {
         List<Item> items = new ArrayList<>();
         try {

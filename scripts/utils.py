@@ -18,9 +18,10 @@ def setup_logging():
 def get_db_config():
     """获取数据库配置"""
     return {
-        'host': 'localhost',
+        'host': '10.144.55.168',
+        'port': 3306,
         'user': 'root',
-        'password': '123456',
+        'password': '753951',
         'database': 'pokemon_factory',
         'charset': 'utf8mb4'
     }

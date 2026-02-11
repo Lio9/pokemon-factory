@@ -4,26 +4,17 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * PokeAPI数据服务接口
- * 负责处理宝可梦数据的获取、导入和基础操作
- * 提供优化的批量导入功能和进度监控
+ * PokeAPI数据导入服务接口
+ * 负责处理宝可梦数据的导入业务逻辑，提供导入进度监控
  * 
  * @author Lio9
  * @version 1.0
  * @since 2024-01-01
  */
-public interface PokeapiDataService {
+public interface PokeapiDataImportService {
     
     /**
-     * 导入单个宝可梦数据
-     * 根据宝可梦ID从PokeAPI获取并导入单个宝可梦的完整数据
-     * 
-     * @param id 宝可梦ID
-     */
-    void importPokemonById(int id);
-    
-    /**
-     * 从PokeAPI获取宝可梦数据（优化版）
+     * 优化导入所有宝可梦数据
      * 执行优化的批量导入流程，提高导入效率
      * 
      * @return 导入结果状态
