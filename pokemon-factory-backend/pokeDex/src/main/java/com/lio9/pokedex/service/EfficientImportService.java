@@ -38,4 +38,21 @@ public interface EfficientImportService {
      * @return 导入状态信息
      */
     Map<String, Object> getImportStatus(String taskId);
+    
+    /**
+     * Java代码直接导入所有数据
+     * 直接调用Java代码进行导入，不通过Python脚本
+     * 
+     * @return 导入结果状态
+     */
+    Map<String, Object> callJavaDirectImport();
+    
+    /**
+     * Java代码直接导入特定类型数据
+     * 根据指定类型执行对应的导入流程
+     * 
+     * @param type 导入类型
+     * @return 导入结果状态
+     */
+    Map<String, Object> callJavaDirectImportType(String type);
 }

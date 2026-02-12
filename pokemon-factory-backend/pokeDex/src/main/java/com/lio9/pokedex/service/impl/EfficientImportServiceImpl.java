@@ -201,4 +201,109 @@ public class EfficientImportServiceImpl implements EfficientImportService {
         
         return result;
     }
+    
+    /**
+     * Java代码直接导入所有数据
+     */
+    @Override
+    public Map<String, Object> callJavaDirectImport() {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            logger.info("Java代码直接导入所有数据");
+            
+            // 直接调用Java代码进行导入
+            ProcessBuilder pb = new ProcessBuilder(
+                "python", 
+                "D:\\learn\\pokemon-factory\\scripts\\import_scheduler.py"
+            );
+            
+            pb.directory(new File("D:\\learn\\pokemon-factory\\scripts"));
+            
+            File logFile = new File("D:\\learn\\pokemon-factory\\logs\\java_direct_import.log");
+            pb.redirectErrorStream(true);
+            pb.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile));
+            
+            Process process = pb.start();
+            
+            boolean completed = process.waitFor(importTimeoutMinutes, TimeUnit.MINUTES);
+            
+            if (completed) {
+                int exitCode = process.exitValue();
+                if (exitCode == 0) {
+                    logger.info("Java代码直接导入脚本执行成功");
+                    result.put("success", true);
+                    result.put("message", "Java代码直接导入脚本执行成功");
+                } else {
+                    logger.error("Java代码直接导入脚本执行失败，退出码: {}", exitCode);
+                    result.put("success", false);
+                    result.put("error", "Java代码直接导入脚本执行失败，退出码: " + exitCode);
+                }
+            } else {
+                logger.error("Java代码直接导入脚本执行超时，超时时间: {} 分钟", importTimeoutMinutes);
+                result.put("success", false);
+                result.put("error", "Java代码直接导入脚本执行超时，超时时间: " + importTimeoutMinutes + " 分钟");
+                process.destroyForcibly();
+            }
+            
+        } catch (Exception e) {
+            logger.error("调用Java代码直接导入脚本异常: {}", e.getMessage(), e);
+            result.put("success", false);
+            result.put("error", "调用Java代码直接导入脚本异常: " + e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Java代码直接导入特定类型数据
+     */
+    @Override
+    public Map<String, Object> callJavaDirectImportType(String type) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            logger.info("Java代码直接导入特定类型数据，类型: {}", type);
+            
+            // 直接调用Java代码进行导入
+            ProcessBuilder pb = new ProcessBuilder(
+                "python", 
+                "D:\\learn\\pokemon-factory\\scripts\\import_scheduler.py",
+                "--type", type
+            );
+            
+            pb.directory(new File("D:\\learn\\pokemon-factory\\scripts"));
+            
+            File logFile = new File("D:\\learn\\pokemon-factory\\logs\\java_direct_import_" + type + ".log");
+            pb.redirectErrorStream(true);
+            pb.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile));
+            
+            Process process = pb.start();
+            
+            boolean completed = process.waitFor(importTimeoutMinutes, TimeUnit.MINUTES);
+            
+            if (completed) {
+                int exitCode = process.exitValue();
+                if (exitCode == 0) {
+                    logger.info("Java代码直接导入脚本执行成功，类型: {}", type);
+                    result.put("success", true);
+                    result.put("message", "Java代码直接导入脚本执行成功，类型: " + type);
+                } else {
+                    logger.error("Java代码直接导入脚本执行失败，类型: {}, 退出码: {}", type, exitCode);
+                    result.put("success", false);
+                    result.put("error", "Java代码直接导入脚本执行失败，类型: " + type + "，退出码: " + exitCode);
+                }
+            } else {
+                logger.error("Java代码直接导入脚本执行超时，类型: {}, 超时时间: {} 分钟", type, importTimeoutMinutes);
+                result.put("success", false);
+                result.put("error", "Java代码直接导入脚本执行超时，类型: " + type + "，超时时间: " + importTimeoutMinutes + " 分钟");
+                process.destroyForcibly();
+            }
+            
+        } catch (Exception e) {
+            logger.error("调用Java代码直接导入脚本异常: {}", e.getMessage(), e);
+            result.put("success", false);
+            result.put("error", "调用Java代码直接导入脚本异常: " + e.getMessage());
+        }
+        
+        return result;
+    }
 }
