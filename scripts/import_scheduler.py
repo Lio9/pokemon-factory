@@ -91,8 +91,8 @@ async def main():
             ('items', '导入道具数据'),
             ('egg_groups', '导入蛋群数据'),
             ('growth_rates', '导入经验类型数据'),
-            ('evolution_chains', '导入进化链数据'),
-            ('pokemon', '导入宝可梦数据')
+            ('pokemon', '导入宝可梦数据'),
+            ('evolution_chains', '导入进化链数据')
         ]
         
         success_count = 0

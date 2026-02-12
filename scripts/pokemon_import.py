@@ -183,7 +183,7 @@ class PokemonImporter:
                 'base_experience': pokemon_data.get('base_experience', 0),
                 'capture_rate': capture_rate,
                 'gender_rate': gender_rate,
-                'evolution_chain': evolution_chain,
+                'evolution_chain_id': evolution_chain,
                 'sort_order': sort_order,
                 'profile': description,
                 'types': types,
@@ -201,7 +201,7 @@ class PokemonImporter:
             cursor = conn.cursor()
             
             pokemon_insert = """
-            INSERT INTO pokemon (index_number, name, name_en, name_jp, height, weight, base_experience, capture_rate, gender_rate, evolution_chain, sort_order, profile, created_at, updated_at)
+            INSERT INTO pokemon (index_number, name, name_en, name_jp, height, weight, base_experience, capture_rate, gender_rate, evolution_chain_id, sort_order, profile, created_at, updated_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             
@@ -229,7 +229,7 @@ class PokemonImporter:
                     pokemon_info.get('base_experience'),
                     pokemon_info.get('capture_rate', 45),
                     pokemon_info.get('gender_rate', 87.5),
-                    pokemon_info.get('evolution_chain', ''),
+                    pokemon_info.get('evolution_chain_id', ''),
                     pokemon_info.get('sort_order', 0),
                     pokemon_info.get('profile'),
                     pokemon_info.get('created_at'),

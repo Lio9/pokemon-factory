@@ -127,16 +127,35 @@ class MoveImporter:
                     type_result = cursor.fetchone()
                     type_id = type_result[0] if type_result else None
             
-            # 获取技能描述
+            # 获取技能描述 - 优先使用简体中文
             description = "暂无描述"
             effect_entries = move_data.get('effect_entries', [])
             if isinstance(effect_entries, list):
                 for i, effect in enumerate(effect_entries):
                     if isinstance(effect, dict):
                         lang_name = effect.get('language', {}).get('name', '')
-                        if lang_name in ['zh-hans', 'zh-hant', 'zh']:
+                        if lang_name == 'zh-hans':
                             description = effect.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
                             break
+                        elif lang_name == 'zh-hant' and description == "暂无描述":
+                            description = effect.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
+                        elif lang_name == 'zh' and description == "暂无描述":
+                            description = effect.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
+            
+            # 如果没有从effect_entries获取到描述，尝试从flavor_text_entries获取
+            if description == "暂无描述":
+                flavor_text_entries = move_data.get('flavor_text_entries', [])
+                if isinstance(flavor_text_entries, list):
+                    for entry in flavor_text_entries:
+                        if isinstance(entry, dict):
+                            lang_name = entry.get('language', {}).get('name', '')
+                            if lang_name == 'zh-hans':
+                                description = entry.get('flavor_text', '').replace('\n', ' ').strip()
+                                break
+                            elif lang_name == 'zh-hant' and description == "暂无描述":
+                                description = entry.get('flavor_text', '').replace('\n', ' ').strip()
+                            elif lang_name == 'zh' and description == "暂无描述":
+                                description = entry.get('flavor_text', '').replace('\n', ' ').strip()
             
             # 获取技能效果 - 优先使用简体中文描述中的效果
             effect = ""
@@ -148,9 +167,9 @@ class MoveImporter:
                         if lang_name == 'zh-hans':
                             effect = effect_text.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
                             break
-                        elif lang_name == 'zh-hant' and effect == '':
+                        elif lang_name == 'zh-hant' and effect == "":
                             effect = effect_text.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
-                        elif lang_name == 'zh' and effect == '':
+                        elif lang_name == 'zh' and effect == "":
                             effect = effect_text.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
             
             if not effect:
