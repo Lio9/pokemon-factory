@@ -22,10 +22,32 @@ class AbilityImporter:
         self.db_config = get_db_config()
         self.pokeyapi_base_url = "https://pokeapi.co/api/v2/"
     
+    async def clear_abilities(self):
+        """清空特性表"""
+        try:
+            conn = mysql.connector.connect(**self.db_config)
+            cursor = conn.cursor()
+            
+            # 清空特性表
+            cursor.execute("DELETE FROM ability")
+            conn.commit()
+            
+            cursor.close()
+            conn.close()
+            
+            logger.info("清空表 ability 完成")
+            return True
+        except Exception as e:
+            logger.error(f"清空表 ability 失败: {e}")
+            return False
+    
     async def import_abilities(self):
         """导入特性数据 - 优化版本"""
         logger.info("开始导入特性数据...")
         try:
+            # 先清空表
+            await self.clear_abilities()
+            
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
             
@@ -164,12 +186,15 @@ class AbilityImporter:
                 }
                 generation = generation_map.get(generation_name, '1')
             
-            # 保存到数据库
+            # 从URL中提取ID作为主键
+            ability_id = int(ability_url.rstrip('/').split('/')[-1])
+            
+            # 保存到数据库，明确指定主键ID
             cursor.execute("""
                 INSERT IGNORE INTO ability 
-                (index_number, generation, name, name_en, name_jp, description, effect, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (name, generation, name_cn, name_en, name_jp, description, effect,
+                (id, index_number, generation, name, name_en, name_jp, description, effect, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (ability_id, name, generation, name_cn, name_en, name_jp, description, effect,
                   time.strftime('%Y-%m-%d %H:%M:%S'),
                   time.strftime('%Y-%m-%d %H:%M:%S')))
             

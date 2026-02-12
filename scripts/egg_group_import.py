@@ -19,10 +19,32 @@ class EggGroupImporter:
     def __init__(self):
         self.db_config = get_db_config()
     
+    async def clear_egg_groups(self):
+        """清空蛋群表"""
+        try:
+            conn = mysql.connector.connect(**self.db_config)
+            cursor = conn.cursor()
+            
+            # 清空蛋群表
+            cursor.execute("DELETE FROM pokemon_egg_group")
+            conn.commit()
+            
+            cursor.close()
+            conn.close()
+            
+            logger.info("清空表 pokemon_egg_group 完成")
+            return True
+        except Exception as e:
+            logger.error(f"清空表 pokemon_egg_group 失败: {e}")
+            return False
+    
     async def import_egg_groups(self):
         """导入蛋群数据"""
         logger.info("导入蛋群数据...")
         try:
+            # 先清空表
+            await self.clear_egg_groups()
+            
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
             

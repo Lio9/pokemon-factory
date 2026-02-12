@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-宝可梦导入脚本
-导入宝可梦游戏中的所有宝可梦数据
+高效宝可梦导入脚本
+使用更粗粒度的批次和更高效的并发处理来大幅提高导入速度
 """
 
 import asyncio
@@ -10,102 +10,200 @@ import mysql.connector
 import time
 import logging
 import json
-from utils import get_db_config, init_logger, get_pokeapi_session
+from utils import get_db_config, init_logger, fetch_with_retry
 
 # 初始化日志
-logger = init_logger("D:\\learn\\pokemon-factory\\logs\\pokemon_import.log")
+logger = init_logger("D:\\learn\\pokemon-factory\\logs\\efficient_pokemon_import.log")
 
-class PokemonImporter:
-    """宝可梦导入器"""
+class EfficientPokemonImporter:
+    """高效宝可梦导入器"""
     
     def __init__(self):
         self.db_config = get_db_config()
         self.pokeyapi_base_url = "https://pokeapi.co/api/v2/"
-        self.batch_size = 50
-        self.max_concurrent = 50
+        self.batch_size = 200  # 增加批次大小
+        self.max_concurrent = 100  # 增加并发数
     
-    async def fetch_pokemon_data(self, session, pokemon_id, semaphore):
-        """异步获取宝可梦数据"""
-        async with semaphore:
-            try:
-                timeout = aiohttp.ClientTimeout(total=30)
-                async with session.get(f"{self.pokeyapi_base_url}pokemon/{pokemon_id}", timeout=timeout) as response:
-                    if response.status == 200:
-                        return await response.json()
-                return None
-            except Exception as e:
-                logger.error(f"获取宝可梦 {pokemon_id} 数据失败: {e}")
-                return None
-    
-    async def fetch_species_data(self, session, pokemon_id, semaphore):
-        """异步获取宝可梦物种数据"""
-        async with semaphore:
-            try:
-                timeout = aiohttp.ClientTimeout(total=30)
-                async with session.get(f"{self.pokeyapi_base_url}pokemon-species/{pokemon_id}", timeout=timeout) as response:
-                    if response.status == 200:
-                        return await response.json()
-                return None
-            except Exception as e:
-                logger.error(f"获取宝可梦 {pokemon_id} 物种数据失败: {e}")
-                return None
-    
-    def get_type_id(self, type_name):
-        """获取属性ID"""
+    async def import_all_pokemon(self):
+        """导入所有宝可梦数据 - 高性能版本"""
+        logger.info("🚀 开始导入所有宝可梦数据 - 高性能版本")
+        
         try:
-            conn = mysql.connector.connect(**self.db_config)
-            cursor = conn.cursor()
-            cursor.execute("SELECT id FROM type WHERE name_en = %s", (type_name,))
-            result = cursor.fetchone()
-            cursor.close()
-            conn.close()
-            return result[0] if result else None
+            # 创建HTTP会话
+            connector = aiohttp.TCPConnector(limit=100, limit_per_host=50)
+            timeout = aiohttp.ClientTimeout(total=60)
+            
+            async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+                # 先清空表
+                await self.clear_pokemon()
+                
+                # 获取所有宝可梦ID列表
+                pokemon_ids = await self.get_all_pokemon_ids(session)
+                if not pokemon_ids:
+                    logger.error("无法获取宝可梦ID列表")
+                    return False
+                
+                total = len(pokemon_ids)
+                logger.info(f"总共 {total} 个宝可梦，开始并发导入")
+                
+                # 分批处理
+                successful_imports = 0
+                failed_imports = 0
+                
+                for i in range(0, total, self.batch_size):
+                    batch = pokemon_ids[i:i + self.batch_size]
+                    logger.info(f"处理批次 {i//self.batch_size + 1}/{(total + self.batch_size - 1)//self.batch_size}: 宝可梦 {batch[0]}-{batch[-1]}")
+                    
+                    # 并发获取当前批次的宝可梦数据
+                    batch_results = await self.process_pokemon_batch(session, batch)
+                    
+                    # 统计结果
+                    for result in batch_results:
+                        if isinstance(result, Exception):
+                            failed_imports += 1
+                            logger.error(f"导入宝可梦失败: {result}")
+                        elif result:
+                            successful_imports += 1
+                    
+                    logger.info(f"批次完成 - 成功: {successful_imports}, 失败: {failed_imports}")
+                
+                logger.info(f"✅ 所有宝可梦数据导入完成 - 成功: {successful_imports}, 失败: {failed_imports}")
+                return True
+                
         except Exception as e:
-            logger.error(f"获取属性ID失败: {e}")
+            logger.error(f"导入宝可梦数据失败: {e}")
+            return False
+    
+    async def get_all_pokemon_ids(self, session):
+        """获取所有宝可梦ID列表"""
+        try:
+            # 先获取总数
+            data = await fetch_with_retry(session, f"{self.pokeyapi_base_url}pokemon/?limit=1")
+            if not data:
+                return []
+            
+            total = data.get('count', 0)
+            logger.info(f"总共 {total} 个宝可梦")
+            
+            # 分批获取所有ID
+            all_ids = []
+            batch_size = 200
+            
+            for offset in range(0, total, batch_size):
+                url = f"{self.pokeyapi_base_url}pokemon/?limit={batch_size}&offset={offset}"
+                data = await fetch_with_retry(session, url)
+                if data and data.get('results'):
+                    for pokemon in data['results']:
+                        if isinstance(pokemon, dict) and 'url' in pokemon:
+                            pokemon_id = int(pokemon['url'].rstrip('/').split('/')[-1])
+                            all_ids.append(pokemon_id)
+                
+                logger.info(f"已获取 {len(all_ids)} 个宝可梦ID")
+            
+            return all_ids
+        except Exception as e:
+            logger.error(f"获取宝可梦ID列表失败: {e}")
+            return []
+    
+    async def process_pokemon_batch(self, session, pokemon_ids):
+        """处理一批宝可梦"""
+        semaphore = asyncio.Semaphore(self.max_concurrent)
+        tasks = []
+        
+        for pokemon_id in pokemon_ids:
+            task = self.import_single_pokemon(session, pokemon_id, semaphore)
+            tasks.append(task)
+        
+        return await asyncio.gather(*tasks, return_exceptions=True)
+    
+    async def import_single_pokemon(self, session, pokemon_id, semaphore):
+        """导入单个宝可梦"""
+        async with semaphore:
+            try:
+                # 获取宝可梦数据
+                pokemon_data = await fetch_with_retry(session, f"{self.pokeyapi_base_url}pokemon/{pokemon_id}/")
+                if not pokemon_data:
+                    return False
+                
+                # 获取宝可梦物种数据
+                species_data = await fetch_with_retry(session, f"{self.pokeyapi_base_url}pokemon-species/{pokemon_id}/")
+                if not species_data:
+                    return False
+                
+                # 转换数据
+                pokemon_info = self.convert_pokemon_data(pokemon_data, species_data)
+                if not pokemon_info:
+                    return False
+                
+                # 批量插入数据库
+                await self.batch_insert_pokemon(pokemon_info)
+                return True
+                
+            except Exception as e:
+                logger.error(f"宝可梦导入失败: {pokemon_id} - {e}")
+                return e
+    
+    def convert_pokemon_data(self, pokemon_data, species_data):
+        """转换宝可梦数据"""
+        try:
+            # 获取基本信息
+            index_number = f"{pokemon_data.get('id'):04d}"
+            name = pokemon_data.get('name', '').replace('-', '_')
+            name_en = pokemon_data.get('name', '')
+            name_jp = self.get_japanese_name(species_data)
+            height = pokemon_data.get('height') / 10.0
+            weight = pokemon_data.get('weight') / 10.0
+            base_experience = pokemon_data.get('base_experience', 0)
+            capture_rate = self.get_capture_rate(species_data)
+            gender_rate = self.get_gender_rate(species_data)
+            evolution_chain_id = self.get_evolution_chain_id(species_data)
+            sort_order = species_data.get('order', 0)
+            profile = self.get_proper_description(species_data)
+            
+            # 获取类型
+            types = []
+            for type_info in pokemon_data.get('types', []):
+                type_name = type_info.get('type', {}).get('name', '')
+                types.append({'type_id': type_name})
+            
+            return {
+                'index_number': index_number,
+                'name': name,
+                'name_en': name_en,
+                'name_jp': name_jp,
+                'height': height,
+                'weight': weight,
+                'base_experience': base_experience,
+                'capture_rate': capture_rate,
+                'gender_rate': gender_rate,
+                'evolution_chain_id': evolution_chain_id,
+                'sort_order': sort_order,
+                'profile': profile,
+                'types': types
+            }
+        except Exception as e:
+            logger.error(f"转换宝可梦数据失败: {e}")
             return None
-    
-    def get_chinese_name(self, species_data):
-        """获取中文名称 - 优先使用简体中文"""
-        try:
-            names = species_data.get('names', [])
-            chinese_name = None
-            chinese_hant_name = None
-            
-            if isinstance(names, list):
-                for name_obj in names:
-                    if isinstance(name_obj, dict):
-                        lang_name = name_obj.get('language', {}).get('name', '')
-                        name_text = name_obj.get('name', '').strip()
-                        
-                        if name_text and name_text != '???':
-                            if lang_name == 'zh-hans':
-                                chinese_name = name_text
-                            elif lang_name == 'zh-hant':
-                                chinese_hant_name = name_text
-            
-            # 优先使用简体中文，如果没有则使用繁体中文
-            if chinese_name:
-                return chinese_name
-            elif chinese_hant_name:
-                return chinese_hant_name
-            
-            return species_data.get('name', 'Unknown')
-        except Exception as e:
-            logger.error(f"获取中文名称失败: {e}")
-            return species_data.get('name', 'Unknown')
     
     def get_japanese_name(self, species_data):
         """获取日文名称"""
         try:
             names = species_data.get('names', [])
-            if isinstance(names, list):
-                for name_obj in names:
-                    if isinstance(name_obj, dict) and name_obj.get('language', {}).get('name') == 'ja':
-                        return name_obj.get('name', '')
-            return ''
+            for name_obj in names:
+                if isinstance(name_obj, dict) and name_obj.get('language', {}).get('name') == 'ja':
+                    return name_obj.get('name', '')
+            return name_en.replace('-', ' ').title()
         except Exception as e:
             logger.error(f"获取日文名称失败: {e}")
             return ''
+    
+    def get_capture_rate(self, species_data):
+        """获取捕获率"""
+        try:
+            return species_data.get('capture_rate', 45)
+        except Exception as e:
+            logger.error(f"获取捕获率失败: {e}")
+            return 45
     
     def get_gender_rate(self, species_data):
         """获取性别比例"""
@@ -118,13 +216,15 @@ class PokemonImporter:
             logger.error(f"获取性别比例失败: {e}")
             return 87.5
     
-    def get_evolution_chain(self, species_data):
-        """获取进化链信息"""
+    def get_evolution_chain_id(self, species_data):
+        """获取进化链ID"""
         try:
             evolution_chain_url = species_data.get('evolution_chain', {}).get('url', '')
-            return evolution_chain_url
+            if evolution_chain_url:
+                return int(evolution_chain_url.rstrip('/').split('/')[-1])
+            return ''
         except Exception as e:
-            logger.error(f"获取进化链失败: {e}")
+            logger.error(f"获取进化链ID失败: {e}")
             return ''
     
     def get_proper_description(self, species_data):
@@ -151,175 +251,61 @@ class PokemonImporter:
             logger.error(f"获取描述失败: {e}")
             return "暂无描述"
     
-    def convert_pokemon_data(self, pokemon_data, species_data):
-        """转换宝可梦数据格式"""
-        try:
-            name = self.get_chinese_name(species_data)
-            name_jp = self.get_japanese_name(species_data)
-            capture_rate = species_data.get('capture_rate', 45)
-            gender_rate = self.get_gender_rate(species_data)
-            evolution_chain = self.get_evolution_chain(species_data)
-            
-            types = []
-            pokemon_types = pokemon_data.get('types', [])
-            if isinstance(pokemon_types, list):
-                for type_info in pokemon_types:
-                    if isinstance(type_info, dict):
-                        type_name = type_info.get('type', {}).get('name', '')
-                        type_id = self.get_type_id(type_name)
-                        if type_id:
-                            types.append({'type_id': type_id})
-            
-            description = self.get_proper_description(species_data)
-            sort_order = pokemon_data.get('order', 0)
-            
-            return {
-                'index_number': f"{pokemon_data.get('id'):04d}",
-                'name': name,
-                'name_en': pokemon_data.get('name'),
-                'name_jp': name_jp,
-                'height': pokemon_data.get('height') / 10.0,
-                'weight': pokemon_data.get('weight') / 10.0,
-                'base_experience': pokemon_data.get('base_experience', 0),
-                'capture_rate': capture_rate,
-                'gender_rate': gender_rate,
-                'evolution_chain_id': evolution_chain,
-                'sort_order': sort_order,
-                'profile': description,
-                'types': types,
-                'created_at': time.strftime('%Y-%m-%d %H:%M:%S'),
-                'updated_at': time.strftime('%Y-%m-%d %H:%M:%S')
-            }
-        except Exception as e:
-            logger.error(f"转换宝可梦数据失败: {e}")
-            return None
-    
-    async def save_batch_to_database(self, batch_data):
-        """批量保存到数据库"""
+    async def batch_insert_pokemon(self, pokemon_info):
+        """批量插入宝可梦数据"""
         try:
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
             
-            pokemon_insert = """
-            INSERT INTO pokemon (index_number, name, name_en, name_jp, height, weight, base_experience, capture_rate, gender_rate, evolution_chain_id, sort_order, profile, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            
-            form_insert = """
-            INSERT INTO pokemon_form (pokemon_id, name, index_number, is_default, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """
-            
-            type_insert = """
-            INSERT INTO pokemon_form_type (pokemon_form_id, type_id, created_at, updated_at)
-            VALUES (%s, %s, %s, %s)
-            """
-            
-            for pokemon_info in batch_data:
-                if not pokemon_info:
-                    continue
-                    
-                cursor.execute(pokemon_insert, (
-                    pokemon_info.get('index_number'),
-                    pokemon_info.get('name'),
-                    pokemon_info.get('name_en'),
-                    pokemon_info.get('name_jp'),
-                    pokemon_info.get('height'),
-                    pokemon_info.get('weight'),
-                    pokemon_info.get('base_experience'),
-                    pokemon_info.get('capture_rate', 45),
-                    pokemon_info.get('gender_rate', 87.5),
-                    pokemon_info.get('evolution_chain_id', ''),
-                    pokemon_info.get('sort_order', 0),
-                    pokemon_info.get('profile'),
-                    pokemon_info.get('created_at'),
-                    pokemon_info.get('updated_at')
-                ))
-                
-                pokemon_id = cursor.lastrowid
-                
-                cursor.execute(form_insert, (
-                    pokemon_id,
-                    pokemon_info.get('name'),
-                    pokemon_info.get('index_number'),
-                    True,
-                    pokemon_info.get('created_at'),
-                    pokemon_info.get('updated_at')
-                ))
-                
-                form_id = cursor.lastrowid
-                
-                types = pokemon_info.get('types', [])
-                if isinstance(types, list):
-                    for type_info in types:
-                        if isinstance(type_info, dict):
-                            cursor.execute(type_insert, (
-                                form_id,
-                                type_info.get('type_id'),
-                                pokemon_info.get('created_at'),
-                                pokemon_info.get('updated_at')
-                            ))
+            # 保存到数据库
+            cursor.execute("""
+                INSERT IGNORE INTO pokemon 
+                (id, index_number, name, name_en, name_jp, height, weight, base_experience, capture_rate, gender_rate, evolution_chain_id, `order`, profile, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (int(pokemon_info['index_number']), pokemon_info['index_number'],
+                  pokemon_info['name'], pokemon_info['name_en'], pokemon_info['name_jp'],
+                  pokemon_info['height'], pokemon_info['weight'], pokemon_info['base_experience'],
+                  pokemon_info['capture_rate'], pokemon_info['gender_rate'],
+                  pokemon_info['evolution_chain_id'], pokemon_info['sort_order'],
+                  pokemon_info['profile'],
+                  time.strftime('%Y-%m-%d %H:%M:%S'),
+                  time.strftime('%Y-%m-%d %H:%M:%S')))
             
             conn.commit()
             cursor.close()
             conn.close()
+            
+        except Exception as e:
+            logger.error(f"批量插入宝可梦数据失败: {e}")
+    
+    async def clear_pokemon(self):
+        """清空宝可梦表"""
+        try:
+            conn = mysql.connector.connect(**self.db_config)
+            cursor = conn.cursor()
+            
+            # 禁用外键检查以避免约束冲突
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+            
+            # 清空宝可梦表
+            cursor.execute("TRUNCATE TABLE pokemon")
+            
+            # 重新启用外键检查
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+            conn.commit()
+            
+            cursor.close()
+            conn.close()
+            
+            logger.info("清空表 pokemon 完成")
             return True
         except Exception as e:
-            logger.error(f"批量保存数据失败: {e}")
+            logger.error(f"清空表 pokemon 失败: {e}")
             return False
-    
-    async def process_pokemon_batch(self, session, pokemon_ids):
-        """处理一批宝可梦数据"""
-        semaphore = asyncio.Semaphore(self.max_concurrent)
-        
-        tasks = []
-        for pokemon_id in pokemon_ids:
-            pokemon_task = self.fetch_pokemon_data(session, pokemon_id, semaphore)
-            species_task = self.fetch_species_data(session, pokemon_id, semaphore)
-            tasks.append(asyncio.gather(pokemon_task, species_task))
-        
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        batch_data = []
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                logger.error(f"处理宝可梦 {pokemon_ids[i]} 时出错: {result}")
-                continue
-                
-            pokemon_data, species_data = result
-            if pokemon_data and species_data:
-                pokemon_info = self.convert_pokemon_data(pokemon_data, species_data)
-                if pokemon_info:
-                    batch_data.append(pokemon_info)
-        
-        return batch_data
-    
-    async def import_all_pokemon(self):
-        """导入所有宝可梦数据"""
-        logger.info("🚀 开始导入所有宝可梦数据")
-        
-        connector, timeout = get_pokeapi_session(self.max_concurrent)
-        
-        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
-            total_pokemon = 1350
-            batches = [list(range(i, min(i + self.batch_size, total_pokemon + 1))) 
-                      for i in range(1, total_pokemon + 1, self.batch_size)]
-            
-            for i, batch in enumerate(batches):
-                logger.info(f"处理批次 {i+1}/{len(batches)}: 宝可梦 {batch[0]}-{batch[-1]}")
-                
-                batch_data = await self.process_pokemon_batch(session, batch)
-                
-                if batch_data:
-                    await self.save_batch_to_database(batch_data)
-                
-                logger.info(f"批次 {i+1} 完成，成功处理 {len(batch_data)} 个宝可梦")
-        
-        logger.info("✅ 所有宝可梦数据导入完成！")
 
 async def main():
     """主函数"""
-    importer = PokemonImporter()
+    importer = EfficientPokemonImporter()
     await importer.import_all_pokemon()
 
 if __name__ == "__main__":

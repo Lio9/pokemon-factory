@@ -22,10 +22,32 @@ class EvolutionChainImporter:
         self.db_config = get_db_config()
         self.pokeyapi_base_url = "https://pokeapi.co/api/v2/"
     
+    async def clear_evolution_chains(self):
+        """清空进化链表"""
+        try:
+            conn = mysql.connector.connect(**self.db_config)
+            cursor = conn.cursor()
+            
+            # 清空进化链表
+            cursor.execute("DELETE FROM evolution_chain")
+            conn.commit()
+            
+            cursor.close()
+            conn.close()
+            
+            logger.info("清空表 evolution_chain 完成")
+            return True
+        except Exception as e:
+            logger.error(f"清空表 evolution_chain 失败: {e}")
+            return False
+    
     async def import_evolution_chains(self):
         """导入进化链数据"""
         logger.info("开始导入进化链数据...")
         try:
+            # 先清空表
+            await self.clear_evolution_chains()
+            
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
             
@@ -101,10 +123,9 @@ class EvolutionChainImporter:
                 # 保存进化链数据
                 cursor.execute("""
                     INSERT IGNORE INTO evolution_chain 
-                    (id, chain_id, species_name, evolves_to, parent_id, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, (chain_id, chain_id, species_name, 
-                      json.dumps(evolves_to), parent_id,
+                    (id, chain_data, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s)
+                """, (chain_id, json.dumps(chain_data), 
                       time.strftime('%Y-%m-%d %H:%M:%S'),
                       time.strftime('%Y-%m-%d %H:%M:%S')))
                 

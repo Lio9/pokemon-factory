@@ -35,9 +35,13 @@ async def run_import(type_name):
             importer = MoveImporter()
             await importer.import_moves()
         elif type_name == 'items':
-            from item_import import ItemImporter
-            importer = ItemImporter()
+            from item_import import EfficientItemImporter
+            importer = EfficientItemImporter()
             await importer.import_items()
+        elif type_name == 'pokemon':
+            from pokemon_import import EfficientPokemonImporter
+            importer = EfficientPokemonImporter()
+            await importer.import_all_pokemon()
         elif type_name == 'egg_groups':
             from egg_group_import import EggGroupImporter
             importer = EggGroupImporter()

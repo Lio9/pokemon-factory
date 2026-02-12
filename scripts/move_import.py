@@ -22,10 +22,38 @@ class MoveImporter:
         self.db_config = get_db_config()
         self.pokeyapi_base_url = "https://pokeapi.co/api/v2/"
     
+    async def clear_moves(self):
+        """清空技能表"""
+        try:
+            conn = mysql.connector.connect(**self.db_config)
+            cursor = conn.cursor()
+            
+            # 禁用外键检查以避免约束冲突
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+            
+            # 清空技能表
+            cursor.execute("TRUNCATE TABLE move")
+            
+            # 重新启用外键检查
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+            conn.commit()
+            
+            cursor.close()
+            conn.close()
+            
+            logger.info("清空表 move 完成")
+            return True
+        except Exception as e:
+            logger.error(f"清空表 move 失败: {e}")
+            return False
+    
     async def import_moves(self):
         """导入技能数据 - 优化版本"""
         logger.info("导入技能数据...")
         try:
+            # 先清空表
+            await self.clear_moves()
+            
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
             
@@ -180,13 +208,16 @@ class MoveImporter:
                             effect = effect_text.get('effect', '').replace('\n', ' ').replace('  ', ' ').strip()
                             break
             
-            # 保存到数据库
+            # 从URL中提取ID作为主键
+            move_id = int(move_url.rstrip('/').split('/')[-1])
+            
+            # 保存到数据库，明确指定主键ID
             cursor.execute("""
                 INSERT IGNORE INTO move 
-                (index_number, generation, name, name_en, name_jp, type_id, power, pp, 
+                (id, index_number, generation, name, name_en, name_jp, type_id, power, pp, 
                  accuracy, priority, damage_class, description, effect, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (name, "1", name_cn, name_en, name_jp, type_id,
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (move_id, name, "1", name_cn, name_en, name_jp, type_id,
                   move_data.get('power'), move_data.get('pp'), 
                   move_data.get('accuracy'), move_data.get('priority'),
                   move_data.get('damage_class', {}).get('name'),

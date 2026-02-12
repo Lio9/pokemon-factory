@@ -19,10 +19,32 @@ class GrowthRateImporter:
     def __init__(self):
         self.db_config = get_db_config()
     
+    async def clear_growth_rates(self):
+        """清空经验类型表"""
+        try:
+            conn = mysql.connector.connect(**self.db_config)
+            cursor = conn.cursor()
+            
+            # 清空经验类型表
+            cursor.execute("DELETE FROM growth_rate")
+            conn.commit()
+            
+            cursor.close()
+            conn.close()
+            
+            logger.info("清空表 growth_rate 完成")
+            return True
+        except Exception as e:
+            logger.error(f"清空表 growth_rate 失败: {e}")
+            return False
+    
     async def import_growth_rates(self):
         """导入经验类型数据"""
         logger.info("导入经验类型数据...")
         try:
+            # 先清空表
+            await self.clear_growth_rates()
+            
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
             
