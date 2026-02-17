@@ -6,10 +6,11 @@ import com.lio9.common.service.AbilityService;
 import com.lio9.common.vo.AbilityQueryVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.lio9.common.response.ResultResponse;
+import com.lio9.common.response.ResponseCode;
 
 /**
  * 特性控制器
@@ -40,10 +41,7 @@ public class AbilityController {
         Page<Ability> page = new Page<>(queryVO.getCurrent(), queryVO.getSize());
         Page<Ability> abilityPage = abilityService.page(page);
         
-        result.put("code", 200);
-        result.put("message", "success");
-        result.put("data", abilityPage);
-        return result;
+        return ResultResponse.buildSuccessResponse(ResponseCode.SUCCESS, "success", abilityPage);
     }
     
     /**
@@ -59,14 +57,10 @@ public class AbilityController {
         Ability ability = abilityService.getById(id);
         
         if (ability != null) {
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", ability);
+            return ResultResponse.buildSuccessResponse(ResponseCode.SUCCESS, "success", ability);
         } else {
-            result.put("code", 404);
-            result.put("message", "特性不存在");
+            return ResultResponse.buildCustomErrorResponse(ResponseCode.NOT_FOUND, "特性不存在", null);
         }
-        return result;
     }
     
 

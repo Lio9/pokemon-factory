@@ -6,9 +6,10 @@ import com.lio9.common.service.MoveService;
 import com.lio9.common.vo.MoveQueryVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.HashMap;
 import java.util.Map;
+import com.lio9.common.response.ResultResponse;
+import com.lio9.common.response.ResponseCode;
 
 /**
  * 招式控制器
@@ -18,10 +19,10 @@ import java.util.Map;
 @RequestMapping("/api/moves")
 @CrossOrigin(origins = "*")
 public class MoveController {
-    
+
     @Autowired
     private MoveService moveService;
-    
+
     /**
      * 分页获取招式列表
      */
@@ -30,13 +31,10 @@ public class MoveController {
         Map<String, Object> result = new HashMap<>();
         Page<Move> page = new Page<>(queryVO.getCurrent(), queryVO.getSize());
         Page<Move> movePage = moveService.page(page);
-        
-        result.put("code", 200);
-        result.put("message", "success");
-        result.put("data", movePage);
-        return result;
+
+        return ResultResponse.buildSuccessResponse(ResponseCode.SUCCESS, "success", movePage);
     }
-    
+
     /**
      * 获取招式详情
      */
@@ -44,18 +42,14 @@ public class MoveController {
     public Map<String, Object> getMoveDetail(@PathVariable Long id) {
         Map<String, Object> result = new HashMap<>();
         Move move = moveService.getById(id);
-        
+
         if (move != null) {
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", move);
+            return ResultResponse.buildSuccessResponse(ResponseCode.SUCCESS, "success", move);
         } else {
-            result.put("code", 404);
-            result.put("message", "招式不存在");
+            return ResultResponse.buildCustomErrorResponse(ResponseCode.NOT_FOUND, "招式不存在", null);
         }
-        return result;
     }
-    
+
     /**
      * 搜索招式
      */
@@ -64,14 +58,11 @@ public class MoveController {
             @RequestParam String keyword,
             @RequestParam(defaultValue = "1") Integer current,
             @RequestParam(defaultValue = "20") Integer size) {
-        
+
         Map<String, Object> result = new HashMap<>();
         Page<Move> page = new Page<>(current, size);
         Page<Move> movePage = moveService.page(page);
-        
-        result.put("code", 200);
-        result.put("message", "success");
-        result.put("data", movePage);
-        return result;
+
+        return ResultResponse.buildSuccessResponse(ResponseCode.SUCCESS, "success", movePage);
     }
 }

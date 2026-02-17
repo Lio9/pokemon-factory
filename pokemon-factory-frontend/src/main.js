@@ -4,7 +4,7 @@ import router from './router'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import axios from 'axios'
-import './index.css' // 引入Tailwind CSS
+import './index.css'
 
 // 配置全局axios
 axios.defaults.baseURL = '/api'
@@ -14,7 +14,7 @@ app.config.globalProperties.$http = axios
 app.use(ElementPlus)
 app.use(router)
 
-// 添加无限滚动指令
+// 无限滚动指令
 app.directive('infinite-scroll', {
   mounted(el, binding) {
     const callback = binding.value

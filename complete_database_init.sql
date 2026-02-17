@@ -106,6 +106,34 @@ CREATE TABLE `growth_rate` (
 -- 核心数据表
 -- ==========================================
 
+-- 宝可梦物种表
+DROP TABLE IF EXISTS `pokemon_species`;
+CREATE TABLE `pokemon_species` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '宝可梦物种ID',
+    `name` VARCHAR(100) NOT NULL COMMENT '宝可梦物种名称(中文)',
+    `name_en` VARCHAR(100) NOT NULL UNIQUE COMMENT '宝可梦物种名称(英文)',
+    `name_jp` VARCHAR(100) COMMENT '宝可梦物种名称(日文)',
+    `color_id` VARCHAR(50) COMMENT '颜色ID',
+    `shape_id` VARCHAR(50) COMMENT '形状ID',
+    `habitat_id` VARCHAR(50) COMMENT '栖息地ID',
+    `generation_id` INT DEFAULT 1 COMMENT '世代ID',
+    `evolves_from_species_id` BIGINT COMMENT '进化自物种ID',
+    `evolution_chain_id` BIGINT COMMENT '进化链ID',
+    `can_breed` TINYINT(1) DEFAULT 0 COMMENT '是否可以繁殖',
+    `hatch_counter` INT DEFAULT 0 COMMENT '孵化计数',
+    `has_gender_differences` TINYINT(1) DEFAULT 0 COMMENT '是否有性别差异',
+    `forms_switchable` TINYINT(1) DEFAULT 0 COMMENT '形态是否可切换',
+    `is_legendary` TINYINT(1) DEFAULT 0 COMMENT '是否为传说宝可梦',
+    `is_mythical` TINYINT(1) DEFAULT 0 COMMENT '是否为神话宝可梦',
+    `is_baby` TINYINT(1) DEFAULT 0 COMMENT '是否为婴儿宝可梦',
+    `order` INT COMMENT '排序',
+    `conquest_order` INT COMMENT '征服顺序',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`evolves_from_species_id`) REFERENCES `pokemon_species`(`id`),
+    FOREIGN KEY (`evolution_chain_id`) REFERENCES `evolution_chain`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='宝可梦物种表';
+
 -- 宝可梦主表
 DROP TABLE IF EXISTS `pokemon`;
 CREATE TABLE `pokemon` (
@@ -127,8 +155,10 @@ CREATE TABLE `pokemon` (
     `is_legendary` TINYINT(1) DEFAULT 0 COMMENT '是否为传说宝可梦',
     `is_mythical` TINYINT(1) DEFAULT 0 COMMENT '是否为神话宝可梦',
     `profile` TEXT COMMENT '宝可梦描述',
+    `species_id` BIGINT COMMENT '物种ID',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`species_id`) REFERENCES `pokemon_species`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='宝可梦主表';
 
 -- 宝可梦形态表

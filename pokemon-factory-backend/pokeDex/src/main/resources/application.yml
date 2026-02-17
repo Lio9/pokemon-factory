@@ -41,13 +41,32 @@ mybatis-plus:
 import:
   timeout:
     minutes: 120  # 导入任务超时时间（分钟）
+  retry:
+    max-attempts: 3
+    initial-delay: 1000
+  network:
+    check-interval: 30000
+    connect-timeout: 15000
+    read-timeout: 60000
+
+# HTTP 客户端配置
+http:
+  client:
+    max-connections: 100
+    connection-pool-size: 50
+    keep-alive: true
+    follow-redirects: true
 
 logging:
   level:
     com.lio9.common: debug
-    com.lio9.pokedex: info
+    com.lio9.pokedex: debug
     org.springframework.web: info
     org.mybatis: info
   config: classpath:log4j2.xml
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    total-size-capacity: 1GB
+    max-history: 30
+    clean-history-on-start: true

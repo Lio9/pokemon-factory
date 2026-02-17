@@ -1,8 +1,5 @@
 <template>
-  <div
-    id="app"
-    class="min-h-screen bg-slate-50 text-slate-800 font-sans"
-  >
+  <div id="app" class="min-h-screen bg-slate-50 text-slate-800 font-sans">
     <el-container>
       <!-- Header -->
       <el-header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 !p-0">

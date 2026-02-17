@@ -8,10 +8,10 @@ import com.lio9.common.service.PokemonService;
 import com.lio9.common.vo.PokemonQueryVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.lio9.common.response.ResponseCode;
 
 /**
  * 宝可梦控制器
@@ -84,7 +84,7 @@ public class PokemonController {
             result.put("message", "success");
             result.put("data", moves);
         } catch (Exception e) {
-            result.put("code", 500);
+            result.put("code", ResponseCode.INTERNAL_SERVER_ERROR);
             result.put("message", "获取技能失败: " + e.getMessage());
         }
         

@@ -30,18 +30,10 @@ export function usePokemonData() {
     
     try {
       const result = await pokemonApi.getDetail(id)
+      if (result.code !== 200) throw new Error(result.message || '获取详情失败')
       
-      if (result.code === 200) {
-        pokemon.value = result.data
-        // 获取关联数据
-        await Promise.all([
-          fetchMoves(id),
-          fetchAbilities(id),
-          fetchEvolutions(id)
-        ])
-      } else {
-        throw new Error(result.message || '获取详情失败')
-      }
+      pokemon.value = result.data
+      await Promise.all([fetchMoves(id), fetchAbilities(id), fetchEvolutions(id)])
     } catch (err) {
       error.value = err.message
       console.error('获取宝可梦详情失败:', err)

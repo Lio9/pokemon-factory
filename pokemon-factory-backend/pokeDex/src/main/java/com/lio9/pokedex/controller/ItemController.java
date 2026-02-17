@@ -2,6 +2,8 @@ package com.lio9.pokedex.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lio9.common.model.Item;
+import com.lio9.common.response.ResultResponse;
+import com.lio9.common.response.ResponseCode;
 import com.lio9.common.service.ItemService;
 import com.lio9.common.vo.ItemQueryVO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,9 +88,7 @@ public class ItemController {
         
         try {
             if (items == null || items.isEmpty()) {
-                result.put("code", 400);
-                result.put("message", "导入数据不能为空");
-                return result;
+                return ResultResponse.buildCustomErrorResponse(ResponseCode.BAD_REQUEST, "导入数据不能为空", null);
             }
             
             int successCount = 0;
@@ -114,8 +114,7 @@ public class ItemController {
                 "fail", failCount
             ));
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "导入失败: " + e.getMessage());
+            return ResultResponse.buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, "导入失败: " + e.getMessage(), null);
         }
         
         return result;
@@ -136,53 +135,12 @@ public class ItemController {
             }
             
             if (itemService.save(item)) {
-                result.put("code", 200);
-                result.put("message", "导入成功");
-                result.put("data", item);
+                return ResultResponse.buildSuccessResponse(ResponseCode.OPERATION_SUCCESS, "导入成功", item);
             } else {
-                result.put("code", 500);
-                result.put("message", "导入失败");
+                return ResultResponse.buildCustomErrorResponse(ResponseCode.OPERATION_FAILED, "导入失败", null);
             }
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "导入失败: " + e.getMessage());
+            return ResultResponse.buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, "导入失败: " + e.getMessage(), null);
         }
-        
-        return result;
-    }
-    
-    /**
-     * 从文件导入物品数据
-     */
-    @PostMapping("/import-from-file")
-    public Map<String, Object> importItemsFromFile(@RequestParam("file") MultipartFile file) {
-        Map<String, Object> result = new HashMap<>();
-        
-        try {
-            if (file.isEmpty()) {
-                result.put("code", 400);
-                result.put("message", "文件不能为空");
-                return result;
-            }
-            
-            String fileName = file.getOriginalFilename();
-            if (fileName == null || (!fileName.endsWith(".json") && !fileName.endsWith(".csv"))) {
-                result.put("code", 400);
-                result.put("message", "仅支持JSON或CSV格式文件");
-                return result;
-            }
-            
-            result.put("code", 200);
-            result.put("message", "文件接收成功，待处理");
-            result.put("data", Map.of(
-                "fileName", fileName,
-                "size", file.getSize()
-            ));
-        } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "文件处理失败: " + e.getMessage());
-        }
-        
-        return result;
     }
 }

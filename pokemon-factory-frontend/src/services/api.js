@@ -1,23 +1,15 @@
 // API服务配置
-// 创建人: Lio9
-
 const API_BASE = 'http://localhost:8080/api'
 
 // 统一的请求处理
 async function request(url, options = {}) {
   try {
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      },
+      headers: { 'Content-Type': 'application/json', ...options.headers },
       ...options
     })
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
     return await response.json()
   } catch (error) {
     console.error('API请求失败:', error)
