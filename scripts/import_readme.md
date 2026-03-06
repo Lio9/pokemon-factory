@@ -1,369 +1,178 @@
-# Pokemon Factory 导入脚本使用说明
+# Pokemon Factory 数据导入使用教程
 
-## 📋 详细步骤说明
+本教程介绍如何将 PokeAPI 的数据导入到 Pokemon Factory 数据库中。
 
-### 🎯 完整导入流程步骤
-
-#### **步骤1: 环境准备**
-```bash
-# 1. 确保MySQL数据库服务正常运行
-# 2. 确保数据库连接配置正确
-# 3. 确保Python环境正常
-python --version
-```
-
-#### **步骤2: 下载本地数据**
-```bash
-cd scripts
-python import.py download
-```
-- 下载所有PokeAPI数据到本地
-- 生成JSON文件存储在 `data/local/` 目录
-- 下载完成后可以重复使用，无需再次下载
-
-#### **步骤3: 导入数据到数据库**
-```bash
-cd scripts
-python import.py all
-```
-- 从本地JSON文件导入所有数据
-- 自动检测本地数据是否存在
-- 优先使用本地数据，减少网络请求
-
-#### **步骤4: 验证数据完整性**
-```bash
-cd scripts
-python import.py validate
-```
-- 验证所有导入的数据
-- 生成详细的验证报告
-- 确保数据质量符合要求
-
-#### **步骤5: 检查导入结果**
-```bash
-cd scripts
-# 查看数据库中的数据量
-python import.py validate
-```
-- 查看验证报告
-- 确认所有数据导入成功
-- 检查是否有任何错误
-
-### 🔄 更新数据流程步骤
-
-#### **步骤1: 清理旧数据**
-```bash
-cd scripts
-python import.py cleanup
-```
-- 清理本地下载的数据
-- 清理数据库中的旧数据
-- 准备重新导入
-
-#### **步骤2: 下载新数据**
-```bash
-cd scripts
-python import.py download
-```
-- 下载最新的PokeAPI数据
-- 更新本地JSON文件
-
-#### **步骤3: 导入新数据**
-```bash
-cd scripts
-python import.py all
-```
-- 导入最新的数据到数据库
-- 验证导入结果
-
-#### **步骤4: 验证新数据**
-```bash
-cd scripts
-python import.py validate
-```
-- 验证新导入的数据
-- 确保数据完整性
-
-### 🧪 测试导入流程步骤
-
-#### **步骤1: 测试宝可梦导入**
-```bash
-cd scripts
-python import.py pokemon
-```
-- 仅导入宝可梦数据进行测试
-- 验证导入功能是否正常
-
-#### **步骤2: 验证宝可梦数据**
-```bash
-cd scripts
-python import.py validate
-```
-- 验证宝可梦数据的完整性
-- 检查是否有数据错误
-
-#### **步骤3: 测试其他类型导入**
-```bash
-cd scripts
-# 测试特性导入
-python import.py ability
-
-# 测试技能导入
-python import.py move
-
-# 测试形态导入
-python import.py form
-```
-
-### 🛠️ 故障排除步骤
-
-#### **步骤1: 检查数据库连接**
-```bash
-cd scripts
-# 验证数据库连接
-python data_validator.py
-```
-
-#### **步骤2: 检查本地数据**
-```bash
-cd scripts
-# 检查本地数据是否存在
-dir data\local\
-```
-
-#### **步骤3: 重新下载数据**
-```bash
-cd scripts
-# 清理并重新下载
-python import.py cleanup
-python import.py download
-```
-
-#### **步骤4: 强制网络导入**
-```bash
-cd scripts
-# 强制从网络下载并导入
-python import.py pokemon --no-local
-```
-
-#### **步骤5: 查看详细日志**
-```bash
-cd scripts
-# 查看导入日志
-type logs\import_manager.log
-```
-
-## 📁 脚本文件夹结构
+## 目录结构
 
 ```
 scripts/
-├── import_manager.py    # 统一导入管理器（核心）
-├── import.py           # 简化的Python启动脚本
-├── data_validator.py   # 数据验证器
-├── download_local_data.py # 本地数据下载脚本
-├── pokemon_import.py   # 宝可梦导入脚本
-├── ability_import.py   # 特性导入脚本
-├── move_import.py      # 技能导入脚本
-├── form_import.py      # 形态导入脚本
-├── stats_import.py     # 种族值导入脚本
-├── egg_group_import.py # 蛋群关联导入脚本
-├── utils.py            # 工具函数
-└── import_readme.md    # 脚本使用说明
+├── import_from_csv.py      # 从CSV文件导入数据（推荐）
+├── import_from_csv.sql     # MySQL LOAD DATA导入脚本
+├── complete_import.py      # 从网络API导入数据
+├── import_manager.py       # 导入管理器
+├── pokemon_import.py       # 宝可梦导入
+├── ability_import.py       # 特性导入
+├── move_import.py          # 技能导入
+├── type_import.py          # 属性导入
+├── stats_import.py         # 种族值导入
+├── egg_group_import.py     # 蛋群导入
+├── form_import.py          # 形态导入
+└── utils.py                # 工具函数
 ```
 
-## 🚀 使用方法
+## 数据源
 
-### 基本命令格式
+本项目使用 PokeAPI 的官方数据，CSV 文件位于：
+```
+pokeapi/data/v2/csv/
+```
+
+## 快速开始
+
+### 方法一：从 CSV 文件导入（推荐）
+
+这是最快的方式，直接从本地 CSV 文件导入数据：
+
 ```bash
-cd scripts
-python import.py [导入类型]
+python scripts/import_from_csv.py
 ```
 
-### 可用的导入类型
+**导入顺序：**
+1. 属性 (types) → 2. 特性 (abilities) → 3. 技能 (moves) → 4. 蛋群 (egg_groups) → 5. 进化链 (evolution_chains) → 6. 物种 (pokemon_species) → 7. 宝可梦 (pokemon) → 8. 形态 (pokemon_forms) → 9. 属性关联 → 10. 特性关联 → 11. 种族值 → 12. 蛋群关联
 
-| 类型 | 说明 | 命令示例 |
-|------|------|----------|
-| `all` | 导入所有数据 | `python import.py all` |
-| `pokemon` | 导入宝可梦数据 | `python import.py pokemon` |
-| `ability` | 导入特性数据 | `python import.py ability` |
-| `move` | 导入技能数据 | `python import.py move` |
-| `form` | 导入形态数据 | `python import.py form` |
-| `stats` | 导入种族值数据 | `python import.py stats` |
-| `egg_group` | 导入蛋群关联数据 | `python import.py egg_group` |
-| `download` | 仅下载本地数据 | `python import.py download` |
-| `validate` | 仅验证数据 | `python import.py validate` |
-| `cleanup` | 清理本地数据 | `python import.py cleanup` |
+**预计导入数据量：**
 
-## 🎯 常见使用场景
+| 数据表 | 记录数 |
+|--------|--------|
+| type (属性) | 22 |
+| ability (特性) | 310 |
+| move (技能) | 939 |
+| egg_group (蛋群) | 15 |
+| evolution_chain (进化链) | 545 |
+| pokemon_species (物种) | 1025 |
+| pokemon (宝可梦) | 1025 |
+| pokemon_form (形态) | 1025 |
+| pokemon_form_type (属性关联) | ~2000 |
+| pokemon_form_ability (特性关联) | ~2800 |
+| pokemon_stats (种族值) | 1025 |
+| pokemon_egg_group (蛋群关联) | ~1600 |
 
-### 场景1: 首次导入所有数据
+### 方法二：从网络 API 导入
+
+如果需要最新数据或 CSV 文件不完整，可以从 PokeAPI 网络接口导入：
+
 ```bash
-cd scripts
-# 1. 下载本地数据
-python import.py download
-
-# 2. 导入所有数据
-python import.py all
-
-# 3. 验证数据
-python import.py validate
+python scripts/complete_import.py
 ```
 
-### 场景2: 更新数据
+或使用导入管理器：
+
 ```bash
-cd scripts
-# 1. 清理旧的本地数据
-python import.py cleanup
+# 导入全部数据
+python scripts/import_manager.py all
 
-# 2. 下载新的本地数据
-python import.py download
-
-# 3. 导入更新的数据
-python import.py all
+# 导入单个类型数据
+python scripts/import_manager.py type       # 仅导入属性
+python scripts/import_manager.py ability    # 仅导入特性
+python scripts/import_manager.py move       # 仅导入技能
+python scripts/import_manager.py pokemon    # 仅导入宝可梦
 ```
 
-### 场景3: 调试测试
+## 数据库配置
+
+数据库配置在 `utils.py` 文件中：
+
+```python
+DB_CONFIG = {
+    "host": "10.144.55.168",
+    "port": 3306,
+    "user": "root",
+    "password": "your_password",
+    "database": "pokemon_factory",
+    "charset": "utf8mb4",
+}
+```
+
+## 数据表结构
+
+### 核心表
+
+1. **type (属性表)**
+   - id, name, name_en, name_jp, color
+
+2. **ability (特性表)**
+   - id, index_number, name, name_en, name_jp, description, effect
+
+3. **move (技能表)**
+   - id, index_number, name, name_en, type_id, power, pp, accuracy, damage_class
+
+4. **pokemon (宝可梦表)**
+   - id, index_number, name, name_en, height, weight, base_experience, species_id
+
+5. **pokemon_species (物种表)**
+   - id, name, evolution_chain_id, capture_rate, is_legendary, is_mythical
+
+### 关联表
+
+1. **pokemon_form_type** - 形态与属性关联
+2. **pokemon_form_ability** - 形态与特性关联
+3. **pokemon_stats** - 种族值数据
+4. **pokemon_egg_group** - 宝可梦与蛋群关联
+
+## 常见问题
+
+### Q: 导入失败，提示数据库连接错误？
+
+检查数据库配置是否正确，确保数据库服务已启动：
 ```bash
-cd scripts
-# 1. 仅导入宝可梦数据进行测试
-python import.py pokemon
-
-# 2. 验证导入结果
-python import.py validate
+# 测试数据库连接
+mysql -h 10.144.55.168 -u root -p pokemon_factory
 ```
 
-### 场景4: 仅下载不导入
+### Q: CSV 文件不存在？
+
+CSV 文件位于 `pokeapi/data/v2/csv/` 目录。如果目录为空，请确保已正确克隆 pokeapi 子模块：
 ```bash
-cd scripts
-# 下载本地数据但不导入
-python import.py download
+git submodule update --init --recursive
 ```
 
-### 场景5: 仅验证不导入
-```bash
-cd scripts
-# 仅验证现有数据
-python import.py validate
+### Q: 如何清空数据重新导入？
+
+```sql
+-- 在 MySQL 中执行
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE pokemon_egg_group;
+TRUNCATE TABLE pokemon_stats;
+TRUNCATE TABLE pokemon_form_ability;
+TRUNCATE TABLE pokemon_form_type;
+TRUNCATE TABLE pokemon_form;
+TRUNCATE TABLE pokemon;
+TRUNCATE TABLE pokemon_species;
+TRUNCATE TABLE evolution_chain;
+TRUNCATE TABLE egg_group;
+TRUNCATE TABLE move;
+TRUNCATE TABLE ability;
+TRUNCATE TABLE type;
+SET FOREIGN_KEY_CHECKS = 1;
 ```
 
-## ⚙️ 参数选项
+### Q: 中文名称显示不正确？
 
-### 本地数据选项
-```bash
-# 使用本地数据（默认）
-python import.py pokemon
+CSV 文件中包含多语言名称数据：
+- 语言 ID 12 = 简体中文
+- 语言 ID 4 = 繁体中文
+- 语言 ID 9 = 英文
+- 语言 ID 1 = 日文
 
-# 不使用本地数据（强制从网络下载）
-python import.py pokemon --no-local
-```
+脚本会优先使用简体中文，其次是繁体中文、英文。
 
-### 列出可用类型
-```bash
-# 查看所有可用的导入类型
-python import.py --list-types
-```
+## API 数据结构参考
 
-## 📊 数据验证
+PokeAPI 的数据结构请参考：
+- 模型定义：`pokeapi/pokemon_v2/models.py`
+- CSV 数据：`pokeapi/data/v2/csv/`
+- 官方文档：https://pokeapi.co/docs/v2
 
-### 自动验证
-每个导入脚本在导入完成后会自动验证数据，确保数据质量。
+## 更新日志
 
-### 手动验证
-```bash
-cd scripts
-# 验证所有数据
-python import.py validate
-```
-
-### 验证报告
-验证报告会生成在 `logs/` 目录下：
-- `validation_report_YYYYMMDD_HHMMSS.json` - 详细验证报告
-- `validation_summary.json` - 验证总结
-
-## 🔧 高级功能
-
-### 下载本地数据
-```bash
-cd scripts
-# 下载所有PokeAPI数据到本地
-python import.py download
-```
-
-### 清理本地数据
-```bash
-cd scripts
-# 清理本地下载的数据
-python import.py cleanup
-```
-
-### 直接使用各类型导入脚本
-```bash
-cd scripts
-# 直接运行各类型导入脚本（不通过管理器）
-python pokemon_import.py
-python ability_import.py
-python move_import.py
-```
-
-## 🛠️ 故障排除
-
-### 常见问题
-
-#### 1. 本地数据不存在
-```bash
-cd scripts
-python import.py download
-```
-
-#### 2. 网络连接失败
-```bash
-cd scripts
-# 强制从网络下载（不使用本地数据）
-python import.py pokemon --no-local
-```
-
-#### 3. 导入失败
-```bash
-cd scripts
-# 验证数据
-python import.py validate
-```
-
-### 调试技巧
-```bash
-cd scripts
-# 查看详细日志
-tail -f logs/import_manager.log
-
-# 手动验证数据
-python import.py validate
-
-# 清理并重新开始
-python import.py cleanup
-python import.py download
-python import.py all
-```
-
-## 📈 性能优化
-
-### 并发导入
-- 支持多线程并发导入
-- 自动调整并发数量
-- 优化网络请求性能
-
-### 本地数据复用
-- 避免重复网络请求
-- 加快导入速度
-- 减少网络负载
-
-### 增量更新
-- 支持部分数据导入
-- 快速更新新数据
-- 保留已有数据
-
-## 🎉 总结
-
-所有导入功能都通过统一的管理器进行，提供简单易用的命令行接口。支持本地数据缓存、自动验证、智能降级等高级功能，确保数据导入的可靠性。
-
----
-**注意**: 所有导入脚本都需要先连接到MySQL数据库，确保数据库服务正常运行。
+- 2026-03-06: 创建 CSV 导入脚本，支持完整的 PokeAPI 数据导入

@@ -8,44 +8,40 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 属性类型实体类
+ * 属性表
  */
 @Data
 @TableName("type")
 public class Type {
-    /**
-     * 属性ID
-     */
     @TableId(type = IdType.AUTO)
-    private Long id;
+    private Integer id;
     
     /**
-     * 属性名称
+     * 属性名称(中文)
      */
     private String name;
     
     /**
-     * 属性英文名称
+     * 属性名称(英文)
      */
     private String nameEn;
     
     /**
-     * 属性日文名称
+     * 属性名称(日文)
      */
     private String nameJp;
     
     /**
-     * 属性颜色代码
+     * 属性颜色(十六进制)
      */
     private String color;
     
     /**
-     * 创建时间
+     * 属性图标URL
      */
+    private String iconUrl;
+    
     private LocalDateTime createdAt;
     
-    /**
-     * 更新时间
-     */
     private LocalDateTime updatedAt;
 }

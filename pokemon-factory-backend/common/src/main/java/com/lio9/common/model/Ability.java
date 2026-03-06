@@ -8,27 +8,13 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 宝可梦特性实体类
+ * 特性表
  */
 @Data
 @TableName("ability")
 public class Ability {
-    /**
-     * 特性ID
-     */
     @TableId(type = IdType.AUTO)
-    private Long id;
-    
-    /**
-     * 特性编号
-     */
-    private String indexNumber;
-    
-    /**
-     * 所属世代
-     */
-    // @TableField(exist = false) // 临时注释，待数据库更新后再启用
-    private String generation;
+    private Integer id;
     
     /**
      * 特性名称(中文)
@@ -36,42 +22,41 @@ public class Ability {
     private String name;
     
     /**
-     * 特性名称(日文)
-     */
-    private String nameJp;
-    
-    /**
      * 特性名称(英文)
      */
     private String nameEn;
     
     /**
-     * 特性描述
+     * 特性名称(日文)
+     */
+    private String nameJp;
+    
+    /**
+     * 特性描述(中文)
      */
     private String description;
     
     /**
-     * 特性效果
+     * 特性描述(英文)
      */
-    private String effect;
+    private String descriptionEn;
     
     /**
-     * 普通特性出现次数
+     * 详细效果说明
      */
-    private Integer commonCount;
+    private String effectDetail;
     
     /**
-     * 隐藏特性出现次数
+     * 首次出现世代
      */
-    private Integer hiddenCount;
+    private Integer generationId;
     
     /**
-     * 创建时间
+     * 是否为主系列特性
      */
+    private Boolean isMainSeries;
+    
     private LocalDateTime createdAt;
     
-    /**
-     * 更新时间
-     */
     private LocalDateTime updatedAt;
 }

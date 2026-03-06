@@ -1,30 +1,32 @@
 package com.lio9.common.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.lio9.common.model.Pokemon;
 import com.lio9.common.model.Move;
 import com.lio9.common.vo.EvolutionVO;
 import com.lio9.common.vo.PokemonDetailVO;
-import com.lio9.common.vo.PokemonQueryVO;
 
 import java.util.List;
 
 /**
  * 宝可梦服务接口
- * 创建人: Lio9
  */
-public interface PokemonService extends IService<Pokemon> {
+public interface PokemonService {
     
     /**
-     * 分页查询宝可梦列表
+     * 统计宝可梦数量
      */
-    Page<Pokemon> getPokemonPage(Page<Pokemon> page, PokemonQueryVO vo);
+    long count();
+    
+    /**
+     * 删除所有宝可梦数据
+     */
+    void removeAll();
     
     /**
      * 获取宝可梦详情
      */
-    PokemonDetailVO getPokemonDetail(Long id);
+    PokemonDetailVO getDetailById(Long id);
     
     /**
      * 搜索宝可梦
