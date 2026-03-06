@@ -1,8 +1,9 @@
 <template>
   <div class="pokemon-list">
     <!-- 搜索和筛选区域 -->
-    <div class="search-section mb-6 bg-gray-50 rounded-xl p-4">
+    <div class="search-section mb-6 bg-white rounded-xl shadow-sm p-4">
       <div class="flex flex-col md:flex-row gap-4">
+        <!-- 搜索框 -->
         <div class="flex-1">
           <el-input
             v-model="searchKeyword"
@@ -10,6 +11,7 @@
             prefix-icon="Search"
             clearable
             @keyup.enter="handleSearch"
+            @clear="handleSearch"
           >
             <template #append>
               <el-button @click="handleSearch">
@@ -18,23 +20,45 @@
             </template>
           </el-input>
         </div>
-        <div class="w-48">
+        
+        <!-- 属性筛选 -->
+        <div class="w-40">
           <el-select
-            v-model="sortBy"
-            placeholder="排序方式"
-            @change="handleSortChange"
+            v-model="selectedType"
+            placeholder="属性筛选"
+            clearable
+            @change="handleFilter"
           >
             <el-option
-              label="按ID升序"
-              value="id_asc"
-            />
+              v-for="type in types"
+              :key="type.id"
+              :label="type.name"
+              :value="type.id"
+            >
+              <div class="flex items-center gap-2">
+                <span 
+                  class="w-3 h-3 rounded-full"
+                  :style="{ backgroundColor: type.color }"
+                />
+                {{ type.name }}
+              </div>
+            </el-option>
+          </el-select>
+        </div>
+        
+        <!-- 世代筛选 -->
+        <div class="w-32">
+          <el-select
+            v-model="selectedGeneration"
+            placeholder="世代"
+            clearable
+            @change="handleFilter"
+          >
             <el-option
-              label="按ID降序"
-              value="id_desc"
-            />
-            <el-option
-              label="按名称"
-              value="name"
+              v-for="gen in generations"
+              :key="gen.id"
+              :label="gen.name"
+              :value="gen.id"
             />
           </el-select>
         </div>
@@ -43,90 +67,81 @@
 
     <!-- 统计信息 -->
     <div class="stats-section mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-blue-600">
-            {{ totalPokemons }}
-          </div>
-          <div class="text-gray-600 text-sm">
-            总宝可梦数
-          </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
+          <div class="text-3xl font-bold">{{ total }}</div>
+          <div class="text-blue-100 text-sm">总数</div>
         </div>
-        <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-green-600">
-            {{ totalPages }}
-          </div>
-          <div class="text-gray-600 text-sm">
-            总页数
-          </div>
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
+          <div class="text-3xl font-bold">{{ totalPages }}</div>
+          <div class="text-green-100 text-sm">页数</div>
         </div>
-        <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-purple-600">
-            {{ currentPage }}
-          </div>
-          <div class="text-gray-600 text-sm">
-            当前页
-          </div>
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
+          <div class="text-3xl font-bold">{{ currentPage }}</div>
+          <div class="text-purple-100 text-sm">当前页</div>
         </div>
-        <div class="bg-white rounded-lg border border-gray-200 p-4 text-center">
-          <div class="text-2xl font-bold text-orange-600">
-            {{ pageSize }}
-          </div>
-          <div class="text-gray-600 text-sm">
-            每页显示
-          </div>
+        <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white">
+          <div class="text-3xl font-bold">{{ pageSize }}</div>
+          <div class="text-orange-100 text-sm">每页</div>
         </div>
       </div>
     </div>
 
-    <!-- 宝可梦列表 -->
-    <div
-      v-if="loading"
-      class="text-center py-12"
-    >
-      <el-skeleton
-        :rows="5"
-        animated
-      />
+    <!-- 加载中 -->
+    <div v-if="loading" class="text-center py-12">
+      <el-skeleton :rows="5" animated />
     </div>
     
+    <!-- 宝可梦列表 -->
     <div v-else-if="pokemons.length > 0">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         <router-link
           v-for="pokemon in pokemons"
           :key="pokemon.id"
           :to="`/pokemon/${pokemon.id}`"
-          class="pokemon-card bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group"
+          class="pokemon-card bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden group"
         >
-          <div class="p-4">
-            <div class="flex items-start gap-3">
-              <div class="flex-shrink-0">
-                <div class="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center text-lg font-bold text-blue-600 border-2 border-dashed border-blue-200 group-hover:scale-110 transition-transform overflow-hidden">
-                  <img 
-                    :src="`/images/home/${pokemon.indexNumber}.png`" 
-                    :alt="pokemon.name"
-                    class="w-full h-full object-cover"
-                    @error="handleImageError"
-                  >
-                </div>
-              </div>
-              <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                  {{ pokemon.name }}
-                </h3>
-                <p class="text-gray-500 text-sm">
-                  {{ pokemon.indexNumber }}
-                </p>
-                <p class="text-gray-600 text-xs mt-1 line-clamp-2">
-                  {{ pokemon.profile || '暂无描述' }}
-                </p>
-              </div>
+          <!-- 图片区域 -->
+          <div class="relative bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+            <div class="aspect-square flex items-center justify-center">
+              <img 
+                :src="getPokemonImage(pokemon)"
+                :alt="pokemon.name"
+                class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
+                @error="handleImageError"
+                loading="lazy"
+              >
+            </div>
+            <!-- 图鉴编号 -->
+            <div class="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
+              #{{ String(pokemon.id).padStart(4, '0') }}
+            </div>
+            <!-- 特殊标记 -->
+            <div v-if="pokemon.isLegendary" class="absolute top-2 right-2">
+              <span class="text-yellow-500 text-lg">★</span>
+            </div>
+            <div v-else-if="pokemon.isMythical" class="absolute top-2 right-2">
+              <span class="text-purple-500 text-lg">◆</span>
             </div>
           </div>
-          <div class="px-4 pb-4">
-            <div class="flex items-center justify-between text-xs text-gray-500">
-              <span>点击查看详情</span>
-              <ChevronRight class="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          
+          <!-- 信息区域 -->
+          <div class="p-3">
+            <h3 class="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+              {{ pokemon.name }}
+            </h3>
+            <p class="text-gray-500 text-xs truncate">{{ pokemon.genus }}</p>
+            
+            <!-- 属性标签 -->
+            <div class="flex flex-wrap gap-1 mt-2">
+              <span 
+                v-for="type in pokemon.types"
+                :key="type.id"
+                class="px-2 py-0.5 rounded-full text-xs text-white"
+                :style="{ backgroundColor: type.color }"
+              >
+                {{ type.name }}
+              </span>
             </div>
           </div>
         </router-link>
@@ -137,93 +152,94 @@
         <el-pagination
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
-          :page-sizes="[12, 24, 48, 96]"
-          :total="totalPokemons"
+          :page-sizes="[24, 48, 96]"
+          :total="total"
           layout="total, sizes, prev, pager, next, jumper"
           background
           @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+          @current-change="handlePageChange"
         />
       </div>
     </div>
 
-    <div
-      v-else
-      class="text-center py-12"
-    >
-      <div class="text-gray-400 mb-4">
-        <svg
-          class="w-16 h-16 mx-auto"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.334M15 10a3 3 0 11-6 0 3 3 0 016 0z"
-          />
+    <!-- 空状态 -->
+    <div v-else class="text-center py-12">
+      <div class="text-gray-300 mb-4">
+        <svg class="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.334M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       </div>
-      <p class="text-gray-500 text-lg">
-        没有找到相关宝可梦
-      </p>
-      <p class="text-gray-400 text-sm mt-2">
-        试试其他搜索条件
-      </p>
+      <p class="text-gray-500 text-lg">没有找到宝可梦</p>
+      <p class="text-gray-400 text-sm mt-2">试试其他搜索条件</p>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, ChevronRight } from 'lucide-vue-next'
-import { pokemonApi } from '../services/api.js'
+import { Search } from 'lucide-vue-next'
+import { pokemonApi, typeApi, sprites } from '../services/api.js'
 
 export default {
   name: 'PokemonList',
-  components: {
-    Search,
-    ChevronRight
-  },
+  components: { Search },
   setup() {
     // 响应式数据
     const loading = ref(false)
     const pokemons = ref([])
-    const sortBy = ref('id_asc')
+    const types = ref([])
     const searchKeyword = ref('')
+    const selectedType = ref(null)
+    const selectedGeneration = ref(null)
     
     // 分页数据
     const currentPage = ref(1)
-    const pageSize = ref(12)
-    const totalPokemons = ref(0)
-    const totalPages = ref(0)
+    const pageSize = ref(24)
+    const total = ref(0)
+    
+    // 世代列表
+    const generations = [
+      { id: 1, name: '第一世代' },
+      { id: 2, name: '第二世代' },
+      { id: 3, name: '第三世代' },
+      { id: 4, name: '第四世代' },
+      { id: 5, name: '第五世代' },
+      { id: 6, name: '第六世代' },
+      { id: 7, name: '第七世代' },
+      { id: 8, name: '第八世代' },
+      { id: 9, name: '第九世代' }
+    ]
+    
+    const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
+
+    // 获取属性列表
+    const fetchTypes = async () => {
+      try {
+        const result = await typeApi.getAll()
+        if (result.code === 200) {
+          types.value = result.data
+        }
+      } catch (error) {
+        console.error('获取属性列表失败:', error)
+      }
+    }
 
     // 获取宝可梦列表
     const fetchPokemons = async () => {
       loading.value = true
       try {
-        let result
-        
-        // 如果有搜索关键词，使用搜索接口
-        if (searchKeyword.value) {
-          result = await pokemonApi.search(searchKeyword.value, currentPage.value, pageSize.value)
-        } else {
-          // 否则使用列表接口
-          const params = {
-            current: currentPage.value,
-            size: pageSize.value,
-            name: undefined
-          }
-          result = await pokemonApi.getList(params)
-        }
+        const result = await pokemonApi.getList({
+          current: currentPage.value,
+          size: pageSize.value,
+          typeId: selectedType.value,
+          generationId: selectedGeneration.value,
+          keyword: searchKeyword.value || undefined
+        })
         
         if (result.code === 200) {
-          pokemons.value = result.data.records || result.data
-          totalPokemons.value = result.data.total || pokemons.value.length
-          totalPages.value = Math.ceil(totalPokemons.value / pageSize.value)
+          pokemons.value = result.data.records || []
+          total.value = result.data.total || 0
         } else {
           ElMessage.error(result.message || '获取数据失败')
         }
@@ -235,58 +251,64 @@ export default {
       }
     }
 
-    // 排序处理
-    const handleSortChange = () => {
-      // 简化处理，实际可以根据排序重新获取数据
-      currentPage.value = 1
-      fetchPokemons()
+    // 获取宝可梦图片
+    const getPokemonImage = (pokemon) => {
+      if (pokemon.spriteUrl) return pokemon.spriteUrl
+      return sprites.pokemon(pokemon.id)
     }
 
-    // 搜索处理
+    // 图片加载失败处理
+    const handleImageError = (event) => {
+      event.target.src = sprites.default
+    }
+
+    // 搜索
     const handleSearch = () => {
       currentPage.value = 1
       fetchPokemons()
     }
 
-    // 分页处理
-    const handleSizeChange = (val) => {
-      pageSize.value = val
+    // 筛选
+    const handleFilter = () => {
       currentPage.value = 1
       fetchPokemons()
     }
 
-    const handleCurrentChange = (val) => {
-      currentPage.value = val
+    // 分页
+    const handleSizeChange = () => {
+      currentPage.value = 1
       fetchPokemons()
     }
 
-    const handleImageError = (event) => {
-      // 图片加载失败时显示默认占位符
-      event.target.style.display = 'none'
+    const handlePageChange = () => {
+      fetchPokemons()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
-    // 组件挂载时获取数据
+    // 初始化
     onMounted(() => {
+      fetchTypes()
       fetchPokemons()
     })
 
     return {
-      // 数据
       loading,
       pokemons,
-      sortBy,
+      types,
+      generations,
       searchKeyword,
+      selectedType,
+      selectedGeneration,
       currentPage,
       pageSize,
-      totalPokemons,
+      total,
       totalPages,
-      
-      // 方法
+      getPokemonImage,
+      handleImageError,
       handleSearch,
-      handleSortChange,
+      handleFilter,
       handleSizeChange,
-      handleCurrentChange,
-      handleImageError
+      handlePageChange
     }
   }
 }
@@ -306,12 +328,5 @@ export default {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 </style>

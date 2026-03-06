@@ -4,90 +4,79 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import lombok.experimental.Accessors;
 
-import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
- * 物品实体类
- * 创建人: Lio9
+ * 物品表
  */
 @Data
-@Accessors(chain = true)
 @TableName("item")
-public class Item implements Serializable {
-    
-    private static final long serialVersionUID = 1L;
-    
-    /**
-     * 主键ID
-     */
-    @TableId(value = "id", type = IdType.AUTO)
-    private Long id;
+public class Item {
+    @TableId(type = IdType.AUTO)
+    private Integer id;
     
     /**
-     * 物品名称
+     * 物品名称(中文)
      */
     private String name;
     
     /**
-     * 物品英文名称
+     * 物品名称(英文)
      */
     private String nameEn;
     
     /**
-     * 物品日文名称
+     * 物品名称(日文)
      */
     private String nameJp;
     
     /**
-     * 物品分类
+     * 分类ID
      */
-    private String category;
+    private Integer categoryId;
     
     /**
-     * 物品价格
+     * 购买价格
      */
-    private Integer price;
+    private Integer cost;
     
     /**
-     * 物品效果
+     * 投掷威力
      */
-    private String effect;
+    private Integer flingPower;
+    
+    /**
+     * 投掷效果ID
+     */
+    private Integer flingEffectId;
+    
+    /**
+     * 效果简述
+     */
+    private String effectShort;
+    
+    /**
+     * 详细效果
+     */
+    private String effectDetail;
     
     /**
      * 物品描述
      */
     private String description;
-
+    
     /**
-     * 物品编号
+     * 首次出现世代
      */
-    private String indexNumber;
-
+    private Integer generationId;
+    
     /**
-     * 创建时间
+     * 图标URL
      */
-    private java.time.LocalDateTime createdAt;
-
-    /**
-     * 更新时间
-     */
-    private java.time.LocalDateTime updatedAt;
-
-    // 手动添加setter方法以确保编译通过
-    public Item setIndexNumber(String indexNumber) {
-        this.indexNumber = indexNumber;
-        return this;
-    }
-
-    public Item setCreatedAt(java.time.LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-        return this;
-    }
-
-    public Item setUpdatedAt(java.time.LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-        return this;
-    }
+    private String spriteUrl;
+    
+    private LocalDateTime createdAt;
+    
+    private LocalDateTime updatedAt;
 }

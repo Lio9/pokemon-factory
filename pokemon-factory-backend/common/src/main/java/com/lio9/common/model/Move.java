@@ -8,26 +8,13 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 技能实体类
+ * 技能表
  */
 @Data
 @TableName("move")
 public class Move {
-    /**
-     * 技能ID
-     */
     @TableId(type = IdType.AUTO)
-    private Long id;
-    
-    /**
-     * 技能编号
-     */
-    private String indexNumber;
-    
-    /**
-     * 所属世代
-     */
-    private String generation;
+    private Integer id;
     
     /**
      * 技能名称(中文)
@@ -35,19 +22,29 @@ public class Move {
     private String name;
     
     /**
-     * 技能名称(日文)
-     */
-    private String nameJp;
-    
-    /**
      * 技能名称(英文)
      */
     private String nameEn;
     
     /**
+     * 技能名称(日文)
+     */
+    private String nameJp;
+    
+    /**
      * 属性ID
      */
-    private Long typeId;
+    private Integer typeId;
+    
+    /**
+     * 伤害类型ID
+     */
+    private Integer damageClassId;
+    
+    /**
+     * 目标类型ID
+     */
+    private Integer targetId;
     
     /**
      * 威力
@@ -65,14 +62,24 @@ public class Move {
     private Integer accuracy;
     
     /**
-     * 优先级
+     * 优先度
      */
     private Integer priority;
     
     /**
-     * 伤害类型(physical/special/status)
+     * 追加效果触发率
      */
-    private String damageClass;
+    private Integer effectChance;
+    
+    /**
+     * 效果简述
+     */
+    private String effectShort;
+    
+    /**
+     * 详细效果
+     */
+    private String effectDetail;
     
     /**
      * 技能描述
@@ -80,32 +87,11 @@ public class Move {
     private String description;
     
     /**
-     * 技能效果
+     * 首次出现世代
      */
-    private String effect;
+    private Integer generationId;
     
-    /**
-     * 效果几率
-     */
-    private Integer effectChance;
-    
-    /**
-     * 华丽大赛类型
-     */
-    private String contestType;
-    
-    /**
-     * 华丽大赛效果
-     */
-    private String contestEffect;
-    
-    /**
-     * 创建时间
-     */
     private LocalDateTime createdAt;
     
-    /**
-     * 更新时间
-     */
     private LocalDateTime updatedAt;
 }

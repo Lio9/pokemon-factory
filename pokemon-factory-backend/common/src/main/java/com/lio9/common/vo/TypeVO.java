@@ -4,18 +4,12 @@ import lombok.Data;
 
 /**
  * 属性VO
- * 创建人: Lio9
  */
 @Data
 public class TypeVO {
-    
-    private Long id;
-    
+    private Integer id;
     private String name;
-    
     private String nameEn;
-    
-    private String nameJp;
-    
     private String color;
+    private String iconUrl;
 }

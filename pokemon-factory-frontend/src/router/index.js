@@ -4,54 +4,14 @@ import PokemonDetail from '../components/PokemonDetail.vue'
 import MoveList from '../components/MoveList.vue'
 import AbilityList from '../components/AbilityList.vue'
 import ItemList from '../components/ItemList.vue'
-import ImportManager from '../components/ImportManager.vue'
-import DamageCalculator from '../components/DamageCalculator.vue'
 
 const routes = [
-  {
-    path: '/',
-    name: 'Home',
-    redirect: '/pokemon'
-  },
-  {
-    path: '/pokemon',
-    name: 'Pokemon',
-    component: PokemonList
-  },
-  {
-    path: '/pokemon/:id',
-    name: 'PokemonDetail',
-    component: PokemonDetail,
-    props: true
-  },
-  {
-    path: '/moves',
-    name: 'Moves',
-    component: MoveList
-  },
-  {
-    path: '/abilities',
-    name: 'Abilities',
-    component: AbilityList
-  },
-  {
-    path: '/items',
-    name: 'Items',
-    component: ItemList
-  },
-  {
-    path: '/admin/import',
-    name: 'ImportManager',
-    component: ImportManager,
-    meta: {
-      hidden: true
-    }
-  },
-  {
-    path: '/calculator',
-    name: 'DamageCalculator',
-    component: DamageCalculator
-  }
+  { path: '/', redirect: '/pokemon' },
+  { path: '/pokemon', name: 'PokemonList', component: PokemonList },
+  { path: '/pokemon/:id', name: 'PokemonDetail', component: PokemonDetail, props: true },
+  { path: '/moves', name: 'MoveList', component: MoveList },
+  { path: '/abilities', name: 'AbilityList', component: AbilityList },
+  { path: '/items', name: 'ItemList', component: ItemList }
 ]
 
 const router = createRouter({

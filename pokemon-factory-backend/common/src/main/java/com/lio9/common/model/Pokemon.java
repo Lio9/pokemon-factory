@@ -9,21 +9,16 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 宝可梦实体类
+ * 宝可梦物种实体类 (对应pokemon_species表)
  */
 @Data
-@TableName("pokemon")
+@TableName("pokemon_species")
 public class Pokemon {
     /**
-     * 宝可梦ID
+     * 物种ID (全国图鉴编号)
      */
     @TableId(type = IdType.AUTO)
-    private Long id;
-    
-    /**
-     * 宝可梦全国图鉴编号
-     */
-    private String indexNumber;
+    private Integer id;
     
     /**
      * 宝可梦名称(中文)
@@ -41,159 +36,143 @@ public class Pokemon {
     private String nameJp;
     
     /**
-     * 身高(米)
+     * 分类(如"种子宝可梦")
      */
-    private double height;
-    
-    /**
-     * 体重(公斤)
-     */
-    private double weight;
-    
-    /**
-     * 基础经验值
-     */
-    private int baseExperience;
-    
-    /**
-     * 基础亲密度
-     */
-    private int baseHappiness;
-    
-    /**
-     * 捕获率
-     */
-    private int captureRate;
-    
-    /**
-     * 性别比率(-1=无性别,0=全雄,8=全雌)
-     */
-    private int genderRate;
-    
-    /**
-     * 进化链ID
-     */
-    private Long evolutionChainId;
+    private String genus;
     
     /**
      * 世代ID
      */
-    private int generationId;
+    private Integer generationId;
     
     /**
-     * 排序
+     * 进化链ID
      */
-    @TableField(value = "`order`") // 使用反引号转义MySQL关键字
-    private int order;
+    private Integer evolutionChainId;
     
     /**
-     * 是否为婴儿宝可梦
+     * 进化前物种ID
      */
-    private boolean isBaby;
+    private Integer evolvesFromSpeciesId;
     
     /**
-     * 是否为传说宝可梦
+     * 主色调
      */
-    private boolean isLegendary;
+    private String color;
     
     /**
-     * 是否为神话宝可梦
+     * 体型
      */
-    private boolean isMythical;
+    private String shape;
     
     /**
-     * 宝可梦描述
+     * 栖息地
      */
+    private String habitat;
+    
+    /**
+     * 成长类型ID
+     */
+    private Integer growthRateId;
+    
+    /**
+     * 性别比例(-1=无性别,0=全雄,8=全雌)
+     */
+    private Integer genderRate;
+    
+    /**
+     * 捕获率
+     */
+    private Integer captureRate;
+    
+    /**
+     * 基础亲密度
+     */
+    private Integer baseHappiness;
+    
+    /**
+     * 孵化步数
+     */
+    private Integer hatchCounter;
+    
+    /**
+     * 是否为幼崽
+     */
+    private Boolean isBaby;
+    
+    /**
+     * 是否为传说
+     */
+    private Boolean isLegendary;
+    
+    /**
+     * 是否为神话
+     */
+    private Boolean isMythical;
+    
+    /**
+     * 是否有性别差异
+     */
+    private Boolean hasGenderDifferences;
+    
+    /**
+     * 形态是否可切换
+     */
+    private Boolean formsSwitchable;
+    
+    /**
+     * 排序序号
+     */
+    @TableField(value = "`order`")
+    private Integer order;
+    
+    /**
+     * 图鉴描述
+     */
+    private String description;
+    
+    // ===== 兼容性字段 =====
+    
+    /**
+     * 兼容旧字段: 全国图鉴编号
+     */
+    @TableField(exist = false)
+    private String indexNumber;
+    
+    /**
+     * 兼容旧字段: 描述
+     */
+    @TableField(exist = false)
     private String profile;
     
     /**
-     * 创建时间
+     * 兼容旧字段: 身高
      */
-    private LocalDateTime createdAt;
+    @TableField(exist = false)
+    private Double height;
     
     /**
-     * 更新时间
+     * 兼容旧字段: 体重
      */
+    @TableField(exist = false)
+    private Double weight;
+    
+    /**
+     * 兼容旧字段: 基础经验值
+     */
+    @TableField(exist = false)
+    private Integer baseExperience;
+    
+    private LocalDateTime createdAt;
+    
     private LocalDateTime updatedAt;
     
-    // 手动添加所有setter方法
-    public void setId(Long id) {
-        this.id = id;
+    // 兼容方法
+    public String getIndexNumber() {
+        return String.valueOf(id);
     }
     
-    public void setIndexNumber(String indexNumber) {
-        this.indexNumber = indexNumber;
-    }
-    
-    public void setName(String name) {
-        this.name = name;
-    }
-    
-    public void setNameEn(String nameEn) {
-        this.nameEn = nameEn;
-    }
-    
-    public void setNameJp(String nameJp) {
-        this.nameJp = nameJp;
-    }
-    
-    public void setHeight(double height) {
-        this.height = height;
-    }
-    
-    public void setWeight(double weight) {
-        this.weight = weight;
-    }
-    
-    public void setBaseExperience(int baseExperience) {
-        this.baseExperience = baseExperience;
-    }
-    
-    public void setBaseHappiness(int baseHappiness) {
-        this.baseHappiness = baseHappiness;
-    }
-    
-    public void setCaptureRate(int captureRate) {
-        this.captureRate = captureRate;
-    }
-    
-    public void setGenderRate(int genderRate) {
-        this.genderRate = genderRate;
-    }
-    
-    public void setEvolutionChainId(Long evolutionChainId) {
-        this.evolutionChainId = evolutionChainId;
-    }
-    
-    public void setGenerationId(int generationId) {
-        this.generationId = generationId;
-    }
-    
-    public void setOrder(int order) {
-        this.order = order;
-    }
-    
-    public void setIsBaby(boolean isBaby) {
-        this.isBaby = isBaby;
-    }
-    
-    public void setIsLegendary(boolean isLegendary) {
-        this.isLegendary = isLegendary;
-    }
-    
-    public void setIsMythical(boolean isMythical) {
-        this.isMythical = isMythical;
-    }
-    
-    public void setProfile(String profile) {
-        this.profile = profile;
-    }
-    
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-    
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
+    public String getProfile() {
+        return description;
     }
 }
