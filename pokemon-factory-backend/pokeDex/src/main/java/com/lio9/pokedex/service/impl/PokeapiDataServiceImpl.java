@@ -397,7 +397,7 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
 
             // 清空主表
             pokemonFormService.remove(null);
-            pokemonService.remove(null);
+            pokemonService.removeAll();
 
             // 清空基础数据表
             typeService.remove(null);
@@ -757,10 +757,11 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
                 java.net.InetSocketAddress proxyAddress = new java.net.InetSocketAddress(proxyHost, port);
                 
                 // 使用 ProxySelector 来配置代理
+                java.net.ProxySelector proxySelector = java.net.ProxySelector.of(proxyAddress);
                 java.net.http.HttpClient.Builder builder = java.net.http.HttpClient.newBuilder()
                     .connectTimeout(java.time.Duration.ofSeconds(CONNECT_TIMEOUT))
                     .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
-                    .proxy(java.net.http.HttpClient.Builder.ProxyConfiguration.of(proxyAddress))
+                    .proxy(proxySelector)
                     .executor(java.util.concurrent.Executors.newFixedThreadPool(20));
                 
                 // 如果有代理认证信息
