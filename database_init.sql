@@ -290,6 +290,28 @@ CREATE TABLE `move_meta_stat_change` (
     FOREIGN KEY (`stat_id`) REFERENCES `stat`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='技能能力变化表';
 
+-- 技能标记表 (定义技能特性标记)
+DROP TABLE IF EXISTS `move_flags`;
+CREATE TABLE `move_flags` (
+    `id` INT PRIMARY KEY COMMENT '标记ID',
+    `identifier` VARCHAR(50) NOT NULL UNIQUE COMMENT '标记标识符',
+    `name` VARCHAR(50) COMMENT '标记名称(中文)',
+    `description` VARCHAR(200) COMMENT '描述',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='技能标记表';
+
+-- 技能-标记关联表
+DROP TABLE IF EXISTS `move_flag_map`;
+CREATE TABLE `move_flag_map` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `move_id` INT NOT NULL COMMENT '技能ID',
+    `flag_id` INT NOT NULL COMMENT '标记ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`move_id`) REFERENCES `move`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`flag_id`) REFERENCES `move_flags`(`id`),
+    UNIQUE KEY `uk_move_flag` (`move_id`, `flag_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='技能-标记关联表';
+
 -- 物品表
 DROP TABLE IF EXISTS `item`;
 CREATE TABLE `item` (
@@ -795,3 +817,57 @@ INSERT INTO `move_target` (`id`, `name`, `name_en`, `description`) VALUES
 (11, '单体随机', 'single-pokemon', '单体目标');
 
 COMMIT;
+
+-- ==========================================
+-- 七、性能优化索引
+-- ==========================================
+
+-- pokemon_species 表索引
+CREATE INDEX idx_pokemon_species_name ON pokemon_species(name);
+CREATE INDEX idx_pokemon_species_name_en ON pokemon_species(name_en);
+CREATE INDEX idx_pokemon_species_generation_id ON pokemon_species(generation_id);
+CREATE INDEX idx_pokemon_species_evolution_chain_id ON pokemon_species(evolution_chain_id);
+CREATE INDEX idx_pokemon_species_evolves_from ON pokemon_species(evolves_from_species_id);
+CREATE INDEX idx_pokemon_species_gen_name ON pokemon_species(generation_id, name);
+
+-- pokemon_form 表索引
+CREATE INDEX idx_pokemon_form_species_id ON pokemon_form(species_id);
+CREATE INDEX idx_pokemon_form_is_default ON pokemon_form(is_default);
+CREATE INDEX idx_pokemon_form_species_default ON pokemon_form(species_id, is_default);
+
+-- pokemon_form_type 表索引
+CREATE INDEX idx_pokemon_form_type_form_id ON pokemon_form_type(form_id);
+CREATE INDEX idx_pokemon_form_type_type_id ON pokemon_form_type(type_id);
+CREATE INDEX idx_pokemon_form_type_form_slot ON pokemon_form_type(form_id, slot);
+CREATE INDEX idx_pokemon_form_type_composite ON pokemon_form_type(form_id, type_id, slot);
+
+-- pokemon_form_ability 表索引
+CREATE INDEX idx_pokemon_form_ability_form_id ON pokemon_form_ability(form_id);
+CREATE INDEX idx_pokemon_form_ability_ability_id ON pokemon_form_ability(ability_id);
+
+-- pokemon_form_stat 表索引
+CREATE INDEX idx_pokemon_form_stat_form_id ON pokemon_form_stat(form_id);
+CREATE INDEX idx_pokemon_form_stat_stat_id ON pokemon_form_stat(stat_id);
+
+-- move 表索引
+CREATE INDEX idx_move_name ON move(name);
+CREATE INDEX idx_move_name_en ON move(name_en);
+CREATE INDEX idx_move_type_id ON move(type_id);
+CREATE INDEX idx_move_damage_class_id ON move(damage_class_id);
+
+-- ability 表索引
+CREATE INDEX idx_ability_name ON ability(name);
+CREATE INDEX idx_ability_name_en ON ability(name_en);
+
+-- item 表索引
+CREATE INDEX idx_item_name ON item(name);
+CREATE INDEX idx_item_name_en ON item(name_en);
+CREATE INDEX idx_item_category_id ON item(category_id);
+
+-- type 表索引
+CREATE INDEX idx_type_name ON type(name);
+CREATE INDEX idx_type_name_en ON type(name_en);
+
+-- pokemon_evolution 表索引
+CREATE INDEX idx_pokemon_evolution_evolved_species_id ON pokemon_evolution(evolved_species_id);
+CREATE INDEX idx_pokemon_evolution_evolution_trigger_id ON pokemon_evolution(evolution_trigger_id);

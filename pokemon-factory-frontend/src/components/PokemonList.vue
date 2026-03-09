@@ -1,7 +1,7 @@
 <template>
-  <div class="pokemon-list">
+  <div class="pokemon-list" ref="listContainer">
     <!-- 搜索和筛选区域 -->
-    <div class="search-section mb-6 bg-white rounded-xl shadow-sm p-4">
+    <div class="search-section mb-6 bg-white rounded-xl shadow-sm p-4 sticky top-0 z-10">
       <div class="flex flex-col md:flex-row gap-4">
         <!-- 搜索框 -->
         <div class="flex-1">
@@ -10,12 +10,12 @@
             placeholder="搜索宝可梦名称、编号..."
             prefix-icon="Search"
             clearable
-            @keyup.enter="handleSearch"
+            @input="handleSearchInput"
             @clear="handleSearch"
           >
             <template #append>
               <el-button @click="handleSearch">
-                <Search class="w-4 h-4" />
+                <el-icon><Search /></el-icon>
               </el-button>
             </template>
           </el-input>
@@ -81,14 +81,14 @@
           <div class="text-purple-100 text-sm">当前页</div>
         </div>
         <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white">
-          <div class="text-3xl font-bold">{{ pageSize }}</div>
-          <div class="text-orange-100 text-sm">每页</div>
+          <div class="text-3xl font-bold">{{ loadedCount }}</div>
+          <div class="text-orange-100 text-sm">已加载</div>
         </div>
       </div>
     </div>
 
-    <!-- 加载中 -->
-    <div v-if="loading" class="text-center py-12">
+    <!-- 加载中 - 首次加载 -->
+    <div v-if="loading && pokemons.length === 0" class="text-center py-12">
       <el-skeleton :rows="5" animated />
     </div>
     
@@ -104,11 +104,20 @@
           <!-- 图片区域 -->
           <div class="relative bg-gradient-to-br from-gray-50 to-gray-100 p-4">
             <div class="aspect-square flex items-center justify-center">
+              <!-- 懒加载占位 -->
+              <div 
+                v-if="!pokemon._imageLoaded" 
+                class="w-full h-full flex items-center justify-center"
+              >
+                <div class="w-12 h-12 rounded-full bg-gray-200 animate-pulse"></div>
+              </div>
               <img 
-                :src="getPokemonImage(pokemon)"
+                v-show="pokemon._imageLoaded"
+                :src="pokemon._imageUrl"
                 :alt="pokemon.name"
                 class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
-                @error="handleImageError"
+                @load="handleImageLoad(pokemon)"
+                @error="handleImageError(pokemon)"
                 loading="lazy"
               >
             </div>
@@ -147,19 +156,33 @@
         </router-link>
       </div>
 
-      <!-- 分页 -->
-      <div class="mt-8 flex justify-center">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[24, 48, 96]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          background
-          @size-change="handleSizeChange"
-          @current-change="handlePageChange"
-        />
+      <!-- 加载更多指示器 -->
+      <div 
+        ref="loadMoreTrigger" 
+        class="text-center py-8"
+      >
+        <div v-if="loadingMore">
+          <el-icon class="is-loading text-4xl text-blue-500"><Loading /></el-icon>
+          <p class="text-gray-500 mt-2">加载中...</p>
+        </div>
+        <div v-else-if="!hasMore" class="text-gray-400">
+          已加载全部 {{ total }} 只宝可梦
+        </div>
+        <div v-else class="text-gray-400">
+          下拉加载更多...
+        </div>
       </div>
+
+      <!-- 快速返回顶部 -->
+      <transition name="fade">
+        <button 
+          v-show="showBackTop"
+          @click="scrollToTop"
+          class="fixed bottom-8 right-8 w-12 h-12 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition-colors z-20"
+        >
+          <el-icon class="text-xl"><ArrowUp /></el-icon>
+        </button>
+      </transition>
     </div>
 
     <!-- 空状态 -->
@@ -176,27 +199,40 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search } from 'lucide-vue-next'
+import { Search, Loading, ArrowUp } from '@element-plus/icons-vue'
 import { pokemonApi, typeApi, sprites } from '../services/api.js'
+import { dataCache } from '../services/cache.js'
 
 export default {
   name: 'PokemonList',
-  components: { Search },
+  components: { Search, Loading, ArrowUp },
   setup() {
+    // DOM引用
+    const listContainer = ref(null)
+    const loadMoreTrigger = ref(null)
+    
     // 响应式数据
     const loading = ref(false)
+    const loadingMore = ref(false)
     const pokemons = ref([])
     const types = ref([])
     const searchKeyword = ref('')
     const selectedType = ref(null)
     const selectedGeneration = ref(null)
     
-    // 分页数据
-    const currentPage = ref(1)
+    // 防抖定时器
+    let searchTimer = null
+    
+    // 分页数据 - 使用较小页面大小实现无限滚动
+    const currentPage = ref(0)
     const pageSize = ref(24)
     const total = ref(0)
+    
+    // 滚动状态
+    const showBackTop = ref(false)
+    let observer = null
     
     // 世代列表
     const generations = [
@@ -211,12 +247,17 @@ export default {
       { id: 9, name: '第九世代' }
     ]
     
+    // 计算属性
     const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
+    const hasMore = computed(() => currentPage.value < totalPages.value)
+    const loadedCount = computed(() => pokemons.value.length)
 
-    // 获取属性列表
+    // 获取属性列表 - 使用缓存
     const fetchTypes = async () => {
       try {
-        const result = await typeApi.getAll()
+        const result = await dataCache.getOrFetch('types', {}, async () => {
+          return await typeApi.getAll()
+        })
         if (result.code === 200) {
           types.value = result.data
         }
@@ -225,21 +266,54 @@ export default {
       }
     }
 
+    // 处理宝可梦数据 - 添加图片URL
+    const processPokemonData = (data) => {
+      return data.map(p => ({
+        ...p,
+        _imageUrl: p.spriteUrl || sprites.pokemon(p.id),
+        _imageLoaded: false
+      }))
+    }
+
     // 获取宝可梦列表
-    const fetchPokemons = async () => {
-      loading.value = true
+    const fetchPokemons = async (isLoadMore = false) => {
+      if (loading.value || loadingMore.value) return
+      
+      // 检查是否还有更多数据
+      if (isLoadMore && !hasMore.value) return
+      
+      if (isLoadMore) {
+        loadingMore.value = true
+      } else {
+        loading.value = true
+        currentPage.value = 0
+        pokemons.value = []
+      }
+      
       try {
-        const result = await pokemonApi.getList({
-          current: currentPage.value,
+        const nextPage = currentPage.value + 1
+        const params = {
+          current: nextPage,
           size: pageSize.value,
           typeId: selectedType.value,
           generationId: selectedGeneration.value,
           keyword: searchKeyword.value || undefined
-        })
+        }
+        
+        // 不使用缓存，确保获取最新数据
+        const result = await pokemonApi.getList(params)
         
         if (result.code === 200) {
-          pokemons.value = result.data.records || []
+          const records = result.data.records || []
           total.value = result.data.total || 0
+          currentPage.value = nextPage
+          
+          // 追加数据
+          const processedData = processPokemonData(records)
+          pokemons.value = [...pokemons.value, ...processedData]
+          
+          // 预加载下一页数据
+          preloadNextPageData(nextPage + 1)
         } else {
           ElMessage.error(result.message || '获取数据失败')
         }
@@ -248,51 +322,125 @@ export default {
         ElMessage.error('网络错误，请稍后重试')
       } finally {
         loading.value = false
+        loadingMore.value = false
       }
     }
 
-    // 获取宝可梦图片
-    const getPokemonImage = (pokemon) => {
-      if (pokemon.spriteUrl) return pokemon.spriteUrl
-      return sprites.pokemon(pokemon.id)
+    // 预加载下一页数据到缓存
+    const preloadNextPageData = async (page) => {
+      if (page > totalPages.value) return
+      
+      const params = {
+        current: page,
+        size: pageSize.value,
+        typeId: selectedType.value,
+        generationId: selectedGeneration.value,
+        keyword: searchKeyword.value || undefined
+      }
+      
+      dataCache.getOrFetch('pokemon', params, async () => {
+        return await pokemonApi.getList(params)
+      }).catch(() => {})
+    }
+
+    // 图片加载完成
+    const handleImageLoad = (pokemon) => {
+      pokemon._imageLoaded = true
     }
 
     // 图片加载失败处理
-    const handleImageError = (event) => {
-      event.target.src = sprites.default
+    const handleImageError = (pokemon) => {
+      pokemon._imageLoaded = true
+      pokemon._imageUrl = sprites.default
+    }
+
+    // 搜索输入处理 - 防抖
+    const handleSearchInput = () => {
+      if (searchTimer) clearTimeout(searchTimer)
+      searchTimer = setTimeout(() => {
+        handleSearch()
+      }, 300)
     }
 
     // 搜索
     const handleSearch = () => {
-      currentPage.value = 1
-      fetchPokemons()
+      dataCache.clearType('pokemon')
+      fetchPokemons(false)
     }
 
     // 筛选
     const handleFilter = () => {
-      currentPage.value = 1
-      fetchPokemons()
+      dataCache.clearType('pokemon')
+      fetchPokemons(false)
     }
 
-    // 分页
-    const handleSizeChange = () => {
-      currentPage.value = 1
-      fetchPokemons()
-    }
-
-    const handlePageChange = () => {
-      fetchPokemons()
+    // 返回顶部
+    const scrollToTop = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
+    // 监听滚动
+    const handleScroll = () => {
+      showBackTop.value = window.scrollY > 300
+    }
+
+    // 设置Intersection Observer监听加载更多
+    const setupObserver = () => {
+      if (observer) observer.disconnect()
+      
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting && hasMore.value && !loadingMore.value) {
+              fetchPokemons(true)
+            }
+          })
+        },
+        {
+          root: null,
+          rootMargin: '200px', // 提前200px开始加载
+          threshold: 0
+        }
+      )
+      
+      if (loadMoreTrigger.value) {
+        observer.observe(loadMoreTrigger.value)
+      }
+    }
+
     // 初始化
-    onMounted(() => {
-      fetchTypes()
-      fetchPokemons()
+    onMounted(async () => {
+      window.addEventListener('scroll', handleScroll)
+      await fetchTypes()
+      await fetchPokemons(false)
+      
+      nextTick(() => {
+        setupObserver()
+      })
+    })
+
+    // 清理
+    onUnmounted(() => {
+      window.removeEventListener('scroll', handleScroll)
+      if (observer) observer.disconnect()
+      if (searchTimer) clearTimeout(searchTimer)
+    })
+
+    // 监听数据变化重新设置observer
+    watch(() => pokemons.value.length, () => {
+      nextTick(() => {
+        if (loadMoreTrigger.value && observer) {
+          observer.disconnect()
+          observer.observe(loadMoreTrigger.value)
+        }
+      })
     })
 
     return {
+      listContainer,
+      loadMoreTrigger,
       loading,
+      loadingMore,
       pokemons,
       types,
       generations,
@@ -303,12 +451,15 @@ export default {
       pageSize,
       total,
       totalPages,
-      getPokemonImage,
+      hasMore,
+      loadedCount,
+      showBackTop,
+      handleImageLoad,
       handleImageError,
+      handleSearchInput,
       handleSearch,
       handleFilter,
-      handleSizeChange,
-      handlePageChange
+      scrollToTop
     }
   }
 }
@@ -328,5 +479,15 @@ export default {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

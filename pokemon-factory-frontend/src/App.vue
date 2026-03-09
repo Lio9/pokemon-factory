@@ -72,7 +72,8 @@ export default {
         { name: '宝可梦', path: '/pokemon' },
         { name: '技能', path: '/moves' },
         { name: '特性', path: '/abilities' },
-        { name: '物品', path: '/items' }
+        { name: '物品', path: '/items' },
+        { name: '伤害计算', path: '/damage-calculator' }
       ]
     }
   }

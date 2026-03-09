@@ -1,5 +1,5 @@
 // API服务配置
-const API_BASE = 'http://localhost:8080/api/pokedex'
+const API_BASE = 'http://localhost:8081/api/pokedex'
 
 // 统一的请求处理
 async function request(url, options = {}) {
@@ -91,21 +91,56 @@ export const itemApi = {
       ...(params.keyword && { keyword: params.keyword })
     })
     return request(`${API_BASE}/items/list?${queryParams}`)
+  },
+  
+  // 获取伤害相关道具列表（常用战斗道具）
+  getBattleItems: () => {
+    const queryParams = new URLSearchParams({
+      current: 1,
+      size: 200
+    })
+    return request(`${API_BASE}/items/list?${queryParams}`)
   }
 }
+
+// 伤害计算器相关API
+const DAMAGE_API_BASE = 'http://localhost:8081/api/damage'
+
+export const damageApi = {
+  // 计算伤害
+  calculate: (params) => {
+    return request(`${DAMAGE_API_BASE}/calculate`, {
+      method: 'POST',
+      body: JSON.stringify(params)
+    })
+  },
+  
+  // 获取属性相性表
+  getTypeEfficacy: () => {
+    return request(`${DAMAGE_API_BASE}/type-efficacy`)
+  },
+  
+  // 获取特定属性的相性
+  getTypeEfficacyByType: (typeId) => {
+    return request(`${DAMAGE_API_BASE}/type-efficacy/${typeId}`)
+  }
+}
+
+// 图片服务器基础URL
+const SPRITES_BASE = 'http://10.144.63.175:8080/sprites'
 
 // 图片URL生成器
 export const sprites = {
   // 宝可梦图片(使用species id)
-  pokemon: (id) => `/sprites/pokemon/${id}.png`,
+  pokemon: (id) => `${SPRITES_BASE}/pokemon/${id}.png`,
   // 宝可梦官方立绘
-  official: (id) => `/sprites/pokemon/other/official-artwork/${id}.png`,
+  official: (id) => `${SPRITES_BASE}/pokemon/other/official-artwork/${id}.png`,
   // 属性图标
-  type: (id) => `/sprites/types/${id}.png`,
+  type: (id) => `${SPRITES_BASE}/types/${id}.png`,
   // 物品图标
-  item: (name) => `/sprites/items/${name}.png`,
+  item: (name) => `${SPRITES_BASE}/items/${name}.png`,
   // 默认图片
-  default: '/sprites/pokemon/0.png'
+  default: `${SPRITES_BASE}/pokemon/0.png`
 }
 
 export default {

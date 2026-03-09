@@ -12,10 +12,19 @@
         <!-- 图片区域 -->
         <div class="md:w-1/3 bg-gradient-to-br from-blue-50 to-indigo-100 p-8 flex items-center justify-center">
           <div class="relative">
+            <!-- 懒加载占位 -->
+            <div 
+              v-if="!imageLoaded" 
+              class="w-64 h-64 flex items-center justify-center"
+            >
+              <div class="w-32 h-32 rounded-full bg-blue-200 animate-pulse"></div>
+            </div>
             <img 
-              :src="pokemon.forms?.[0]?.spriteUrl || getPokemonImage(pokemon.id)"
+              v-show="imageLoaded"
+              :src="pokemonImageSrc"
               :alt="pokemon.name"
               class="w-64 h-64 object-contain"
+              @load="imageLoaded = true"
               @error="handleImageError"
             >
             <!-- 图鉴编号 -->
@@ -70,11 +79,11 @@
             </div>
             <div class="bg-gray-50 rounded-lg p-3 text-center">
               <div class="text-gray-500 text-xs">捕获率</div>
-              <div class="text-lg font-semibold">{{ pokemon.captureRate }}</div>
+              <div class="text-lg font-semibold">{{ pokemon.captureRate || '-' }}</div>
             </div>
             <div class="bg-gray-50 rounded-lg p-3 text-center">
               <div class="text-gray-500 text-xs">基础亲密度</div>
-              <div class="text-lg font-semibold">{{ pokemon.baseHappiness }}</div>
+              <div class="text-lg font-semibold">{{ pokemon.baseHappiness || '-' }}</div>
             </div>
           </div>
           
@@ -146,6 +155,7 @@
             :src="form.spriteUrl || getPokemonImage(pokemon.id)"
             :alt="form.formName"
             class="w-20 h-20 mx-auto object-contain"
+            loading="lazy"
           >
           <p class="mt-2 font-medium text-gray-900">{{ form.formName || '默认形态' }}</p>
         </div>
@@ -169,6 +179,7 @@
               :src="evo.spriteUrl || getPokemonImage(evo.speciesId)"
               :alt="evo.name"
               class="w-24 h-24 object-contain"
+              loading="lazy"
               @error="handleImageError"
             >
             <span class="mt-2 font-medium text-gray-900">{{ evo.name }}</span>
@@ -237,18 +248,47 @@
     </div>
   </div>
   
-  <!-- 加载中 -->
-  <div v-else class="text-center py-20">
-    <el-skeleton :rows="10" animated />
+  <!-- 加载中骨架屏 -->
+  <div v-else class="pokemon-detail">
+    <!-- 返回按钮骨架 -->
+    <div class="mb-4">
+      <el-skeleton-item variant="text" style="width: 100px; height: 24px" />
+    </div>
+    
+    <!-- 主卡片骨架 -->
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden mb-6">
+      <div class="md:flex">
+        <!-- 图片区域骨架 -->
+        <div class="md:w-1/3 bg-gradient-to-br from-blue-50 to-indigo-100 p-8 flex items-center justify-center">
+          <el-skeleton-item variant="circle" style="width: 200px; height: 200px" />
+        </div>
+        
+        <!-- 信息区域骨架 -->
+        <div class="md:w-2/3 p-6">
+          <el-skeleton :rows="6" animated />
+        </div>
+      </div>
+    </div>
+    
+    <!-- 种族值骨架 -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+      <el-skeleton :rows="8" animated />
+    </div>
+    
+    <!-- 特性骨架 -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+      <el-skeleton :rows="4" animated />
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ChevronLeft, BarChart3, Sparkles, Layers, GitBranch, ArrowRight, Zap } from 'lucide-vue-next'
 import { pokemonApi, sprites } from '../services/api.js'
+import { dataCache } from '../services/cache.js'
 
 // 种族值条组件
 const StatBar = {
@@ -262,7 +302,7 @@ const StatBar = {
           :style="{ width: (value / 255 * 100) + '%', backgroundColor: color }"
         />
       </div>
-      <span class="w-10 text-sm font-bold text-right">{{ value }}</span>
+      <span class="w-10 text-sm font-bold text-right">{{ value || 0 }}</span>
     </div>
   `
 }
@@ -278,14 +318,26 @@ export default {
     const moves = ref([])
     const loadingMoves = ref(false)
     const selectedFormId = ref(null)
+    const imageLoaded = ref(false)
 
-    // 获取宝可梦详情
+    // 计算图片源
+    const pokemonImageSrc = computed(() => {
+      if (pokemon.value?.forms?.[0]?.spriteUrl) {
+        return pokemon.value.forms[0].spriteUrl
+      }
+      return sprites.pokemon(pokemon.value?.id)
+    })
+
+    // 获取宝可梦详情 - 使用缓存
     const fetchPokemonDetail = async () => {
       try {
-        const result = await pokemonApi.getDetail(route.params.id)
+        const result = await dataCache.getOrFetch('pokemon-detail', { id: route.params.id }, async () => {
+          return await pokemonApi.getDetail(route.params.id)
+        })
         if (result.code === 200) {
           pokemon.value = result.data
           selectedFormId.value = result.data.forms?.[0]?.id
+          imageLoaded.value = false
           
           // 获取技能
           if (selectedFormId.value) {
@@ -307,7 +359,7 @@ export default {
       try {
         const result = await pokemonApi.getFormMoves(formId)
         if (result.code === 200) {
-          moves.value = result.data.slice(0, 50) // 只显示前50个
+          moves.value = result.data.slice(0, 50)
         }
       } catch (error) {
         console.error('获取技能失败:', error)
@@ -321,7 +373,10 @@ export default {
     
     // 图片加载失败
     const handleImageError = (event) => {
-      event.target.src = sprites.default
+      if (event.target) {
+        event.target.src = sprites.default
+        imageLoaded.value = true
+      }
     }
 
     // 返回
@@ -343,6 +398,8 @@ export default {
       moves,
       loadingMoves,
       selectedFormId,
+      imageLoaded,
+      pokemonImageSrc,
       getPokemonImage,
       handleImageError,
       goBack
