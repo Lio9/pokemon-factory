@@ -21,6 +21,19 @@ public interface PokemonFormMapper extends BaseMapper<PokemonForm> {
     List<PokemonForm> selectBySpeciesId(@Param("speciesId") Integer speciesId);
     
     /**
+     * 批量获取物种的默认形态(优化N+1查询)
+     */
+    @Select("<script>" +
+            "SELECT pf.id, pf.species_id, pf.sprite_url, pf.official_artwork_url " +
+            "FROM pokemon_form pf " +
+            "WHERE pf.is_default = 1 AND pf.species_id IN " +
+            "<foreach item='id' collection='speciesIds' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</script>")
+    List<Map<String, Object>> selectDefaultFormsBySpeciesIds(@Param("speciesIds") List<Integer> speciesIds);
+    
+    /**
      * 获取形态详情(包含属性、特性、种族值)
      */
     @Select("SELECT pf.*, " +

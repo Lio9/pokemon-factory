@@ -16,7 +16,8 @@
     "lucide-vue-next": "^0.562.0",
     "pokemon": "^3.3.0",
     "vue": "^3.2.13",
-    "vue-router": "^4.0.0"
+    "vue-router": "^4.0.0",
+    "vue-virtual-scroller": "^2.0.0-beta.8"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.0.0",

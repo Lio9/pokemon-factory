@@ -64,6 +64,9 @@ public class PokedexController {
         } catch (Exception e) {
             result.put("code", 500);
             result.put("message", "获取失败: " + e.getMessage());
+            // 添加完整的异常堆栈信息用于调试
+            result.put("exception", e.getClass().getName());
+            result.put("stackTrace", java.util.Arrays.toString(e.getStackTrace()));
         }
         return result;
     }

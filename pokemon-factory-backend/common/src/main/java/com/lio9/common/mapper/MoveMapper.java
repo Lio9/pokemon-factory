@@ -40,4 +40,14 @@ public interface MoveMapper extends BaseMapper<Move> {
             "OR m.name_en LIKE CONCAT('%', #{keyword}, '%') " +
             "ORDER BY m.id")
     List<Map<String, Object>> searchMoves(@Param("keyword") String keyword);
+    
+    /**
+     * 获取技能详情（包含属性名称和伤害类型）
+     */
+    @Select("SELECT m.*, t.name as type_name, t.color as type_color, mdc.name as damage_class_name " +
+            "FROM move m " +
+            "LEFT JOIN type t ON t.id = m.type_id " +
+            "LEFT JOIN move_damage_class mdc ON mdc.id = m.damage_class_id " +
+            "WHERE m.id = #{moveId}")
+    Map<String, Object> selectMoveDetailById(@Param("moveId") Integer moveId);
 }

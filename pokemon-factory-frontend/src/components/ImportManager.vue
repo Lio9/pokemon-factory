@@ -186,7 +186,7 @@ export default {
     let refreshTimer = null
 
     // API基础URL
-    const API_BASE = 'http://localhost:8080/api'
+    const API_BASE = 'http://localhost:8081/api'
 
     // 开始导入
     const startImport = async () => {

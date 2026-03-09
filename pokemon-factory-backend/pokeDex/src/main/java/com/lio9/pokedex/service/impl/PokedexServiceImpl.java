@@ -13,7 +13,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 图鉴服务实现类
+ * 图鉴服务实现类 - 优化版
+ * 解决N+1查询问题，提升性能
  */
 @Service
 public class PokedexServiceImpl implements PokedexService {
@@ -52,6 +53,7 @@ public class PokedexServiceImpl implements PokedexService {
     public Page<PokemonListVO> getPokemonList(int current, int size, Integer typeId, Integer generationId, String keyword) {
         Page<PokemonListVO> result = new Page<>(current, size);
         
+        // 基础查询条件
         QueryWrapper<Pokemon> query = new QueryWrapper<>();
         if (keyword != null && !keyword.isEmpty()) {
             query.and(w -> w.like("name", keyword).or().like("name_en", keyword));
@@ -61,9 +63,56 @@ public class PokedexServiceImpl implements PokedexService {
         }
         query.orderByAsc("id");
         
+        // 如果有属性筛选，使用子查询
+        if (typeId != null) {
+            query.exists(
+                "SELECT 1 FROM pokemon_form pf " +
+                "INNER JOIN pokemon_form_type pft ON pft.form_id = pf.id " +
+                "WHERE pf.species_id = pokemon_species.id AND pf.is_default = 1 AND pft.type_id = " + typeId
+            );
+        }
+        
+        // 分页查询物种
         Page<Pokemon> page = new Page<>(current, size);
         page = speciesMapper.selectPage(page, query);
         
+        if (page.getRecords().isEmpty()) {
+            result.setRecords(Collections.emptyList());
+            result.setTotal(0);
+            return result;
+        }
+        
+        // 批量获取物种ID
+        List<Integer> speciesIds = page.getRecords().stream()
+                .map(Pokemon::getId)
+                .collect(Collectors.toList());
+        
+        // 批量查询默认形态
+        List<Map<String, Object>> forms = formMapper.selectDefaultFormsBySpeciesIds(speciesIds);
+        Map<Integer, Map<String, Object>> formMap = forms.stream()
+                .collect(Collectors.toMap(f -> (Integer) f.get("species_id"), f -> f, (a, b) -> a));
+        
+        // 批量获取形态ID
+        List<Integer> formIds = forms.stream()
+                .map(f -> (Integer) f.get("id"))
+                .collect(Collectors.toList());
+        
+        // 批量查询形态属性
+        Map<Integer, List<TypeVO>> typeMap = new HashMap<>();
+        if (!formIds.isEmpty()) {
+            List<Map<String, Object>> formTypes = formTypeMapper.selectTypesByFormIds(formIds);
+            for (Map<String, Object> ft : formTypes) {
+                Integer formId = (Integer) ft.get("form_id");
+                TypeVO vo = new TypeVO();
+                vo.setId((Integer) ft.get("type_id"));
+                vo.setName((String) ft.get("name"));
+                vo.setNameEn((String) ft.get("name_en"));
+                vo.setColor((String) ft.get("color"));
+                typeMap.computeIfAbsent(formId, k -> new ArrayList<>()).add(vo);
+            }
+        }
+        
+        // 组装VO
         List<PokemonListVO> voList = page.getRecords().stream().map(species -> {
             PokemonListVO vo = new PokemonListVO();
             vo.setId(species.getId());
@@ -74,25 +123,19 @@ public class PokedexServiceImpl implements PokedexService {
             vo.setIsMythical(species.getIsMythical());
             vo.setGenerationId(species.getGenerationId());
             
-            QueryWrapper<PokemonForm> formQuery = new QueryWrapper<>();
-            formQuery.eq("species_id", species.getId()).eq("is_default", 1);
-            PokemonForm defaultForm = formMapper.selectOne(formQuery);
-            
-            if (defaultForm != null) {
-                vo.setDefaultFormId(defaultForm.getId());
-                vo.setSpriteUrl(defaultForm.getSpriteUrl());
-                vo.setOfficialArtworkUrl(defaultForm.getOfficialArtworkUrl());
+            Map<String, Object> form = formMap.get(species.getId());
+            if (form != null) {
+                vo.setDefaultFormId((Integer) form.get("id"));
+                vo.setSpriteUrl((String) form.get("sprite_url"));
+                vo.setOfficialArtworkUrl((String) form.get("official_artwork_url"));
                 
-                List<TypeVO> types = getTypesByFormId(defaultForm.getId());
+                Integer formId = (Integer) form.get("id");
+                List<TypeVO> types = typeMap.getOrDefault(formId, Collections.emptyList());
                 vo.setTypes(types);
-                
-                if (typeId != null && types.stream().noneMatch(t -> t.getId().equals(typeId))) {
-                    return null;
-                }
             }
             
             return vo;
-        }).filter(Objects::nonNull).collect(Collectors.toList());
+        }).collect(Collectors.toList());
         
         result.setRecords(voList);
         result.setTotal(page.getTotal());
@@ -213,9 +256,21 @@ public class PokedexServiceImpl implements PokedexService {
         Page<MoveVO> result = new Page<>(current, size);
         result.setTotal(page.getTotal());
         
-        Map<Integer, Type> typeMap = typeMapper.selectList(null).stream()
-                .collect(Collectors.toMap(Type::getId, t -> t));
+        // 批量获取类型信息
+        List<Integer> typeIds = page.getRecords().stream()
+                .map(Move::getTypeId)
+                .distinct()
+                .collect(Collectors.toList());
         
+        Map<Integer, Type> typeMap = new HashMap<>();
+        if (!typeIds.isEmpty()) {
+            QueryWrapper<Type> typeQuery = new QueryWrapper<>();
+            typeQuery.in("id", typeIds);
+            typeMap = typeMapper.selectList(typeQuery).stream()
+                    .collect(Collectors.toMap(Type::getId, t -> t));
+        }
+        
+        final Map<Integer, Type> finalTypeMap = typeMap;
         result.setRecords(page.getRecords().stream().map(m -> {
             MoveVO vo = new MoveVO();
             vo.setId(m.getId());
@@ -227,7 +282,7 @@ public class PokedexServiceImpl implements PokedexService {
             vo.setPriority(m.getPriority());
             vo.setDescription(m.getDescription());
             
-            Type type = typeMap.get(m.getTypeId());
+            Type type = finalTypeMap.get(m.getTypeId());
             if (type != null) {
                 vo.setTypeName(type.getName());
                 vo.setTypeColor(type.getColor());
@@ -272,29 +327,73 @@ public class PokedexServiceImpl implements PokedexService {
     
     // ==================== 私有方法 ====================
     
-    private List<TypeVO> getTypesByFormId(Integer formId) {
-        QueryWrapper<PokemonFormType> query = new QueryWrapper<>();
-        query.eq("form_id", formId).orderByAsc("slot");
-        List<PokemonFormType> formTypes = formTypeMapper.selectList(query);
-        
-        return formTypes.stream().map(ft -> {
-            Type type = typeMapper.selectById(ft.getTypeId());
-            if (type != null) {
-                TypeVO vo = new TypeVO();
-                vo.setId(type.getId());
-                vo.setName(type.getName());
-                vo.setNameEn(type.getNameEn());
-                vo.setColor(type.getColor());
-                return vo;
-            }
-            return null;
-        }).filter(Objects::nonNull).collect(Collectors.toList());
-    }
-    
     private List<PokemonFormDetailVO> getFormsBySpeciesId(Integer speciesId) {
         QueryWrapper<PokemonForm> query = new QueryWrapper<>();
         query.eq("species_id", speciesId).orderByDesc("is_default").orderByAsc("id");
         List<PokemonForm> forms = formMapper.selectList(query);
+        
+        if (forms.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // 批量获取形态ID
+        List<Integer> formIds = forms.stream().map(PokemonForm::getId).collect(Collectors.toList());
+        
+        // 批量查询属性
+        Map<Integer, List<TypeVO>> typeMap = new HashMap<>();
+        List<Map<String, Object>> formTypes = formTypeMapper.selectTypesByFormIds(formIds);
+        for (Map<String, Object> ft : formTypes) {
+            Integer formId = (Integer) ft.get("form_id");
+            TypeVO vo = new TypeVO();
+            vo.setId((Integer) ft.get("type_id"));
+            vo.setName((String) ft.get("name"));
+            vo.setNameEn((String) ft.get("name_en"));
+            vo.setColor((String) ft.get("color"));
+            typeMap.computeIfAbsent(formId, k -> new ArrayList<>()).add(vo);
+        }
+        
+        // 批量查询特性
+        Map<Integer, List<AbilityVO>> abilityMap = new HashMap<>();
+        for (Integer formId : formIds) {
+            List<Map<String, Object>> abilities = abilityMapper.selectAbilitiesByFormId(formId);
+            List<AbilityVO> abilityList = abilities.stream().map(a -> {
+                AbilityVO vo = new AbilityVO();
+                vo.setId((Integer) a.get("id"));
+                vo.setName((String) a.get("name"));
+                vo.setNameEn((String) a.get("name_en"));
+                vo.setDescription((String) a.get("description"));
+                vo.setIsHidden((Boolean) a.get("is_hidden"));
+                vo.setSlot((Integer) a.get("slot"));
+                return vo;
+            }).collect(Collectors.toList());
+            abilityMap.put(formId, abilityList);
+        }
+        
+        // 批量查询种族值
+        QueryWrapper<PokemonFormStat> statQuery = new QueryWrapper<>();
+        statQuery.in("form_id", formIds);
+        List<PokemonFormStat> allStats = formStatMapper.selectList(statQuery);
+        Map<Integer, StatVO> statMap = new HashMap<>();
+        for (PokemonFormStat stat : allStats) {
+            Integer formId = stat.getFormId();
+            StatVO vo = statMap.computeIfAbsent(formId, k -> new StatVO());
+            int value = stat.getBaseStat();
+            
+            switch (stat.getStatId()) {
+                case 1: vo.setHp(value); break;
+                case 2: vo.setAttack(value); break;
+                case 3: vo.setDefense(value); break;
+                case 4: vo.setSpAttack(value); break;
+                case 5: vo.setSpDefense(value); break;
+                case 6: vo.setSpeed(value); break;
+            }
+            vo.setTotal(vo.getTotal() != null ? vo.getTotal() + value : value);
+        }
+        
+        // 组装结果
+        final Map<Integer, List<TypeVO>> finalTypeMap = typeMap;
+        final Map<Integer, List<AbilityVO>> finalAbilityMap = abilityMap;
+        final Map<Integer, StatVO> finalStatMap = statMap;
         
         return forms.stream().map(form -> {
             PokemonFormDetailVO vo = new PokemonFormDetailVO();
@@ -311,53 +410,12 @@ public class PokedexServiceImpl implements PokedexService {
             vo.setSpriteShinyUrl(form.getSpriteShinyUrl());
             vo.setOfficialArtworkUrl(form.getOfficialArtworkUrl());
             
-            vo.setTypes(getTypesByFormId(form.getId()));
-            vo.setAbilities(getAbilitiesByFormId(form.getId()));
-            vo.setStats(getStatsByFormId(form.getId()));
+            vo.setTypes(finalTypeMap.getOrDefault(form.getId(), Collections.emptyList()));
+            vo.setAbilities(finalAbilityMap.getOrDefault(form.getId(), Collections.emptyList()));
+            vo.setStats(finalStatMap.get(form.getId()));
             
             return vo;
         }).collect(Collectors.toList());
-    }
-    
-    private List<AbilityVO> getAbilitiesByFormId(Integer formId) {
-        List<Map<String, Object>> abilities = abilityMapper.selectAbilitiesByFormId(formId);
-        
-        return abilities.stream().map(a -> {
-            AbilityVO vo = new AbilityVO();
-            vo.setId((Integer) a.get("id"));
-            vo.setName((String) a.get("name"));
-            vo.setNameEn((String) a.get("name_en"));
-            vo.setDescription((String) a.get("description"));
-            vo.setIsHidden((Boolean) a.get("is_hidden"));
-            vo.setSlot((Integer) a.get("slot"));
-            return vo;
-        }).collect(Collectors.toList());
-    }
-    
-    private StatVO getStatsByFormId(Integer formId) {
-        QueryWrapper<PokemonFormStat> query = new QueryWrapper<>();
-        query.eq("form_id", formId);
-        List<PokemonFormStat> stats = formStatMapper.selectList(query);
-        
-        StatVO vo = new StatVO();
-        int total = 0;
-        
-        for (PokemonFormStat stat : stats) {
-            int value = stat.getBaseStat();
-            total += value;
-            
-            switch (stat.getStatId()) {
-                case 1: vo.setHp(value); break;
-                case 2: vo.setAttack(value); break;
-                case 3: vo.setDefense(value); break;
-                case 4: vo.setSpAttack(value); break;
-                case 5: vo.setSpDefense(value); break;
-                case 6: vo.setSpeed(value); break;
-            }
-        }
-        
-        vo.setTotal(total);
-        return vo;
     }
     
     private List<EvolutionChainVO> getEvolutionChain(Integer chainId, Integer currentSpeciesId) {
@@ -369,23 +427,45 @@ public class PokedexServiceImpl implements PokedexService {
         query.eq("evolution_chain_id", chainId).orderByAsc("id");
         List<Pokemon> speciesList = speciesMapper.selectList(query);
         
+        if (speciesList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // 批量获取物种ID
+        List<Integer> speciesIds = speciesList.stream().map(Pokemon::getId).collect(Collectors.toList());
+        
+        // 批量查询默认形态
+        List<Map<String, Object>> forms = formMapper.selectDefaultFormsBySpeciesIds(speciesIds);
+        Map<Integer, String> spriteMap = forms.stream()
+                .collect(Collectors.toMap(f -> (Integer) f.get("species_id"), f -> (String) f.get("sprite_url"), (a, b) -> a));
+        
+        // 批量查询进化信息
+        List<Integer> evolvedIds = speciesList.stream()
+                .filter(s -> s.getEvolvesFromSpeciesId() != null)
+                .map(Pokemon::getId)
+                .collect(Collectors.toList());
+        
+        Map<Integer, PokemonEvolution> evolutionMap = new HashMap<>();
+        if (!evolvedIds.isEmpty()) {
+            QueryWrapper<PokemonEvolution> evQuery = new QueryWrapper<>();
+            evQuery.in("evolved_species_id", evolvedIds);
+            List<PokemonEvolution> evolutions = evolutionMapper.selectList(evQuery);
+            evolutionMap = evolutions.stream()
+                    .collect(Collectors.toMap(PokemonEvolution::getEvolvedSpeciesId, e -> e, (a, b) -> a));
+        }
+        
+        final Map<Integer, String> finalSpriteMap = spriteMap;
+        final Map<Integer, PokemonEvolution> finalEvolutionMap = evolutionMap;
+        
         return speciesList.stream().map(s -> {
             EvolutionChainVO vo = new EvolutionChainVO();
             vo.setSpeciesId(s.getId());
             vo.setName(s.getName());
             vo.setIsCurrent(s.getId().equals(currentSpeciesId));
-            
-            QueryWrapper<PokemonForm> formQuery = new QueryWrapper<>();
-            formQuery.eq("species_id", s.getId()).eq("is_default", 1);
-            PokemonForm form = formMapper.selectOne(formQuery);
-            if (form != null) {
-                vo.setSpriteUrl(form.getSpriteUrl());
-            }
+            vo.setSpriteUrl(finalSpriteMap.get(s.getId()));
             
             if (s.getEvolvesFromSpeciesId() != null) {
-                QueryWrapper<PokemonEvolution> evQuery = new QueryWrapper<>();
-                evQuery.eq("evolved_species_id", s.getId());
-                PokemonEvolution ev = evolutionMapper.selectOne(evQuery);
+                PokemonEvolution ev = finalEvolutionMap.get(s.getId());
                 if (ev != null) {
                     vo.setTrigger(ev.getEvolutionTriggerId() == 1 ? "升级" : 
                                   ev.getEvolutionTriggerId() == 2 ? "交换" : "使用物品");
