@@ -186,20 +186,23 @@ public class PokemonServiceImpl implements PokemonService {
     
     private List<EvolutionChainVO> getEvolutionChainVO(Long pokemonId) {
         List<EvolutionVO> evos = getEvolutionChain(pokemonId);
-        return evos.stream().map(evo -> {
-            EvolutionChainVO vo = new EvolutionChainVO();
-            vo.setSpeciesId(evo.getSpeciesId());
-            vo.setName(evo.getPokemonName());
-            vo.setSpriteUrl(evo.getSpriteUrl());
-            vo.setTrigger(evo.getEvolutionMethod());
-            vo.setIsCurrent(evo.getIsCurrent());
-            if (evo.getEvolutionValue() != null && !"-1".equals(evo.getEvolutionValue())) {
-                try {
-                    vo.setMinLevel(Integer.parseInt(evo.getEvolutionValue()));
-                } catch (NumberFormatException ignored) {}
-            }
-            return vo;
-        }).collect(Collectors.toList());
+        return evos.stream()
+                .filter(evo -> evo != null && evo.getSpeciesId() != null)
+                .map(evo -> {
+                    EvolutionChainVO vo = new EvolutionChainVO();
+                    vo.setSpeciesId(evo.getSpeciesId());
+                    vo.setName(evo.getPokemonName());
+                    vo.setSpriteUrl(evo.getSpriteUrl());
+                    vo.setTrigger(evo.getEvolutionMethod());
+                    vo.setIsCurrent(evo.getIsCurrent());
+                    if (evo.getEvolutionValue() != null && !"-1".equals(evo.getEvolutionValue())) {
+                        try {
+                            vo.setMinLevel(Integer.parseInt(evo.getEvolutionValue()));
+                        } catch (NumberFormatException ignored) {}
+                    }
+                    return vo;
+                })
+                .collect(Collectors.toList());
     }
     
     @Override

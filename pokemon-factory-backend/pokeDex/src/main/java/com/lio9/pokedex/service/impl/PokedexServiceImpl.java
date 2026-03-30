@@ -419,61 +419,99 @@ public class PokedexServiceImpl implements PokedexService {
     }
     
     private List<EvolutionChainVO> getEvolutionChain(Integer chainId, Integer currentSpeciesId) {
-        if (chainId == null) {
-            return Collections.emptyList();
-        }
-        
-        QueryWrapper<Pokemon> query = new QueryWrapper<>();
-        query.eq("evolution_chain_id", chainId).orderByAsc("id");
-        List<Pokemon> speciesList = speciesMapper.selectList(query);
-        
-        if (speciesList.isEmpty()) {
-            return Collections.emptyList();
-        }
-        
-        // 批量获取物种ID
-        List<Integer> speciesIds = speciesList.stream().map(Pokemon::getId).collect(Collectors.toList());
-        
-        // 批量查询默认形态
-        List<Map<String, Object>> forms = formMapper.selectDefaultFormsBySpeciesIds(speciesIds);
-        Map<Integer, String> spriteMap = forms.stream()
-                .collect(Collectors.toMap(f -> (Integer) f.get("species_id"), f -> (String) f.get("sprite_url"), (a, b) -> a));
-        
-        // 批量查询进化信息
-        List<Integer> evolvedIds = speciesList.stream()
-                .filter(s -> s.getEvolvesFromSpeciesId() != null)
-                .map(Pokemon::getId)
-                .collect(Collectors.toList());
-        
-        Map<Integer, PokemonEvolution> evolutionMap = new HashMap<>();
-        if (!evolvedIds.isEmpty()) {
-            QueryWrapper<PokemonEvolution> evQuery = new QueryWrapper<>();
-            evQuery.in("evolved_species_id", evolvedIds);
-            List<PokemonEvolution> evolutions = evolutionMapper.selectList(evQuery);
-            evolutionMap = evolutions.stream()
-                    .collect(Collectors.toMap(PokemonEvolution::getEvolvedSpeciesId, e -> e, (a, b) -> a));
-        }
-        
-        final Map<Integer, String> finalSpriteMap = spriteMap;
-        final Map<Integer, PokemonEvolution> finalEvolutionMap = evolutionMap;
-        
-        return speciesList.stream().map(s -> {
-            EvolutionChainVO vo = new EvolutionChainVO();
-            vo.setSpeciesId(s.getId());
-            vo.setName(s.getName());
-            vo.setIsCurrent(s.getId().equals(currentSpeciesId));
-            vo.setSpriteUrl(finalSpriteMap.get(s.getId()));
-            
-            if (s.getEvolvesFromSpeciesId() != null) {
-                PokemonEvolution ev = finalEvolutionMap.get(s.getId());
-                if (ev != null) {
-                    vo.setTrigger(ev.getEvolutionTriggerId() == 1 ? "升级" : 
-                                  ev.getEvolutionTriggerId() == 2 ? "交换" : "使用物品");
-                    vo.setMinLevel(ev.getMinLevel());
-                }
+        try {
+            if (chainId == null) {
+                return Collections.emptyList();
             }
             
-            return vo;
-        }).collect(Collectors.toList());
+            QueryWrapper<Pokemon> query = new QueryWrapper<>();
+            query.eq("evolution_chain_id", chainId).orderByAsc("id");
+            List<Pokemon> speciesList = speciesMapper.selectList(query);
+            
+            if (speciesList == null || speciesList.isEmpty()) {
+                return Collections.emptyList();
+            }
+            
+            // 批量获取物种ID
+            List<Integer> speciesIds = speciesList.stream()
+                    .filter(s -> s != null && s.getId() != null)
+                    .map(Pokemon::getId)
+                    .collect(Collectors.toList());
+            
+            // 批量查询默认形态
+            Map<Integer, String> spriteMap = new HashMap<>();
+            try {
+                List<Map<String, Object>> forms = formMapper.selectDefaultFormsBySpeciesIds(speciesIds);
+                if (forms != null) {
+                    spriteMap = forms.stream()
+                            .filter(f -> f != null && f.get("species_id") != null)
+                            .collect(Collectors.toMap(
+                                f -> (Integer) f.get("species_id"),
+                                f -> (String) f.get("sprite_url"),
+                                (a, b) -> a != null ? a : b
+                            ));
+                }
+            } catch (Exception e) {
+                System.err.println("Error loading forms: " + e.getMessage());
+            }
+            
+            // 批量查询进化信息
+            Map<Integer, PokemonEvolution> evolutionMap = new HashMap<>();
+            try {
+                List<Integer> evolvedIds = speciesList.stream()
+                        .filter(s -> s != null && s.getEvolvesFromSpeciesId() != null)
+                        .map(Pokemon::getId)
+                        .collect(Collectors.toList());
+                
+                if (!evolvedIds.isEmpty()) {
+                    QueryWrapper<PokemonEvolution> evQuery = new QueryWrapper<>();
+                    evQuery.in("evolved_species_id", evolvedIds);
+                    List<PokemonEvolution> evolutions = evolutionMapper.selectList(evQuery);
+                    // 添加 null 检查和过滤，避免 NullPointerException
+                    if (evolutions != null && !evolutions.isEmpty()) {
+                        evolutionMap = evolutions.stream()
+                                .filter(e -> e != null && e.getEvolvedSpeciesId() != null)
+                                .collect(Collectors.toMap(
+                                    PokemonEvolution::getEvolvedSpeciesId,
+                                    e -> e,
+                                    (a, b) -> a
+                                ));
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Error loading evolutions: " + e.getMessage());
+            }
+            
+            final Map<Integer, String> finalSpriteMap = spriteMap;
+            final Map<Integer, PokemonEvolution> finalEvolutionMap = evolutionMap;
+            
+            return speciesList.stream().map(s -> {
+                try {
+                    EvolutionChainVO vo = new EvolutionChainVO();
+                    vo.setSpeciesId(s.getId());
+                    vo.setName(s.getName());
+                    vo.setIsCurrent(s.getId().equals(currentSpeciesId));
+                    vo.setSpriteUrl(finalSpriteMap.get(s.getId()));
+                    
+                    if (s.getEvolvesFromSpeciesId() != null) {
+                        PokemonEvolution ev = finalEvolutionMap.get(s.getId());
+                        if (ev != null) {
+                            vo.setTrigger(ev.getEvolutionTriggerId() == 1 ? "升级" : 
+                                          ev.getEvolutionTriggerId() == 2 ? "交换" : "使用物品");
+                            vo.setMinLevel(ev.getMinLevel());
+                        }
+                    }
+                    
+                    return vo;
+                } catch (Exception e) {
+                    System.err.println("Error processing evolution chain item: " + e.getMessage());
+                    return null;
+                }
+            }).filter(Objects::nonNull).collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Error in getEvolutionChain: " + e.getMessage());
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
     }
 }
