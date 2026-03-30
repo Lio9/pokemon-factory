@@ -1,8 +1,8 @@
 <template>
   <div class="pokemon-list" ref="listContainer">
     <!-- 搜索和筛选区域 -->
-    <div class="search-section mb-6 bg-white rounded-xl shadow-sm p-4 sticky top-0 z-10">
-      <div class="flex flex-col md:flex-row gap-4">
+    <div class="search-section mb-8 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-6 border border-gray-100 sticky top-0 z-10">
+      <div class="flex flex-col lg:flex-row gap-4">
         <!-- 搜索框 -->
         <div class="flex-1">
           <el-input
@@ -10,11 +10,13 @@
             placeholder="搜索宝可梦名称、编号..."
             prefix-icon="Search"
             clearable
+            size="large"
+            class="search-input"
             @input="handleSearchInput"
             @clear="handleSearch"
           >
             <template #append>
-              <el-button @click="handleSearch">
+              <el-button @click="handleSearch" class="!bg-gradient-to-r !from-blue-500 !to-indigo-600 !text-white !border-none hover:!from-blue-600 hover:!to-indigo-700">
                 <el-icon><Search /></el-icon>
               </el-button>
             </template>
@@ -22,11 +24,13 @@
         </div>
         
         <!-- 属性筛选 -->
-        <div class="w-40">
+        <div class="w-48">
           <el-select
             v-model="selectedType"
             placeholder="属性筛选"
             clearable
+            size="large"
+            class="w-full"
             @change="handleFilter"
           >
             <el-option
@@ -37,21 +41,23 @@
             >
               <div class="flex items-center gap-2">
                 <span 
-                  class="w-3 h-3 rounded-full"
+                  class="w-4 h-4 rounded-full shadow-sm"
                   :style="{ backgroundColor: type.color }"
                 />
-                {{ type.name }}
+                <span class="font-medium">{{ type.name }}</span>
               </div>
             </el-option>
           </el-select>
         </div>
         
         <!-- 世代筛选 -->
-        <div class="w-32">
+        <div class="w-40">
           <el-select
             v-model="selectedGeneration"
             placeholder="世代"
             clearable
+            size="large"
+            class="w-full"
             @change="handleFilter"
           >
             <el-option
@@ -66,23 +72,23 @@
     </div>
 
     <!-- 统计信息 -->
-    <div class="stats-section mb-6">
+    <div class="stats-section mb-8">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
-          <div class="text-3xl font-bold">{{ total }}</div>
-          <div class="text-blue-100 text-sm">总数</div>
+        <div class="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-shadow">
+          <div class="text-4xl font-bold">{{ total }}</div>
+          <div class="text-blue-100 text-sm font-medium mt-1">总数</div>
         </div>
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
-          <div class="text-3xl font-bold">{{ totalPages }}</div>
-          <div class="text-green-100 text-sm">页数</div>
+        <div class="bg-gradient-to-br from-green-500 via-green-600 to-emerald-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-shadow">
+          <div class="text-4xl font-bold">{{ totalPages }}</div>
+          <div class="text-green-100 text-sm font-medium mt-1">页数</div>
         </div>
-        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
-          <div class="text-3xl font-bold">{{ currentPage }}</div>
-          <div class="text-purple-100 text-sm">当前页</div>
+        <div class="bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-shadow">
+          <div class="text-4xl font-bold">{{ currentPage }}</div>
+          <div class="text-purple-100 text-sm font-medium mt-1">当前页</div>
         </div>
-        <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white">
-          <div class="text-3xl font-bold">{{ loadedCount }}</div>
-          <div class="text-orange-100 text-sm">已加载</div>
+        <div class="bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-shadow">
+          <div class="text-4xl font-bold">{{ loadedCount }}</div>
+          <div class="text-orange-100 text-sm font-medium mt-1">已加载</div>
         </div>
       </div>
     </div>
@@ -94,59 +100,68 @@
     
     <!-- 宝可梦列表 -->
     <div v-else-if="pokemons.length > 0">
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
         <router-link
           v-for="pokemon in pokemons"
           :key="pokemon.id"
           :to="`/pokemon/${pokemon.id}`"
-          class="pokemon-card bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden group"
+          class="pokemon-card bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden group border-2 border-transparent hover:border-blue-200"
         >
           <!-- 图片区域 -->
-          <div class="relative bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+          <div class="relative bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50 p-4">
             <div class="aspect-square flex items-center justify-center">
               <!-- 懒加载占位 -->
               <div 
                 v-if="!pokemon._imageLoaded" 
                 class="w-full h-full flex items-center justify-center"
               >
-                <div class="w-12 h-12 rounded-full bg-gray-200 animate-pulse"></div>
+                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 animate-pulse flex items-center justify-center">
+                  <svg class="w-8 h-8 text-blue-300 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
               </div>
               <img 
                 v-show="pokemon._imageLoaded"
                 :src="pokemon._imageUrl"
                 :alt="pokemon.name"
-                class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
+                class="w-full h-full object-contain group-hover:scale-110 group-hover:drop-shadow-2xl transition-all duration-500"
                 @load="handleImageLoad(pokemon)"
                 @error="handleImageError(pokemon)"
                 loading="lazy"
               >
             </div>
             <!-- 图鉴编号 -->
-            <div class="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
+            <div class="absolute top-3 left-3 bg-gradient-to-r from-gray-900 to-gray-700 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
               #{{ String(pokemon.id).padStart(4, '0') }}
             </div>
             <!-- 特殊标记 -->
-            <div v-if="pokemon.isLegendary" class="absolute top-2 right-2">
-              <span class="text-yellow-500 text-lg">★</span>
+            <div v-if="pokemon.isLegendary" class="absolute top-3 right-3">
+              <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg">
+                <span class="text-white text-sm font-bold">★</span>
+              </div>
             </div>
-            <div v-else-if="pokemon.isMythical" class="absolute top-2 right-2">
-              <span class="text-purple-500 text-lg">◆</span>
+            <div v-else-if="pokemon.isMythical" class="absolute top-3 right-3">
+              <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                <span class="text-white text-sm font-bold">◆</span>
+              </div>
             </div>
           </div>
           
           <!-- 信息区域 -->
-          <div class="p-3">
-            <h3 class="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+          <div class="p-4">
+            <h3 class="font-bold text-gray-900 truncate text-lg group-hover:text-blue-600 transition-colors">
               {{ pokemon.name }}
             </h3>
-            <p class="text-gray-500 text-xs truncate">{{ pokemon.genus }}</p>
+            <p class="text-gray-500 text-sm truncate">{{ pokemon.genus }}</p>
             
             <!-- 属性标签 -->
-            <div class="flex flex-wrap gap-1 mt-2">
+            <div class="flex flex-wrap gap-2 mt-3">
               <span 
                 v-for="type in pokemon.types"
                 :key="type.id"
-                class="px-2 py-0.5 rounded-full text-xs text-white"
+                class="px-3 py-1 rounded-full text-xs font-bold text-white shadow-md"
                 :style="{ backgroundColor: type.color }"
               >
                 {{ type.name }}
