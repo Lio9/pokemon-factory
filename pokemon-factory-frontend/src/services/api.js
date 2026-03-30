@@ -127,7 +127,7 @@ export const damageApi = {
 }
 
 // 图片服务器基础URL
-const SPRITES_BASE = 'http://10.144.63.175:8080/sprites'
+const SPRITES_BASE = 'http://10.144.55.168:8080'
 
 // 图片URL生成器
 export const sprites = {
