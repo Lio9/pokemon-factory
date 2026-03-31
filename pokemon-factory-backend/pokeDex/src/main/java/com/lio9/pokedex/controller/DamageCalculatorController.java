@@ -1,5 +1,7 @@
 package com.lio9.pokedex.controller;
 
+import com.lio9.common.response.ResultResponse;
+import com.lio9.common.response.ResponseCode;
 import com.lio9.common.service.DamageCalculatorService;
 import com.lio9.common.vo.DamageCalculationRequest;
 import com.lio9.common.vo.DamageResultVO;
@@ -7,7 +9,6 @@ import com.lio9.common.vo.TypeEfficacyVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,20 +28,14 @@ public class DamageCalculatorController {
      */
     @PostMapping("/calculate")
     public Map<String, Object> calculateDamage(@RequestBody DamageCalculationRequest request) {
-        Map<String, Object> result = new HashMap<>();
         try {
             DamageResultVO damageResult = damageCalculatorService.calculateDamage(request);
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", damageResult);
+            return ResultResponse.buildSuccess("success", damageResult);
         } catch (IllegalArgumentException e) {
-            result.put("code", 400);
-            result.put("message", e.getMessage());
+            return ResultResponse.buildCustomErrorResponse(ResponseCode.BAD_REQUEST, e.getMessage(), null);
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "计算失败: " + e.getMessage());
+            return ResultResponse.buildError("计算失败", e.getMessage());
         }
-        return result;
     }
 
     /**
@@ -48,17 +43,12 @@ public class DamageCalculatorController {
      */
     @GetMapping("/type-efficacy")
     public Map<String, Object> getTypeEfficacyMatrix() {
-        Map<String, Object> result = new HashMap<>();
         try {
             Map<Integer, Map<Integer, Integer>> matrix = damageCalculatorService.getTypeEfficacyMatrix();
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", matrix);
+            return ResultResponse.buildSuccess("success", matrix);
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "获取失败: " + e.getMessage());
+            return ResultResponse.buildError("获取失败", e.getMessage());
         }
-        return result;
     }
 
     /**
@@ -66,16 +56,11 @@ public class DamageCalculatorController {
      */
     @GetMapping("/type-efficacy/{damageTypeId}")
     public Map<String, Object> getTypeEfficacyByDamageType(@PathVariable Integer damageTypeId) {
-        Map<String, Object> result = new HashMap<>();
         try {
             List<TypeEfficacyVO> efficacyList = damageCalculatorService.getTypeEfficacyByDamageType(damageTypeId);
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", efficacyList);
+            return ResultResponse.buildSuccess("success", efficacyList);
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "获取失败: " + e.getMessage());
+            return ResultResponse.buildError("获取失败", e.getMessage());
         }
-        return result;
     }
 }

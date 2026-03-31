@@ -1,4 +1,4 @@
-package com.lio9.pokedex.util;
+package com.lio9.common.util;
 
 /**
  * 伤害计算工具类

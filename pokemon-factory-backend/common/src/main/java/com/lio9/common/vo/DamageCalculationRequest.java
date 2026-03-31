@@ -32,6 +32,31 @@ public class DamageCalculationRequest {
     private Integer attackerLevel = 50;
     
     /**
+     * 攻击方太晶化属性（第9世代）
+     */
+    private Integer attackerTerastalType;
+    
+    /**
+     * 攻击方特性效果描述（用于输出）
+     */
+    private String attackerAbilityEffect;
+    
+    /**
+     * 防御方特性效果描述（用于输出）
+     */
+    private String defenderAbilityEffect;
+    
+    /**
+     * 攻击方道具效果描述（用于输出）
+     */
+    private String attackerItemEffect;
+    
+    /**
+     * 防御方道具效果描述（用于输出）
+     */
+    private String defenderItemEffect;
+    
+    /**
      * 攻击方特性ID
      */
     private Integer attackerAbilityId;
