@@ -4,13 +4,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lio9.common.model.Ability;
 import com.lio9.common.service.AbilityService;
 import com.lio9.common.vo.AbilityQueryVO;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import com.lio9.common.response.ResultResponse;
 import com.lio9.common.response.ResponseCode;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * 特性控制器
@@ -37,11 +36,10 @@ public class AbilityController {
      */
     @GetMapping("/list")
     public Map<String, Object> getAbilityList(AbilityQueryVO queryVO) {
-        Map<String, Object> result = new HashMap<>();
         Page<Ability> page = new Page<>(queryVO.getCurrent(), queryVO.getSize());
         Page<Ability> abilityPage = abilityService.page(page);
         
-        return ResultResponse.buildSuccessResponse(ResponseCode.SUCCESS, "success", abilityPage);
+        return ResultResponse.buildPageSuccess(abilityPage);
     }
     
     /**
@@ -53,15 +51,12 @@ public class AbilityController {
      */
     @GetMapping("/{id}")
     public Map<String, Object> getAbilityDetail(@PathVariable Long id) {
-        Map<String, Object> result = new HashMap<>();
         Ability ability = abilityService.getById(id);
         
         if (ability != null) {
-            return ResultResponse.buildSuccessResponse(ResponseCode.SUCCESS, "success", ability);
+            return ResultResponse.buildSuccess("success", ability);
         } else {
-            return ResultResponse.buildCustomErrorResponse(ResponseCode.NOT_FOUND, "特性不存在", null);
+            return ResultResponse.buildNotFound("特性", id);
         }
     }
-    
-
 }

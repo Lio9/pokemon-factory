@@ -1,12 +1,13 @@
 package com.lio9.pokedex.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lio9.common.response.ResultResponse;
+import com.lio9.common.response.ResponseCode;
 import com.lio9.common.service.PokedexService;
 import com.lio9.common.vo.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,17 +33,12 @@ public class PokedexController {
             @RequestParam(required = false) Integer generationId,
             @RequestParam(required = false) String keyword) {
         
-        Map<String, Object> result = new HashMap<>();
         try {
             Page<PokemonListVO> page = pokedexService.getPokemonList(current, size, typeId, generationId, keyword);
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", page);
+            return ResultResponse.buildPageSuccess(page);
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "获取失败: " + e.getMessage());
+            return ResultResponse.buildError("获取失败", e.getMessage());
         }
-        return result;
     }
 
     /**
@@ -50,25 +46,16 @@ public class PokedexController {
      */
     @GetMapping("/pokemon/{id}")
     public Map<String, Object> getPokemonDetail(@PathVariable Integer id) {
-        Map<String, Object> result = new HashMap<>();
         try {
             PokemonDetailVO detail = pokedexService.getPokemonDetail(id);
             if (detail != null) {
-                result.put("code", 200);
-                result.put("message", "success");
-                result.put("data", detail);
+                return ResultResponse.buildSuccess("success", detail);
             } else {
-                result.put("code", 404);
-                result.put("message", "宝可梦不存在");
+                return ResultResponse.buildNotFound("宝可梦", id);
             }
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "获取失败: " + e.getMessage());
-            // 添加完整的异常堆栈信息用于调试
-            result.put("exception", e.getClass().getName());
-            result.put("stackTrace", java.util.Arrays.toString(e.getStackTrace()));
+            return ResultResponse.buildError("获取失败", e.getMessage());
         }
-        return result;
     }
 
     /**
@@ -78,17 +65,12 @@ public class PokedexController {
     public Map<String, Object> getFormMoves(
             @PathVariable Integer formId,
             @RequestParam(required = false) Integer versionGroupId) {
-        Map<String, Object> result = new HashMap<>();
         try {
             List<MoveVO> moves = pokedexService.getFormMoves(formId, versionGroupId);
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", moves);
+            return ResultResponse.buildSuccess("success", moves);
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "获取失败: " + e.getMessage());
+            return ResultResponse.buildError("获取失败", e.getMessage());
         }
-        return result;
     }
 
     /**
@@ -96,17 +78,12 @@ public class PokedexController {
      */
     @GetMapping("/types")
     public Map<String, Object> getAllTypes() {
-        Map<String, Object> result = new HashMap<>();
         try {
             List<TypeVO> types = pokedexService.getAllTypes();
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", types);
+            return ResultResponse.buildSuccess("success", types);
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "获取失败: " + e.getMessage());
+            return ResultResponse.buildError("获取失败", e.getMessage());
         }
-        return result;
     }
 
     /**
@@ -118,17 +95,12 @@ public class PokedexController {
             @RequestParam(defaultValue = "20") Integer size,
             @RequestParam(required = false) String keyword) {
         
-        Map<String, Object> result = new HashMap<>();
         try {
             Page<AbilityVO> page = pokedexService.getAbilityList(current, size, keyword);
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", page);
+            return ResultResponse.buildPageSuccess(page);
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "获取失败: " + e.getMessage());
+            return ResultResponse.buildError("获取失败", e.getMessage());
         }
-        return result;
     }
 
     /**
@@ -141,17 +113,12 @@ public class PokedexController {
             @RequestParam(required = false) Integer typeId,
             @RequestParam(required = false) String keyword) {
         
-        Map<String, Object> result = new HashMap<>();
         try {
             Page<MoveVO> page = pokedexService.getMoveList(current, size, typeId, keyword);
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", page);
+            return ResultResponse.buildPageSuccess(page);
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "获取失败: " + e.getMessage());
+            return ResultResponse.buildError("获取失败", e.getMessage());
         }
-        return result;
     }
 
     /**
@@ -164,16 +131,11 @@ public class PokedexController {
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) String keyword) {
         
-        Map<String, Object> result = new HashMap<>();
         try {
             Page<ItemVO> page = pokedexService.getItemList(current, size, categoryId, keyword);
-            result.put("code", 200);
-            result.put("message", "success");
-            result.put("data", page);
+            return ResultResponse.buildPageSuccess(page);
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "获取失败: " + e.getMessage());
+            return ResultResponse.buildError("获取失败", e.getMessage());
         }
-        return result;
     }
 }
