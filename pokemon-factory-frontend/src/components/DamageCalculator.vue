@@ -127,6 +127,33 @@
               <span class="stat-base">种族: {{ attackerForm.stats?.spAttack || '-' }}</span>
             </div>
           </div>
+          
+          <div class="stat-row">
+            <span class="stat-label">速度</span>
+            <div class="stat-controls">
+              <div class="boost-control">
+                <button class="boost-btn" @click="attacker.speedBoost = Math.min(6, (attacker.speedBoost || 0) + 1)">+</button>
+                <span class="boost-value" :class="getBoostClass(attacker.speedBoost)">
+                  {{ formatBoost(attacker.speedBoost) }}
+                </span>
+                <button class="boost-btn" @click="attacker.speedBoost = Math.max(-6, (attacker.speedBoost || 0) - 1)">-</button>
+              </div>
+              <span class="stat-base">种族: {{ attackerForm.stats?.speed || '-' }}</span>
+            </div>
+          </div>
+          
+          <div class="stat-row">
+            <span class="stat-label">命中</span>
+            <div class="stat-controls">
+              <div class="boost-control">
+                <button class="boost-btn" @click="attacker.accuracyBoost = Math.min(6, (attacker.accuracyBoost || 0) + 1)">+</button>
+                <span class="boost-value" :class="getBoostClass(attacker.accuracyBoost)">
+                  {{ formatBoost(attacker.accuracyBoost) }}
+                </span>
+                <button class="boost-btn" @click="attacker.accuracyBoost = Math.max(-6, (attacker.accuracyBoost || 0) - 1)">-</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 状态异常 -->
@@ -173,7 +200,14 @@
         <div v-if="selectedMove" class="move-card">
           <div class="move-header">
             <h4>{{ selectedMove.name }}</h4>
-            <span class="damage-class" :class="selectedMove.damageClass">{{ selectedMove.damageClass }}</span>
+            <div class="move-badges">
+              <span class="damage-class" :class="selectedMove.damageClass">{{ selectedMove.damageClass }}</span>
+              <span v-if="selectedMove.priority !== 0" class="priority-badge" :class="{ positive: selectedMove.priority > 0, negative: selectedMove.priority < 0 }">
+                优先度 {{ selectedMove.priority > 0 ? '+' : '' }}{{ selectedMove.priority }}
+              </span>
+              <span v-if="selectedMove.isContact" class="contact-badge">接触</span>
+              <span v-if="selectedMove.multiHit > 1" class="multi-hit-badge">{{ selectedMove.multiHit }}次攻击</span>
+            </div>
           </div>
           <div class="move-details">
             <div class="detail-item">
@@ -190,6 +224,13 @@
               <span class="label">命中</span>
               <span class="value">{{ selectedMove.accuracy || '-' }}%</span>
             </div>
+            <div class="detail-item">
+              <span class="label">PP</span>
+              <span class="value">{{ selectedMove.pp || '-' }}</span>
+            </div>
+          </div>
+          <div v-if="selectedMove.description" class="move-description">
+            {{ selectedMove.description }}
           </div>
         </div>
       </div>
@@ -306,6 +347,33 @@
               </div>
               <el-input-number v-model="defender.spDefense" :min="1" size="small" class="stat-input" />
               <span class="stat-base">种族: {{ defenderForm.stats?.spDefense || '-' }}</span>
+            </div>
+          </div>
+          
+          <div class="stat-row">
+            <span class="stat-label">速度</span>
+            <div class="stat-controls">
+              <div class="boost-control">
+                <button class="boost-btn" @click="defender.speedBoost = Math.min(6, (defender.speedBoost || 0) + 1)">+</button>
+                <span class="boost-value" :class="getBoostClass(defender.speedBoost)">
+                  {{ formatBoost(defender.speedBoost) }}
+                </span>
+                <button class="boost-btn" @click="defender.speedBoost = Math.max(-6, (defender.speedBoost || 0) - 1)">-</button>
+              </div>
+              <span class="stat-base">种族: {{ defenderForm.stats?.speed || '-' }}</span>
+            </div>
+          </div>
+          
+          <div class="stat-row">
+            <span class="stat-label">闪避</span>
+            <div class="stat-controls">
+              <div class="boost-control">
+                <button class="boost-btn" @click="defender.evasionBoost = Math.min(6, (defender.evasionBoost || 0) + 1)">+</button>
+                <span class="boost-value" :class="getBoostClass(defender.evasionBoost)">
+                  {{ formatBoost(defender.evasionBoost) }}
+                </span>
+                <button class="boost-btn" @click="defender.evasionBoost = Math.max(-6, (defender.evasionBoost || 0) - 1)">-</button>
+              </div>
             </div>
           </div>
         </div>
@@ -439,6 +507,17 @@
             </div>
           </div>
         </div>
+        
+        <!-- 命中率 -->
+        <div v-if="result.accuracy !== null" class="result-card accuracy-result">
+          <h3>命中率</h3>
+          <div class="accuracy-display">
+            <span class="value" :class="{ high: result.accuracy >= 90, medium: result.accuracy >= 70, low: result.accuracy < 70 }">
+              {{ result.accuracy }}%
+            </span>
+            <span class="label" v-if="result.baseAccuracy">基础: {{ result.baseAccuracy }}%</span>
+          </div>
+        </div>
       </div>
 
       <!-- 修正因子汇总 -->
@@ -528,6 +607,8 @@ export default {
       level: 50,
       attack: null,
       spAttack: null,
+      speedBoost: 0,
+      accuracyBoost: 0,
       attackBoost: 0,
       spAttackBoost: 0,
       burned: false,
@@ -547,8 +628,13 @@ export default {
       hp: null,
       defense: null,
       spDefense: null,
+      speedBoost: 0,
+      evasionBoost: 0,
       defenseBoost: 0,
-      spDefenseBoost: 0
+      spDefenseBoost: 0,
+      burned: false,
+      poisoned: false,
+      paralyzed: false
     })
     const defenderDetail = ref(null)
     const defenderForms = ref([])
@@ -757,6 +843,15 @@ export default {
           attackerSpAttack: attacker.value.spAttack,
           attackerAttackBoost: attacker.value.attackBoost,
           attackerSpAttackBoost: attacker.value.spAttackBoost,
+          attackerSpeedBoost: attacker.value.speedBoost,
+          attackerAccuracyBoost: attacker.value.accuracyBoost,
+          defenderHp: defender.value.hp,
+          defenderDefense: defender.value.defense,
+          defenderSpDefense: defender.value.spDefense,
+          defenderDefenseBoost: defender.value.defenseBoost,
+          defenderSpDefenseBoost: defender.value.spDefenseBoost,
+          defenderSpeedBoost: defender.value.speedBoost,
+          defenderEvasionBoost: defender.value.evasionBoost,
           defenderHp: defender.value.hp,
           defenderDefense: defender.value.defense,
           defenderSpDefense: defender.value.spDefense,
