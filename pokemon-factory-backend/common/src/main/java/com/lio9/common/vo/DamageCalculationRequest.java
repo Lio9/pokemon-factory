@@ -62,6 +62,16 @@ public class DamageCalculationRequest {
     private Integer attackerSpAttackBoost = 0;
     
     /**
+     * 攻击方速度等级 (-6 到 +6)
+     */
+    private Integer attackerSpeedBoost = 0;
+    
+    /**
+     * 攻击方命中等级 (-6 到 +6)
+     */
+    private Integer attackerAccuracyBoost = 0;
+    
+    /**
      * 攻击方当前HP百分比 (0-100, 用于某些特性/技能)
      */
     private Integer attackerHpPercent = 100;
@@ -117,6 +127,16 @@ public class DamageCalculationRequest {
      * 防御方特防等级 (-6 到 +6)
      */
     private Integer defenderSpDefenseBoost = 0;
+    
+    /**
+     * 防御方速度等级 (-6 到 +6)
+     */
+    private Integer defenderSpeedBoost = 0;
+    
+    /**
+     * 防御方闪避等级 (-6 到 +6)
+     */
+    private Integer defenderEvasionBoost = 0;
     
     /**
      * 防御方当前HP百分比 (用于某些特性)

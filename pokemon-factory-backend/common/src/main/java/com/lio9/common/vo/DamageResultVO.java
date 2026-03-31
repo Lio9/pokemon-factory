@@ -99,6 +99,43 @@ public class DamageResultVO {
      */
     private Double multiTargetMultiplier;
     
+    // ==================== 命中率相关 ====================
+    
+    /**
+     * 基础命中率
+     */
+    private Integer baseAccuracy;
+    
+    /**
+     * 最终命中率（考虑能力等级、天气等修正）
+     */
+    private Double finalAccuracy;
+    
+    /**
+     * 命中率描述
+     */
+    private String accuracyDesc;
+    
+    /**
+     * 技能优先度
+     */
+    private Integer priority;
+    
+    /**
+     * 是否接触技能
+     */
+    private Boolean isContact;
+    
+    /**
+     * 连续攻击次数
+     */
+    private Integer hits;
+    
+    /**
+     * 反伤比例
+     */
+    private Integer recoil;
+    
     // ==================== 技能信息 ====================
     
     /**
