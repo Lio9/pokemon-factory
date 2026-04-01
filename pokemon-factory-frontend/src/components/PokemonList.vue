@@ -1,7 +1,7 @@
 <template>
   <div class="pokemon-list" ref="listContainer">
     <!-- 搜索和筛选区域 -->
-    <div class="search-section mb-8 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-6 border border-gray-100 sticky top-0 z-10">
+    <div class="search-section mb-8 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-6 border border-gray-100 sticky top-0 z-10 transition-all duration-300 hover:shadow-xl">
       <div class="flex flex-col lg:flex-row gap-4">
         <!-- 搜索框 -->
         <div class="flex-1">
@@ -71,31 +71,24 @@
       </div>
     </div>
 
-    <!-- 统计信息 -->
-    <div class="stats-section mb-8">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-shadow">
-          <div class="text-4xl font-bold">{{ total }}</div>
-          <div class="text-blue-100 text-sm font-medium mt-1">总数</div>
-        </div>
-        <div class="bg-gradient-to-br from-green-500 via-green-600 to-emerald-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-shadow">
-          <div class="text-4xl font-bold">{{ totalPages }}</div>
-          <div class="text-green-100 text-sm font-medium mt-1">页数</div>
-        </div>
-        <div class="bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-shadow">
-          <div class="text-4xl font-bold">{{ currentPage }}</div>
-          <div class="text-purple-100 text-sm font-medium mt-1">当前页</div>
-        </div>
-        <div class="bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-shadow">
-          <div class="text-4xl font-bold">{{ loadedCount }}</div>
-          <div class="text-orange-100 text-sm font-medium mt-1">已加载</div>
-        </div>
-      </div>
-    </div>
-
     <!-- 加载中 - 首次加载 -->
     <div v-if="loading && pokemons.length === 0" class="text-center py-12">
-      <el-skeleton :rows="5" animated />
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+        <div v-for="i in 12" :key="i" class="bg-white rounded-2xl shadow-lg p-4 overflow-hidden">
+          <div class="aspect-square mb-4 rounded-xl skeleton"></div>
+          <div class="h-6 mb-2 rounded skeleton"></div>
+          <div class="h-4 w-3/4 rounded skeleton"></div>
+          <div class="flex gap-2 mt-3">
+            <div class="h-6 w-16 rounded-full skeleton"></div>
+            <div class="h-6 w-16 rounded-full skeleton"></div>
+          </div>
+        </div>
+      </div>
+      <div class="loading-dots mt-8">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
     </div>
     
     <!-- 宝可梦列表 -->
@@ -113,13 +106,16 @@
               <!-- 懒加载占位 -->
               <div 
                 v-if="!pokemon._imageLoaded" 
-                class="w-full h-full flex items-center justify-center"
+                class="w-full h-full flex items-center justify-center skeleton rounded-xl"
               >
-                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 animate-pulse flex items-center justify-center">
-                  <svg class="w-8 h-8 text-blue-300 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                <div class="text-center">
+                  <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-2">
+                    <svg class="w-8 h-8 text-blue-300 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </div>
+                  <span class="text-xs text-gray-400">#{{ String(pokemon.id).padStart(4, '0') }}</span>
                 </div>
               </div>
               <img 
@@ -174,17 +170,27 @@
       <!-- 加载更多指示器 -->
       <div 
         ref="loadMoreTrigger" 
-        class="text-center py-8"
+        class="text-center py-8 min-h-[120px] flex items-center justify-center"
       >
-        <div v-if="loadingMore">
-          <el-icon class="is-loading text-4xl text-blue-500"><Loading /></el-icon>
-          <p class="text-gray-500 mt-2">加载中...</p>
+        <div v-if="loadingMore" class="flex flex-col items-center gap-3">
+          <div class="loading-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <p class="text-gray-500 text-sm font-medium">加载更多宝可梦中...</p>
         </div>
-        <div v-else-if="!hasMore" class="text-gray-400">
-          已加载全部 {{ total }} 只宝可梦
+        <div v-else-if="!hasMore" class="text-center py-4">
+          <div class="flex items-center justify-center gap-2 text-gray-400">
+            <el-icon class="text-xl"><CircleCheck /></el-icon>
+            <span class="text-sm font-medium">已加载全部 {{ total }} 只宝可梦</span>
+          </div>
         </div>
-        <div v-else class="text-gray-400">
-          下拉加载更多...
+        <div v-else class="text-center py-4">
+          <div class="flex items-center justify-center gap-2 text-gray-400">
+            <el-icon class="text-xl animate-bounce"><ArrowDown /></el-icon>
+            <span class="text-sm">继续下拉加载更多...</span>
+          </div>
         </div>
       </div>
 
@@ -193,9 +199,9 @@
         <button 
           v-show="showBackTop"
           @click="scrollToTop"
-          class="fixed bottom-8 right-8 w-12 h-12 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition-colors z-20"
+          class="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full shadow-xl hover:shadow-2xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 z-20 flex items-center justify-center group transform hover:scale-110"
         >
-          <el-icon class="text-xl"><ArrowUp /></el-icon>
+          <el-icon class="text-2xl group-hover:-translate-y-1 transition-transform"><ArrowUp /></el-icon>
         </button>
       </transition>
     </div>
@@ -216,13 +222,13 @@
 <script>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Loading, ArrowUp } from '@element-plus/icons-vue'
+import { Search, Loading, ArrowUp, CircleCheck, ArrowDown } from '@element-plus/icons-vue'
 import { pokemonApi, typeApi, sprites } from '../services/api.js'
 import { dataCache } from '../services/cache.js'
 
 export default {
   name: 'PokemonList',
-  components: { Search, Loading, ArrowUp },
+  components: { Search, Loading, ArrowUp, CircleCheck, ArrowDown },
   setup() {
     // DOM引用
     const listContainer = ref(null)
@@ -248,6 +254,7 @@ export default {
     // 滚动状态
     const showBackTop = ref(false)
     let observer = null
+    let scrollThrottleTimer = null
     
     // 世代列表
     const generations = [
@@ -265,7 +272,6 @@ export default {
     // 计算属性
     const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
     const hasMore = computed(() => currentPage.value < totalPages.value)
-    const loadedCount = computed(() => pokemons.value.length)
 
     // 获取属性列表 - 使用缓存
     const fetchTypes = async () => {
@@ -394,9 +400,14 @@ export default {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
-    // 监听滚动
+    // 监听滚动 - 使用节流
     const handleScroll = () => {
-      showBackTop.value = window.scrollY > 300
+      if (scrollThrottleTimer) return
+      
+      scrollThrottleTimer = setTimeout(() => {
+        showBackTop.value = window.scrollY > 300
+        scrollThrottleTimer = null
+      }, 100)
     }
 
     // 设置Intersection Observer监听加载更多
@@ -406,6 +417,7 @@ export default {
       observer = new IntersectionObserver(
         (entries) => {
           entries.forEach(entry => {
+            // 当触发器进入视口时加载更多
             if (entry.isIntersecting && hasMore.value && !loadingMore.value) {
               fetchPokemons(true)
             }
@@ -413,8 +425,8 @@ export default {
         },
         {
           root: null,
-          rootMargin: '200px', // 提前200px开始加载
-          threshold: 0
+          rootMargin: '300px 0px 500px 0px', // 提前300px开始加载，底部缓冲500px
+          threshold: 0.1 // 10%可见时触发
         }
       )
       
@@ -425,7 +437,7 @@ export default {
 
     // 初始化
     onMounted(async () => {
-      window.addEventListener('scroll', handleScroll)
+      window.addEventListener('scroll', handleScroll, { passive: true })
       await fetchTypes()
       await fetchPokemons(false)
       
@@ -439,6 +451,7 @@ export default {
       window.removeEventListener('scroll', handleScroll)
       if (observer) observer.disconnect()
       if (searchTimer) clearTimeout(searchTimer)
+      if (scrollThrottleTimer) clearTimeout(scrollThrottleTimer)
     })
 
     // 监听数据变化重新设置observer
@@ -465,9 +478,7 @@ export default {
       currentPage,
       pageSize,
       total,
-      totalPages,
       hasMore,
-      loadedCount,
       showBackTop,
       handleImageLoad,
       handleImageError,
@@ -481,14 +492,23 @@ export default {
 </script>
 
 <style scoped>
+.pokemon-list {
+  scroll-behavior: smooth;
+}
+
 .pokemon-card {
-  animation: fadeInUp 0.3s ease-out;
+  animation: fadeInUp 0.4s ease-out;
+  will-change: transform;
+}
+
+.pokemon-card:hover {
+  transform: translateY(-8px);
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(30px);
   }
   to {
     opacity: 1;
@@ -496,13 +516,88 @@ export default {
   }
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+  transform: translateY(10px);
+}
+
+/* 滚动条美化 */
+.pokemon-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.pokemon-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.pokemon-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+  border-radius: 4px;
+}
+
+.pokemon-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #2563eb, #7c3aed);
+}
+
+/* 加载指示器动画 */
+.loading-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+/* 骨架屏动画 */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 </style>

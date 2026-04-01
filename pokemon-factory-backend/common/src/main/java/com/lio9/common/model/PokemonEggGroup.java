@@ -9,7 +9,7 @@ import lombok.Data;
  * 宝可梦蛋组关联实体类
  */
 @Data
-@TableName("pokemon_egg_group")
+@TableName("pokemon_species_egg_group")
 public class PokemonEggGroup {
     /**
      * 关联ID
