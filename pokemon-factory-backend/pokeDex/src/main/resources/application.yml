@@ -9,7 +9,7 @@ spring:
   main:
     allow-bean-definition-overriding: true
   datasource:
-    url: jdbc:sqlite:../pokemon-factory.db
+    url: jdbc:sqlite:./pokemon-factory.db
     driver-class-name: org.sqlite.JDBC
     hikari:
       maximum-pool-size: 10
