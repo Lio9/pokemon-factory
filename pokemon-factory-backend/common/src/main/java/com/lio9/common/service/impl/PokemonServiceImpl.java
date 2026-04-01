@@ -149,9 +149,21 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
                 abilityWrapper.in("form_id", formIds);
                 List<PokemonFormAbility> formAbilities = pokemonFormAbilityMapper.selectList(abilityWrapper);
                 
+                // 批量查询特性，避免N+1查询问题
+                Set<Integer> abilityIds = formAbilities.stream()
+                        .map(PokemonFormAbility::getAbilityId)
+                        .collect(Collectors.toSet());
+                
+                Map<Integer, Ability> abilityMap = new HashMap<>();
+                if (!abilityIds.isEmpty()) {
+                    List<Ability> abilities = abilityMapper.selectBatchIds(abilityIds);
+                    abilityMap = abilities.stream()
+                            .collect(Collectors.toMap(Ability::getId, a -> a));
+                }
+                
                 for (PokemonFormAbility formAbility : formAbilities) {
                     Integer formId = formAbility.getFormId();
-                    Ability ability = abilityMapper.selectById(formAbility.getAbilityId());
+                    Ability ability = abilityMap.get(formAbility.getAbilityId());
                     if (ability != null) {
                         AbilityVO abilityVO = new AbilityVO();
                         abilityVO.setId(ability.getId());

@@ -246,30 +246,21 @@ public class OptimizedImportController {
      */
     @GetMapping("/performance-stats")
     public ResponseEntity<Map<String, Object>> getPerformanceStats() {
-        Map<String, Object> result = new HashMap<>();
-
         try {
             // 获取 PokeapiDataService 的性能统计
             if (pokeapiDataService instanceof com.lio9.pokedex.service.impl.PokeapiDataServiceImpl) {
                 com.lio9.pokedex.service.impl.PokeapiDataServiceImpl impl =
                         (com.lio9.pokedex.service.impl.PokeapiDataServiceImpl) pokeapiDataService;
                 Map<String, Object> stats = impl.getPerformanceStats();
-                result.put("code", 200);
-                result.put("message", "获取性能统计成功");
-                result.put("data", stats);
+                return ResponseEntity.ok(ResultResponse.buildSuccess("获取性能统计成功", stats));
             } else {
-                result.put("code", 400);
-                result.put("message", "性能统计不可用");
-                result.put("data", null);
+                return ResponseEntity.ok(ResultResponse.buildCustomErrorResponse(
+                        ResponseCode.BAD_REQUEST, "性能统计不可用", null));
             }
         } catch (Exception e) {
             logger.error("获取性能统计失败: {}", e.getMessage());
-            result.put("code", ResponseCode.INTERNAL_SERVER_ERROR);
-            result.put("message", "获取性能统计失败: " + e.getMessage());
-            result.put("data", null);
+            return ResponseEntity.ok(ResultResponse.buildError("获取性能统计失败", e.getMessage()));
         }
-
-        return ResponseEntity.ok(result);
     }
 
     /**
@@ -277,15 +268,11 @@ public class OptimizedImportController {
      */
     @GetMapping("/import-status/{taskId}")
     public ResponseEntity<Map<String, Object>> getImportStatus(@PathVariable String taskId) {
-        Map<String, Object> result = new HashMap<>();
-
         try {
             // 检查是否是Python调度器的任务
             if (taskId.startsWith("PYTHON-")) {
                 Map<String, Object> status = efficientImportService.getImportStatus(taskId);
-                result.put("code", 200);
-                result.put("message", "获取状态成功");
-                result.put("data", status);
+                return ResponseEntity.ok(ResultResponse.buildSuccess("获取状态成功", status));
             } else {
                 // 检查是否是Java导入任务
                 Map<String, Object> javaStatus = new HashMap<>();
@@ -314,17 +301,12 @@ public class OptimizedImportController {
                 Map<String, Object> progressStatus = pokeapiDataService.getImportProgressStatus();
                 javaStatus.put("progress", progressStatus);
 
-                result.put("code", 200);
-                result.put("message", "获取状态成功");
-                result.put("data", javaStatus);
+                return ResponseEntity.ok(ResultResponse.buildSuccess("获取状态成功", javaStatus));
             }
         } catch (Exception e) {
             logger.error("获取导入状态失败: {}", e.getMessage());
-            result.put("code", ResponseCode.INTERNAL_SERVER_ERROR);
-            result.put("message", "获取导入状态失败: " + e.getMessage());
+            return ResponseEntity.ok(ResultResponse.buildError("获取导入状态失败", e.getMessage()));
         }
-
-        return ResponseEntity.ok(result);
     }
 
     /**
