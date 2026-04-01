@@ -12,11 +12,14 @@ spring:
     url: jdbc:sqlite:./pokemon-factory.db
     driver-class-name: org.sqlite.JDBC
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
+      maximum-pool-size: 5  # SQLite是单连接数据库，连接池不宜过大
+      minimum-idle: 2
       connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+      idle-timeout: 300000
+      max-lifetime: 900000  # 15分钟
+      connection-test-query: SELECT 1
+      validation-timeout: 3000
+      leak-detection-threshold: 60000  # 1分钟，检测连接泄露
       auto-commit: true
       pool-name: PokemonFactorySQLiteCP
   jackson:
@@ -28,7 +31,7 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
     default-executor-type: BATCH
   global-config:
     db-config:
@@ -48,6 +51,11 @@ import:
     check-interval: 30000
     connect-timeout: 15000
     read-timeout: 60000
+  script:
+    path: scripts/import_scheduler.py  # Python导入脚本路径（相对于项目根目录）
+    directory: scripts  # Python脚本工作目录（相对于项目根目录）
+  log:
+    directory: logs  # 日志目录（相对于项目根目录）
 
 # HTTP 客户端配置
 http:
@@ -61,6 +69,13 @@ logging:
   level:
     com.lio9.common: debug
     com.lio9.pokedex: debug
+    com.baomidou.mybatisplus: debug
+    org.apache.ibatis: debug
+    java.sql: debug
+    java.sql.Connection: info
+    java.sql.Statement: debug
+    java.sql.PreparedStatement: debug
+    java.sql.ResultSet: warn
     org.springframework.web: info
     org.mybatis: info
   config: classpath:log4j2.xml

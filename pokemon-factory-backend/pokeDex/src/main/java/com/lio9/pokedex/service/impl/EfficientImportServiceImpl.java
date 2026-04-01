@@ -30,11 +30,23 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 public class EfficientImportServiceImpl implements EfficientImportService {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(EfficientImportServiceImpl.class);
-    
+
     @Value("${import.timeout.minutes:120}")
     private int importTimeoutMinutes;
+
+    @Value("${import.script.path:scripts/import_scheduler.py}")
+    private String scriptPath;
+
+    @Value("${import.script.directory:scripts}")
+    private String scriptDirectory;
+
+    @Value("${import.log.directory:logs}")
+    private String logDirectory;
+
+    @Value("${user.dir}")
+    private String projectRootDirectory;
     
     /**
      * 调用高效的Python混合导入脚本
@@ -44,27 +56,27 @@ public class EfficientImportServiceImpl implements EfficientImportService {
         Map<String, Object> result = new HashMap<>();
         try {
             logger.info("调用高效的Python混合导入脚本，超时时间: {} 分钟", importTimeoutMinutes);
-            
+
             // 检查Python脚本是否存在
-            File scriptFile = new File("D:\\learn\\pokemon-factory\\scripts\\import_scheduler.py");
+            File scriptFile = new File(projectRootDirectory, scriptPath);
             if (!scriptFile.exists()) {
                 logger.error("Python导入脚本不存在: {}", scriptFile.getAbsolutePath());
                 result.put("success", false);
                 result.put("error", "Python导入脚本不存在");
                 return result;
             }
-            
+
             // 执行Python脚本
             ProcessBuilder pb = new ProcessBuilder(
-                "python", 
+                "python",
                 scriptFile.getAbsolutePath()
             );
-            
+
             // 设置工作目录
-            pb.directory(new File("D:\\learn\\pokemon-factory\\scripts"));
-            
+            pb.directory(new File(projectRootDirectory, scriptDirectory));
+
             // 重定向输出到日志文件
-            File logFile = new File("D:\\learn\\pokemon-factory\\logs\\efficient_import.log");
+            File logFile = new File(projectRootDirectory, logDirectory + "/efficient_import.log");
             pb.redirectErrorStream(true);
             pb.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile));
             
@@ -108,28 +120,28 @@ public class EfficientImportServiceImpl implements EfficientImportService {
         Map<String, Object> result = new HashMap<>();
         try {
             logger.info("调用高效的Python混合导入脚本，类型: {}, 超时时间: {} 分钟", type, importTimeoutMinutes);
-            
+
             // 检查Python脚本是否存在
-            File scriptFile = new File("D:\\learn\\pokemon-factory\\scripts\\import_scheduler.py");
+            File scriptFile = new File(projectRootDirectory, scriptPath);
             if (!scriptFile.exists()) {
                 logger.error("Python导入脚本不存在: {}", scriptFile.getAbsolutePath());
                 result.put("success", false);
                 result.put("error", "Python导入脚本不存在");
                 return result;
             }
-            
+
             // 执行Python脚本
             ProcessBuilder pb = new ProcessBuilder(
-                "python", 
+                "python",
                 scriptFile.getAbsolutePath(),
                 "--type", type
             );
-            
+
             // 设置工作目录
-            pb.directory(new File("D:\\learn\\pokemon-factory\\scripts"));
-            
+            pb.directory(new File(projectRootDirectory, scriptDirectory));
+
             // 重定向输出到日志文件
-            File logFile = new File("D:\\learn\\pokemon-factory\\logs\\efficient_import_" + type + ".log");
+            File logFile = new File(projectRootDirectory, logDirectory + "/efficient_import_" + type + ".log");
             pb.redirectErrorStream(true);
             pb.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile));
             
@@ -171,9 +183,9 @@ public class EfficientImportServiceImpl implements EfficientImportService {
     @Override
     public Map<String, Object> getImportStatus(String taskId) {
         Map<String, Object> result = new HashMap<>();
-        
+
         try {
-            File logFile = new File("D:\\learn\\pokemon-factory\\logs\\efficient_import.log");
+            File logFile = new File(projectRootDirectory, logDirectory + "/efficient_import.log");
             if (logFile.exists()) {
                 String content = new String(Files.readAllBytes(logFile.toPath()));
                 if (content.contains("✅ 所有宝可梦数据导入完成！")) {
@@ -198,7 +210,7 @@ public class EfficientImportServiceImpl implements EfficientImportService {
             logger.error("获取导入状态失败: {}", e.getMessage());
             result.put("error", "获取导入状态失败: " + e.getMessage());
         }
-        
+
         return result;
     }
     
@@ -210,16 +222,17 @@ public class EfficientImportServiceImpl implements EfficientImportService {
         Map<String, Object> result = new HashMap<>();
         try {
             logger.info("Java代码直接导入所有数据");
-            
+
             // 直接调用Java代码进行导入
+            File scriptFile = new File(projectRootDirectory, scriptPath);
             ProcessBuilder pb = new ProcessBuilder(
-                "python", 
-                "D:\\learn\\pokemon-factory\\scripts\\import_scheduler.py"
+                "python",
+                scriptFile.getAbsolutePath()
             );
-            
-            pb.directory(new File("D:\\learn\\pokemon-factory\\scripts"));
-            
-            File logFile = new File("D:\\learn\\pokemon-factory\\logs\\java_direct_import.log");
+
+            pb.directory(new File(projectRootDirectory, scriptDirectory));
+
+            File logFile = new File(projectRootDirectory, logDirectory + "/java_direct_import.log");
             pb.redirectErrorStream(true);
             pb.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile));
             
@@ -262,17 +275,18 @@ public class EfficientImportServiceImpl implements EfficientImportService {
         Map<String, Object> result = new HashMap<>();
         try {
             logger.info("Java代码直接导入特定类型数据，类型: {}", type);
-            
+
             // 直接调用Java代码进行导入
+            File scriptFile = new File(projectRootDirectory, scriptPath);
             ProcessBuilder pb = new ProcessBuilder(
-                "python", 
-                "D:\\learn\\pokemon-factory\\scripts\\import_scheduler.py",
+                "python",
+                scriptFile.getAbsolutePath(),
                 "--type", type
             );
-            
-            pb.directory(new File("D:\\learn\\pokemon-factory\\scripts"));
-            
-            File logFile = new File("D:\\learn\\pokemon-factory\\logs\\java_direct_import_" + type + ".log");
+
+            pb.directory(new File(projectRootDirectory, scriptDirectory));
+
+            File logFile = new File(projectRootDirectory, logDirectory + "/java_direct_import_" + type + ".log");
             pb.redirectErrorStream(true);
             pb.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile));
             

@@ -9,6 +9,53 @@
       <span class="text-gray-900 font-medium">{{ pokemon.name }}</span>
     </nav>
 
+    <!-- 快捷操作栏 -->
+    <div class="fixed top-4 right-4 z-50 flex gap-2">
+      <button 
+        @click="toggleFavorite"
+        class="w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110"
+        :class="isFavorite ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white' : 'bg-white text-gray-600 hover:text-pink-500'"
+        title="收藏"
+      >
+        <Heart :class="['w-6 h-6 transition-all duration-300', isFavorite ? 'fill-current scale-110' : '']" />
+      </button>
+      <button 
+        @click="showCompareModal = true"
+        class="w-12 h-12 rounded-full bg-white text-gray-600 hover:text-blue-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
+        title="比较"
+      >
+        <Scale class="w-6 h-6" />
+      </button>
+      <button 
+        @click="sharePokemon"
+        class="w-12 h-12 rounded-full bg-white text-gray-600 hover:text-green-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
+        title="分享"
+      >
+        <Share2 class="w-6 h-6" />
+      </button>
+    </div>
+
+    <!-- 比较模态框 -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showCompareModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showCompareModal = false"></div>
+          <div class="relative bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <button 
+              @click="showCompareModal = false"
+              class="absolute top-4 right-4 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+            >
+              <X class="w-5 h-5 text-gray-600" />
+            </button>
+            <div class="p-6">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">宝可梦比较</h2>
+              <CompareView :pokemon1="pokemon" :pokemon2="comparePokemon" @select-compare="selectComparePokemon" />
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- 基本信息卡片 -->
     <div class="bg-white rounded-3xl shadow-xl overflow-hidden mb-6 border border-gray-100">
       <div class="md:flex">
@@ -170,8 +217,16 @@
           <BarChart3 class="w-5 h-5 text-white" />
         </div>
         种族值
+        <button 
+          @click="statsViewMode = statsViewMode === 'bar' ? 'radar' : 'bar'"
+          class="ml-auto px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium transition-colors"
+        >
+          {{ statsViewMode === 'bar' ? '雷达图' : '进度条' }}
+        </button>
       </h2>
-      <div class="space-y-4">
+      
+      <!-- 进度条视图 -->
+      <div v-if="statsViewMode === 'bar'" class="space-y-4">
         <StatBar label="HP" :value="currentForm.stats.hp" color="#FF6B6B" />
         <StatBar label="攻击" :value="currentForm.stats.attack" color="#FFA94D" />
         <StatBar label="防御" :value="currentForm.stats.defense" color="#FFD43B" />
@@ -179,6 +234,12 @@
         <StatBar label="特防" :value="currentForm.stats.spDefense" color="#69DB7C" />
         <StatBar label="速度" :value="currentForm.stats.speed" color="#F783AC" />
       </div>
+      
+      <!-- 雷达图视图 -->
+      <div v-else class="flex justify-center py-4">
+        <RadarChart :stats="currentForm.stats" />
+      </div>
+      
       <div class="mt-8 text-center bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
         <span class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{{ currentForm.stats.total }}</span>
         <span class="text-gray-600 ml-3 text-lg">种族值总和</span>
@@ -406,10 +467,10 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ChevronLeft, ChevronRight, BarChart3, Sparkles, Layers, GitBranch, ArrowRight, Zap, Hash, Star, Baby, Loader2, Image, RotateCcw, Sparkles as Shiny } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, BarChart3, Sparkles, Layers, GitBranch, ArrowRight, Zap, Hash, Star, Baby, Loader2, Image, RotateCcw, Sparkles as Shiny, Heart, Scale, Share2, X } from 'lucide-vue-next'
 import { pokemonApi, sprites } from '../services/api.js'
 import { dataCache } from '../services/cache.js'
 
@@ -432,9 +493,125 @@ const StatBar = {
   `
 }
 
+// 雷达图组件
+const RadarChart = {
+  props: ['stats'],
+  template: `
+    <svg viewBox="0 0 300 300" class="w-full max-w-md">
+      <!-- 背景网格 -->
+      <polygon 
+        v-for="level in 5"
+        :points="getPolygonPoints(level / 5 * 200)"
+        fill="none"
+        stroke="#E5E7EB"
+        stroke-width="1"
+      />
+      <!-- 轴线 -->
+      <line 
+        v-for="(label, i) in ['HP', '攻击', '防御', '特攻', '特防', '速度']"
+        :x1="150"
+        :y1="150"
+        :x2="150 + (i % 2 === 0 ? 1 : -1) * 100 * Math.cos(Math.PI * i / 3)"
+        :y2="150 - 100 * Math.sin(Math.PI * i / 3)"
+        stroke="#E5E7EB"
+        stroke-width="1"
+      />
+      <!-- 数据区域 -->
+      <polygon 
+        :points="getDataPoints()"
+        fill="rgba(59, 130, 246, 0.3)"
+        stroke="#3B82F6"
+        stroke-width="2"
+      />
+      <!-- 数据点 -->
+      <circle 
+        v-for="(label, i) in ['HP', '攻击', '防御', '特攻', '特防', '速度']"
+        :cx="150 + (i % 2 === 0 ? 1 : -1) * getStatValue(i) / 255 * 100 * Math.cos(Math.PI * i / 3)"
+        :cy="150 - getStatValue(i) / 255 * 100 * Math.sin(Math.PI * i / 3)"
+        r="5"
+        fill="#3B82F6"
+      />
+      <!-- 标签 -->
+      <text 
+        v-for="(label, i) in ['HP', '攻击', '防御', '特攻', '特防', '速度']"
+        :x="150 + (i % 2 === 0 ? 1 : -1) * 120 * Math.cos(Math.PI * i / 3)"
+        :y="150 - 120 * Math.sin(Math.PI * i / 3)"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        class="text-xs font-bold fill-gray-600"
+      >
+        {{ label }}
+      </text>
+    </svg>
+  `,
+  methods: {
+    getPolygonPoints(radius) {
+      const points = []
+      for (let i = 0; i < 6; i++) {
+        const x = 150 + (i % 2 === 0 ? 1 : -1) * radius * Math.cos(Math.PI * i / 3)
+        const y = 150 - radius * Math.sin(Math.PI * i / 3)
+        points.push(`${x},${y}`)
+      }
+      return points.join(' ')
+    },
+    getStatValue(index) {
+      const values = [
+        this.stats?.hp || 0,
+        this.stats?.attack || 0,
+        this.stats?.defense || 0,
+        this.stats?.spAttack || 0,
+        this.stats?.spDefense || 0,
+        this.stats?.speed || 0
+      ]
+      return values[index] || 0
+    },
+    getDataPoints() {
+      const points = []
+      for (let i = 0; i < 6; i++) {
+        const value = this.getStatValue(i)
+        const x = 150 + (i % 2 === 0 ? 1 : -1) * value / 255 * 100 * Math.cos(Math.PI * i / 3)
+        const y = 150 - value / 255 * 100 * Math.sin(Math.PI * i / 3)
+        points.push(`${x},${y}`)
+      }
+      return points.join(' ')
+    }
+  }
+}
+
+// 比较视图组件
+const CompareView = {
+  props: ['pokemon1', 'pokemon2'],
+  emits: ['select-compare'],
+  template: `
+    <div class="grid md:grid-cols-2 gap-8">
+      <div class="text-center">
+        <img :src="pokemon1.spriteUrl || getSprite(pokemon1.id)" class="w-32 h-32 mx-auto mb-4">
+        <h3 class="font-bold text-lg">{{ pokemon1.name }}</h3>
+      </div>
+      <div v-if="pokemon2" class="text-center">
+        <img :src="pokemon2.spriteUrl || getSprite(pokemon2.id)" class="w-32 h-32 mx-auto mb-4">
+        <h3 class="font-bold text-lg">{{ pokemon2.name }}</h3>
+      </div>
+      <div v-else class="flex items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl">
+        <button 
+          @click="$emit('select-compare')"
+          class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+        >
+          选择宝可梦
+        </button>
+      </div>
+    </div>
+  `,
+  methods: {
+    getSprite(id) {
+      return sprites.pokemon(id)
+    }
+  }
+}
+
 export default {
   name: 'PokemonDetail',
-  components: { ChevronLeft, ChevronRight, BarChart3, Sparkles, Layers, GitBranch, ArrowRight, Zap, Hash, Star, Baby, Loader2, Image, RotateCcw, Shiny, StatBar },
+  components: { ChevronLeft, ChevronRight, BarChart3, Sparkles, Layers, GitBranch, ArrowRight, Zap, Hash, Star, Baby, Loader2, Image, RotateCcw, Shiny, StatBar, RadarChart, CompareView, Heart, Scale, Share2, X },
   setup() {
     const route = useRoute()
     const router = useRouter()
@@ -446,6 +623,125 @@ export default {
     const imageLoaded = ref(false)
     const imageMode = ref('front')
     const selectedMoveFilter = ref('all')
+    
+    // 新增状态
+    const isFavorite = ref(false)
+    const showCompareModal = ref(false)
+    const comparePokemon = ref(null)
+    const statsViewMode = ref('bar')
+    const favorites = ref([])
+    
+    // 加载收藏列表
+    const loadFavorites = () => {
+      try {
+        const stored = localStorage.getItem('pokemon-favorites')
+        if (stored) {
+          favorites.value = JSON.parse(stored)
+        }
+      } catch (error) {
+        console.error('加载收藏失败:', error)
+      }
+    }
+    
+    // 检查是否已收藏
+    const checkFavorite = () => {
+      isFavorite.value = favorites.value.includes(pokemon.value?.id)
+    }
+    
+    // 切换收藏状态
+    const toggleFavorite = () => {
+      if (!pokemon.value) return
+      
+      const index = favorites.value.indexOf(pokemon.value.id)
+      if (index > -1) {
+        favorites.value.splice(index, 1)
+        ElMessage.success('已取消收藏')
+      } else {
+        favorites.value.push(pokemon.value.id)
+        ElMessage.success('已添加收藏')
+      }
+      
+      try {
+        localStorage.setItem('pokemon-favorites', JSON.stringify(favorites.value))
+      } catch (error) {
+        console.error('保存收藏失败:', error)
+      }
+      
+      isFavorite.value = !isFavorite.value
+    }
+    
+    // 分享功能
+    const sharePokemon = async () => {
+      if (!pokemon.value) return
+      
+      const url = window.location.href
+      
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url)
+          ElMessage.success('链接已复制到剪贴板')
+        } else {
+          // 降级方案
+          const textarea = document.createElement('textarea')
+          textarea.value = url
+          textarea.style.position = 'fixed'
+          textarea.style.opacity = '0'
+          document.body.appendChild(textarea)
+          textarea.select()
+          document.execCommand('copy')
+          document.body.removeChild(textarea)
+          ElMessage.success('链接已复制到剪贴板')
+        }
+      } catch (error) {
+        console.error('复制失败:', error)
+        ElMessage.error('复制失败，请手动复制链接')
+      }
+    }
+    
+    // 选择比较宝可梦
+    const selectComparePokemon = (id) => {
+      // 这里可以实现选择比较宝可梦的逻辑
+      // 可以打开一个弹窗让用户选择
+      ElMessage.info('选择比较宝可梦功能待实现')
+    }
+    
+    // 快捷键支持
+    const handleKeydown = (event) => {
+      if (!pokemon.value) return
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault()
+          navigatePokemon(-1)
+          break
+        case 'ArrowRight':
+          event.preventDefault()
+          navigatePokemon(1)
+          break
+        case 'f':
+        case 'F':
+          if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault()
+            toggleFavorite()
+          }
+          break
+        case 's':
+        case 'S':
+          if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault()
+            sharePokemon()
+          }
+          break
+      }
+    }
+    
+    // 导航到相邻宝可梦
+    const navigatePokemon = (direction) => {
+      const newId = pokemon.value.id + direction
+      if (newId > 0) {
+        router.push(`/pokemon/${newId}`)
+      }
+    }
 
     // 图片类型配置
     const imageTypes = {
@@ -539,6 +835,9 @@ export default {
           selectedFormId.value = result.data.forms?.[0]?.id
           imageLoaded.value = false
           
+          // 检查收藏状态
+          checkFavorite()
+          
           // 获取技能
           if (selectedFormId.value) {
             fetchMoves(selectedFormId.value)
@@ -591,6 +890,12 @@ export default {
 
     onMounted(() => {
       fetchPokemonDetail()
+      loadFavorites()
+      window.addEventListener('keydown', handleKeydown)
+    })
+    
+    onUnmounted(() => {
+      window.removeEventListener('keydown', handleKeydown)
     })
 
     return {
@@ -611,8 +916,148 @@ export default {
       getDamageClassColor,
       getPokemonImage,
       handleImageError,
-      goBack
+      goBack,
+      isFavorite,
+      showCompareModal,
+      comparePokemon,
+      statsViewMode,
+      toggleFavorite,
+      sharePokemon,
+      selectComparePokemon
     }
   }
 }
 </script>
+
+<style scoped>
+.pokemon-detail {
+  padding-bottom: 2rem;
+}
+
+/* 模态框动画 */
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-from .relative,
+.modal-leave-to .relative {
+  transform: scale(0.95);
+}
+
+/* 改进的动画效果 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
+.pokemon-detail > div {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .pokemon-detail {
+    padding-bottom: 1rem;
+  }
+  
+  .fixed.top-4.right-4 {
+    top: auto;
+    bottom: 4rem;
+    right: 1rem;
+  }
+  
+  .bg-white.rounded-3xl.shadow-xl {
+    border-radius: 1.5rem;
+  }
+  
+  .text-4xl {
+    font-size: 2rem;
+  }
+  
+  .grid.md\:grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .grid.md\:grid-cols-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .grid.md\:grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .w-72.h-72 {
+    width: 180px;
+    height: 180px;
+  }
+  
+  .w-28.h-28 {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .w-20.h-20 {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .text-2xl {
+    font-size: 1.25rem;
+  }
+  
+  .px-4.py-2 {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* 滚动条美化 */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* 改进的过渡效果 */
+.group:hover .group-hover\:scale-110 {
+  transform: scale(1.1);
+}
+
+.transition-all.duration-300 {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+</style>

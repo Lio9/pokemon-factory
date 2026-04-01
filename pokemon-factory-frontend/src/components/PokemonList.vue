@@ -14,6 +14,7 @@
             class="search-input"
             @input="handleSearchInput"
             @clear="handleSearch"
+            @keyup.enter="handleSearch"
           >
             <template #append>
               <el-button @click="handleSearch" class="!bg-gradient-to-r !from-blue-500 !to-indigo-600 !text-white !border-none hover:!from-blue-600 hover:!to-indigo-700">
@@ -68,19 +69,72 @@
             />
           </el-select>
         </div>
+
+        <!-- 排序 -->
+        <div class="w-40">
+          <el-select
+            v-model="sortBy"
+            placeholder="排序"
+            size="large"
+            class="w-full"
+            @change="handleSort"
+          >
+            <el-option label="图鉴编号" value="id" />
+            <el-option label="名称" value="name" />
+            <el-option label="攻击" value="attack" />
+            <el-option label="速度" value="speed" />
+          </el-select>
+        </div>
+
+        <!-- 视图切换 -->
+        <div class="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
+          <button 
+            @click="viewMode = 'grid'"
+            class="p-2 rounded-lg transition-all duration-300"
+            :class="viewMode === 'grid' ? 'bg-white shadow-md' : 'hover:bg-gray-200'"
+            title="网格视图"
+          >
+            <Grid class="w-5 h-5" />
+          </button>
+          <button 
+            @click="viewMode = 'list'"
+            class="p-2 rounded-lg transition-all duration-300"
+            :class="viewMode === 'list' ? 'bg-white shadow-md' : 'hover:bg-gray-200'"
+            title="列表视图"
+          >
+            <List class="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <!-- 快速筛选标签 -->
+      <div class="flex flex-wrap gap-2 mt-4">
+        <button
+          v-for="quickFilter in quickFilters"
+          :key="quickFilter.key"
+          @click="toggleQuickFilter(quickFilter.key)"
+          class="px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-300"
+          :class="activeQuickFilters.includes(quickFilter.key)
+            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+        >
+          {{ quickFilter.icon }} {{ quickFilter.label }}
+        </button>
       </div>
     </div>
 
     <!-- 加载中 - 首次加载 -->
     <div v-if="loading && pokemons.length === 0" class="text-center py-12">
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
-        <div v-for="i in 12" :key="i" class="bg-white rounded-2xl shadow-lg p-4 overflow-hidden">
-          <div class="aspect-square mb-4 rounded-xl skeleton"></div>
-          <div class="h-6 mb-2 rounded skeleton"></div>
-          <div class="h-4 w-3/4 rounded skeleton"></div>
-          <div class="flex gap-2 mt-3">
-            <div class="h-6 w-16 rounded-full skeleton"></div>
-            <div class="h-6 w-16 rounded-full skeleton"></div>
+      <div :class="viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5' : 'space-y-4'">
+        <div v-for="i in 12" :key="i" :class="viewMode === 'grid' ? 'bg-white rounded-2xl shadow-lg p-4 overflow-hidden' : 'bg-white rounded-2xl shadow-lg p-4 flex items-center gap-4'">
+          <div :class="viewMode === 'grid' ? 'aspect-square mb-4 rounded-xl skeleton' : 'w-20 h-20 rounded-xl skeleton flex-shrink-0'"></div>
+          <div :class="viewMode === 'grid' ? '' : 'flex-1'">
+            <div class="h-6 mb-2 rounded skeleton" :class="viewMode === 'list' ? 'w-32' : ''"></div>
+            <div class="h-4 w-3/4 rounded skeleton"></div>
+            <div v-if="viewMode === 'grid'" class="flex gap-2 mt-3">
+              <div class="h-6 w-16 rounded-full skeleton"></div>
+              <div class="h-6 w-16 rounded-full skeleton"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -93,13 +147,23 @@
     
     <!-- 宝可梦列表 -->
     <div v-else-if="pokemons.length > 0">
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+      <!-- 网格视图 -->
+      <div v-if="viewMode === 'grid'" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
         <router-link
           v-for="pokemon in pokemons"
           :key="pokemon.id"
           :to="`/pokemon/${pokemon.id}`"
-          class="pokemon-card bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden group border-2 border-transparent hover:border-blue-200"
+          class="pokemon-card bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden group border-2 border-transparent hover:border-blue-200 relative"
         >
+          <!-- 收藏按钮 -->
+          <button 
+            @click.prevent="toggleFavorite(pokemon)"
+            class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
+            :class="isFavorite(pokemon.id) ? 'bg-red-500 text-white shadow-lg' : 'bg-white/90 text-gray-400 hover:text-red-500'"
+          >
+            <Heart class="w-4 h-4" :class="isFavorite(pokemon.id) ? 'fill-current' : ''" />
+          </button>
+          
           <!-- 图片区域 -->
           <div class="relative bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50 p-4">
             <div class="aspect-square flex items-center justify-center">
@@ -133,13 +197,13 @@
               #{{ String(pokemon.id).padStart(4, '0') }}
             </div>
             <!-- 特殊标记 -->
-            <div v-if="pokemon.isLegendary" class="absolute top-3 right-3">
-              <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg">
+            <div v-if="pokemon.isLegendary" class="absolute top-3 right-12">
+              <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
                 <span class="text-white text-sm font-bold">★</span>
               </div>
             </div>
-            <div v-else-if="pokemon.isMythical" class="absolute top-3 right-3">
-              <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+            <div v-else-if="pokemon.isMythical" class="absolute top-3 right-12">
+              <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
                 <span class="text-white text-sm font-bold">◆</span>
               </div>
             </div>
@@ -162,6 +226,84 @@
               >
                 {{ type.name }}
               </span>
+            </div>
+          </div>
+        </router-link>
+      </div>
+
+      <!-- 列表视图 -->
+      <div v-else class="space-y-4">
+        <router-link
+          v-for="pokemon in pokemons"
+          :key="pokemon.id"
+          :to="`/pokemon/${pokemon.id}`"
+          class="pokemon-card-list bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group border-2 border-transparent hover:border-blue-200 flex items-center gap-4 p-4 relative"
+        >
+          <!-- 收藏按钮 -->
+          <button 
+            @click.prevent="toggleFavorite(pokemon)"
+            class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
+            :class="isFavorite(pokemon.id) ? 'bg-red-500 text-white shadow-lg' : 'bg-white/90 text-gray-400 hover:text-red-500'"
+          >
+            <Heart class="w-4 h-4" :class="isFavorite(pokemon.id) ? 'fill-current' : ''" />
+          </button>
+          
+          <!-- 图片 -->
+          <div class="relative bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50 rounded-xl p-3 flex-shrink-0">
+            <div class="w-20 h-20 flex items-center justify-center">
+              <div 
+                v-if="!pokemon._imageLoaded" 
+                class="w-full h-full flex items-center justify-center skeleton rounded-lg"
+              ></div>
+              <img 
+                v-show="pokemon._imageLoaded"
+                :src="pokemon._imageUrl"
+                :alt="pokemon.name"
+                class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
+                @load="handleImageLoad(pokemon)"
+                @error="handleImageError(pokemon)"
+                loading="lazy"
+              >
+            </div>
+            <!-- 图鉴编号 -->
+            <div class="absolute -top-2 -left-2 bg-gradient-to-r from-gray-900 to-gray-700 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-lg">
+              #{{ String(pokemon.id).padStart(4, '0') }}
+            </div>
+          </div>
+          
+          <!-- 信息 -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-bold text-gray-900 text-lg truncate group-hover:text-blue-600 transition-colors">
+                {{ pokemon.name }}
+              </h3>
+              <span v-if="pokemon.isLegendary" class="text-yellow-500">★</span>
+              <span v-if="pokemon.isMythical" class="text-purple-500">◆</span>
+            </div>
+            <p class="text-gray-500 text-sm truncate">{{ pokemon.genus }}</p>
+            
+            <!-- 属性标签 -->
+            <div class="flex flex-wrap gap-2 mt-2">
+              <span 
+                v-for="type in pokemon.types"
+                :key="type.id"
+                class="px-2 py-0.5 rounded-full text-xs font-bold text-white"
+                :style="{ backgroundColor: type.color }"
+              >
+                {{ type.name }}
+              </span>
+            </div>
+          </div>
+
+          <!-- 种族值预览 -->
+          <div v-if="pokemon.formStats" class="hidden sm:flex gap-2 flex-shrink-0">
+            <div class="text-center">
+              <div class="text-xs text-gray-500">攻击</div>
+              <div class="text-sm font-bold text-gray-900">{{ pokemon.formStats.attack }}</div>
+            </div>
+            <div class="text-center">
+              <div class="text-xs text-gray-500">速度</div>
+              <div class="text-sm font-bold text-gray-900">{{ pokemon.formStats.speed }}</div>
             </div>
           </div>
         </router-link>
@@ -215,6 +357,12 @@
       </div>
       <p class="text-gray-500 text-lg">没有找到宝可梦</p>
       <p class="text-gray-400 text-sm mt-2">试试其他搜索条件</p>
+      <button 
+        @click="resetFilters"
+        class="mt-4 px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-700 transition-all"
+      >
+        重置筛选
+      </button>
     </div>
   </div>
 </template>
@@ -222,13 +370,13 @@
 <script>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Loading, ArrowUp, CircleCheck, ArrowDown } from '@element-plus/icons-vue'
+import { Search, Loading, ArrowUp, CircleCheck, ArrowDown, Grid, List, Heart } from '@element-plus/icons-vue'
 import { pokemonApi, typeApi, sprites } from '../services/api.js'
 import { dataCache } from '../services/cache.js'
 
 export default {
   name: 'PokemonList',
-  components: { Search, Loading, ArrowUp, CircleCheck, ArrowDown },
+  components: { Search, Loading, ArrowUp, CircleCheck, ArrowDown, Grid, List, Heart },
   setup() {
     // DOM引用
     const listContainer = ref(null)
@@ -242,6 +390,10 @@ export default {
     const searchKeyword = ref('')
     const selectedType = ref(null)
     const selectedGeneration = ref(null)
+    const sortBy = ref('id')
+    const viewMode = ref('grid') // 'grid' or 'list'
+    const activeQuickFilters = ref([])
+    const favorites = ref(new Set())
     
     // 防抖定时器
     let searchTimer = null
@@ -268,10 +420,86 @@ export default {
       { id: 8, name: '第八世代' },
       { id: 9, name: '第九世代' }
     ]
+
+    // 快速筛选选项
+    const quickFilters = [
+      { key: 'legendary', label: '传说', icon: '⭐' },
+      { key: 'mythical', label: '神话', icon: '◆' },
+      { key: 'baby', label: '幼崽', icon: '👶' }
+    ]
     
     // 计算属性
     const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
     const hasMore = computed(() => currentPage.value < totalPages.value)
+
+    // 从localStorage加载收藏
+    const loadFavorites = () => {
+      const saved = localStorage.getItem('pokemon-favorites')
+      if (saved) {
+        favorites.value = new Set(JSON.parse(saved))
+      }
+    }
+
+    // 保存收藏到localStorage
+    const saveFavorites = () => {
+      localStorage.setItem('pokemon-favorites', JSON.stringify([...favorites.value]))
+    }
+
+    // 切换收藏状态
+    const toggleFavorite = (pokemon) => {
+      const id = pokemon.id
+      if (favorites.value.has(id)) {
+        favorites.value.delete(id)
+        ElMessage.success(`已取消收藏 ${pokemon.name}`)
+      } else {
+        favorites.value.add(id)
+        ElMessage.success(`已收藏 ${pokemon.name}`)
+      }
+      saveFavorites()
+    }
+
+    // 检查是否已收藏
+    const isFavorite = (id) => favorites.value.has(id)
+
+    // 切换快速筛选
+    const toggleQuickFilter = (filterKey) => {
+      const index = activeQuickFilters.value.indexOf(filterKey)
+      if (index > -1) {
+        activeQuickFilters.value.splice(index, 1)
+      } else {
+        activeQuickFilters.value.push(filterKey)
+      }
+      handleFilter()
+    }
+
+    // 重置筛选
+    const resetFilters = () => {
+      searchKeyword.value = ''
+      selectedType.value = null
+      selectedGeneration.value = null
+      activeQuickFilters.value = []
+      handleFilter()
+    }
+
+    // 排序逻辑
+    const sortPokemons = (data) => {
+      const sorted = [...data]
+      switch (sortBy.value) {
+        case 'name':
+          sorted.sort((a, b) => a.name.localeCompare(b.name))
+          break
+        case 'attack':
+          sorted.sort((a, b) => (b.formStats?.attack || 0) - (a.formStats?.attack || 0))
+          break
+        case 'speed':
+          sorted.sort((a, b) => (b.formStats?.speed || 0) - (a.formStats?.speed || 0))
+          break
+        case 'id':
+        default:
+          sorted.sort((a, b) => a.id - b.id)
+      }
+      return sorted
+    }
 
     // 获取属性列表 - 使用缓存
     const fetchTypes = async () => {
@@ -287,13 +515,34 @@ export default {
       }
     }
 
-    // 处理宝可梦数据 - 添加图片URL
+    // 处理宝可梦数据 - 添加图片URL和排序信息
     const processPokemonData = (data) => {
       return data.map(p => ({
         ...p,
         _imageUrl: p.spriteUrl || sprites.pokemon(p.id),
-        _imageLoaded: false
+        _imageLoaded: false,
+        formStats: p.forms?.[0]?.stats || {}
       }))
+    }
+
+    // 应用快速筛选
+    const applyQuickFilters = (data) => {
+      if (activeQuickFilters.value.length === 0) return data
+      
+      return data.filter(pokemon => {
+        return activeQuickFilters.value.every(filter => {
+          switch (filter) {
+            case 'legendary':
+              return pokemon.isLegendary
+            case 'mythical':
+              return pokemon.isMythical
+            case 'baby':
+              return pokemon.isBaby
+            default:
+              return true
+          }
+        })
+      })
     }
 
     // 获取宝可梦列表
@@ -325,9 +574,12 @@ export default {
         const result = await pokemonApi.getList(params)
         
         if (result.code === 200) {
-          const records = result.data.records || []
+          let records = result.data.records || []
           total.value = result.data.total || 0
           currentPage.value = nextPage
+          
+          // 应用快速筛选
+          records = applyQuickFilters(records)
           
           // 追加数据
           const processedData = processPokemonData(records)
@@ -395,6 +647,11 @@ export default {
       fetchPokemons(false)
     }
 
+    // 排序
+    const handleSort = () => {
+      pokemons.value = sortPokemons(pokemons.value)
+    }
+
     // 返回顶部
     const scrollToTop = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -438,6 +695,7 @@ export default {
     // 初始化
     onMounted(async () => {
       window.addEventListener('scroll', handleScroll, { passive: true })
+      loadFavorites()
       await fetchTypes()
       await fetchPokemons(false)
       
@@ -475,6 +733,10 @@ export default {
       searchKeyword,
       selectedType,
       selectedGeneration,
+      sortBy,
+      viewMode,
+      activeQuickFilters,
+      quickFilters,
       currentPage,
       pageSize,
       total,
@@ -485,7 +747,12 @@ export default {
       handleSearchInput,
       handleSearch,
       handleFilter,
-      scrollToTop
+      handleSort,
+      scrollToTop,
+      toggleFavorite,
+      isFavorite,
+      toggleQuickFilter,
+      resetFilters
     }
   }
 }
