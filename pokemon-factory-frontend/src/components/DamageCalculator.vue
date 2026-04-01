@@ -3,12 +3,127 @@
     <div class="calculator-header">
       <h1 class="text-3xl font-bold text-gray-900 mb-2">伤害计算器</h1>
       <p class="text-gray-600">基于宝可梦标准伤害公式，支持特性、道具、天气、能力等级等完整计算</p>
+      
+      <!-- 预设场景和快速选择 -->
+      <div class="header-actions">
+        <div class="preset-scenarios">
+          <label class="action-label">预设场景:</label>
+          <button 
+            v-for="scenario in presetScenarios" 
+            :key="scenario.id"
+            class="preset-btn"
+            :class="{ active: activeScenario === scenario.id }"
+            @click="applyPresetScenario(scenario)"
+          >
+            <span class="preset-icon">{{ scenario.icon }}</span>
+            <span>{{ scenario.name }}</span>
+          </button>
+        </div>
+        
+        <div class="header-actions-right">
+          <div class="quick-select">
+            <label class="action-label">快速组合:</label>
+            <el-select 
+              v-model="selectedQuickCombo" 
+              placeholder="选择常见组合..."
+              size="small"
+              @change="applyQuickCombo"
+              class="quick-combo-select"
+            >
+              <el-option-group label="对战组合">
+                <el-option v-for="combo in quickCombos.battle" :key="combo.id"
+                  :label="combo.name" :value="combo.id">
+                  <span class="combo-icon">{{ combo.icon }}</span>
+                  <span>{{ combo.name }}</span>
+                </el-option>
+              </el-option-group>
+              <el-option-group label="天气队">
+                <el-option v-for="combo in quickCombos.weather" :key="combo.id"
+                  :label="combo.name" :value="combo.id">
+                  <span class="combo-icon">{{ combo.icon }}</span>
+                  <span>{{ combo.name }}</span>
+                </el-option>
+              </el-option-group>
+              <el-option-group label="场地队">
+                <el-option v-for="combo in quickCombos.terrain" :key="combo.id"
+                  :label="combo.name" :value="combo.id">
+                  <span class="combo-icon">{{ combo.icon }}</span>
+                  <span>{{ combo.name }}</span>
+                </el-option>
+              </el-option-group>
+            </el-select>
+          </div>
+          
+          <button class="history-btn" @click="showHistory = true" :disabled="history.length === 0">
+            <span>📜</span>
+            <span>历史记录 ({{ history.length }})</span>
+          </button>
+        </div>
+      </div>
     </div>
+
+    <!-- 历史记录面板 -->
+    <transition name="slide-in">
+      <div v-if="showHistory" class="history-panel">
+        <div class="history-header">
+          <h3><span class="icon">📜</span> 历史记录</h3>
+          <button class="close-btn" @click="showHistory = false">×</button>
+        </div>
+        <div class="history-list">
+          <div v-if="history.length === 0" class="history-empty">
+            <p>暂无历史记录</p>
+          </div>
+          <div v-for="(record, index) in history" :key="index" class="history-item">
+            <div class="history-content">
+              <div class="history-battle">
+                <div class="history-pokemon attacker">
+                  <img :src="getSpriteUrl(record.attacker.speciesId)" class="history-sprite">
+                  <div class="history-pokemon-info">
+                    <span class="history-name">{{ record.attackerName }}</span>
+                    <span class="history-move">{{ record.moveName }}</span>
+                  </div>
+                </div>
+                <span class="history-vs">VS</span>
+                <div class="history-pokemon defender">
+                  <img :src="getSpriteUrl(record.defender.speciesId)" class="history-sprite">
+                  <div class="history-pokemon-info">
+                    <span class="history-name">{{ record.defenderName }}</span>
+                    <span class="history-damage">{{ record.minDamage }}-{{ record.maxDamage }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="history-meta">
+                <span class="history-time">{{ formatTime(record.timestamp) }}</span>
+                <span class="history-ko">{{ record.koEstimate }}</span>
+              </div>
+            </div>
+            <div class="history-actions">
+              <button class="history-action-btn" @click="loadHistoryRecord(index)">
+                <span>📋</span>
+                <span>加载</span>
+              </button>
+              <button class="history-action-btn delete" @click="deleteHistoryRecord(index)">
+                <span>🗑️</span>
+                <span>删除</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <div class="calculator-grid">
       <!-- 攻击方配置 -->
       <div class="attacker-section card-section">
-        <h2 class="section-title"><span class="icon">⚔️</span> 攻击方</h2>
+        <div class="section-header">
+          <h2 class="section-title"><span class="icon">⚔️</span> 攻击方</h2>
+          <transition name="fade">
+            <span v-if="attackerErrors.length > 0" class="section-error">
+              <span class="error-icon">⚠️</span>
+              {{ attackerErrors.length }}个错误
+            </span>
+          </transition>
+        </div>
         
         <div class="form-group">
           <label class="form-label">选择宝可梦</label>
@@ -237,7 +352,15 @@
 
       <!-- 防御方配置 -->
       <div class="defender-section card-section">
-        <h2 class="section-title"><span class="icon">🛡️</span> 防御方</h2>
+        <div class="section-header">
+          <h2 class="section-title"><span class="icon">🛡️</span> 防御方</h2>
+          <transition name="fade">
+            <span v-if="defenderErrors.length > 0" class="section-error">
+              <span class="error-icon">⚠️</span>
+              {{ defenderErrors.length }}个错误
+            </span>
+          </transition>
+        </div>
         
         <div class="form-group">
           <label class="form-label">选择宝可梦</label>
@@ -381,7 +504,15 @@
 
       <!-- 战斗设置 -->
       <div class="battle-settings card-section">
-        <h2 class="section-title"><span class="icon">⚙️</span> 战斗设置</h2>
+        <div class="section-header">
+          <h2 class="section-title"><span class="icon">⚙️</span> 战斗设置</h2>
+          <transition name="fade">
+            <span v-if="validationErrors.length > 0" class="section-error">
+              <span class="error-icon">⚠️</span>
+              {{ validationErrors.length }}个错误
+            </span>
+          </transition>
+        </div>
         
         <div class="settings-grid">
           <!-- 天气 -->
@@ -440,8 +571,28 @@
           </div>
         </div>
 
+        <!-- 错误提示 -->
+        <transition name="slide-down">
+          <div v-if="validationErrors.length > 0" class="validation-errors">
+            <div class="error-header">
+              <span class="error-icon">⚠️</span>
+              <span>请修正以下错误:</span>
+            </div>
+            <ul class="error-list">
+              <li v-for="(error, index) in validationErrors" :key="index" class="error-item">
+                {{ error }}
+              </li>
+            </ul>
+          </div>
+        </transition>
+
         <!-- 计算按钮 -->
-        <button class="calculate-btn" :disabled="!canCalculate || calculating" @click="calculateDamage">
+        <button 
+          class="calculate-btn" 
+          :class="{ 'btn-disabled': !canCalculate || calculating || validationErrors.length > 0 }"
+          :disabled="!canCalculate || calculating || validationErrors.length > 0" 
+          @click="calculateDamage"
+        >
           <span v-if="calculating" class="loading-spinner"></span>
           <span v-else>计算伤害</span>
         </button>
@@ -449,10 +600,17 @@
     </div>
 
     <!-- 计算结果 -->
-    <div v-if="result" class="result-section">
-      <h2 class="section-title"><span class="icon">📊</span> 计算结果</h2>
-      
-      <div class="result-grid">
+    <transition name="fade-in">
+      <div v-if="result" class="result-section">
+        <div class="result-header">
+          <h2 class="section-title"><span class="icon">📊</span> 计算结果</h2>
+          <button class="copy-result-btn" @click="copyResult" :disabled="copying">
+            <span v-if="copying">📋 复制中...</span>
+            <span v-else>📋 复制结果</span>
+          </button>
+        </div>
+
+        <div class="result-grid">
         <!-- 伤害范围 -->
         <div class="result-card damage-result">
           <h3>伤害范围</h3>
@@ -472,6 +630,41 @@
           </div>
           <div v-if="result.koEstimate" class="ko-percent">
             {{ result.koEstimate.koPercentRange }}
+          </div>
+        </div>
+
+        <!-- 伤害分布图 -->
+        <div class="result-card damage-distribution">
+          <h3>伤害分布</h3>
+          <div class="distribution-chart">
+            <div class="distribution-bar">
+              <div 
+                class="distribution-segment" 
+                v-for="(segment, index) in damageDistribution" 
+                :key="index"
+                :style="{ 
+                  left: segment.left + '%',
+                  width: segment.width + '%',
+                  backgroundColor: segment.color 
+                }"
+              >
+                <span class="segment-label">{{ segment.damage }}</span>
+              </div>
+            </div>
+            <div class="distribution-legend">
+              <div class="legend-item">
+                <span class="legend-color" style="background: #22c55e;"></span>
+                <span class="legend-label">低伤害 (0-33%)</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-color" style="background: #3b82f6;"></span>
+                <span class="legend-label">中伤害 (33-66%)</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-color" style="background: #ef4444;"></span>
+                <span class="legend-label">高伤害 (66-100%)</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -576,8 +769,8 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
-import { ElSelect, ElOption, ElOptionGroup, ElSwitch, ElInputNumber } from 'element-plus'
+import { ref, computed, onMounted, watch } from 'vue'
+import { ElSelect, ElOption, ElOptionGroup, ElSwitch, ElInputNumber, ElMessage } from 'element-plus'
 import { pokemonApi, damageApi, itemApi, sprites } from '../services/api.js'
 
 export default {
@@ -587,6 +780,43 @@ export default {
     const pokemonList = ref([])
     const loading = ref(false)
     const calculating = ref(false)
+    const copying = ref(false)
+    const showHistory = ref(false)
+    
+    // 预设场景
+    const activeScenario = ref('')
+    const presetScenarios = ref([
+      { id: 'standard', name: '标准对战', icon: '⚔️', settings: { weather: '', terrain: '', isDoubleBattle: false, isCritical: false } },
+      { id: 'ranked', name: '排位赛', icon: '🏆', settings: { weather: '', terrain: '', isDoubleBattle: false, isCritical: false } },
+      { id: 'double', name: '双打对战', icon: '👥', settings: { weather: '', terrain: '', isDoubleBattle: true, isCritical: false } },
+      { id: 'crit', name: '暴击测试', icon: '💥', settings: { weather: '', terrain: '', isDoubleBattle: false, isCritical: true } },
+      { id: 'rain', name: '雨天对战', icon: '🌧️', settings: { weather: '雨天', terrain: '', isDoubleBattle: false, isCritical: false } },
+      { id: 'sun', name: '晴天对战', icon: '☀️', settings: { weather: '晴天', terrain: '', isDoubleBattle: false, isCritical: false } },
+      { id: 'sand', name: '沙暴对战', icon: '🏜️', settings: { weather: '沙暴', terrain: '', isDoubleBattle: false, isCritical: false } }
+    ])
+
+    // 快速选择组合
+    const selectedQuickCombo = ref('')
+    const quickCombos = ref({
+      battle: [
+        { id: 'god_battle', name: '神战', icon: '👑', attacker: 493, defender: 494, move: 1 },
+        { id: 'megas', name: ' Mega进化', icon: '💎', attacker: 384, defender: 448, move: 1 },
+        { id: 'ultra', name: '究极异兽', icon: '🌀', attacker: 793, defender: 805, move: 1 }
+      ],
+      weather: [
+        { id: 'rain_team', name: '雨天队', icon: '🌊', weather: '雨天', attacker: 6, defender: 384, move: 1 },
+        { id: 'sun_team', name: '晴天队', icon: '🔥', weather: '晴天', attacker: 6, defender: 384, move: 1 },
+        { id: 'sand_team', name: '沙暴队', icon: '💨', weather: '沙暴', attacker: 248, defender: 6, move: 1 }
+      ],
+      terrain: [
+        { id: 'electric', name: '电气场地', icon: '⚡', terrain: '电气场地', attacker: 25, defender: 384, move: 1 },
+        { id: 'grass', name: '草地场地', icon: '🌿', terrain: '草地场地', attacker: 6, defender: 384, move: 1 },
+        { id: 'psychic', name: '超能力场地', icon: '🔮', terrain: '超能力场地', attacker: 151, defender: 6, move: 1 }
+      ]
+    })
+
+    // 历史记录
+    const history = ref([])
     
     // 道具列表（按类型分组）
     const battleItems = ref({
@@ -653,9 +883,62 @@ export default {
     // 计算结果
     const result = ref(null)
 
+    // 错误验证
+    const attackerErrors = ref([])
+    const defenderErrors = ref([])
+    const validationErrors = computed(() => {
+      const errors = [...attackerErrors.value, ...defenderErrors.value]
+      if (!attacker.value.speciesId) errors.push('请选择攻击方宝可梦')
+      if (!defender.value.speciesId) errors.push('请选择防御方宝可梦')
+      if (!attacker.value.moveId) errors.push('请选择攻击技能')
+      if (attacker.value.level < 1 || attacker.value.level > 100) errors.push('攻击方等级必须在1-100之间')
+      if (attacker.value.attack && attacker.value.attack < 1) errors.push('攻击方攻击值必须大于0')
+      if (attacker.value.spAttack && attacker.value.spAttack < 1) errors.push('攻击方特攻值必须大于0')
+      if (defender.value.hp && defender.value.hp < 1) errors.push('防御方HP必须大于0')
+      if (defender.value.defense && defender.value.defense < 1) errors.push('防御方防御值必须大于0')
+      if (defender.value.spDefense && defender.value.spDefense < 1) errors.push('防御方特防值必须大于0')
+      return errors
+    })
+
     // 计算属性
     const attackerPokemon = computed(() => pokemonList.value.find(p => p.id === attacker.value.speciesId))
     const defenderPokemon = computed(() => pokemonList.value.find(p => p.id === defender.value.speciesId))
+    
+    // 伤害分布数据
+    const damageDistribution = computed(() => {
+      if (!result.value) return []
+      const min = result.value.minDamage
+      const max = result.value.maxDamage
+      const range = max - min
+      if (range === 0) return []
+      
+      const segments = []
+      const avg = result.value.avgDamage
+      const step = range / 3
+      
+      segments.push({
+        left: 0,
+        width: 33.33,
+        damage: Math.round(min),
+        color: '#22c55e'
+      })
+      
+      segments.push({
+        left: 33.33,
+        width: 33.33,
+        damage: Math.round(min + step),
+        color: '#3b82f6'
+      })
+      
+      segments.push({
+        left: 66.66,
+        width: 33.34,
+        damage: Math.round(max),
+        color: '#ef4444'
+      })
+      
+      return segments
+    })
     const attackerForm = computed(() => {
       if (!attackerDetail.value?.forms) return null
       return attackerDetail.value.forms.find(f => f.id === attacker.value.formId) || attackerDetail.value.forms[0]
@@ -826,6 +1109,11 @@ export default {
 
     const calculateDamage = async () => {
       if (!canCalculate.value) return
+      if (validationErrors.value.length > 0) {
+        ElMessage.error('请先修正错误')
+        return
+      }
+      
       calculating.value = true
       result.value = null
 
@@ -870,9 +1158,14 @@ export default {
         }
 
         const res = await damageApi.calculate(requestData)
-        if (res.code === 200) result.value = res.data
+        if (res.code === 200) {
+          result.value = res.data
+          saveToHistory()
+          ElMessage.success('计算完成')
+        }
       } catch (error) {
         console.error('计算伤害失败:', error)
+        ElMessage.error('计算失败，请检查网络连接')
       } finally {
         calculating.value = false
       }
@@ -915,17 +1208,190 @@ export default {
       return labels[category] || category
     }
 
-    onMounted(() => { fetchPokemonList(); fetchBattleItems() })
+    // 预设场景应用
+    const applyPresetScenario = (scenario) => {
+      activeScenario.value = scenario.id
+      battleSettings.value = {
+        ...battleSettings.value,
+        ...scenario.settings
+      }
+      result.value = null
+      ElMessage.success(`已应用预设场景: ${scenario.name}`)
+    }
+
+    // 快速组合应用
+    const applyQuickCombo = (comboId) => {
+      let combo = null
+      for (const category of Object.values(quickCombos.value)) {
+        combo = category.find(c => c.id === comboId)
+        if (combo) break
+      }
+      
+      if (combo) {
+        if (combo.weather) battleSettings.value.weather = combo.weather
+        if (combo.terrain) battleSettings.value.terrain = combo.terrain
+        if (combo.attacker) {
+          attacker.value.speciesId = combo.attacker
+          onAttackerSpeciesChange(combo.attacker)
+        }
+        if (combo.defender) {
+          defender.value.speciesId = combo.defender
+          onDefenderSpeciesChange(combo.defender)
+        }
+        result.value = null
+        ElMessage.success(`已应用组合: ${combo.name}`)
+      }
+      selectedQuickCombo.value = ''
+    }
+
+    // 复制结果
+    const copyResult = async () => {
+      if (!result.value) return
+      
+      copying.value = true
+      try {
+        const attackerName = attackerPokemon.value?.name || '未知'
+        const defenderName = defenderPokemon.value?.name || '未知'
+        const moveName = selectedMove.value?.name || '未知'
+        
+        const resultText = `【伤害计算结果】
+攻击方: ${attackerName}
+技能: ${moveName}
+防御方: ${defenderName}
+
+伤害范围: ${result.value.minDamage} - ${result.value.maxDamage}
+平均伤害: ${Math.round(result.value.avgDamage)}
+属性相性: ${result.value.typeEffectiveness}x (${result.value.effectivenessDesc})
+本系加成: ${result.value.isStab ? '✓' : '✗'} (${result.value.stabMultiplier}x)
+${result.value.koEstimate ? `击杀预估: ${result.value.koEstimate.koPercentRange}` : ''}
+${result.value.accuracy !== null ? `命中率: ${result.value.accuracy}%` : ''}
+
+${result.value.attackerAbilityEffect ? `攻击方特性: ${result.value.attackerAbilityEffect}` : ''}
+${result.value.defenderAbilityEffect ? `防御方特性: ${result.value.defenderAbilityEffect}` : ''}
+${result.value.attackerItemEffect ? `攻击方道具: ${result.value.attackerItemEffect}` : ''}
+${result.value.defenderItemEffect ? `防御方道具: ${result.value.defenderItemEffect}` : ''}`
+
+        await navigator.clipboard.writeText(resultText)
+        ElMessage.success('结果已复制到剪贴板')
+      } catch (error) {
+        console.error('复制失败:', error)
+        ElMessage.error('复制失败，请手动复制')
+      } finally {
+        copying.value = false
+      }
+    }
+
+    // 保存历史记录
+    const saveToHistory = () => {
+      if (!result.value || !attackerPokemon.value || !defenderPokemon.value) return
+      
+      const record = {
+        timestamp: Date.now(),
+        attacker: { speciesId: attacker.value.speciesId, formId: attacker.value.formId },
+        attackerName: attackerPokemon.value.name,
+        defender: { speciesId: defender.value.speciesId, formId: defender.value.formId },
+        defenderName: defenderPokemon.value.name,
+        moveId: attacker.value.moveId,
+        moveName: selectedMove.value?.name || '未知',
+        minDamage: result.value.minDamage,
+        maxDamage: result.value.maxDamage,
+        koEstimate: result.value.koEstimate?.koPercentRange || '-',
+        settings: JSON.parse(JSON.stringify(battleSettings.value))
+      }
+      
+      history.value.unshift(record)
+      if (history.value.length > 20) {
+        history.value = history.value.slice(0, 20)
+      }
+      
+      // 保存到 localStorage
+      try {
+        localStorage.setItem('damageCalculatorHistory', JSON.stringify(history.value))
+      } catch (error) {
+        console.error('保存历史记录失败:', error)
+      }
+    }
+
+    // 加载历史记录
+    const loadHistoryRecord = (index) => {
+      const record = history.value[index]
+      if (!record) return
+      
+      attacker.value.speciesId = record.attacker.speciesId
+      attacker.value.formId = record.attacker.formId
+      defender.value.speciesId = record.defender.speciesId
+      defender.value.formId = record.defender.formId
+      attacker.value.moveId = record.moveId
+      battleSettings.value = { ...record.settings }
+      
+      result.value = null
+      showHistory.value = false
+      
+      // 重新加载数据
+      fetchAttackerDetail(record.attacker.speciesId)
+      fetchDefenderDetail(record.defender.speciesId)
+      
+      ElMessage.success('已加载历史记录')
+    }
+
+    // 删除历史记录
+    const deleteHistoryRecord = (index) => {
+      history.value.splice(index, 1)
+      try {
+        localStorage.setItem('damageCalculatorHistory', JSON.stringify(history.value))
+      } catch (error) {
+        console.error('删除历史记录失败:', error)
+      }
+      ElMessage.success('已删除历史记录')
+    }
+
+    // 格式化时间
+    const formatTime = (timestamp) => {
+      const date = new Date(timestamp)
+      const now = new Date()
+      const diff = now - date
+      
+      if (diff < 60000) return '刚刚'
+      if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
+      return `${Math.floor(diff / 86400000)}天前`
+    }
+
+    // 加载历史记录
+    const loadHistoryFromStorage = () => {
+      try {
+        const saved = localStorage.getItem('damageCalculatorHistory')
+        if (saved) {
+          history.value = JSON.parse(saved)
+        }
+      } catch (error) {
+        console.error('加载历史记录失败:', error)
+      }
+    }
+
+    // 监听数据变化，清理错误
+    watch(() => attacker.value.speciesId, () => { attackerErrors.value = [] })
+    watch(() => defender.value.speciesId, () => { defenderErrors.value = [] })
+    watch(() => attacker.value.moveId, () => { attackerErrors.value = [] })
+
+    onMounted(() => { 
+      fetchPokemonList(); 
+      fetchBattleItems(); 
+      loadHistoryFromStorage() 
+    })
 
     return {
-      pokemonList, loading, calculating,
+      pokemonList, loading, calculating, copying, showHistory,
+      activeScenario, presetScenarios, selectedQuickCombo, quickCombos, history,
+      attackerErrors, defenderErrors, validationErrors, damageDistribution,
       attacker, attackerDetail, attackerForms, attackerMoves,
       defender, defenderDetail, defenderForms,
       battleSettings, battleItems, result,
       attackerPokemon, defenderPokemon, attackerForm, defenderForm, selectedMove, canCalculate,
       getSpriteUrl, handleImageError,
       onAttackerSpeciesChange, onAttackerFormChange, onDefenderSpeciesChange, onDefenderFormChange, onMoveChange,
-      calculateDamage, getEffectivenessClass, getBoostClass, formatBoost, getCategoryLabel
+      calculateDamage, getEffectivenessClass, getBoostClass, formatBoost, getCategoryLabel,
+      applyPresetScenario, applyQuickCombo, copyResult, saveToHistory, loadHistoryRecord, deleteHistoryRecord, formatTime
     }
   }
 }
@@ -935,19 +1401,60 @@ export default {
 /* 保留原有样式并添加新样式 */
 .damage-calculator { max-width: 1400px; margin: 0 auto; padding: 20px; }
 .calculator-header { text-align: center; margin-bottom: 30px; }
+
+/* 头部操作区 */
+.header-actions { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
+.preset-scenarios { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.action-label { font-size: 0.875rem; font-weight: 500; color: #6b7280; margin-right: 8px; }
+.preset-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #fff; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+.preset-btn:hover { border-color: #3b82f6; background: #eff6ff; }
+.preset-btn.active { border-color: #3b82f6; background: #dbeafe; color: #1d4ed8; }
+.preset-icon { font-size: 1rem; }
+
+.header-actions-right { display: flex; gap: 12px; justify-content: center; align-items: center; }
+.quick-select { display: flex; align-items: center; gap: 8px; }
+.quick-combo-select { width: 200px; }
+.combo-icon { margin-right: 6px; }
+
+.history-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #fff; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+.history-btn:hover:not(:disabled) { border-color: #3b82f6; background: #eff6ff; }
+.history-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .calculator-grid { display: grid; grid-template-columns: 1fr 1fr 320px; gap: 20px; margin-bottom: 30px; }
 
+/* 响应式布局改进 */
 @media (max-width: 1200px) {
   .calculator-grid { grid-template-columns: 1fr 1fr; }
   .battle-settings { grid-column: 1 / -1; }
-}
-@media (max-width: 768px) {
-  .calculator-grid { grid-template-columns: 1fr; }
+  
+  /* 移动端优化：使用更灵活的布局 */
+  .header-actions { align-items: stretch; }
+  .preset-scenarios { justify-content: flex-start; }
+  .header-actions-right { flex-direction: column; }
+  .quick-select { width: 100%; }
+  .quick-combo-select { width: 100%; }
 }
 
-.card-section { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
-.section-title { display: flex; align-items: center; gap: 8px; font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #e5e7eb; }
+@media (max-width: 768px) {
+  .calculator-grid { grid-template-columns: 1fr; }
+  
+  /* 移动端三栏布局优化 */
+  .preset-scenarios { justify-content: center; }
+  .preset-btn { padding: 6px 12px; font-size: 0.8rem; }
+  
+  /* 移动端历史记录按钮全宽 */
+  .history-btn { width: 100%; justify-content: center; }
+}
+
+.card-section { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); transition: box-shadow 0.3s; }
+.card-section:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.section-title { display: flex; align-items: center; gap: 8px; font-size: 1.25rem; font-weight: 600; color: #1f2937; padding-bottom: 12px; border-bottom: 2px solid #e5e7eb; }
 .section-title .icon { font-size: 1.5rem; }
+.section-error { display: flex; align-items: center; gap: 4px; padding: 4px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; font-size: 0.75rem; color: #dc2626; }
+.error-icon { font-size: 1rem; }
+
 .form-group { margin-bottom: 16px; }
 .form-label { display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 8px; }
 .sub-label { font-size: 0.75rem; font-weight: 500; color: #6b7280; margin-bottom: 6px; display: block; }
@@ -1020,14 +1527,61 @@ export default {
 .screen-toggle:hover { background: #f3f4f6; }
 .screen-toggle.active { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; }
 
-.calculate-btn { width: 100%; margin-top: 20px; padding: 14px 24px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+/* 验证错误 */
+.validation-errors { margin-top: 16px; padding: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; }
+.error-header { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #dc2626; margin-bottom: 8px; }
+.error-list { list-style: none; padding: 0; margin: 0; }
+.error-item { padding: 4px 0; padding-left: 24px; font-size: 0.875rem; color: #991b1b; position: relative; }
+.error-item::before { content: '•'; position: absolute; left: 8px; color: #dc2626; }
+
+.calculate-btn { width: 100%; margin-top: 20px; padding: 14px 24px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
 .calculate-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
-.calculate-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+.calculate-btn:disabled, .calculate-btn.btn-disabled { background: #9ca3af; cursor: not-allowed; }
 .loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* 历史记录面板 */
+.history-panel { position: fixed; top: 0; right: 0; width: 400px; height: 100vh; background: #fff; box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15); z-index: 1000; overflow-y: auto; }
+.history-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 2px solid #e5e7eb; background: #f8fafc; }
+.history-header h3 { display: flex; align-items: center; gap: 8px; font-size: 1.125rem; font-weight: 600; color: #1f2937; }
+.close-btn { width: 32px; height: 32px; border: none; background: #fee2e2; border-radius: 50%; font-size: 1.5rem; cursor: pointer; transition: all 0.2s; color: #dc2626; }
+.close-btn:hover { background: #fecaca; transform: rotate(90deg); }
+
+.history-list { padding: 16px; }
+.history-empty { padding: 40px 20px; text-align: center; color: #9ca3af; }
+.history-item { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid #e5e7eb; transition: all 0.2s; }
+.history-item:hover { border-color: #3b82f6; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1); }
+
+.history-battle { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.history-pokemon { display: flex; align-items: center; gap: 8px; }
+.history-pokemon.attacker { flex: 1; }
+.history-pokemon.defender { flex: 1; flex-direction: row-reverse; text-align: right; }
+.history-sprite { width: 40px; height: 40px; object-fit: contain; }
+.history-pokemon-info { display: flex; flex-direction: column; }
+.history-name { font-weight: 600; color: #1f2937; font-size: 0.875rem; }
+.history-move, .history-damage { font-size: 0.75rem; color: #6b7280; }
+.history-vs { font-weight: 700; color: #ef4444; font-size: 0.875rem; }
+
+.history-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: #9ca3af; margin-bottom: 12px; }
+.history-actions { display: flex; gap: 8px; }
+.history-action-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 12px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
+.history-action-btn:hover { background: #eff6ff; border-color: #3b82f6; }
+.history-action-btn.delete:hover { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+
+@media (max-width: 480px) {
+  .history-panel { width: 100%; }
+  .history-battle { flex-direction: column; }
+  .history-pokemon.defender { text-align: left; flex-direction: row; }
+  .history-vs { transform: rotate(90deg); }
+}
+
 /* 结果区域 */
 .result-section { background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
+.result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #e5e7eb; }
+.copy-result-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+.copy-result-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+.copy-result-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
 .result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
 @media (max-width: 1024px) { .result-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .result-grid { grid-template-columns: 1fr; } }
@@ -1066,6 +1620,29 @@ export default {
 .ko-hp .label, .ko-hits .label { font-size: 0.75rem; color: #9ca3af; }
 .ko-hp .value, .ko-hits .value { font-size: 0.875rem; font-weight: 600; color: #374151; }
 
+/* 伤害分布图 */
+.damage-distribution { grid-column: span 2; }
+.distribution-chart { margin-top: 12px; }
+.distribution-bar { position: relative; height: 32px; background: #f1f5f9; border-radius: 8px; overflow: hidden; }
+.distribution-segment { position: absolute; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; color: white; transition: all 0.3s; }
+.distribution-segment:hover { filter: brightness(1.1); }
+.segment-label { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+
+.distribution-legend { display: flex; gap: 16px; margin-top: 12px; justify-content: center; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #6b7280; }
+.legend-color { width: 12px; height: 12px; border-radius: 3px; }
+
+@media (max-width: 1024px) {
+  .damage-distribution { grid-column: span 2; }
+  .result-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .result-grid { grid-template-columns: 1fr; }
+  .damage-distribution { grid-column: span 1; }
+  .distribution-legend { flex-direction: column; gap: 8px; align-items: flex-start; }
+}
+
 /* 修正因子汇总 */
 .multipliers-summary { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
 .multipliers-summary h3 { font-size: 1rem; font-weight: 600; color: #374151; margin-bottom: 12px; }
@@ -1100,4 +1677,56 @@ export default {
 .step-formula { color: #6b7280; font-family: monospace; font-size: 0.75rem; }
 .step-value { font-weight: 600; color: #3b82f6; margin-left: auto; }
 .step-desc { color: #9ca3af; font-size: 0.75rem; }
+
+/* 动画和过渡效果 */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.fade-in-enter-active { transition: opacity 0.5s ease, transform 0.5s ease; }
+.fade-in-enter-from { opacity: 0; transform: translateY(20px); }
+
+.slide-in-enter-active { transition: transform 0.3s ease; }
+.slide-in-enter-from { transform: translateX(100%); }
+
+.slide-down-enter-active { transition: all 0.3s ease; }
+.slide-down-enter-from { opacity: 0; transform: translateY(-10px); }
+
+/* 优先度和接触等标签样式 */
+.priority-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 500; margin-left: 6px; }
+.priority-badge.positive { background: #dcfce7; color: #166534; }
+.priority-badge.negative { background: #fef2f2; color: #991b1b; }
+.contact-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 500; background: #e0f2fe; color: #0369a1; margin-left: 6px; }
+.multi-hit-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 500; background: #fef3c7; color: #92400e; margin-left: 6px; }
+
+/* 移动端响应式增强 */
+@media (max-width: 480px) {
+  .calculator-header h1 { font-size: 1.75rem; }
+  .calculator-header p { font-size: 0.875rem; }
+  
+  .card-section { padding: 16px; }
+  .section-title { font-size: 1.125rem; }
+  
+  .pokemon-header { flex-direction: column; text-align: center; }
+  .pokemon-sprite { width: 64px; height: 64px; }
+  
+  .stats-title { font-size: 0.8rem; }
+  .stat-row { flex-wrap: wrap; }
+  .stat-label { min-width: 35px; }
+  
+  .move-details { flex-wrap: wrap; }
+  
+  .calculate-btn { padding: 12px 16px; font-size: 0.9rem; }
+  
+  .result-card { padding: 12px; }
+  .damage-value .value { font-size: 1.25rem; }
+  
+  .step-item { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .step-value { margin-left: 0; }
+}
+
+/* 平滑滚动 */
+.damage-calculator { scroll-behavior: smooth; }
+
+/* 选择器优化 */
+.w-full { width: 100%; }
 </style>

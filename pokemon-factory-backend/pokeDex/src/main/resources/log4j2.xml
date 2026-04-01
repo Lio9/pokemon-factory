@@ -34,6 +34,34 @@
             <AppenderRef ref="Console"/>
             <AppenderRef ref="ImportLog"/>
         </Logger>
+        <!-- MyBatis SQL语句日志配置 -->
+        <Logger name="com.baomidou.mybatisplus" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ImportLog"/>
+        </Logger>
+        <!-- JDBC SQL语句日志配置（显示完整SQL，不显示结果） -->
+        <Logger name="org.apache.ibatis" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ImportLog"/>
+        </Logger>
+        <Logger name="java.sql" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ImportLog"/>
+        </Logger>
+        <Logger name="java.sql.Connection" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Logger name="java.sql.Statement" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ImportLog"/>
+        </Logger>
+        <Logger name="java.sql.PreparedStatement" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ImportLog"/>
+        </Logger>
+        <Logger name="java.sql.ResultSet" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
         <Root level="info">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="ErrorLog"/>

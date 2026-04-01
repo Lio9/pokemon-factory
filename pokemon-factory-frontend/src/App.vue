@@ -57,15 +57,21 @@
         <p>© 2024 宝可梦图鉴 - Pokemon Factory</p>
       </el-footer>
     </el-container>
+
+    <!-- 全局组件 -->
+    <GlobalLoader />
+    <ErrorHandler />
   </div>
 </template>
 
 <script>
 import { Menu } from 'lucide-vue-next'
+import GlobalLoader from './components/GlobalLoader.vue'
+import ErrorHandler from './components/ErrorHandler.vue'
 
 export default {
   name: 'App',
-  components: { Menu },
+  components: { Menu, GlobalLoader, ErrorHandler },
   data() {
     return {
       navItems: [
@@ -93,6 +99,7 @@ html, body {
   padding: 0;
 }
 
+/* 滚动条美化 */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -104,11 +111,216 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c5c5c5;
+  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a0a0a0;
+  background: linear-gradient(180deg, #2563eb, #7c3aed);
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-10px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(10px);
+  }
+}
+
+/* 工具类 */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.4s ease-out;
+}
+
+.animate-fade-in-left {
+  animation: fadeInLeft 0.4s ease-out;
+}
+
+.animate-fade-in-right {
+  animation: fadeInRight 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .el-main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+  
+  .content {
+    padding: 12px !important;
+  }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  #app {
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #1e293b;
+  }
 }
 </style>
