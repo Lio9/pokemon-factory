@@ -81,6 +81,18 @@
             <version>${springdoc.version}</version>
         </dependency>
 
+        <!-- Spring Cache -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+
+        <!-- Caffeine Cache -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- 依赖 common 模块 -->
         <dependency>
             <groupId>com.lio9</groupId>

@@ -6,6 +6,8 @@ import com.lio9.common.service.AbilityService;
 import com.lio9.common.vo.AbilityQueryVO;
 import com.lio9.common.response.ResultResponse;
 import com.lio9.common.response.ResponseCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +26,8 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class AbilityController {
     
+    private static final Logger logger = LoggerFactory.getLogger(AbilityController.class);
+    
     @Autowired
     private AbilityService abilityService;
     
@@ -36,8 +40,14 @@ public class AbilityController {
      */
     @GetMapping("/list")
     public Map<String, Object> getAbilityList(AbilityQueryVO queryVO) {
+        long startTime = System.currentTimeMillis();
+        logger.info("获取特性列表 - 参数: current={}, size={}", queryVO.getCurrent(), queryVO.getSize());
+        
         Page<Ability> page = new Page<>(queryVO.getCurrent(), queryVO.getSize());
         Page<Ability> abilityPage = abilityService.page(page);
+        
+        long endTime = System.currentTimeMillis();
+        logger.info("获取特性列表成功 - 耗时: {}ms, 总数: {}", (endTime - startTime), abilityPage.getTotal());
         
         return ResultResponse.buildPageSuccess(abilityPage);
     }
@@ -51,11 +61,17 @@ public class AbilityController {
      */
     @GetMapping("/{id}")
     public Map<String, Object> getAbilityDetail(@PathVariable Long id) {
+        long startTime = System.currentTimeMillis();
+        logger.info("获取特性详情 - ID: {}", id);
+        
         Ability ability = abilityService.getById(id);
         
+        long endTime = System.currentTimeMillis();
         if (ability != null) {
+            logger.info("获取特性详情成功 - 耗时: {}ms", (endTime - startTime));
             return ResultResponse.buildSuccess("success", ability);
         } else {
+            logger.warn("获取特性详情失败 - 找不到ID为{}的特性, 耗时: {}ms", id, (endTime - startTime));
             return ResultResponse.buildNotFound("特性", id);
         }
     }

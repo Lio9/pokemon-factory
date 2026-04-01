@@ -7,6 +7,7 @@ import com.lio9.common.service.DamageCalculatorService;
 import com.lio9.common.util.DamageCalculatorUtil;
 import com.lio9.common.vo.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -246,6 +247,7 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
     }
 
     @Override
+    @Cacheable(value = "typeEfficacyMatrix", key = "'all'")
     public Map<Integer, Map<Integer, Integer>> getTypeEfficacyMatrix() {
         List<Map<String, Object>> efficacyList = typeEfficacyMapper.selectAllTypeEfficacy();
         
@@ -263,6 +265,7 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
     }
 
     @Override
+    @Cacheable(value = "typeEfficacyByType", key = "#damageTypeId")
     public List<TypeEfficacyVO> getTypeEfficacyByDamageType(Integer damageTypeId) {
         List<Map<String, Object>> efficacyList = typeEfficacyMapper.selectByDamageTypeId(damageTypeId);
         
