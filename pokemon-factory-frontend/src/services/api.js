@@ -129,6 +129,15 @@ export const damageApi = {
 // 图片服务器基础URL
 const SPRITES_BASE = import.meta.env.VITE_SPRITES_BASE || 'http://127.0.0.1:8080'
 
+// 对战 API 根（基于 API_BASE 的约定）
+const API_ROOT = API_BASE.replace(/\/api\/pokedex$/,'/api')
+
+export const battleApi = {
+  start: (body) => request(`${API_ROOT}/battle/start`, { method: 'POST', body: JSON.stringify(body) }),
+  status: (battleId) => request(`${API_ROOT}/battle/status/${battleId}`),
+  pool: (rank) => request(`${API_ROOT}/battle/pool?rank=${rank || ''}`)
+}
+
 // 图片URL生成器
 export const sprites = {
   // 宝可梦图片(使用species id)
@@ -149,5 +158,6 @@ export default {
   abilities: abilityApi,
   moves: moveApi,
   items: itemApi,
+  battle: battleApi,
   sprites
 }
