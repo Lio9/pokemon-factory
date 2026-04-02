@@ -13,7 +13,9 @@ spring:
   main:
     allow-bean-definition-overriding: true
   datasource:
-    url: jdbc:sqlite:./pokemon-factory.db
+    # Use SQLITE_DB_PATH env var to control the DB file location. Default places DB in backend folder.
+    # Use SQLITE_DB_PATH env var to control the DB file location. Default places DB in backend folder.
+    url: jdbc:sqlite:${SQLITE_DB_PATH:${user.dir}/pokemon-factory-backend/pokemon-factory.db}
     driver-class-name: org.sqlite.JDBC
     hikari:
       maximum-pool-size: 5  # SQLite是单连接数据库，连接池不宜过大

@@ -11,10 +11,13 @@ import sys
 from datetime import datetime
 
 # 数据库配置
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pokemon-factory.db")
+DB_PATH = os.getenv('SQLITE_DB_PATH') or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pokemon-factory.db")
 
 # CSV 文件目录
-CSV_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "csv")
+CSV_DIR = os.getenv('CSV_DIR') or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "csv")
+
+# 是否跳过初始化（如果使用 Flyway 已经建立表结构，可设为 '1'）
+SKIP_DB_INIT = os.getenv('SKIP_DB_INIT', '0')
 
 # 语言ID映射
 LANGUAGE_MAP = {
@@ -853,17 +856,33 @@ def main():
     print("=" * 60)
     print()
     
-    # 执行初始化脚本
-    print("📋 执行数据库初始化脚本...")
-    import sqlite3
-    conn = sqlite3.connect(DB_PATH)
-    with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database_init_sqlite.sql'), 'r', encoding='utf-8') as f:
-        sql_script = f.read()
-        conn.executescript(sql_script)
-    conn.commit()
-    conn.close()
-    print("✅ 数据库初始化完成")
-    print()
+    # 执行初始化脚本（可通过 SKIP_DB_INIT 环境变量跳过）
+    if SKIP_DB_INIT != '1':
+        print("📋 执行数据库初始化脚本...")
+        import sqlite3
+        conn = sqlite3.connect(DB_PATH)
+        # Try to find the sqlite initialization script; prefer backend/sql if present
+        init_paths = [
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database_init_sqlite.sql'),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pokemon-factory-backend', 'sql', 'database_init_sqlite.sql')
+        ]
+        init_script = None
+        for p in init_paths:
+            if os.path.exists(p):
+                init_script = p
+                break
+        if not init_script:
+            raise FileNotFoundError('database_init_sqlite.sql not found in expected locations: ' + ','.join(init_paths))
+        with open(init_script, 'r', encoding='utf-8') as f:
+            sql_script = f.read()
+            conn.executescript(sql_script)
+        conn.commit()
+        conn.close()
+        print("✅ 数据库初始化完成")
+        print()
+    else:
+        print('📋 跳过数据库初始化（SKIP_DB_INIT=1）')
+        print()
     
     # 导入数据
     try:
