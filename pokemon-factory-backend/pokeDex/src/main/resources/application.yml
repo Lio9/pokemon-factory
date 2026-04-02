@@ -6,10 +6,17 @@ server:
     min-response-size: 1024
 
 spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    mixed: true
   main:
     allow-bean-definition-overriding: true
   datasource:
-    url: jdbc:sqlite:./pokemon-factory.db
+    # Use SQLITE_DB_PATH env var to control the DB file location. Default places DB in backend folder.
+    # Use SQLITE_DB_PATH env var to control the DB file location. Default places DB in backend folder.
+    url: jdbc:sqlite:${SQLITE_DB_PATH:${user.dir}/pokemon-factory-backend/pokemon-factory.db}
     driver-class-name: org.sqlite.JDBC
     hikari:
       maximum-pool-size: 5  # SQLite是单连接数据库，连接池不宜过大
@@ -18,6 +25,7 @@ spring:
       idle-timeout: 300000
       max-lifetime: 900000  # 15分钟
       connection-test-query: SELECT 1
+      connection-init-sql: PRAGMA foreign_keys = ON
       validation-timeout: 3000
       leak-detection-threshold: 60000  # 1分钟，检测连接泄露
       auto-commit: true

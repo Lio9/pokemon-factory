@@ -1,5 +1,5 @@
 // API服务配置
-const API_BASE = 'http://localhost:8081/api/pokedex'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api/pokedex'
 
 // 统一的请求处理
 async function request(url, options = {}) {
@@ -104,7 +104,7 @@ export const itemApi = {
 }
 
 // 伤害计算器相关API
-const DAMAGE_API_BASE = 'http://localhost:8081/api/damage'
+const DAMAGE_API_BASE = import.meta.env.VITE_DAMAGE_API_BASE_URL || 'http://localhost:8081/api/damage'
 
 export const damageApi = {
   // 计算伤害
@@ -127,7 +127,7 @@ export const damageApi = {
 }
 
 // 图片服务器基础URL
-const SPRITES_BASE = 'http://10.144.55.168:8080'
+const SPRITES_BASE = import.meta.env.VITE_SPRITES_BASE || 'http://127.0.0.1:8080'
 
 // 图片URL生成器
 export const sprites = {
