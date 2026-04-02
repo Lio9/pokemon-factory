@@ -23,6 +23,7 @@ if (-not (Test-Path $Jar)) {
 }
 
 # Start the backend JAR in detached process
-Start-Process -FilePath 'java' -ArgumentList "-jar", $Jar -WorkingDirectory (Get-Location) -NoNewWindow
+# Pass spring.flyway.mixed=true explicitly to ensure Flyway allows mixed statements for SQLite migrations
+Start-Process -FilePath 'java' -ArgumentList "-Dspring.flyway.mixed=true","-jar", $Jar -WorkingDirectory (Get-Location) -NoNewWindow
 
 Write-Host "Started backend jar (detached). Check application logs for Flyway output."
