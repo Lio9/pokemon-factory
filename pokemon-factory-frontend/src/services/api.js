@@ -134,8 +134,10 @@ const API_ROOT = API_BASE.replace(/\/api\/pokedex$/,'/api')
 
 export const battleApi = {
   start: (body) => request(`${API_ROOT}/battle/start`, { method: 'POST', body: JSON.stringify(body) }),
+  startAsync: (body) => request(`${API_ROOT}/battle/start-async`, { method: 'POST', body: JSON.stringify(body) }),
   status: (battleId) => request(`${API_ROOT}/battle/status/${battleId}`),
-  pool: (rank) => request(`${API_ROOT}/battle/pool?rank=${rank || ''}`)
+  pool: (rank) => request(`${API_ROOT}/battle/pool?rank=${rank || ''}`),
+  exchange: (body) => request(`${API_ROOT}/battle/exchange`, { method: 'POST', body: JSON.stringify(body) })
 }
 
 // 图片URL生成器
