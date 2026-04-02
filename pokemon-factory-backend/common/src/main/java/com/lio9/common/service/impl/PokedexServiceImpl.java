@@ -8,6 +8,7 @@ import com.lio9.common.model.*;
 import com.lio9.common.service.PokedexService;
 import com.lio9.common.vo.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -19,7 +20,8 @@ import java.util.stream.Collectors;
 @Service
 public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> implements PokedexService {
 
-    private static final String IMAGE_BASE_URL = "http://10.144.55.168:8080";
+    @Value("${image.base-url:http://127.0.0.1:8080}")
+    private String imageBaseUrl;
 
     @Autowired
     private PokemonMapper pokemonMapper;
@@ -154,8 +156,8 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
 
                     // 动态拼接图片URL
                     Integer pokemonId = pokemon.getId();
-                    vo.setSpriteUrl(IMAGE_BASE_URL + "/pokemon/" + pokemonId + ".png");
-                    vo.setOfficialArtworkUrl(IMAGE_BASE_URL + "/pokemon/official-artwork/" + pokemonId + ".png");
+                    vo.setSpriteUrl(imageBaseUrl + "/pokemon/" + pokemonId + ".png");
+                    vo.setOfficialArtworkUrl(imageBaseUrl + "/pokemon/official-artwork/" + pokemonId + ".png");
 
                     // 设置属性
                     Integer formId = (Integer) defaultForm.get("id");
@@ -321,10 +323,10 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
 
                 // 动态拼接图片URL
                 Integer pokemonId = pokemon.getId();
-                formVO.setSpriteUrl(IMAGE_BASE_URL + "/pokemon/" + pokemonId + ".png");
-                formVO.setSpriteBackUrl(IMAGE_BASE_URL + "/pokemon/back/" + pokemonId + ".png");
-                formVO.setSpriteShinyUrl(IMAGE_BASE_URL + "/pokemon/shiny/" + pokemonId + ".png");
-                formVO.setOfficialArtworkUrl(IMAGE_BASE_URL + "/pokemon/official-artwork/" + pokemonId + ".png");
+                formVO.setSpriteUrl(imageBaseUrl + "/pokemon/" + pokemonId + ".png");
+                formVO.setSpriteBackUrl(imageBaseUrl + "/pokemon/back/" + pokemonId + ".png");
+                formVO.setSpriteShinyUrl(imageBaseUrl + "/pokemon/shiny/" + pokemonId + ".png");
+                formVO.setOfficialArtworkUrl(imageBaseUrl + "/pokemon/official-artwork/" + pokemonId + ".png");
 
                 // 设置属性
                 formVO.setTypes(formTypesMap.getOrDefault(form.getId(), new ArrayList<>()));

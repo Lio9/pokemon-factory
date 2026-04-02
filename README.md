@@ -70,22 +70,26 @@ mysql -u root -p < complete_database_init.sql
 
 ### 2. 配置数据库连接
 
-编辑 `scripts/utils.py` 中的数据库配置：
+数据库连接请使用环境变量或 .env（推荐）。示例可以参考仓库根目录的 .env.example 文件。
 
+示例 Python 读取方式：
 ```python
+import os
+
 def get_db_config():
     return {
-        'host': '10.144.55.168',
-        'port': 3306,
-        'user': 'root',
-        'password': '753951',
-        'database': 'pokemon_factory',
+        'host': os.getenv('DB_HOST', '127.0.0.1'),
+        'port': int(os.getenv('DB_PORT', 3306)),
+        'user': os.getenv('DB_USER', 'root'),
+        'password': os.getenv('DB_PASSWORD', ''),
+        'database': os.getenv('DB_NAME', 'pokemon_factory'),
         'charset': 'utf8mb4',
         'connection_timeout': 30,
         'connect_timeout': 30
     }
 ```
 
+在本地开发时，复制 .env.example 为 .env 并填写具体值；不要将 .env 提交到版本库。
 ### 3. 启动后端服务
 
 ```bash
