@@ -61,43 +61,56 @@ Pokemon Factory 是一个完整的宝可梦数据管理平台，包含：
 
 ## 快速开始
 
-### 1. 数据库初始化
+### 1. 使用内置迁移（推荐，本地一键初始化）
+
+本仓库已集成 Flyway + SQLite，并提供方便的 Python 初始化脚本：
+
+步骤：
+1. 构建后端 JAR（若尚未构建）
+
+```powershell
+cd pokemon-factory-backend\pokeDex
+mvn -DskipTests package
+```
+
+2. 运行初始化脚本（会：删除已有 sqlite（备份）、启动后端触发 Flyway 建表、导入 CSV、校验数据）
 
 ```bash
-# 连接MySQL并执行初始化脚本
-mysql -u root -p < complete_database_init.sql
+python scripts\init_db.py
 ```
 
-### 2. 配置数据库连接
+可选环境变量：
+- SQLITE_DB_PATH - 指定 sqlite 文件路径（默认：pokemon-factory-backend/pokemon-factory.db）
+- JAR_PATH - 指定后端 jar 路径（默认 target 下的 pokeDex-0.0.1-SNAPSHOT.jar）
+- EXPECTED_MIGRATIONS - 期望迁移数量（默认 3）
+- MIGRATION_TIMEOUT - 等待迁移完成超时，单位秒（默认 120）
 
-数据库连接请使用环境变量或 .env（推荐）。示例可以参考仓库根目录的 .env.example 文件。
+脚本运行完成后会自动调用 scripts/import_to_sqlite.py 进行数据导入，并运行 scripts/verify_sqlite.py 做基本校验。
 
-示例 Python 读取方式：
-```python
-import os
+### 2. 手动运行（替代）
 
-def get_db_config():
-    return {
-        'host': os.getenv('DB_HOST', '127.0.0.1'),
-        'port': int(os.getenv('DB_PORT', 3306)),
-        'user': os.getenv('DB_USER', 'root'),
-        'password': os.getenv('DB_PASSWORD', ''),
-        'database': os.getenv('DB_NAME', 'pokemon_factory'),
-        'charset': 'utf8mb4',
-        'connection_timeout': 30,
-        'connect_timeout': 30
-    }
+- 使用提供的 PowerShell 启动脚本触发迁移：
+
+```powershell
+.\scripts\start-backend.ps1
 ```
 
-在本地开发时，复制 .env.example 为 .env 并填写具体值；不要将 .env 提交到版本库。
-### 3. 启动后端服务
+- 或手动启动 JAR：
 
 ```bash
-cd pokemon-factory-backend
-mvn spring-boot:run
+java -Dspring.flyway.mixed=true -jar pokemon-factory-backend\pokeDex\target\pokeDex-0.0.1-SNAPSHOT.jar
 ```
 
-### 4. 启动前端服务
+然后运行导入脚本：
+
+```bash
+python scripts\import_to_sqlite.py
+python scripts\verify_sqlite.py
+```
+
+注意：仓库已将 sqlite 文件从主分支移除（不应将生成的数据库提交）。初始化脚本会在本地生成并备份旧文件。
+
+### 3. 启动前端服务
 
 ```bash
 cd pokemon-factory-frontend
@@ -105,12 +118,8 @@ npm install
 npm run dev
 ```
 
-### 5. 导入宝可梦数据
+（前端已做界面优化，使用 Vite + Tailwind，开发时请设置 VITE_API_BASE_URL 环境变量指向后端）
 
-```bash
-cd scripts
-python pokemon_import.py
-```
 
 ## 导入脚本使用说明
 
