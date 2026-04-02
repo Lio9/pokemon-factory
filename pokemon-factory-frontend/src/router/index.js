@@ -42,6 +42,12 @@ const routes = [
     name: 'DamageCalculator', 
     component: () => import('../components/DamageCalculator.vue'),
     meta: { title: '伤害计算器' }
+  },
+  { 
+    path: '/battle', 
+    name: 'Battle', 
+    component: () => import('../views/Battle.vue'),
+    meta: { title: '对战工厂' }
   }
 ]
 
