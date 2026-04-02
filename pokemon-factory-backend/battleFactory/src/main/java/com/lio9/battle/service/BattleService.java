@@ -100,6 +100,8 @@ public class BattleService {
         }
 
         out.put("summary", summary);
+        out.put("playerTeamJson", teamJson);
+        out.put("opponentTeamJson", opponentTeamJson);
         out.put("source", source);
         out.put("message", "Battle simulated and stored.");
         return out;
