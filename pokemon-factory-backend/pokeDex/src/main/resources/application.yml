@@ -6,6 +6,10 @@ server:
     min-response-size: 1024
 
 spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
   main:
     allow-bean-definition-overriding: true
   datasource:

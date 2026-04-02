@@ -13,23 +13,33 @@
             </h1>
           </router-link>
           
-          <!-- 导航菜单 -->
-          <nav class="hidden md:flex items-center gap-2">
-            <router-link 
-              v-for="item in navItems" 
-              :key="item.path"
-              :to="item.path"
-              class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden"
-              :class="$route.path === item.path || (item.path !== '/' && $route.path.startsWith(item.path)) 
-                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
-            >
-              {{ item.name }}
-            </router-link>
-          </nav>
+          <!-- 导航菜单 + 主题切换 -->
+          <div class="hidden md:flex items-center gap-2">
+            <nav class="flex items-center gap-2">
+              <router-link 
+                v-for="item in navItems" 
+                :key="item.path"
+                :to="item.path"
+                class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden"
+                :class="$route.path === item.path || (item.path !== '/' && $route.path.startsWith(item.path)) 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
+              >
+                {{ item.name }}
+              </router-link>
+            </nav>
 
-          <!-- 移动端菜单 -->
-          <div class="md:hidden">
+            <!-- 主题切换按钮 (桌面) -->
+            <button @click="toggleTheme" class="px-3 py-2 rounded-lg text-gray-600 bg-white/60 dark:bg-transparent border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-colors">
+              <component :is="theme === 'dark' ? Moon : Sun" class="w-5 h-5" />
+            </button>
+          </div>
+
+          <!-- 移动端菜单 & 主题切换 -->
+          <div class="md:hidden flex items-center gap-2">
+            <button @click="toggleTheme" class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">
+              <component :is="theme === \"dark\" ? Moon : Sun" class="w-6 h-6" />
+            </button>
             <el-dropdown trigger="click">
               <button class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                 <Menu class="w-6 h-6" />
@@ -48,6 +58,24 @@
       
       <el-main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 !pb-0 w-full">
         <div class="content bg-white rounded-2xl shadow-sm p-4 sm:p-6 min-h-[calc(100vh-180px)]">
+          <div class="hero card-glass mb-6 p-6 rounded-2xl flex items-center justify-between gap-4">
+            <div>
+              <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">探索宝可梦世界</h2>
+              <p class="mt-2 text-sm text-slate-500">快速浏览、收藏与比较。使用筛选提高搜索效率。</p>
+            </div>
+            <div class="hidden sm:flex items-center">
+              <svg class="w-20 h-20 opacity-80" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <circle cx="32" cy="32" r="30" fill="url(#g)" stroke="#fff" stroke-width="2" />
+                <circle cx="32" cy="32" r="14" fill="#fff" />
+                <defs>
+                  <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#ff6b6b" />
+                    <stop offset="100%" stop-color="#f59e0b" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          </div>
           <router-view />
         </div>
       </el-main>
@@ -65,13 +93,13 @@
 </template>
 
 <script>
-import { Menu } from 'lucide-vue-next'
+import { Menu, Sun, Moon } from 'lucide-vue-next'
 import GlobalLoader from './components/GlobalLoader.vue'
 import ErrorHandler from './components/ErrorHandler.vue'
 
 export default {
   name: 'App',
-  components: { Menu, GlobalLoader, ErrorHandler },
+  components: { Menu, Sun, Moon, GlobalLoader, ErrorHandler },
   data() {
     return {
       navItems: [
@@ -80,7 +108,18 @@ export default {
         { name: '特性', path: '/abilities' },
         { name: '物品', path: '/items' },
         { name: '伤害计算', path: '/damage-calculator' }
-      ]
+      ],
+      theme: localStorage.getItem('theme') || 'light'
+    }
+  },
+  mounted() {
+    document.documentElement.classList.toggle('dark', this.theme === 'dark')
+  },
+  methods: {
+    toggleTheme() {
+      this.theme = this.theme === 'dark' ? 'light' : 'dark'
+      document.documentElement.classList.toggle('dark', this.theme === 'dark')
+      localStorage.setItem('theme', this.theme)
     }
   }
 }
