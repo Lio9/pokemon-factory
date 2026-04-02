@@ -54,10 +54,46 @@ async function start() {
 }
 
 async function startAsync(){
-  resultText.value = '提交异步对战...' 
-  const res = await api.battle.startAsync({ username: username.value })
-  currentBattleId = res.battleId
-  resultText.value = '异步对战已提交. battleId=' + currentBattleId
+  resultText.value = '提交异步对战...'
+  try {
+    const res = await api.battle.startAsync({ username: username.value })
+    currentBattleId = res.battleId
+    resultText.value = '异步对战已提交. battleId=' + currentBattleId + '，开始轮询结果'
+    // poll for status
+    let attempts = 0
+    const maxAttempts = 60
+    const intervalMs = 2000
+    const poll = setInterval(async () => {
+      attempts++
+      try {
+        const status = await api.battle.status(currentBattleId)
+        if (status && status.battle) {
+          // finished when ended_at or summary exists
+          if (status.battle.ended_at || status.battle.summary_json) {
+            clearInterval(poll)
+            resultText.value = '对战完成'
+            const summaryJson = status.battle.summary_json || null
+            if (summaryJson) {
+              try { summary.value = typeof summaryJson === 'string' ? JSON.parse(summaryJson) : summaryJson } catch(e){ summary.value = summaryJson }
+            }
+            // load opponent team if provided
+            if (status.battle.opponent_team_json) {
+              try { opponentTeam.value = JSON.parse(status.battle.opponent_team_json) } catch(e){ opponentTeam.value = [] }
+            }
+            return
+          }
+        }
+      } catch (e) {
+        // ignore transient errors
+      }
+      if (attempts >= maxAttempts) {
+        clearInterval(poll)
+        resultText.value = '轮询超时，请稍后手动查询 status.'
+      }
+    }, intervalMs)
+  } catch (e) {
+    resultText.value = '提交失败: ' + e.message
+  }
 }
 
 async function onConfirmExchange(pickedIdx){

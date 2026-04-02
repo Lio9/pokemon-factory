@@ -109,7 +109,7 @@ public class BattleService {
 
     public Map<String, Object> getBattleStatus(Long battleId) {
         Map<String, Object> out = new HashMap<>();
-        List<Map<String,Object>> rows = jdbcTemplate.queryForList("SELECT id, player_id, opponent_team_id, started_at, ended_at, summary_json FROM battle WHERE id = ?", battleId);
+        List<Map<String,Object>> rows = jdbcTemplate.queryForList("SELECT b.id, b.player_id, b.opponent_team_id, b.started_at, b.ended_at, b.summary_json, t.team_json AS opponent_team_json FROM battle b LEFT JOIN team t ON b.opponent_team_id = t.id WHERE b.id = ?", battleId);
         if (rows.isEmpty()) {
             out.put("error", "not found");
         } else {
