@@ -1,7 +1,7 @@
 <template>
   <div class="pokemon-list" ref="listContainer">
     <!-- 搜索和筛选区域 -->
-    <div class="search-section mb-8 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-6 border border-gray-100 sticky top-0 z-10 transition-all duration-300 hover:shadow-xl">
+    <div class="search-section mb-8 card-glass rounded-2xl shadow-lg p-6 border border-transparent sticky top-0 z-10 transition-all duration-300 hover:shadow-xl">
       <div class="flex flex-col lg:flex-row gap-4">
         <!-- 搜索框 -->
         <div class="flex-1">
@@ -159,9 +159,9 @@
           <button 
             @click.prevent="toggleFavorite(pokemon)"
             class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
-            :class="isFavorite(pokemon.id) ? 'bg-red-500 text-white shadow-lg' : 'bg-white/90 text-gray-400 hover:text-red-500'"
+            :class="isFavorite(pokemon.id) ? 'bg-red-500 text-white shadow-lg fav-bounce' : 'bg-white/90 text-gray-400 hover:text-red-500'"
           >
-            <Heart class="w-4 h-4" :class="isFavorite(pokemon.id) ? 'fill-current' : ''" />
+            <Heart class="w-4 h-4" :class="isFavorite(pokemon.id) ? 'fill-current scale-110' : ''" />
           </button>
           
           <!-- 图片区域 -->
@@ -243,9 +243,9 @@
           <button 
             @click.prevent="toggleFavorite(pokemon)"
             class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
-            :class="isFavorite(pokemon.id) ? 'bg-red-500 text-white shadow-lg' : 'bg-white/90 text-gray-400 hover:text-red-500'"
+            :class="isFavorite(pokemon.id) ? 'bg-red-500 text-white shadow-lg fav-bounce' : 'bg-white/90 text-gray-400 hover:text-red-500'"
           >
-            <Heart class="w-4 h-4" :class="isFavorite(pokemon.id) ? 'fill-current' : ''" />
+            <Heart class="w-4 h-4" :class="isFavorite(pokemon.id) ? 'fill-current scale-110' : ''" />
           </button>
           
           <!-- 图片 -->
@@ -764,12 +764,17 @@ export default {
 }
 
 .pokemon-card {
-  animation: fadeInUp 0.4s ease-out;
+  animation: fadeInUp 0.45s ease-out;
   will-change: transform;
+  transition: transform 0.45s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.35s ease;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.8));
 }
 
 .pokemon-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 18px 40px rgba(59,130,246,0.12), 0 6px 20px rgba(99,102,241,0.06);
+  border-color: rgba(59,130,246,0.12);
 }
 
 @keyframes fadeInUp {
