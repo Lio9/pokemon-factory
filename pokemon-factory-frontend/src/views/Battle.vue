@@ -6,11 +6,15 @@
         <BattleArena :summary="summary" />
       </div>
       <div>
-        <div class="mb-4">
-          <label class="block">用户名</label>
-          <input v-model="username" class="border p-2 w-full" placeholder="输入用户名或使用 guest" />
+              <div class="mb-4">
+          <label class="block">当前用户</label>
+          <div class="p-2 bg-gray-100 rounded">{{ currentUser || '未登录' }}</div>
         </div>
-        <button @click="start" class="bg-blue-500 text-white px-4 py-2 rounded">开始匹配 (演示)</button>
+        <div class="mb-4">
+          <label class="block">出招映射 (JSON，例如 {"Pikachu":"Thunderbolt"})</label>
+          <textarea v-model="playerMoveText" class="w-full p-2 rounded bg-white" rows="3" placeholder='{"Pikachu":"Thunderbolt"}'></textarea>
+        </div>
+        <button @click="start" class="bg-blue-500 text-white px-4 py-2 rounded">开始匹配</button>
         <button @click="startAsync" class="bg-green-500 text-white px-4 py-2 rounded ml-2">异步匹配</button>
         <pre class="mt-4 bg-gray-100 p-2 rounded">{{ resultText }}</pre>
 
@@ -26,7 +30,8 @@ import BattleArena from '../components/BattleArena.vue'
 import ExchangeModal from '../components/ExchangeModal.vue'
 import api from '../services/api'
 
-const username = ref('guest')
+const username = ref(localStorage.getItem('username') || 'guest')
+const currentUser = localStorage.getItem('username') || null
 const resultText = ref('')
 const summary = ref(null)
 const opponentTeam = ref([])
@@ -34,12 +39,20 @@ const opponentTeam = ref([])
 const showExchange = ref(false)
 const replacedIndex = ref(0)
 const replacedHighlight = ref(-1)
+const playerMoveText = ref('{}')
 let currentBattleId = null
 
 async function start() {
   resultText.value = '匹配中...'
   try {
-    const res = await api.battle.start({ username: username.value })
+    let pm = null
+      try {
+        pm = playerMoveText.value ? JSON.parse(playerMoveText.value) : null
+      } catch (e) {
+        resultText.value = '出招映射 JSON 有误'
+        return
+      }
+      const res = await api.battle.start({ username: username.value, playerMoveMap: pm })
     resultText.value = '匹配完成'
     summary.value = res.summary || res
     opponentTeam.value = JSON.parse(res.opponentTeamJson || '[]')
@@ -57,7 +70,14 @@ async function start() {
 async function startAsync(){
   resultText.value = '提交异步对战...'
   try {
-    const res = await api.battle.startAsync({ username: username.value })
+    let pm = null
+      try {
+        pm = playerMoveText.value ? JSON.parse(playerMoveText.value) : null
+      } catch (e) {
+        resultText.value = '出招映射 JSON 有误'
+        return
+      }
+      const res = await api.battle.startAsync({ username: username.value, playerMoveMap: pm })
     currentBattleId = res.battleId
     resultText.value = '异步对战已提交. battleId=' + currentBattleId + '，开始轮询结果'
     // poll for status

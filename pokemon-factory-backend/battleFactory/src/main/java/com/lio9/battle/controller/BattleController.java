@@ -1,9 +1,10 @@
 package com.lio9.battle.controller;
 
+import com.lio9.battle.mapper.PlayerMapper;
+import com.lio9.battle.mapper.TeamMapper;
+import com.lio9.battle.mapper.BattleExchangeMapper;
 import com.lio9.battle.service.BattleService;
 import com.lio9.battle.service.BattleExecutor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,21 +22,32 @@ public class BattleController {
     private BattleExecutor battleExecutor;
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private PlayerMapper playerMapper;
+
+    @Autowired
+    private TeamMapper teamMapper;
+
+    @Autowired
+    private BattleExchangeMapper exchangeMapper;
 
     @PostMapping("/start")
     public ResponseEntity<?> startBattle(@RequestBody Map<String, Object> req) {
+        // username must come from authenticated principal
+        String username = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        req.put("username", username);
         Map<String, Object> result = battleService.startMatch(req);
         return ResponseEntity.ok(result);
     }
 
     @PostMapping("/start-async")
     public ResponseEntity<?> startAsync(@RequestBody Map<String, Object> req) {
-        String username = (String) req.getOrDefault("username", "guest");
-        jdbcTemplate.update("INSERT OR IGNORE INTO player(username, rank, points) VALUES(?, 0, 0)", username);
-        Integer playerId = jdbcTemplate.queryForObject("SELECT id FROM player WHERE username = ?", Integer.class, username);
+        String username = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        playerMapper.insertIgnore(username);
+        Integer playerId = playerMapper.findIdByUsername(username);
         String teamJson = (String) req.get("teamJson");
-        Integer battleId = battleExecutor.submitAsyncBattle(playerId, teamJson == null ? "[]" : teamJson);
+        String pmJson = null;
+        try { pmJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(req.get("playerMoveMap")); } catch (Exception ignore) {}
+        Integer battleId = battleExecutor.submitAsyncBattle(playerId, teamJson == null ? "[]" : teamJson, pmJson);
         return ResponseEntity.ok(Map.of("battleId", battleId));
     }
 
@@ -70,8 +82,11 @@ public class BattleController {
             if (pNum == null) return ResponseEntity.badRequest().body(Map.of("error","player_not_found"));
             Integer playerId = pNum.intValue();
 
-            Integer playerTeamId = jdbcTemplate.queryForObject("SELECT id FROM team WHERE player_id = ? ORDER BY created_at DESC LIMIT 1", Integer.class, playerId);
-            String teamJson = jdbcTemplate.queryForObject("SELECT team_json FROM team WHERE id = ?", String.class, playerTeamId);
+            Map<String,Object> teamRow = teamMapper.findLatestByPlayer(playerId);
+            if (teamRow == null || !teamRow.containsKey("id")) return ResponseEntity.badRequest().body(Map.of("error","team_not_found"));
+            Integer playerTeamId = (Integer) teamRow.get("id");
+            String teamJson = (String) teamRow.get("team_json");
+            Integer version = teamRow.get("version") == null ? 0 : ((Number)teamRow.get("version")).intValue();
 
             var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             var arr = mapper.readValue(teamJson, java.util.List.class);
@@ -82,13 +97,16 @@ public class BattleController {
                 return ResponseEntity.badRequest().body(Map.of("error","invalid_replaced_index"));
             }
             String updated = mapper.writeValueAsString(arr);
-            jdbcTemplate.update("UPDATE team SET team_json = ? WHERE id = ?", updated, playerTeamId);
+
+            int updatedRows = teamMapper.updateTeamWithVersion(playerTeamId, updated, version);
+            if (updatedRows == 0) {
+                return ResponseEntity.status(409).body(Map.of("error","team_stale","message","Team was updated concurrently. Please refresh and try again."));
+            }
 
             Number oppNum = (Number) b.get("opponent_team_id");
             Integer opponentTeamId = oppNum == null ? null : oppNum.intValue();
 
-            jdbcTemplate.update("INSERT INTO battle_exchange(battle_id, player_team_id, opponent_team_id, replaced_index, replaced_pokemon_json, new_pokemon_json) VALUES (?, ?, ?, ?, ?, ?)",
-                    battleId, playerTeamId, opponentTeamId, replacedIndex, mapper.writeValueAsString(replacedPokemon), newPokemonJson);
+            exchangeMapper.insertExchange(battleId, playerTeamId, opponentTeamId, replacedIndex, mapper.writeValueAsString(replacedPokemon), newPokemonJson);
             return ResponseEntity.ok(Map.of("status","ok"));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "exchange_failed", "detail", e.getMessage()));

@@ -47,7 +47,13 @@ const routes = [
     path: '/battle', 
     name: 'Battle', 
     component: () => import('../views/Battle.vue'),
-    meta: { title: '对战工厂' }
+    meta: { title: '对战工厂', requiresAuth: true }
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.vue'),
+    meta: { title: '登录' }
   }
 ]
 
@@ -65,6 +71,11 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - Pokemon Factory` : 'Pokemon Factory'
+  const requiresAuth = to.meta && to.meta.requiresAuth
+  if (requiresAuth) {
+    const token = localStorage.getItem('jwt_token')
+    if (!token) return next({ name: 'Login' })
+  }
   next()
 })
 

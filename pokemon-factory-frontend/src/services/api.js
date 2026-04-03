@@ -4,8 +4,11 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api
 // 统一的请求处理
 async function request(url, options = {}) {
   try {
+    const token = localStorage.getItem('jwt_token')
+    const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+    if (token) headers['Authorization'] = `Bearer ${token}`
     const response = await fetch(url, {
-      headers: { 'Content-Type': 'application/json', ...options.headers },
+      headers,
       ...options
     })
     
@@ -131,6 +134,11 @@ const SPRITES_BASE = import.meta.env.VITE_SPRITES_BASE || 'http://127.0.0.1:8080
 
 // 对战 API 根（基于 API_BASE 的约定）
 const API_ROOT = API_BASE.replace(/\/api\/pokedex$/,'/api')
+
+export const userApi = {
+  login: (body) => request(`${API_ROOT}/user/login`, { method: 'POST', body: JSON.stringify(body) }),
+  register: (body) => request(`${API_ROOT}/user/register`, { method: 'POST', body: JSON.stringify(body) })
+}
 
 export const battleApi = {
   start: (body) => request(`${API_ROOT}/battle/start`, { method: 'POST', body: JSON.stringify(body) }),

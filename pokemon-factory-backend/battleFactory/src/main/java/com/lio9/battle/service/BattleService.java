@@ -12,13 +12,19 @@ import java.util.Map;
 @Service
 public class BattleService {
 
-    private final JdbcTemplate jdbcTemplate;
-    private final BattleEngine battleEngine;
+    private final com.lio9.battle.mapper.PlayerMapper playerMapper;
+    private final com.lio9.battle.mapper.TeamMapper teamMapper;
+    private final com.lio9.battle.mapper.PokemonMapper pokemonMapper;
+    private final com.lio9.battle.mapper.BattleMapper battleMapper;
     private final OpponentPoolService poolService;
+    private final BattleEngine battleEngine;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public BattleService(JdbcTemplate jdbcTemplate, BattleEngine battleEngine, OpponentPoolService poolService) {
-        this.jdbcTemplate = jdbcTemplate;
+    public BattleService(com.lio9.battle.mapper.PlayerMapper playerMapper, com.lio9.battle.mapper.TeamMapper teamMapper, com.lio9.battle.mapper.PokemonMapper pokemonMapper, com.lio9.battle.mapper.BattleMapper battleMapper, BattleEngine battleEngine, OpponentPoolService poolService) {
+        this.playerMapper = playerMapper;
+        this.teamMapper = teamMapper;
+        this.pokemonMapper = pokemonMapper;
+        this.battleMapper = battleMapper;
         this.battleEngine = battleEngine;
         this.poolService = poolService;
     }
@@ -30,27 +36,27 @@ public class BattleService {
         String teamJson = (String) req.get("teamJson"); // optional
 
         // upsert player
-        jdbcTemplate.update("INSERT OR IGNORE INTO player(username, rank, points) VALUES(?, 0, 0)", username);
-        Integer playerId = jdbcTemplate.queryForObject("SELECT id FROM player WHERE username = ?", Integer.class, username);
+        playerMapper.insertIgnore(username);
+        Integer playerId = playerMapper.findIdByUsername(username);
 
         // ensure player team exists
         Integer playerTeamId = null;
         if (teamJson != null && !teamJson.isEmpty()) {
-            jdbcTemplate.update("INSERT INTO team(player_id, name, team_json, source, created_at) VALUES (?, ?, ?, 'player', datetime('now'))", playerId, "custom-" + System.currentTimeMillis(), teamJson);
-            playerTeamId = jdbcTemplate.queryForObject("SELECT last_insert_rowid()", Integer.class);
+            teamMapper.insertTeam(playerId, "custom-" + System.currentTimeMillis(), teamJson, "player");
+            playerTeamId = teamMapper.lastInsertId();
         } else {
             // attempt to find an existing team for player
-            List<Map<String,Object>> teams = jdbcTemplate.queryForList("SELECT id, team_json FROM team WHERE player_id = ? LIMIT 1", playerId);
-            if (!teams.isEmpty()) {
-                playerTeamId = (Integer) teams.get(0).get("id");
-                teamJson = (String) teams.get(0).get("team_json");
+            Map<String,Object> teamRow = teamMapper.findLatestByPlayer(playerId);
+            if (teamRow != null && teamRow.get("id") != null) {
+                playerTeamId = (Integer) teamRow.get("id");
+                teamJson = (String) teamRow.get("team_json");
             } else {
                 // generate a simple random team based on available pokemon table
-                List<Map<String,Object>> sample = jdbcTemplate.queryForList("SELECT id, name, base_experience FROM pokemon LIMIT 6");
+                List<Map<String,Object>> sample = pokemonMapper.sampleLimit(6);
                 try {
                     teamJson = objectMapper.writeValueAsString(sample);
-                    jdbcTemplate.update("INSERT INTO team(player_id, name, team_json, source, created_at) VALUES (?, ?, ?, 'generated', datetime('now'))", playerId, "generated-" + System.currentTimeMillis(), teamJson);
-                    playerTeamId = jdbcTemplate.queryForObject("SELECT last_insert_rowid()", Integer.class);
+                    teamMapper.insertTeam(playerId, "generated-" + System.currentTimeMillis(), teamJson, "generated");
+                    playerTeamId = teamMapper.lastInsertId();
                 } catch (Exception e) {
                     // fallback empty
                     teamJson = "[]";
@@ -69,26 +75,34 @@ public class BattleService {
             source = "pool";
         } else {
             // generate a random opponent team
-            List<Map<String,Object>> sample = jdbcTemplate.queryForList("SELECT id, name, base_experience FROM pokemon ORDER BY RANDOM() LIMIT 6");
+            List<Map<String,Object>> sample = pokemonMapper.sampleLimit(6);
             try {
                 opponentTeamJson = objectMapper.writeValueAsString(sample);
-                jdbcTemplate.update("INSERT INTO team(player_id, name, team_json, source, created_at) VALUES (?, ?, ?, 'generated', datetime('now'))", null, "opp-generated-" + System.currentTimeMillis(), opponentTeamJson);
-                opponentTeamId = jdbcTemplate.queryForObject("SELECT last_insert_rowid()", Integer.class);
+                teamMapper.insertTeam(null, "opp-generated-" + System.currentTimeMillis(), opponentTeamJson, "generated");
+                opponentTeamId = teamMapper.lastInsertId();
             } catch (Exception e) {
                 opponentTeamJson = "[]";
             }
         }
 
+        // parse playerMoveMap if provided
+        Map<String, String> playerMoveMap = null;
+        if (req.containsKey("playerMoveMap")) {
+            try {
+                playerMoveMap = objectMapper.readValue(req.get("playerMoveMap").toString(), Map.class);
+            } catch (Exception e) {
+                playerMoveMap = null;
+            }
+        }
         // simulate battle
-        Map<String,Object> summary = battleEngine.simulate(teamJson, opponentTeamJson, 10);
+        Map<String,Object> summary = battleEngine.simulate(teamJson, opponentTeamJson, 10, playerMoveMap);
 
         // persist battle
         try {
             String summaryJson = objectMapper.writeValueAsString(summary);
-            jdbcTemplate.update("INSERT INTO battle(player_id, opponent_team_id, rounds, summary_json, started_at, ended_at, winner_player_id) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), ?)",
-                    playerId, opponentTeamId, summary.getOrDefault("roundsCount", 0), summaryJson,
-                    "player".equals(summary.get("winner")) ? playerId : null);
-            Integer battleId = jdbcTemplate.queryForObject("SELECT last_insert_rowid()", Integer.class);
+            Integer winnerId = "player".equals(summary.get("winner")) ? playerId : null;
+            battleMapper.insertFinal(playerId, opponentTeamId, (Integer) summary.getOrDefault("roundsCount", 0), summaryJson, winnerId);
+            Integer battleId = battleMapper.lastInsertId();
             out.put("battleId", battleId);
         } catch (Exception e) {
             out.put("error", "persist_failed");
@@ -109,11 +123,11 @@ public class BattleService {
 
     public Map<String, Object> getBattleStatus(Long battleId) {
         Map<String, Object> out = new HashMap<>();
-        List<Map<String,Object>> rows = jdbcTemplate.queryForList("SELECT b.id, b.player_id, b.opponent_team_id, b.started_at, b.ended_at, b.summary_json, t.team_json AS opponent_team_json FROM battle b LEFT JOIN team t ON b.opponent_team_id = t.id WHERE b.id = ?", battleId);
-        if (rows.isEmpty()) {
+        Map<String,Object> row = battleMapper.findBattleWithOpponent(battleId);
+        if (row == null || row.isEmpty()) {
             out.put("error", "not found");
         } else {
-            out.put("battle", rows.get(0));
+            out.put("battle", row);
         }
         return out;
     }
