@@ -10,8 +10,9 @@
       </div>
       <ul class="mt-2 space-y-2">
         <li v-for="r in summary.rounds" :key="r.round" class="p-2 bg-white rounded shadow-sm">
-          <div class="text-sm">回合 {{ r.round }}: 玩家受伤 {{ r.dmgToPlayer }}, 对手受伤 {{ r.dmgToOpponent }}</div>
-          <div class="text-xs text-gray-500">玩家HP: {{ r.playerHP }}, 对手HP: {{ r.opponentHP }}</div>
+          <div class="text-sm">回合 {{ r.round }}: 玩家 使用 {{ r.playerMove }} ; 对手 使用 {{ r.opponentMove }}</div>
+          <div class="text-sm">玩家受伤 {{ r.dmgToPlayer }}, 对手受伤 {{ r.dmgToOpponent }}</div>
+          <div class="text-xs text-gray-500">玩家HP: {{ r.playerHpAfter }}, 对手HP: {{ r.opponentHpAfter }}</div>
         </li>
       </ul>
     </div>
