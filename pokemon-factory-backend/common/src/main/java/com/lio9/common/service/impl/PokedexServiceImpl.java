@@ -346,9 +346,18 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         return detailVO;
     }
 
+/**
+     * 获取指定形态在指定版本组下可学的技能列表。
+     * <p>
+     * 参数：
+     *  - formId: 形态 ID（非空）
+     *  - versionGroupId: 版本组 ID（可为空，表示所有版本）
+     * </p>
+     * 返回 MoveVO 列表；当前为占位实现（返回空列表），后续可按数据库表完善查询并缓存。
+     */
     @Override
     public List<MoveVO> getFormMoves(Integer formId, Integer versionGroupId) {
-        // TODO: 实现获取形态技能的逻辑
+        // Placeholder implementation: return an empty list until feature is implemented.
         return List.of();
     }
 
@@ -369,21 +378,37 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         }).collect(Collectors.toList());
     }
 
+/**
+     * 获取特性分页列表。
+     * <p>
+     * 参数：current/size 为分页参数，keyword 用于模糊搜索。
+     * 返回 AbilityVO 的分页对象；当前为占位实现（空分页），后续可按需求补充查询与排序。
+     */
     @Override
     public Page<AbilityVO> getAbilityList(int current, int size, String keyword) {
-        // TODO: 实现获取特性列表的逻辑
+        // Placeholder implementation: return empty page until implemented.
         return new Page<>(current, size);
     }
 
+/**
+     * 获取技能分页列表。
+     * <p>
+     * 支持按属性（typeId）和关键字搜索（keyword）。当前为占位实现，返回空分页。
+     */
     @Override
     public Page<MoveVO> getMoveList(int current, int size, Integer typeId, String keyword) {
-        // TODO: 实现获取技能列表的逻辑
+        // Placeholder implementation: return empty page until implemented.
         return new Page<>(current, size);
     }
 
+/**
+     * 获取物品分页列表。
+     * <p>
+     * 支持按分类（categoryId）和关键字搜索（keyword）。当前为占位实现，返回空分页。
+     */
     @Override
     public Page<ItemVO> getItemList(int current, int size, Integer categoryId, String keyword) {
-        // TODO: 实现获取物品列表的逻辑
+        // Placeholder implementation: return empty page until implemented.
         return new Page<>(current, size);
     }
 }

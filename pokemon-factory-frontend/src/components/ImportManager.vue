@@ -261,7 +261,7 @@ export default {
         const tasksResponse = await fetch(`${API_BASE}/import/tasks`)
         const tasksResult = await tasksResponse.json()
 
-        console.log('任务列表响应:', tasksResult)
+        // debug logs removed: tasks list response
 
         if (tasksResult.code === 200) {
           const tasks = tasksResult.data || []
@@ -270,12 +270,12 @@ export default {
           // 找到当前正在运行的任务
           const runningTask = tasks.find(t => t.status === 'running')
           if (runningTask) {
-            console.log('找到运行中的任务:', runningTask)
+            // debug logs removed: running task
             // 获取当前任务的详细状态
             const statusResponse = await fetch(`${API_BASE}/import/status/${runningTask.taskId}`)
             const statusResult = await statusResponse.json()
 
-            console.log('任务状态响应:', statusResult)
+            // debug logs removed: status response
 
             if (statusResult.code === 200) {
               currentTask.value = statusResult.data
@@ -283,7 +283,7 @@ export default {
           } else if (tasks.length > 0) {
             // 如果没有运行中的任务，显示最近的一个
             currentTask.value = tasks[0]
-            console.log('显示最新任务:', currentTask.value)
+            // debug logs removed: show latest task
           } else {
             currentTask.value = null
           }
