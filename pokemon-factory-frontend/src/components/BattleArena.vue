@@ -2,6 +2,7 @@
   <div class="border p-4 rounded">
     <h2 class="text-lg font-semibold">战场</h2>
     <p class="text-sm text-gray-500">回合日志</p>
+    <div v-if="typeof highlightIndex !== 'undefined' && highlightIndex >= 0" class="mb-2 text-sm text-blue-600">已替换槽: {{ highlightIndex + 1 }}（高亮 4 秒）</div>
     <div v-if="summary">
       <div class="mt-2">
         <div>胜者: <strong>{{ summary.winner }}</strong></div>
@@ -20,7 +21,7 @@
 
 <script setup>
 import { defineProps } from 'vue'
-const props = defineProps({ summary: Object })
+const props = defineProps({ summary: Object, highlightIndex: { type: Number, default: -1 } })
 </script>
 
 <style scoped>

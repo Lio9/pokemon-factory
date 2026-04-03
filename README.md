@@ -238,14 +238,11 @@ tail -f logs/pokemon-factory.log
 ## 致谢
 
 - [PokeAPI](https://pokeapi.co/) - 宝可梦数据来源
-- [Spring Boot](https://spring.io/projects/spring-boot) - 后端框架
-- [Vue.js](https://vuejs.org/) - 前端框架
-- [Tailwind CSS](https://tailwindcss.com/) - 样式框架
 
 ## 联系方式
 
 - 项目维护者：Lio9
-- 邮箱：[your-email@example.com]
+- 邮箱：[Lio9@qq.com]
 - GitHub：[https://github.com/Lio9/pokemon-factory](https://github.com/Lio9/pokemon-factory)
 
 ---

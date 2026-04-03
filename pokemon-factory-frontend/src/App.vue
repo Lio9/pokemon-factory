@@ -38,7 +38,7 @@
           <!-- 移动端菜单 & 主题切换 -->
           <div class="md:hidden flex items-center gap-2">
             <button @click="toggleTheme" class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">
-              <component :is="theme === \"dark\" ? Moon : Sun" class="w-6 h-6" />
+              <component :is="theme === 'dark' ? Moon : Sun" class="w-6 h-6" />
             </button>
             <el-dropdown trigger="click">
               <button class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
