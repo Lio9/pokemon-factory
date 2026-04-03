@@ -68,10 +68,10 @@ public class BattleExecutor {
     public Integer submitAsyncBattle(Integer playerId, String playerTeamJson, String playerMoveMapJson) {
         // create battle record with nulls to be updated later
         // persist playerMoveMap into battle row for async executor
-            battleMapper.insertInitial(playerId, null, 0, null);
+            battleMapper.insertInitial(playerId, null, 0, playerMoveMapJson, playerTeamJson);
         Integer battleId = battleMapper.lastInsertId();
 
-        executor.submit(() -> runBattle(battleId, playerId, playerTeamJson)); // playerMoveMapJson will be read by runBattle from DB
+        executor.submit(() -> runBattle(battleId, playerId, playerTeamJson));
         return battleId;
     }
 
