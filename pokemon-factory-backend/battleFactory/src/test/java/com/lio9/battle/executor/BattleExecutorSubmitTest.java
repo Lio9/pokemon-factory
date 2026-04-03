@@ -30,6 +30,7 @@ public class BattleExecutorSubmitTest {
     private void createSchema(JdbcTemplate jdbc) {
         jdbc.execute("CREATE TABLE IF NOT EXISTS battle(id INTEGER PRIMARY KEY AUTOINCREMENT, player_id INTEGER, opponent_team_id INTEGER, rounds INTEGER, player_move_map TEXT, summary_json TEXT, started_at TEXT, ended_at TEXT, winner_player_id INTEGER);");
         jdbc.execute("CREATE TABLE IF NOT EXISTS team(id INTEGER PRIMARY KEY AUTOINCREMENT, player_id INTEGER, name TEXT, team_json TEXT, source TEXT, created_at TEXT);");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS battle_job(id INTEGER PRIMARY KEY AUTOINCREMENT, battle_id INTEGER, status TEXT, payload TEXT, created_at TEXT, updated_at TEXT);");
     }
 
     @AfterEach
@@ -81,6 +82,12 @@ public class BattleExecutorSubmitTest {
             public void insertRound(Integer battleId, Integer roundNumber, String logJson) { jdbc.update("INSERT INTO battle_round(battle_id, round_number, log_json) VALUES(?, ?, ?)", battleId, roundNumber, logJson); }
         };
 
+        com.lio9.battle.mapper.JobMapper jobMapper = new com.lio9.battle.mapper.JobMapper() {
+            public void insertJob(Integer battleId, String status, String payload) { jdbc.update("INSERT INTO battle_job(battle_id, status, payload, created_at) VALUES(?, ?, ?, datetime('now'))", battleId, status, payload); }
+            public java.util.List<java.util.Map<String,Object>> findPendingJobs() { return jdbc.queryForList("SELECT id, battle_id, status, payload, created_at FROM battle_job WHERE status = 'PENDING' OR status = 'RUNNING'"); }
+            public void updateJobStatus(Integer id, String status) { jdbc.update("UPDATE battle_job SET status = ?, updated_at = datetime('now') WHERE id = ?", status, id); }
+        };
+
         com.lio9.battle.service.OpponentPoolService poolService = new com.lio9.battle.service.OpponentPoolService(opMapper);
 
         // create a test player
@@ -88,7 +95,7 @@ public class BattleExecutorSubmitTest {
         jdbc.update("INSERT OR IGNORE INTO player(username, rank, points) VALUES(?, 0, 0)", "tester");
         Integer playerId = jdbc.queryForObject("SELECT id FROM player WHERE username = ?", Integer.class, "tester");
 
-        com.lio9.battle.service.BattleExecutor executor = new com.lio9.battle.service.BattleExecutor(battleMapper, opMapper, teamMapper, pokemonMapper, roundMapper, engine, poolService);
+        com.lio9.battle.service.BattleExecutor executor = new com.lio9.battle.service.BattleExecutor(battleMapper, opMapper, teamMapper, pokemonMapper, roundMapper, jobMapper, engine, poolService);
         executor.init();
 
         Integer id = executor.submitAsyncBattle(playerId, "[]", null);
