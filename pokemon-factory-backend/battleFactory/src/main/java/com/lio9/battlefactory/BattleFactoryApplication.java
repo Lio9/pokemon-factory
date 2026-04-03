@@ -1,13 +1,4 @@
 package com.lio9.battlefactory;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class BattleFactoryApplication {
-
-    public static void main(String[] args) {
-        SpringApplication.run(BattleFactoryApplication.class, args);
-    }
-
-}
+// Placeholder file removed main to avoid duplicate entry point.
+// The real application entry is com.lio9.battle.BattleFactoryApplication

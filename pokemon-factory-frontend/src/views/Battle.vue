@@ -14,7 +14,7 @@
         <button @click="startAsync" class="bg-green-500 text-white px-4 py-2 rounded ml-2">异步匹配</button>
         <pre class="mt-4 bg-gray-100 p-2 rounded">{{ resultText }}</pre>
 
-        <ExchangeModal v-if="showExchange" :opponentTeam="opponentTeam" :replacedIndex="replacedIndex" @close="showExchange=false" @confirm="onConfirmExchange" />
+        <ExchangeModal v-if="showExchange" :opponentTeam="opponentTeam" v-model:replacedIndex="replacedIndex" @close="showExchange=false" @confirm="onConfirmExchange" />
       </div>
     </div>
   </div>
@@ -33,6 +33,7 @@ const opponentTeam = ref([])
 
 const showExchange = ref(false)
 const replacedIndex = ref(0)
+const replacedHighlight = ref(-1)
 let currentBattleId = null
 
 async function start() {
@@ -80,6 +81,13 @@ async function startAsync(){
             if (status.battle.opponent_team_json) {
               try { opponentTeam.value = JSON.parse(status.battle.opponent_team_json) } catch(e){ opponentTeam.value = [] }
             }
+            // if player won, open exchange modal automatically
+            try {
+              if (summary.value && summary.value.winner === 'player') {
+                replacedIndex.value = 0
+                showExchange.value = true
+              }
+            } catch(e) {}
             return
           }
         }
@@ -100,9 +108,30 @@ async function onConfirmExchange(pickedIdx){
   // send exchange request
   const picked = opponentTeam.value[pickedIdx]
   const newPokemonJson = JSON.stringify(picked)
-  const res = await api.battle.exchange({ battleId: currentBattleId, replacedIndex: replacedIndex.value, newPokemonJson })
-  showExchange.value = false
-  resultText.value = '已交换: ' + JSON.stringify(res)
+  try {
+    const res = await api.battle.exchange({ battleId: currentBattleId, replacedIndex: replacedIndex.value, newPokemonJson })
+    showExchange.value = false
+    resultText.value = '已交换: ' + JSON.stringify(res)
+    // refresh status and update arena
+    if (currentBattleId) {
+      try {
+        const status = await api.battle.status(currentBattleId)
+        if (status && status.battle) {
+          const summaryJson = status.battle.summary_json || null
+          if (summaryJson) {
+            try { summary.value = typeof summaryJson === 'string' ? JSON.parse(summaryJson) : summaryJson } catch(e){ summary.value = summaryJson }
+          }
+          if (status.battle.opponent_team_json) {
+            try { opponentTeam.value = JSON.parse(status.battle.opponent_team_json) } catch(e){}
+          }
+        }
+      } catch(e){}
+    }
+    replacedHighlight.value = replacedIndex.value
+    setTimeout(()=> replacedHighlight.value = -1, 4000)
+  } catch (e) {
+    resultText.value = '交换失败: ' + (e.message || e)
+  }
 }
 </script>
 

@@ -161,7 +161,7 @@
             class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
             :class="isFavorite(pokemon.id) ? 'bg-red-500 text-white shadow-lg fav-bounce' : 'bg-white/90 text-gray-400 hover:text-red-500'"
           >
-            <Heart class="w-4 h-4" :class="isFavorite(pokemon.id) ? 'fill-current scale-110' : ''" />
+            <span class="w-4 h-4 text-sm" :class="isFavorite(pokemon.id) ? 'text-red-500' : 'text-gray-400'">❤️</span>
           </button>
           
           <!-- 图片区域 -->
@@ -245,7 +245,7 @@
             class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
             :class="isFavorite(pokemon.id) ? 'bg-red-500 text-white shadow-lg fav-bounce' : 'bg-white/90 text-gray-400 hover:text-red-500'"
           >
-            <Heart class="w-4 h-4" :class="isFavorite(pokemon.id) ? 'fill-current scale-110' : ''" />
+            <span class="w-4 h-4 text-sm" :class="isFavorite(pokemon.id) ? 'text-red-500' : 'text-gray-400'">❤️</span>
           </button>
           
           <!-- 图片 -->
@@ -370,13 +370,13 @@
 <script>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Loading, ArrowUp, CircleCheck, ArrowDown, Grid, List, Heart } from '@element-plus/icons-vue'
+import { Search, Loading, ArrowUp, CircleCheck, ArrowDown, Grid, List } from '@element-plus/icons-vue'
 import { pokemonApi, typeApi, sprites } from '../services/api.js'
 import { dataCache } from '../services/cache.js'
 
 export default {
   name: 'PokemonList',
-  components: { Search, Loading, ArrowUp, CircleCheck, ArrowDown, Grid, List, Heart },
+  components: { Search, Loading, ArrowUp, CircleCheck, ArrowDown, Grid, List },
   setup() {
     // DOM引用
     const listContainer = ref(null)
