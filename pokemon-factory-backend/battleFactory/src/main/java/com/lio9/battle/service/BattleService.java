@@ -16,15 +16,17 @@ public class BattleService {
     private final com.lio9.battle.mapper.TeamMapper teamMapper;
     private final com.lio9.battle.mapper.PokemonMapper pokemonMapper;
     private final com.lio9.battle.mapper.BattleMapper battleMapper;
+    private final com.lio9.battle.mapper.BattleRoundMapper roundMapper;
     private final OpponentPoolService poolService;
     private final BattleEngine battleEngine;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public BattleService(com.lio9.battle.mapper.PlayerMapper playerMapper, com.lio9.battle.mapper.TeamMapper teamMapper, com.lio9.battle.mapper.PokemonMapper pokemonMapper, com.lio9.battle.mapper.BattleMapper battleMapper, BattleEngine battleEngine, OpponentPoolService poolService) {
+    public BattleService(com.lio9.battle.mapper.PlayerMapper playerMapper, com.lio9.battle.mapper.TeamMapper teamMapper, com.lio9.battle.mapper.PokemonMapper pokemonMapper, com.lio9.battle.mapper.BattleMapper battleMapper, com.lio9.battle.mapper.BattleRoundMapper roundMapper, BattleEngine battleEngine, OpponentPoolService poolService) {
         this.playerMapper = playerMapper;
         this.teamMapper = teamMapper;
         this.pokemonMapper = pokemonMapper;
         this.battleMapper = battleMapper;
+        this.roundMapper = roundMapper;
         this.battleEngine = battleEngine;
         this.poolService = poolService;
     }
@@ -130,6 +132,64 @@ public class BattleService {
             out.put("battle", row);
         }
         return out;
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String,Object> applyMove(Long battleId, Map<String,String> playerMoveMap) {
+        Map<String,Object> out = new HashMap<>();
+        try {
+            Map<String,Object> row = battleMapper.findBattleWithOpponent(battleId);
+            if (row == null) { out.put("error","not_found"); return out; }
+            String playerTeamJson = (String) row.get("player_team_json");
+            String opponentTeamJson = (String) row.get("opponent_team_json");
+            if (playerTeamJson == null) playerTeamJson = "[]";
+            if (opponentTeamJson == null) opponentTeamJson = "[]";
+
+            // run one round simulation using provided move map
+            Map<String,Object> summary = battleEngine.simulate(playerTeamJson, opponentTeamJson, 1, playerMoveMap);
+
+            // persist round(s)
+            var rounds = (java.util.List<Map<String,Object>>) summary.get("rounds");
+            if (rounds != null) {
+                for (Map<String,Object> r : rounds) {
+                    try { roundMapper.insertRound(battleId.intValue(), (Integer)r.get("round"), objectMapper.writeValueAsString(r)); } catch (Exception ignore) {}
+                }
+            }
+
+            // merge into existing summary_json
+            String existingJson = row.get("summary_json") == null ? null : row.get("summary_json").toString();
+            Map<String,Object> merged = new HashMap<>();
+            java.util.List<Map<String,Object>> mergedRounds = new java.util.ArrayList<>();
+            if (existingJson != null && !existingJson.isEmpty()) {
+                try {
+                    Object ex = objectMapper.readValue(existingJson, Object.class);
+                    if (ex instanceof Map) {
+                        Map<String,Object> exm = (Map<String,Object>) ex;
+                        Object er = exm.get("rounds");
+                        if (er instanceof java.util.List) mergedRounds.addAll((java.util.List<Map<String,Object>>)er);
+                    }
+                } catch (Exception ignore) {}
+            }
+            if (rounds != null) mergedRounds.addAll(rounds);
+            merged.put("rounds", mergedRounds);
+            merged.put("roundsCount", mergedRounds.size());
+            // determine winner if decided
+            if (summary.containsKey("winner")) merged.put("winner", summary.get("winner"));
+
+            String mergedJson = objectMapper.writeValueAsString(merged);
+            // update battle row
+            Integer opponentTeamId = row.get("opponent_team_id") == null ? null : ((Number)row.get("opponent_team_id")).intValue();
+            Integer winnerId = merged.get("winner") != null && "player".equals(merged.get("winner")) ? ((Number)row.get("player_id")).intValue() : null;
+            battleMapper.updateBattle(battleId.intValue(), opponentTeamId, mergedJson, mergedRounds.size(), winnerId);
+
+            out.put("summary", merged);
+            out.put("status","ok");
+            return out;
+        } catch (Exception e) {
+            out.put("error","apply_failed");
+            out.put("detail", e.getMessage());
+            return out;
+        }
     }
 
     public List<Map<String, Object>> samplePool(Integer rank) {

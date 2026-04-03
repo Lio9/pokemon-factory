@@ -62,6 +62,28 @@ public class BattleController {
         return ResponseEntity.ok(battleService.samplePool(rank));
     }
 
+    @GetMapping("/{battleId}/state")
+    public ResponseEntity<?> state(@PathVariable Long battleId) {
+        Map<String, Object> status = battleService.getBattleStatus(battleId);
+        return ResponseEntity.ok(status);
+    }
+
+    @PostMapping("/{battleId}/move")
+    public ResponseEntity<?> move(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
+        try {
+            Map<String,String> moveMap = null;
+            if (req != null && req.containsKey("playerMoveMap")) {
+                Object o = req.get("playerMoveMap");
+                if (o instanceof Map) moveMap = (Map<String,String>) o;
+                else moveMap = new com.fasterxml.jackson.databind.ObjectMapper().readValue(o.toString(), Map.class);
+            }
+            Map<String,Object> res = battleService.applyMove(battleId, moveMap == null ? java.util.Map.of() : moveMap);
+            return ResponseEntity.ok(res);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error","move_failed","detail", e.getMessage()));
+        }
+    }
+
     @PostMapping("/exchange")
     public ResponseEntity<?> exchange(@RequestBody Map<String, Object> req) {
         try {

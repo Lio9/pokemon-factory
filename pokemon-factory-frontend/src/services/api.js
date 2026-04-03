@@ -145,7 +145,8 @@ export const battleApi = {
   startAsync: (body) => request(`${API_ROOT}/battle/start-async`, { method: 'POST', body: JSON.stringify(body) }),
   status: (battleId) => request(`${API_ROOT}/battle/status/${battleId}`),
   pool: (rank) => request(`${API_ROOT}/battle/pool?rank=${rank || ''}`),
-  exchange: (body) => request(`${API_ROOT}/battle/exchange`, { method: 'POST', body: JSON.stringify(body) })
+  exchange: (body) => request(`${API_ROOT}/battle/exchange`, { method: 'POST', body: JSON.stringify(body) }),
+  move: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/move`, { method: 'POST', body: JSON.stringify(body) })
 }
 
 // 图片URL生成器
