@@ -28,7 +28,7 @@ public class BattleExecutorSubmitTest {
     }
 
     private void createSchema(JdbcTemplate jdbc) {
-        jdbc.execute("CREATE TABLE IF NOT EXISTS battle(id INTEGER PRIMARY KEY AUTOINCREMENT, player_id INTEGER, opponent_team_id INTEGER, rounds INTEGER, player_move_map TEXT, summary_json TEXT, started_at TEXT, ended_at TEXT, winner_player_id INTEGER);");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS battle(id INTEGER PRIMARY KEY AUTOINCREMENT, player_id INTEGER, opponent_team_id INTEGER, rounds INTEGER, player_move_map TEXT, player_team_json TEXT, summary_json TEXT, started_at TEXT, ended_at TEXT, winner_player_id INTEGER);");
         jdbc.execute("CREATE TABLE IF NOT EXISTS team(id INTEGER PRIMARY KEY AUTOINCREMENT, player_id INTEGER, name TEXT, team_json TEXT, source TEXT, created_at TEXT);");
         jdbc.execute("CREATE TABLE IF NOT EXISTS battle_job(id INTEGER PRIMARY KEY AUTOINCREMENT, battle_id INTEGER, status TEXT, payload TEXT, created_at TEXT, updated_at TEXT);");
     }
@@ -53,7 +53,7 @@ public class BattleExecutorSubmitTest {
 
         // create mappers backed by jdbc
         com.lio9.battle.mapper.BattleMapper battleMapper = new com.lio9.battle.mapper.BattleMapper() {
-            public void insertInitial(Integer playerId, Integer opponentTeamId, Integer rounds, String playerMoveMapJson) { jdbc.update("INSERT INTO battle(player_id, opponent_team_id, rounds, player_move_map, started_at) VALUES(?, ?, ?, ?, datetime('now'))", playerId, opponentTeamId, rounds, playerMoveMapJson); }
+            public void insertInitial(Integer playerId, Integer opponentTeamId, Integer rounds, String playerMoveMapJson, String playerTeamJson) { jdbc.update("INSERT INTO battle(player_id, opponent_team_id, rounds, player_move_map, player_team_json, started_at) VALUES(?, ?, ?, ?, ?, datetime('now'))", playerId, opponentTeamId, rounds, playerMoveMapJson, playerTeamJson); }
             public void insertFinal(Integer playerId, Integer opponentTeamId, Integer rounds, String summaryJson, Integer winnerPlayerId) { jdbc.update("INSERT INTO battle(player_id, opponent_team_id, rounds, summary_json, started_at, ended_at, winner_player_id) VALUES(?, ?, ?, ?, datetime('now'), datetime('now'), ?)", playerId, opponentTeamId, rounds, summaryJson, winnerPlayerId); }
             public Integer lastInsertId() { return jdbc.queryForObject("SELECT last_insert_rowid()", Integer.class); }
             public java.util.Map<String,Object> findBattleWithOpponent(Long id) { java.util.List<java.util.Map<String,Object>> rows = jdbc.queryForList("SELECT b.id, b.player_id, b.opponent_team_id, b.started_at, b.ended_at, b.summary_json, t.team_json AS opponent_team_json, b.player_move_map FROM battle b LEFT JOIN team t ON b.opponent_team_id = t.id WHERE b.id = ?", id); return rows.isEmpty() ? null : rows.get(0); }

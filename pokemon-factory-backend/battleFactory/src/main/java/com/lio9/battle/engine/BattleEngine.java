@@ -82,6 +82,22 @@ public class BattleEngine {
 
             rounds.add(r);
 
+            // 设置招式冷却（简单策略：team_shield/protect 有 2 回合冷却）
+            if (pMove != null) {
+                if ("team_shield".equalsIgnoreCase(pMove.name) || "protect".equalsIgnoreCase(pMove.name)) {
+                    pActive.cooldowns.put(pMove.name, 2);
+                }
+            }
+            if (oMove != null) {
+                if ("team_shield".equalsIgnoreCase(oMove.name) || "protect".equalsIgnoreCase(oMove.name)) {
+                    oActive.cooldowns.put(oMove.name, 2);
+                }
+            }
+
+            // 回合结束，所有宝可梦冷却 -1
+            pStates.forEach(s -> s.decrementCooldowns());
+            oStates.forEach(s -> s.decrementCooldowns());
+
             // 更新 teamShield 状态：本回合生效的盾在回合结算后失效；下一回合由队内出招触发
             pTeamShield = pSetShieldNext;
             oTeamShield = oSetShieldNext;
@@ -142,16 +158,29 @@ public class BattleEngine {
     }
 
     private Move selectPlayerMove(MonState s, Map<String, String> playerMoveMap) {
-        // 优先根据 playerMoveMap 指定的 move 名称选择
+        // 优先根据 playerMoveMap 指定的 move 名称或索引选择，但跳过处于冷却中的招式
         if (playerMoveMap != null && playerMoveMap.containsKey(s.name)) {
-            String moveName = playerMoveMap.get(s.name);
+            String val = playerMoveMap.get(s.name);
+            // try name
             for (Move mv : s.moves) {
-                if (mv.name.equalsIgnoreCase(moveName)) {
+                if (mv.name.equalsIgnoreCase(val) && s.cooldowns.getOrDefault(mv.name,0) <= 0) {
                     return mv;
                 }
             }
+            // try index
+            try {
+                int idx = Integer.parseInt(val);
+                if (idx >= 0 && idx < s.moves.size()) {
+                    Move m = s.moves.get(idx);
+                    if (s.cooldowns.getOrDefault(m.name,0) <= 0) return m;
+                }
+            } catch (NumberFormatException ignored) {}
         }
-        // 默认第一招
+        // 回退：选择第一个非冷却的招式
+        for (Move mv : s.moves) {
+            if (s.cooldowns.getOrDefault(mv.name,0) <= 0) return mv;
+        }
+        // 若全部在冷却，仍选择第一招
         return s.moves.get(0);
     }
 
@@ -205,6 +234,7 @@ public class BattleEngine {
         int currentHp;
         final List<Move> moves;
         final int baseExp;
+        final java.util.Map<String, Integer> cooldowns = new java.util.HashMap<>();
 
         MonState(String name, int maxHp, List<Move> moves, int baseExp) {
             this.name = name;
@@ -212,6 +242,17 @@ public class BattleEngine {
             this.currentHp = maxHp;
             this.moves = moves;
             this.baseExp = baseExp;
+        }
+
+        void decrementCooldowns() {
+            var it = cooldowns.entrySet().iterator();
+            java.util.List<String> toUpdate = new java.util.ArrayList<>();
+            while (it.hasNext()) {
+                var e = it.next();
+                int v = e.getValue() - 1;
+                if (v <= 0) toUpdate.add(e.getKey()); else toUpdate.add(e.getKey());
+                cooldowns.put(e.getKey(), Math.max(0, v));
+            }
         }
     }
 
