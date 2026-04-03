@@ -16,17 +16,19 @@ public class BattleExecutor {
     private final com.lio9.battle.mapper.TeamMapper teamMapper;
     private final com.lio9.battle.mapper.PokemonMapper pokemonMapper;
     private final com.lio9.battle.mapper.BattleRoundMapper roundMapper;
+    private final com.lio9.battle.mapper.JobMapper jobMapper;
     private final BattleEngine engine;
     private final OpponentPoolService poolService;
     private final ObjectMapper mapper = new ObjectMapper();
     private ExecutorService executor;
 
-    public BattleExecutor(com.lio9.battle.mapper.BattleMapper battleMapper, com.lio9.battle.mapper.OpponentPoolMapper opponentPoolMapper, com.lio9.battle.mapper.TeamMapper teamMapper, com.lio9.battle.mapper.PokemonMapper pokemonMapper, com.lio9.battle.mapper.BattleRoundMapper roundMapper, BattleEngine engine, OpponentPoolService poolService) {
+    public BattleExecutor(com.lio9.battle.mapper.BattleMapper battleMapper, com.lio9.battle.mapper.OpponentPoolMapper opponentPoolMapper, com.lio9.battle.mapper.TeamMapper teamMapper, com.lio9.battle.mapper.PokemonMapper pokemonMapper, com.lio9.battle.mapper.BattleRoundMapper roundMapper, com.lio9.battle.mapper.JobMapper jobMapper, BattleEngine engine, OpponentPoolService poolService) {
         this.battleMapper = battleMapper;
         this.opponentPoolMapper = opponentPoolMapper;
         this.teamMapper = teamMapper;
         this.pokemonMapper = pokemonMapper;
         this.roundMapper = roundMapper;
+        this.jobMapper = jobMapper;
         this.engine = engine;
         this.poolService = poolService;
     }
@@ -34,6 +36,33 @@ public class BattleExecutor {
     @PostConstruct
     public void init() {
         this.executor = Executors.newFixedThreadPool(2);
+        // recover pending jobs
+        try {
+            var pending = jobMapper.findPendingJobs();
+            if (pending != null) {
+                for (var row : pending) {
+                    try {
+                        Integer bid = row.get("battle_id") == null ? null : ((Number)row.get("battle_id")).intValue();
+                        if (bid != null) {
+                            // mark running and resubmit
+                            Integer jid = row.get("id") == null ? null : ((Number)row.get("id")).intValue();
+                            if (jid != null) jobMapper.updateJobStatus(jid, "RUNNING");
+                            // attempt to read player id and player team for recovery
+                            var bRow = battleMapper.findBattleWithOpponent(bid.longValue());
+                            Integer playerId = bRow == null ? null : (Integer)bRow.get("player_id");
+                            String playerTeamJson = null;
+                            if (playerId != null) {
+                                var t = teamMapper.findLatestByPlayer(playerId);
+                                if (t != null) playerTeamJson = (String)t.get("team_json");
+                            }
+                            final String pt = playerTeamJson == null ? "[]" : playerTeamJson;
+                            final Integer fb = bid;
+                            executor.submit(() -> runBattle(fb, playerId, pt));
+                        }
+                    } catch (Exception ignore) {}
+                }
+            }
+        } catch (Exception ignore) {}
     }
 
     public Integer submitAsyncBattle(Integer playerId, String playerTeamJson, String playerMoveMapJson) {
@@ -73,7 +102,30 @@ public class BattleExecutor {
                 }
             } catch (Exception ignore) {}
 
-            Map<String,Object> summary = engine.simulate(playerTeamJson, opponentTeamJson, 10, persistedMoves);
+            Map<String,Object> summary = null;
+            Integer jobId = null;
+            try {
+                // try to find job for this battle and mark running
+                var jobs = jobMapper.findPendingJobs();
+                if (jobs != null) {
+                    for (var jr : jobs) {
+                        Integer bid = jr.get("battle_id") == null ? null : ((Number)jr.get("battle_id")).intValue();
+                        if (bid != null && bid.equals(battleId)) {
+                            jobId = jr.get("id") == null ? null : ((Number)jr.get("id")).intValue();
+                            if (jobId != null) jobMapper.updateJobStatus(jobId, "RUNNING");
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception ignore) {}
+
+            try {
+                summary = engine.simulate(playerTeamJson, opponentTeamJson, 10, persistedMoves);
+                if (jobId != null) jobMapper.updateJobStatus(jobId, "DONE");
+            } catch (Exception ex) {
+                if (jobId != null) jobMapper.updateJobStatus(jobId, "FAILED");
+                throw ex;
+            }
 
             // persist rounds into battle_round
             var rounds = (java.util.List<Map<String,Object>>) summary.get("rounds");
