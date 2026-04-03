@@ -5,9 +5,16 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
+import com.lio9.battle.service.SkillService;
+
 @Component
 public class BattleEngine {
     private final ObjectMapper mapper = new ObjectMapper();
+    private final SkillService skillService;
+
+    public BattleEngine(SkillService skillService) {
+        this.skillService = skillService;
+    }
 
     /**
      * 更完整的对战引擎（单人单对单）：
@@ -84,14 +91,12 @@ public class BattleEngine {
 
             // 设置招式冷却（简单策略：team_shield/protect 有 2 回合冷却）
             if (pMove != null) {
-                if ("team_shield".equalsIgnoreCase(pMove.name) || "protect".equalsIgnoreCase(pMove.name)) {
-                    pActive.cooldowns.put(pMove.name, 2);
-                }
+                int cd = skillService.getCooldown(pMove.name, 2);
+                if (cd > 0) pActive.cooldowns.put(pMove.name, cd);
             }
             if (oMove != null) {
-                if ("team_shield".equalsIgnoreCase(oMove.name) || "protect".equalsIgnoreCase(oMove.name)) {
-                    oActive.cooldowns.put(oMove.name, 2);
-                }
+                int cd = skillService.getCooldown(oMove.name, 2);
+                if (cd > 0) oActive.cooldowns.put(oMove.name, cd);
             }
 
             // 回合结束，所有宝可梦冷却 -1

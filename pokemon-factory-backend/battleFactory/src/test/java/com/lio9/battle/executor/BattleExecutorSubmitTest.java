@@ -44,7 +44,9 @@ public class BattleExecutorSubmitTest {
         JdbcTemplate jdbc = new JdbcTemplate(ds);
         createSchema(jdbc);
 
-        BattleEngine engine = new BattleEngine() {
+        BattleEngine engine = new BattleEngine(new com.lio9.battle.service.SkillService(new com.lio9.battle.mapper.SkillMapper() {
+                public java.util.List<java.util.Map<String,Object>> findAll() { return java.util.List.of(); }
+            })) {
             @Override
             public java.util.Map<String, Object> simulate(String playerTeamJson, String opponentTeamJson, int maxRounds, java.util.Map<String,String> playerMoveMap) {
                 return new HashMap<>();

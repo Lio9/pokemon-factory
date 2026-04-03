@@ -50,7 +50,9 @@ public class BattleServiceStartMatchTest {
         jdbc.update("INSERT INTO pokemon(id,name,base_experience) VALUES(?,?,?)", 1, "Poke", 64);
 
         // simple engine that always makes player win
-        BattleEngine engine = new BattleEngine() {
+        BattleEngine engine = new BattleEngine(new com.lio9.battle.service.SkillService(new com.lio9.battle.mapper.SkillMapper() {
+                public java.util.List<java.util.Map<String,Object>> findAll() { return java.util.List.of(); }
+            })) {
             @Override
             public java.util.Map<String, Object> simulate(String playerTeamJson, String opponentTeamJson, int maxRounds, java.util.Map<String,String> playerMoveMap) {
                 Map<String, Object> out = new HashMap<>();
