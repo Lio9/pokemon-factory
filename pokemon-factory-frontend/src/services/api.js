@@ -1,29 +1,50 @@
-// API服务配置
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api/pokedex'
+const API_BASE = normalizeBaseUrl(import.meta.env.VITE_API_BASE, '/api/pokedex')
+const DAMAGE_API_BASE = normalizeBaseUrl(import.meta.env.VITE_DAMAGE_API_BASE, '/api/damage')
+const SPRITES_BASE = normalizeBaseUrl(import.meta.env.VITE_SPRITES_BASE, 'http://127.0.0.1:8080')
+const API_ROOT = API_BASE.replace(/\/api\/pokedex$/, '/api')
 
-// 统一的请求处理
-async function request(url, options = {}) {
-  try {
-    const token = localStorage.getItem('jwt_token')
-    const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
-    if (token) headers['Authorization'] = `Bearer ${token}`
-    const response = await fetch(url, {
-      headers,
-      ...options
-    })
-    
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-    return await response.json()
-  } catch (error) {
-    console.error('API请求失败:', error)
-    throw error
-  }
+function normalizeBaseUrl(value, fallback) {
+  const normalized = value && String(value).trim()
+  return normalized ? normalized.replace(/\/$/, '') : fallback
 }
 
-// 宝可梦相关API
+async function request(url, options = {}) {
+  const token = localStorage.getItem('jwt_token')
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers
+  })
+
+  const payload = await parseResponseBody(response)
+
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || `HTTP error! status: ${response.status}`)
+  }
+
+  return payload
+}
+
+async function parseResponseBody(response) {
+  const contentType = response.headers.get('content-type') || ''
+  if (contentType.includes('application/json')) {
+    return response.json()
+  }
+
+  const text = await response.text()
+  return text ? { message: text } : null
+}
+
 export const pokemonApi = {
-  // 获取宝可梦列表
-  getList: (params) => {
+  getList: (params = {}) => {
     const queryParams = new URLSearchParams({
       current: params.current || 1,
       size: params.size || 24,
@@ -33,13 +54,19 @@ export const pokemonApi = {
     })
     return request(`${API_BASE}/pokemon/list?${queryParams}`)
   },
-  
-  // 获取宝可梦详情
-  getDetail: (id) => {
-    return request(`${API_BASE}/pokemon/${id}`)
-  },
-  
-  // 获取形态技能
+
+  getDetail: (id) => request(`${API_BASE}/pokemon/${id}`),
+
+  getMoves: (id) => request(`${API_ROOT}/pokemon/${id}/moves`),
+
+  getEvolutionChain: (id) => request(`${API_ROOT}/pokemon/${id}/evolution`),
+
+  getAbilities: (id) => request(`${API_BASE}/pokemon/${id}`).then((result) => ({
+    code: result.code,
+    message: result.message,
+    data: result.data?.abilities || []
+  })),
+
   getFormMoves: (formId, versionGroupId) => {
     const queryParams = new URLSearchParams({
       ...(versionGroupId && { versionGroupId })
@@ -48,18 +75,12 @@ export const pokemonApi = {
   }
 }
 
-// 属性相关API
 export const typeApi = {
-  // 获取所有属性
-  getAll: () => {
-    return request(`${API_BASE}/types`)
-  }
+  getAll: () => request(`${API_BASE}/types`)
 }
 
-// 特性相关API
 export const abilityApi = {
-  // 获取特性列表
-  getList: (params) => {
+  getList: (params = {}) => {
     const queryParams = new URLSearchParams({
       current: params.current || 1,
       size: params.size || 20,
@@ -69,10 +90,8 @@ export const abilityApi = {
   }
 }
 
-// 技能相关API
 export const moveApi = {
-  // 获取技能列表
-  getList: (params) => {
+  getList: (params = {}) => {
     const queryParams = new URLSearchParams({
       current: params.current || 1,
       size: params.size || 20,
@@ -83,10 +102,8 @@ export const moveApi = {
   }
 }
 
-// 物品相关API
 export const itemApi = {
-  // 获取物品列表
-  getList: (params) => {
+  getList: (params = {}) => {
     const queryParams = new URLSearchParams({
       current: params.current || 1,
       size: params.size || 20,
@@ -95,8 +112,7 @@ export const itemApi = {
     })
     return request(`${API_BASE}/items/list?${queryParams}`)
   },
-  
-  // 获取伤害相关道具列表（常用战斗道具）
+
   getBattleItems: () => {
     const queryParams = new URLSearchParams({
       current: 1,
@@ -106,34 +122,21 @@ export const itemApi = {
   }
 }
 
-// 伤害计算器相关API
-const DAMAGE_API_BASE = import.meta.env.VITE_DAMAGE_API_BASE_URL || 'http://localhost:8081/api/damage'
-
-export const damageApi = {
-  // 计算伤害
-  calculate: (params) => {
-    return request(`${DAMAGE_API_BASE}/calculate`, {
-      method: 'POST',
-      body: JSON.stringify(params)
-    })
-  },
-  
-  // 获取属性相性表
-  getTypeEfficacy: () => {
-    return request(`${DAMAGE_API_BASE}/type-efficacy`)
-  },
-  
-  // 获取特定属性的相性
-  getTypeEfficacyByType: (typeId) => {
-    return request(`${DAMAGE_API_BASE}/type-efficacy/${typeId}`)
-  }
+export const importApi = {
+  startAll: () => request(`${API_ROOT}/import-optimized/all-fast`, { method: 'POST' }),
+  getStatus: (taskId) => request(`${API_ROOT}/import-optimized/import-status/${taskId}`)
 }
 
-// 图片服务器基础URL
-const SPRITES_BASE = import.meta.env.VITE_SPRITES_BASE || 'http://127.0.0.1:8080'
+export const damageApi = {
+  calculate: (params) => request(`${DAMAGE_API_BASE}/calculate`, {
+    method: 'POST',
+    body: JSON.stringify(params)
+  }),
 
-// 对战 API 根（基于 API_BASE 的约定）
-const API_ROOT = API_BASE.replace(/\/api\/pokedex$/,'/api')
+  getTypeEfficacy: () => request(`${DAMAGE_API_BASE}/type-efficacy`),
+
+  getTypeEfficacyByType: (typeId) => request(`${DAMAGE_API_BASE}/type-efficacy/${typeId}`)
+}
 
 export const userApi = {
   login: (body) => request(`${API_ROOT}/user/login`, { method: 'POST', body: JSON.stringify(body) }),
@@ -145,21 +148,17 @@ export const battleApi = {
   startAsync: (body) => request(`${API_ROOT}/battle/start-async`, { method: 'POST', body: JSON.stringify(body) }),
   status: (battleId) => request(`${API_ROOT}/battle/status/${battleId}`),
   pool: (rank) => request(`${API_ROOT}/battle/pool?rank=${rank || ''}`),
+  preview: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/preview`, { method: 'POST', body: JSON.stringify(body) }),
+  replacement: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/replacement`, { method: 'POST', body: JSON.stringify(body) }),
   exchange: (body) => request(`${API_ROOT}/battle/exchange`, { method: 'POST', body: JSON.stringify(body) }),
   move: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/move`, { method: 'POST', body: JSON.stringify(body) })
 }
 
-// 图片URL生成器
 export const sprites = {
-  // 宝可梦图片(使用species id)
   pokemon: (id) => `${SPRITES_BASE}/pokemon/${id}.png`,
-  // 宝可梦官方立绘
   official: (id) => `${SPRITES_BASE}/pokemon/other/official-artwork/${id}.png`,
-  // 属性图标
   type: (id) => `${SPRITES_BASE}/types/${id}.png`,
-  // 物品图标
   item: (name) => `${SPRITES_BASE}/items/${name}.png`,
-  // 默认图片
   default: `${SPRITES_BASE}/pokemon/0.png`
 }
 
@@ -169,6 +168,9 @@ export default {
   abilities: abilityApi,
   moves: moveApi,
   items: itemApi,
+  import: importApi,
+  damage: damageApi,
+  user: userApi,
   battle: battleApi,
   sprites
 }

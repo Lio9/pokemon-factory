@@ -1,17 +1,43 @@
 <template>
   <div class="p-4 max-w-md mx-auto">
-    <h1 class="text-2xl font-bold mb-4">登录</h1>
+    <h1 class="text-2xl font-bold mb-4">
+      登录
+    </h1>
     <div class="mb-2">
-      <input v-model="username" placeholder="用户名" class="w-full p-2 border rounded" />
+      <input
+        v-model="username"
+        placeholder="用户名"
+        class="w-full p-2 border rounded"
+      >
     </div>
     <div class="mb-2">
-      <input v-model="password" placeholder="密码" type="password" class="w-full p-2 border rounded" />
+      <input
+        v-model="password"
+        placeholder="密码"
+        type="password"
+        class="w-full p-2 border rounded"
+      >
     </div>
     <div class="flex gap-2">
-      <button @click="login" class="bg-blue-500 text-white px-4 py-2 rounded">登录</button>
-      <button @click="register" class="bg-gray-500 text-white px-4 py-2 rounded">注册</button>
+      <button
+        class="bg-blue-500 text-white px-4 py-2 rounded"
+        @click="login"
+      >
+        登录
+      </button>
+      <button
+        class="bg-gray-500 text-white px-4 py-2 rounded"
+        @click="register"
+      >
+        注册
+      </button>
     </div>
-    <p class="mt-4 text-sm text-red-600" v-if="error">{{ error }}</p>
+    <p
+      v-if="error"
+      class="mt-4 text-sm text-red-600"
+    >
+      {{ error }}
+    </p>
   </div>
 </template>
 
@@ -31,6 +57,7 @@ async function login() {
     const res = await api.user.login({ username: username.value, password: password.value })
     if (res && res.token) {
       localStorage.setItem('jwt_token', res.token)
+      localStorage.setItem('username', username.value)
       router.push('/')
     }
   } catch (e) {

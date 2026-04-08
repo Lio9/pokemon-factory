@@ -1,10 +1,23 @@
 <template>
-  <div v-if="pokemon" class="pokemon-detail">
+  <div
+    v-if="pokemon"
+    class="pokemon-detail"
+  >
     <!-- 面包屑导航 -->
     <nav class="mb-6 flex items-center gap-2 text-sm">
-      <router-link to="/" class="text-gray-500 hover:text-blue-600 transition-colors">首页</router-link>
+      <router-link
+        to="/"
+        class="text-gray-500 hover:text-blue-600 transition-colors"
+      >
+        首页
+      </router-link>
       <ChevronRight class="w-4 h-4 text-gray-400" />
-      <router-link to="/pokemon" class="text-gray-500 hover:text-blue-600 transition-colors">图鉴</router-link>
+      <router-link
+        to="/pokemon"
+        class="text-gray-500 hover:text-blue-600 transition-colors"
+      >
+        图鉴
+      </router-link>
       <ChevronRight class="w-4 h-4 text-gray-400" />
       <span class="text-gray-900 font-medium">{{ pokemon.name }}</span>
     </nav>
@@ -12,24 +25,24 @@
     <!-- 快捷操作栏 -->
     <div class="fixed top-4 right-4 z-50 flex gap-2">
       <button 
-        @click="toggleFavorite"
         class="w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110"
         :class="isFavorite ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white' : 'bg-white text-gray-600 hover:text-pink-500'"
         title="收藏"
+        @click="toggleFavorite"
       >
         <Heart :class="['w-6 h-6 transition-all duration-300', isFavorite ? 'fill-current scale-110' : '']" />
       </button>
       <button 
-        @click="showCompareModal = true"
         class="w-12 h-12 rounded-full bg-white text-gray-600 hover:text-blue-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
         title="比较"
+        @click="showCompareModal = true"
       >
         <Scale class="w-6 h-6" />
       </button>
       <button 
-        @click="sharePokemon"
         class="w-12 h-12 rounded-full bg-white text-gray-600 hover:text-green-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
         title="分享"
+        @click="sharePokemon"
       >
         <Share2 class="w-6 h-6" />
       </button>
@@ -38,18 +51,30 @@
     <!-- 比较模态框 -->
     <Teleport to="body">
       <Transition name="modal">
-        <div v-if="showCompareModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showCompareModal = false"></div>
+        <div
+          v-if="showCompareModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+          <div
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            @click="showCompareModal = false"
+          />
           <div class="relative bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <button 
-              @click="showCompareModal = false"
               class="absolute top-4 right-4 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+              @click="showCompareModal = false"
             >
               <X class="w-5 h-5 text-gray-600" />
             </button>
             <div class="p-6">
-              <h2 class="text-2xl font-bold text-gray-900 mb-6">宝可梦比较</h2>
-              <CompareView :pokemon1="pokemon" :pokemon2="comparePokemon" @select-compare="selectComparePokemon" />
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                宝可梦比较
+              </h2>
+              <CompareView
+                :pokemon1="pokemon"
+                :pokemon2="comparePokemon"
+                @select-compare="selectComparePokemon"
+              />
             </div>
           </div>
         </div>
@@ -66,12 +91,15 @@
             <button 
               v-for="(label, type) in imageTypes" 
               :key="type"
-              @click="imageMode = type"
               class="w-10 h-10 rounded-full flex items-center justify-center transition-all"
               :class="imageMode === type ? 'bg-blue-600 text-white shadow-lg scale-110' : 'bg-white/70 text-gray-600 hover:bg-white'"
               :title="label"
+              @click="imageMode = type"
             >
-              <component :is="getImageIcon(type)" class="w-5 h-5" />
+              <component
+                :is="getImageIcon(type)"
+                class="w-5 h-5"
+              />
             </button>
           </div>
 
@@ -100,17 +128,25 @@
             </div>
             <!-- 形态标记 -->
             <div class="absolute -top-3 -right-3 flex gap-1">
-              <span v-if="currentForm?.isMega" class="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg">
+              <span
+                v-if="currentForm?.isMega"
+                class="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg"
+              >
                 MEGA
               </span>
-              <span v-if="currentForm?.isGigantamax" class="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg">
+              <span
+                v-if="currentForm?.isGigantamax"
+                class="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg"
+              >
                 极巨化
               </span>
             </div>
           </div>
 
           <!-- 图片类型说明 -->
-          <p class="mt-4 text-sm text-gray-500 font-medium">{{ imageTypes[imageMode] }}</p>
+          <p class="mt-4 text-sm text-gray-500 font-medium">
+            {{ imageTypes[imageMode] }}
+          </p>
         </div>
         
         <!-- 信息区域 -->
@@ -120,19 +156,32 @@
               <h1 class="text-4xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent">
                 {{ pokemon.name }}
               </h1>
-              <p class="text-gray-500 mt-1 text-lg">{{ pokemon.nameEn }} / {{ pokemon.nameJp }}</p>
-              <p class="text-blue-600 font-medium mt-2">{{ pokemon.genus }}</p>
+              <p class="text-gray-500 mt-1 text-lg">
+                {{ pokemon.nameEn }} / {{ pokemon.nameJp }}
+              </p>
+              <p class="text-blue-600 font-medium mt-2">
+                {{ pokemon.genus }}
+              </p>
             </div>
             <div class="flex gap-2">
-              <span v-if="pokemon.isLegendary" class="px-4 py-2 bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 rounded-full text-sm font-bold shadow-sm flex items-center gap-1">
+              <span
+                v-if="pokemon.isLegendary"
+                class="px-4 py-2 bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 rounded-full text-sm font-bold shadow-sm flex items-center gap-1"
+              >
                 <Star class="w-4 h-4" />
                 传说
               </span>
-              <span v-if="pokemon.isMythical" class="px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 rounded-full text-sm font-bold shadow-sm flex items-center gap-1">
+              <span
+                v-if="pokemon.isMythical"
+                class="px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 rounded-full text-sm font-bold shadow-sm flex items-center gap-1"
+              >
                 <Sparkles class="w-4 h-4" />
                 神话
               </span>
-              <span v-if="pokemon.isBaby" class="px-4 py-2 bg-gradient-to-r from-pink-100 to-rose-100 text-pink-800 rounded-full text-sm font-bold shadow-sm flex items-center gap-1">
+              <span
+                v-if="pokemon.isBaby"
+                class="px-4 py-2 bg-gradient-to-r from-pink-100 to-rose-100 text-pink-800 rounded-full text-sm font-bold shadow-sm flex items-center gap-1"
+              >
                 <Baby class="w-4 h-4" />
                 幼崽
               </span>
@@ -157,86 +206,161 @@
           <!-- 基本信息 -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-              <div class="text-gray-500 text-xs font-medium mb-1">身高</div>
-              <div class="text-xl font-bold text-gray-900">{{ currentForm?.height || '-' }}m</div>
+              <div class="text-gray-500 text-xs font-medium mb-1">
+                身高
+              </div>
+              <div class="text-xl font-bold text-gray-900">
+                {{ currentForm?.height || '-' }}m
+              </div>
             </div>
             <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-              <div class="text-gray-500 text-xs font-medium mb-1">体重</div>
-              <div class="text-xl font-bold text-gray-900">{{ currentForm?.weight || '-' }}kg</div>
+              <div class="text-gray-500 text-xs font-medium mb-1">
+                体重
+              </div>
+              <div class="text-xl font-bold text-gray-900">
+                {{ currentForm?.weight || '-' }}kg
+              </div>
             </div>
             <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-              <div class="text-gray-500 text-xs font-medium mb-1">捕获率</div>
-              <div class="text-xl font-bold text-gray-900">{{ pokemon.captureRate || '-' }}</div>
+              <div class="text-gray-500 text-xs font-medium mb-1">
+                捕获率
+              </div>
+              <div class="text-xl font-bold text-gray-900">
+                {{ pokemon.captureRate || '-' }}
+              </div>
             </div>
             <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-              <div class="text-gray-500 text-xs font-medium mb-1">亲密度</div>
-              <div class="text-xl font-bold text-gray-900">{{ pokemon.baseHappiness || '-' }}</div>
+              <div class="text-gray-500 text-xs font-medium mb-1">
+                亲密度
+              </div>
+              <div class="text-xl font-bold text-gray-900">
+                {{ pokemon.baseHappiness || '-' }}
+              </div>
             </div>
           </div>
 
           <!-- 补充信息 -->
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
             <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-3 border border-blue-100">
-              <div class="text-blue-600 text-xs font-medium mb-1">性别比例</div>
-              <div class="text-base font-semibold text-gray-900">{{ getGenderRatioText(pokemon.genderRate) }}</div>
+              <div class="text-blue-600 text-xs font-medium mb-1">
+                性别比例
+              </div>
+              <div class="text-base font-semibold text-gray-900">
+                {{ getGenderRatioText(pokemon.genderRate) }}
+              </div>
             </div>
             <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-3 border border-purple-100">
-              <div class="text-purple-600 text-xs font-medium mb-1">蛋群</div>
-              <div class="text-base font-semibold text-gray-900">{{ (pokemon.eggGroups || []).join(' / ') || '-' }}</div>
+              <div class="text-purple-600 text-xs font-medium mb-1">
+                蛋群
+              </div>
+              <div class="text-base font-semibold text-gray-900">
+                {{ (pokemon.eggGroups || []).join(' / ') || '-' }}
+              </div>
             </div>
             <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-3 border border-green-100">
-              <div class="text-green-600 text-xs font-medium mb-1">孵化步数</div>
-              <div class="text-base font-semibold text-gray-900">{{ pokemon.hatchCounter ? `${pokemon.hatchCounter * 255}` : '-' }}</div>
+              <div class="text-green-600 text-xs font-medium mb-1">
+                孵化步数
+              </div>
+              <div class="text-base font-semibold text-gray-900">
+                {{ pokemon.hatchCounter ? `${pokemon.hatchCounter * 255}` : '-' }}
+              </div>
             </div>
             <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-3 border border-amber-100">
-              <div class="text-amber-600 text-xs font-medium mb-1">成长类型</div>
-              <div class="text-base font-semibold text-gray-900">{{ pokemon.growthRate || '-' }}</div>
+              <div class="text-amber-600 text-xs font-medium mb-1">
+                成长类型
+              </div>
+              <div class="text-base font-semibold text-gray-900">
+                {{ pokemon.growthRate || '-' }}
+              </div>
             </div>
             <div class="bg-gradient-to-br from-rose-50 to-red-50 rounded-xl p-3 border border-rose-100">
-              <div class="text-rose-600 text-xs font-medium mb-1">基础经验</div>
-              <div class="text-base font-semibold text-gray-900">{{ currentForm?.baseExperience || '-' }}</div>
+              <div class="text-rose-600 text-xs font-medium mb-1">
+                基础经验
+              </div>
+              <div class="text-base font-semibold text-gray-900">
+                {{ currentForm?.baseExperience || '-' }}
+              </div>
             </div>
             <div class="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-xl p-3 border border-cyan-100">
-              <div class="text-cyan-600 text-xs font-medium mb-1">世代</div>
-              <div class="text-base font-semibold text-gray-900">第 {{ pokemon.generationId }} 世代</div>
+              <div class="text-cyan-600 text-xs font-medium mb-1">
+                世代
+              </div>
+              <div class="text-base font-semibold text-gray-900">
+                第 {{ pokemon.generationId }} 世代
+              </div>
             </div>
           </div>
           
           <!-- 描述 -->
           <div class="bg-gradient-to-r from-slate-50 to-gray-50 rounded-2xl p-5 border border-gray-100">
-            <p class="text-gray-700 leading-relaxed">{{ pokemon.description || '暂无描述' }}</p>
+            <p class="text-gray-700 leading-relaxed">
+              {{ pokemon.description || '暂无描述' }}
+            </p>
           </div>
         </div>
       </div>
     </div>
 
     <!-- 种族值 -->
-    <div v-if="currentForm?.stats" class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100">
+    <div
+      v-if="currentForm?.stats"
+      class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100"
+    >
       <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
         <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
           <BarChart3 class="w-5 h-5 text-white" />
         </div>
         种族值
         <button 
-          @click="statsViewMode = statsViewMode === 'bar' ? 'radar' : 'bar'"
           class="ml-auto px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-medium transition-colors"
+          @click="statsViewMode = statsViewMode === 'bar' ? 'radar' : 'bar'"
         >
           {{ statsViewMode === 'bar' ? '雷达图' : '进度条' }}
         </button>
       </h2>
       
       <!-- 进度条视图 -->
-      <div v-if="statsViewMode === 'bar'" class="space-y-4">
-        <StatBar label="HP" :value="currentForm.stats.hp" color="#FF6B6B" />
-        <StatBar label="攻击" :value="currentForm.stats.attack" color="#FFA94D" />
-        <StatBar label="防御" :value="currentForm.stats.defense" color="#FFD43B" />
-        <StatBar label="特攻" :value="currentForm.stats.spAttack" color="#4DABF7" />
-        <StatBar label="特防" :value="currentForm.stats.spDefense" color="#69DB7C" />
-        <StatBar label="速度" :value="currentForm.stats.speed" color="#F783AC" />
+      <div
+        v-if="statsViewMode === 'bar'"
+        class="space-y-4"
+      >
+        <StatBar
+          label="HP"
+          :value="currentForm.stats.hp"
+          color="#FF6B6B"
+        />
+        <StatBar
+          label="攻击"
+          :value="currentForm.stats.attack"
+          color="#FFA94D"
+        />
+        <StatBar
+          label="防御"
+          :value="currentForm.stats.defense"
+          color="#FFD43B"
+        />
+        <StatBar
+          label="特攻"
+          :value="currentForm.stats.spAttack"
+          color="#4DABF7"
+        />
+        <StatBar
+          label="特防"
+          :value="currentForm.stats.spDefense"
+          color="#69DB7C"
+        />
+        <StatBar
+          label="速度"
+          :value="currentForm.stats.speed"
+          color="#F783AC"
+        />
       </div>
       
       <!-- 雷达图视图 -->
-      <div v-else class="flex justify-center py-4">
+      <div
+        v-else
+        class="flex justify-center py-4"
+      >
         <RadarChart :stats="currentForm.stats" />
       </div>
       
@@ -247,7 +371,10 @@
     </div>
 
     <!-- 特性 -->
-    <div v-if="currentForm?.abilities?.length" class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100">
+    <div
+      v-if="currentForm?.abilities?.length"
+      class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100"
+    >
       <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
         <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
           <Sparkles class="w-5 h-5 text-white" />
@@ -263,17 +390,25 @@
         >
           <div class="flex items-center justify-between mb-3">
             <span class="font-bold text-lg text-gray-900 group-hover:text-green-600 transition-colors">{{ ability.name }}</span>
-            <span v-if="ability.isHidden" class="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-sm">
+            <span
+              v-if="ability.isHidden"
+              class="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-sm"
+            >
               隐藏
             </span>
           </div>
-          <p class="text-gray-600 leading-relaxed">{{ ability.description || '暂无描述' }}</p>
+          <p class="text-gray-600 leading-relaxed">
+            {{ ability.description || '暂无描述' }}
+          </p>
         </div>
       </div>
     </div>
 
     <!-- 形态 -->
-    <div v-if="pokemon.forms?.length > 1" class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100">
+    <div
+      v-if="pokemon.forms?.length > 1"
+      class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100"
+    >
       <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
         <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center">
           <Layers class="w-5 h-5 text-white" />
@@ -297,17 +432,31 @@
             >
             <!-- 形态标记 -->
             <div class="absolute -top-2 -right-2 flex gap-1">
-              <span v-if="form.isMega" class="w-5 h-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center">M</span>
-              <span v-if="form.isGigantamax" class="w-5 h-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center">G</span>
+              <span
+                v-if="form.isMega"
+                class="w-5 h-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center"
+              >M</span>
+              <span
+                v-if="form.isGigantamax"
+                class="w-5 h-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center"
+              >G</span>
             </div>
           </div>
-          <p class="mt-3 font-medium" :class="selectedFormId === form.id ? 'text-white' : 'text-gray-900'">{{ form.formName || '默认形态' }}</p>
+          <p
+            class="mt-3 font-medium"
+            :class="selectedFormId === form.id ? 'text-white' : 'text-gray-900'"
+          >
+            {{ form.formName || '默认形态' }}
+          </p>
         </div>
       </div>
     </div>
 
     <!-- 进化链 -->
-    <div v-if="pokemon.evolutionChain?.length" class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100">
+    <div
+      v-if="pokemon.evolutionChain?.length"
+      class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100"
+    >
       <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
         <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
           <GitBranch class="w-5 h-5 text-white" />
@@ -315,7 +464,10 @@
         进化链
       </h2>
       <div class="flex items-center justify-center flex-wrap gap-4">
-        <template v-for="(evo, index) in pokemon.evolutionChain" :key="evo.speciesId">
+        <template
+          v-for="(evo, index) in pokemon.evolutionChain"
+          :key="evo.speciesId"
+        >
           <router-link 
             :to="`/pokemon/${evo.speciesId}`"
             class="flex flex-col items-center p-6 rounded-2xl transition-all duration-300 group"
@@ -329,17 +481,32 @@
                 loading="lazy"
                 @error="handleImageError"
               >
-              <span v-if="evo.isCurrent" class="absolute -top-2 -left-2 w-6 h-6 bg-white text-blue-600 rounded-full flex items-center justify-center shadow-lg text-xs font-bold">
+              <span
+                v-if="evo.isCurrent"
+                class="absolute -top-2 -left-2 w-6 h-6 bg-white text-blue-600 rounded-full flex items-center justify-center shadow-lg text-xs font-bold"
+              >
                 ✓
               </span>
             </div>
-            <span class="mt-3 font-bold" :class="evo.isCurrent ? 'text-white' : 'text-gray-900'">{{ evo.name }}</span>
-            <span class="text-xs mt-1" :class="evo.isCurrent ? 'text-blue-100' : 'text-gray-500'">#{{ String(evo.speciesId).padStart(4, '0') }}</span>
+            <span
+              class="mt-3 font-bold"
+              :class="evo.isCurrent ? 'text-white' : 'text-gray-900'"
+            >{{ evo.name }}</span>
+            <span
+              class="text-xs mt-1"
+              :class="evo.isCurrent ? 'text-blue-100' : 'text-gray-500'"
+            >#{{ String(evo.speciesId).padStart(4, '0') }}</span>
           </router-link>
-          <div v-if="index < pokemon.evolutionChain.length - 1" class="flex flex-col items-center text-gray-400">
+          <div
+            v-if="index < pokemon.evolutionChain.length - 1"
+            class="flex flex-col items-center text-gray-400"
+          >
             <ArrowRight class="w-8 h-8 transition-transform duration-300 group-hover:translate-x-1" />
             <span class="text-xs mt-1 px-3 py-1 bg-gray-100 rounded-full">{{ evo.trigger }}</span>
-            <span v-if="evo.minLevel" class="text-xs mt-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">Lv.{{ evo.minLevel }}</span>
+            <span
+              v-if="evo.minLevel"
+              class="text-xs mt-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium"
+            >Lv.{{ evo.minLevel }}</span>
           </div>
         </template>
       </div>
@@ -360,41 +527,71 @@
         <button
           v-for="filter in moveFilters"
           :key="filter.key"
-          @click="selectedMoveFilter = filter.key"
           class="px-4 py-2 rounded-xl font-medium transition-all duration-300"
           :class="selectedMoveFilter === filter.key 
             ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg scale-105' 
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          @click="selectedMoveFilter = filter.key"
         >
           {{ filter.label }}
         </button>
       </div>
 
       <!-- 加载中 -->
-      <div v-if="loadingMoves" class="text-center py-12">
-        <el-skeleton :rows="5" animated />
+      <div
+        v-if="loadingMoves"
+        class="text-center py-12"
+      >
+        <el-skeleton
+          :rows="5"
+          animated
+        />
       </div>
       
       <!-- 技能表格 -->
-      <div v-else-if="filteredMoves.length" class="overflow-x-auto">
+      <div
+        v-else-if="filteredMoves.length"
+        class="overflow-x-auto"
+      >
         <table class="w-full">
           <thead>
             <tr class="border-b-2 border-gray-100">
-              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">技能</th>
-              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">属性</th>
-              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">分类</th>
-              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">威力</th>
-              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">命中</th>
-              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PP</th>
+              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                技能
+              </th>
+              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                属性
+              </th>
+              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                分类
+              </th>
+              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                威力
+              </th>
+              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                命中
+              </th>
+              <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                PP
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-for="move in filteredMoves" :key="move.id" class="hover:bg-gradient-to-r from-gray-50 to-blue-50 transition-colors">
+            <tr
+              v-for="move in filteredMoves"
+              :key="move.id"
+              class="hover:bg-gradient-to-r from-gray-50 to-blue-50 transition-colors"
+            >
               <td class="py-4 px-4">
-                <div class="font-bold text-gray-900">{{ move.name }}</div>
+                <div class="font-bold text-gray-900">
+                  {{ move.name }}
+                </div>
                 <div class="text-xs text-gray-500 mt-1">
                   <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">{{ move.learnMethod }}</span>
-                  <span v-if="move.level" class="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Lv.{{ move.level }}</span>
+                  <span
+                    v-if="move.level"
+                    class="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium"
+                  >Lv.{{ move.level }}</span>
                 </div>
               </td>
               <td class="py-4 px-4">
@@ -406,37 +603,68 @@
                 </span>
               </td>
               <td class="py-4 px-4">
-                <span class="px-3 py-1.5 rounded-lg text-sm font-medium" :class="getDamageClassColor(move.damageClass)">
+                <span
+                  class="px-3 py-1.5 rounded-lg text-sm font-medium"
+                  :class="getDamageClassColor(move.damageClass)"
+                >
                   {{ move.damageClass }}
                 </span>
               </td>
               <td class="py-4 px-4">
-                <span class="text-base font-bold" :class="move.power >= 80 ? 'text-red-600' : move.power >= 40 ? 'text-orange-600' : 'text-gray-700'">
+                <span
+                  class="text-base font-bold"
+                  :class="move.power >= 80 ? 'text-red-600' : move.power >= 40 ? 'text-orange-600' : 'text-gray-700'"
+                >
                   {{ move.power || '-' }}
                 </span>
               </td>
-              <td class="py-4 px-4 text-base font-medium text-gray-700">{{ move.accuracy || '-' }}</td>
-              <td class="py-4 px-4 text-base font-medium text-gray-700">{{ move.pp || '-' }}</td>
+              <td class="py-4 px-4 text-base font-medium text-gray-700">
+                {{ move.accuracy || '-' }}
+              </td>
+              <td class="py-4 px-4 text-base font-medium text-gray-700">
+                {{ move.pp || '-' }}
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
       
-      <div v-else class="text-center py-12 text-gray-500 bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl border-2 border-dashed border-gray-200">
+      <div
+        v-else
+        class="text-center py-12 text-gray-500 bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl border-2 border-dashed border-gray-200"
+      >
         暂无技能数据
       </div>
     </div>
   </div>
   
   <!-- 加载中骨架屏 -->
-  <div v-else class="pokemon-detail">
+  <div
+    v-else
+    class="pokemon-detail"
+  >
     <!-- 面包屑骨架 -->
     <div class="mb-6 flex items-center gap-2">
-      <el-skeleton-item variant="text" style="width: 60px" />
-      <el-skeleton-item variant="text" style="width: 16px" />
-      <el-skeleton-item variant="text" style="width: 60px" />
-      <el-skeleton-item variant="text" style="width: 16px" />
-      <el-skeleton-item variant="text" style="width: 80px" />
+      <el-skeleton-item
+        variant="text"
+        style="width: 60px"
+      />
+      <el-skeleton-item
+        variant="text"
+        style="width: 16px"
+      />
+      <el-skeleton-item
+        variant="text"
+        style="width: 60px"
+      />
+      <el-skeleton-item
+        variant="text"
+        style="width: 16px"
+      />
+      <el-skeleton-item
+        variant="text"
+        style="width: 80px"
+      />
     </div>
     
     <!-- 主卡片骨架 -->
@@ -444,24 +672,36 @@
       <div class="md:flex">
         <!-- 图片区域骨架 -->
         <div class="md:w-1/3 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-8 flex items-center justify-center">
-          <el-skeleton-item variant="circle" style="width: 220px; height: 220px" />
+          <el-skeleton-item
+            variant="circle"
+            style="width: 220px; height: 220px"
+          />
         </div>
         
         <!-- 信息区域骨架 -->
         <div class="md:w-2/3 p-8">
-          <el-skeleton :rows="8" animated />
+          <el-skeleton
+            :rows="8"
+            animated
+          />
         </div>
       </div>
     </div>
     
     <!-- 种族值骨架 -->
     <div class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100">
-      <el-skeleton :rows="10" animated />
+      <el-skeleton
+        :rows="10"
+        animated
+      />
     </div>
     
     <!-- 特性骨架 -->
     <div class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100">
-      <el-skeleton :rows="6" animated />
+      <el-skeleton
+        :rows="6"
+        animated
+      />
     </div>
   </div>
 </template>

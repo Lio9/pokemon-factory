@@ -1,7 +1,11 @@
 <template>
   <div class="error-handler">
     <!-- Toast 通知 -->
-    <transition-group name="toast" tag="div" class="toast-container">
+    <transition-group
+      name="toast"
+      tag="div"
+      class="toast-container"
+    >
       <div
         v-for="error in errors"
         :key="error.id"
@@ -9,13 +13,26 @@
         :class="`toast-${error.type}`"
       >
         <div class="toast-icon">
-          <component :is="getIcon(error.type)" class="w-5 h-5" />
+          <component
+            :is="getIcon(error.type)"
+            class="w-5 h-5"
+          />
         </div>
         <div class="toast-content">
-          <div class="toast-title">{{ error.title }}</div>
-          <div v-if="error.message" class="toast-message">{{ error.message }}</div>
+          <div class="toast-title">
+            {{ error.title }}
+          </div>
+          <div
+            v-if="error.message"
+            class="toast-message"
+          >
+            {{ error.message }}
+          </div>
         </div>
-        <button @click="removeError(error.id)" class="toast-close">
+        <button
+          class="toast-close"
+          @click="removeError(error.id)"
+        >
           <X class="w-4 h-4" />
         </button>
       </div>
@@ -23,25 +40,41 @@
 
     <!-- 全局错误边界 -->
     <transition name="fade">
-      <div v-if="globalError" class="error-boundary">
+      <div
+        v-if="globalError"
+        class="error-boundary"
+      >
         <div class="error-boundary-content">
           <div class="error-icon">
             <AlertOctagon class="w-16 h-16" />
           </div>
-          <h2 class="error-title">发生错误</h2>
-          <p class="error-message">{{ globalError.message }}</p>
-          <div v-if="globalError.details" class="error-details">
+          <h2 class="error-title">
+            发生错误
+          </h2>
+          <p class="error-message">
+            {{ globalError.message }}
+          </p>
+          <div
+            v-if="globalError.details"
+            class="error-details"
+          >
             <details>
               <summary>错误详情</summary>
               <pre>{{ globalError.details }}</pre>
             </details>
           </div>
           <div class="error-actions">
-            <button @click="reload" class="btn btn-primary">
+            <button
+              class="btn btn-primary"
+              @click="reload"
+            >
               <RefreshCw class="w-4 h-4 mr-2" />
               重新加载
             </button>
-            <button @click="goHome" class="btn btn-secondary">
+            <button
+              class="btn btn-secondary"
+              @click="goHome"
+            >
               <Home class="w-4 h-4 mr-2" />
               返回首页
             </button>
@@ -52,7 +85,10 @@
 
     <!-- 网络错误提示 -->
     <transition name="slide-down">
-      <div v-if="isOffline" class="offline-banner">
+      <div
+        v-if="isOffline"
+        class="offline-banner"
+      >
         <WifiOff class="w-5 h-5" />
         <span>网络连接已断开，请检查网络设置</span>
       </div>

@@ -2,26 +2,35 @@ package com.lio9.battle.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.engine.BattleEngine;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.lio9.battle.mapper.BattleMapper;
+import com.lio9.battle.mapper.BattleRoundMapper;
+import com.lio9.battle.mapper.PlayerMapper;
+import com.lio9.battle.mapper.PokemonMapper;
+import com.lio9.battle.mapper.TeamMapper;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class BattleService {
+    private static final int FACTORY_TEAM_SIZE = 6;
+    private static final int FACTORY_ROUND_LIMIT = 12;
 
-    private final com.lio9.battle.mapper.PlayerMapper playerMapper;
-    private final com.lio9.battle.mapper.TeamMapper teamMapper;
-    private final com.lio9.battle.mapper.PokemonMapper pokemonMapper;
-    private final com.lio9.battle.mapper.BattleMapper battleMapper;
-    private final com.lio9.battle.mapper.BattleRoundMapper roundMapper;
+    private final PlayerMapper playerMapper;
+    private final TeamMapper teamMapper;
+    private final PokemonMapper pokemonMapper;
+    private final BattleMapper battleMapper;
+    private final BattleRoundMapper roundMapper;
     private final OpponentPoolService poolService;
     private final BattleEngine battleEngine;
+    private final AIService aiService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public BattleService(com.lio9.battle.mapper.PlayerMapper playerMapper, com.lio9.battle.mapper.TeamMapper teamMapper, com.lio9.battle.mapper.PokemonMapper pokemonMapper, com.lio9.battle.mapper.BattleMapper battleMapper, com.lio9.battle.mapper.BattleRoundMapper roundMapper, BattleEngine battleEngine, OpponentPoolService poolService) {
+    public BattleService(PlayerMapper playerMapper, TeamMapper teamMapper, PokemonMapper pokemonMapper, BattleMapper battleMapper, BattleRoundMapper roundMapper, BattleEngine battleEngine, OpponentPoolService poolService, AIService aiService) {
         this.playerMapper = playerMapper;
         this.teamMapper = teamMapper;
         this.pokemonMapper = pokemonMapper;
@@ -29,171 +38,407 @@ public class BattleService {
         this.roundMapper = roundMapper;
         this.battleEngine = battleEngine;
         this.poolService = poolService;
+        this.aiService = aiService;
     }
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> startMatch(Map<String, Object> req) {
-        Map<String, Object> out = new HashMap<>();
-        String username = (String) req.getOrDefault("username", "guest");
-        String teamJson = (String) req.get("teamJson"); // optional
-
-        // upsert player
+        String username = String.valueOf(req.getOrDefault("username", "guest"));
         playerMapper.insertIgnore(username);
         Integer playerId = playerMapper.findIdByUsername(username);
+        Map<String, Object> playerProfile = playerMapper.findByUsername(username);
+        int playerRank = playerProfile == null ? 0 : toInt(playerProfile.get("rank"), 0);
 
-        // ensure player team exists
-        Integer playerTeamId = null;
-        if (teamJson != null && !teamJson.isEmpty()) {
-            teamMapper.insertTeam(playerId, "custom-" + System.currentTimeMillis(), teamJson, "player");
-            playerTeamId = teamMapper.lastInsertId();
-        } else {
-            // attempt to find an existing team for player
-            Map<String,Object> teamRow = teamMapper.findLatestByPlayer(playerId);
-            if (teamRow != null && teamRow.get("id") != null) {
-                playerTeamId = (Integer) teamRow.get("id");
-                teamJson = (String) teamRow.get("team_json");
-            } else {
-                // generate a simple random team based on available pokemon table
-                List<Map<String,Object>> sample = pokemonMapper.sampleLimit(6);
-                try {
-                    teamJson = objectMapper.writeValueAsString(sample);
-                    teamMapper.insertTeam(playerId, "generated-" + System.currentTimeMillis(), teamJson, "generated");
-                    playerTeamId = teamMapper.lastInsertId();
-                } catch (Exception e) {
-                    // fallback empty
-                    teamJson = "[]";
-                }
-            }
-        }
+        long seed = System.currentTimeMillis();
+        String requestedTeamJson = req.get("teamJson") instanceof String ? req.get("teamJson").toString() : null;
+        Map<String, Object> playerTeam = resolvePlayerTeam(playerId, playerRank, seed, requestedTeamJson);
+        String playerTeamJson = String.valueOf(playerTeam.get("teamJson"));
+        Integer playerTeamId = (Integer) playerTeam.get("teamId");
 
-        // choose opponent
-        List<Map<String,Object>> opponents = poolService.sample(0, 1, 1);
-        Integer opponentTeamId = null;
-        String source = "generated";
-        String opponentTeamJson = "[]";
-        if (!opponents.isEmpty()) {
-            opponentTeamId = (Integer) opponents.get(0).get("id");
-            opponentTeamJson = (String) opponents.get(0).get("team_json");
-            source = "pool";
-        } else {
-            // generate a random opponent team
-            List<Map<String,Object>> sample = pokemonMapper.sampleLimit(6);
-            try {
-                opponentTeamJson = objectMapper.writeValueAsString(sample);
-                teamMapper.insertTeam(null, "opp-generated-" + System.currentTimeMillis(), opponentTeamJson, "generated");
-                opponentTeamId = teamMapper.lastInsertId();
-            } catch (Exception e) {
-                opponentTeamJson = "[]";
-            }
-        }
+        Map<String, Object> opponentTeam = resolveOpponentTeam(playerRank, seed + 97, aiService.extractNames(playerTeamJson));
+        String opponentTeamJson = String.valueOf(opponentTeam.get("teamJson"));
+        Integer opponentTeamId = (Integer) opponentTeam.get("teamId");
 
-        // parse playerMoveMap if provided
-        Map<String, String> playerMoveMap = null;
-        if (req.containsKey("playerMoveMap")) {
-            try {
-                playerMoveMap = objectMapper.readValue(req.get("playerMoveMap").toString(), Map.class);
-            } catch (Exception e) {
-                playerMoveMap = null;
-            }
-        }
-        // simulate battle
-        Map<String,Object> summary = battleEngine.simulate(teamJson, opponentTeamJson, 10, playerMoveMap);
+        Map<String, String> playerMoveMap = parsePlayerMoveMap(req.get("playerMoveMap"));
+        Map<String, Object> state = battleEngine.createPreviewState(playerTeamJson, opponentTeamJson, FACTORY_ROUND_LIMIT, seed);
+        enrichStateMetadata(state, "manual", username, playerRank, String.valueOf(opponentTeam.get("source")));
 
-        // persist battle
         try {
-            String summaryJson = objectMapper.writeValueAsString(summary);
-            Integer winnerId = "player".equals(summary.get("winner")) ? playerId : null;
-            battleMapper.insertFinal(playerId, opponentTeamId, (Integer) summary.getOrDefault("roundsCount", 0), summaryJson, winnerId);
+            battleMapper.insertInitial(playerId, opponentTeamId, 0, toJson(playerMoveMap), playerTeamJson, String.valueOf(state.get("phase")));
             Integer battleId = battleMapper.lastInsertId();
-            out.put("battleId", battleId);
+            battleMapper.updateBattleState(battleId, opponentTeamId, toJson(state), 0, String.valueOf(state.get("phase")));
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("battleId", battleId);
+            response.put("status", state.get("status"));
+            response.put("summary", state);
+            response.put("playerTeamJson", playerTeamJson);
+            response.put("opponentTeamJson", opponentTeamJson);
+            response.put("playerTeamId", playerTeamId);
+            response.put("opponentTeamId", opponentTeamId);
+            response.put("source", opponentTeam.get("source"));
+            response.put("message", "对战工厂匹配完成，请先完成队伍预览和首发选择。");
+            return response;
         } catch (Exception e) {
-            out.put("error", "persist_failed");
+            return Map.of("error", "persist_failed", "detail", e.getMessage());
         }
-
-        // if player won, add to opponent pool
-        if ("player".equals(summary.get("winner")) && playerTeamId != null) {
-            poolService.addTeamToPool(playerTeamId, 0);
-        }
-
-        out.put("summary", summary);
-        out.put("playerTeamJson", teamJson);
-        out.put("opponentTeamJson", opponentTeamJson);
-        out.put("source", source);
-        out.put("message", "Battle simulated and stored.");
-        return out;
-    }
-
-    public Map<String, Object> getBattleStatus(Long battleId) {
-        Map<String, Object> out = new HashMap<>();
-        Map<String,Object> row = battleMapper.findBattleWithOpponent(battleId);
-        if (row == null || row.isEmpty()) {
-            out.put("error", "not found");
-        } else {
-            out.put("battle", row);
-        }
-        return out;
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String,Object> applyMove(Long battleId, Map<String,String> playerMoveMap) {
-        Map<String,Object> out = new HashMap<>();
+    public Map<String, Object> getBattleStatus(Long battleId) {
+        Map<String, Object> row = battleMapper.findBattleWithOpponent(battleId);
+        if (row == null || row.isEmpty()) {
+            return Map.of("error", "not_found");
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("battle", row);
+        if (row.get("summary_json") instanceof String summaryJson && !summaryJson.isBlank()) {
+            try {
+                response.put("summary", objectMapper.readValue(summaryJson, Map.class));
+            } catch (Exception ignored) {
+            }
+        }
+        return response;
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> applyMove(Long battleId, Map<String, String> playerMoveMap) {
         try {
-            Map<String,Object> row = battleMapper.findBattleWithOpponent(battleId);
-            if (row == null) { out.put("error","not_found"); return out; }
-            String playerTeamJson = (String) row.get("player_team_json");
-            String opponentTeamJson = (String) row.get("opponent_team_json");
-            if (playerTeamJson == null) playerTeamJson = "[]";
-            if (opponentTeamJson == null) opponentTeamJson = "[]";
+            Map<String, Object> row = battleMapper.findBattleWithOpponent(battleId);
+            if (row == null || row.isEmpty()) {
+                return Map.of("error", "not_found");
+            }
 
-            // run one round simulation using provided move map
-            Map<String,Object> summary = battleEngine.simulate(playerTeamJson, opponentTeamJson, 1, playerMoveMap);
+            Map<String, Object> existingState = parseSummaryState(row.get("summary_json"));
+            if (existingState.isEmpty()) {
+                existingState = battleEngine.createBattleState(
+                        String.valueOf(row.getOrDefault("player_team_json", "[]")),
+                        String.valueOf(row.getOrDefault("opponent_team_json", "[]")),
+                        FACTORY_ROUND_LIMIT,
+                        System.currentTimeMillis()
+                );
+            }
 
-            // persist round(s)
-            var rounds = (java.util.List<Map<String,Object>>) summary.get("rounds");
-            if (rounds != null) {
-                for (Map<String,Object> r : rounds) {
-                    try { roundMapper.insertRound(battleId.intValue(), (Integer)r.get("round"), objectMapper.writeValueAsString(r)); } catch (Exception ignore) {}
+            int previousRounds = roundsCount(existingState);
+            boolean wasCompleted = "completed".equals(existingState.get("status"));
+            if (wasCompleted) {
+                return Map.of("status", "completed", "summary", existingState);
+            }
+            if ("preview".equals(existingState.get("status")) || "team-preview".equals(existingState.get("phase"))) {
+                return Map.of("error", "preview_required", "summary", existingState, "message", "请先确认 6 选 4 和 2 只首发。");
+            }
+            if ("replacement".equals(existingState.get("phase"))) {
+                return Map.of("error", "replacement_required", "summary", existingState, "message", "请先为倒下的宝可梦选择替补。");
+            }
+
+            Map<String, Object> updatedState = battleEngine.playRound(existingState, playerMoveMap == null ? Map.of() : playerMoveMap);
+            persistNewRounds((int) (long) battleId, existingState, updatedState);
+
+            Integer opponentTeamId = row.get("opponent_team_id") == null ? null : ((Number) row.get("opponent_team_id")).intValue();
+            String playerTeamJson = toJson(updatedState.get("playerTeam"));
+            String phase = String.valueOf(updatedState.getOrDefault("phase", updatedState.getOrDefault("status", "battle")));
+            battleMapper.updateBattleState(battleId.intValue(), opponentTeamId, toJson(updatedState), roundsCount(updatedState), phase);
+            battleMapper.updateBattleTeamState(battleId.intValue(), playerTeamJson, toJson(updatedState), phase);
+
+            if ("completed".equals(updatedState.get("status"))) {
+                finalizePlayerProgress(row, updatedState);
+                Integer winnerPlayerId = "player".equals(updatedState.get("winner")) && row.get("player_id") != null ? ((Number) row.get("player_id")).intValue() : null;
+                battleMapper.updateBattle(battleId.intValue(), opponentTeamId, toJson(updatedState), roundsCount(updatedState), winnerPlayerId, String.valueOf(updatedState.getOrDefault("phase", "completed")));
+                if ("player".equals(updatedState.get("winner"))) {
+                    Map<String, Object> latestTeam = teamMapper.findLatestByPlayer(((Number) row.get("player_id")).intValue());
+                    if (latestTeam != null && latestTeam.get("id") != null) {
+                        poolService.addTeamToPool(((Number) latestTeam.get("id")).intValue(), toInt(extractFactory(updatedState).get("playerRank"), 0));
+                    }
                 }
             }
 
-            // merge into existing summary_json
-            String existingJson = row.get("summary_json") == null ? null : row.get("summary_json").toString();
-            Map<String,Object> merged = new HashMap<>();
-            java.util.List<Map<String,Object>> mergedRounds = new java.util.ArrayList<>();
-            if (existingJson != null && !existingJson.isEmpty()) {
-                try {
-                    Object ex = objectMapper.readValue(existingJson, Object.class);
-                    if (ex instanceof Map) {
-                        Map<String,Object> exm = (Map<String,Object>) ex;
-                        Object er = exm.get("rounds");
-                        if (er instanceof java.util.List) mergedRounds.addAll((java.util.List<Map<String,Object>>)er);
-                    }
-                } catch (Exception ignore) {}
-            }
-            if (rounds != null) mergedRounds.addAll(rounds);
-            merged.put("rounds", mergedRounds);
-            merged.put("roundsCount", mergedRounds.size());
-            // determine winner if decided
-            if (summary.containsKey("winner")) merged.put("winner", summary.get("winner"));
-
-            String mergedJson = objectMapper.writeValueAsString(merged);
-            // update battle row
-            Integer opponentTeamId = row.get("opponent_team_id") == null ? null : ((Number)row.get("opponent_team_id")).intValue();
-            Integer winnerId = merged.get("winner") != null && "player".equals(merged.get("winner")) ? ((Number)row.get("player_id")).intValue() : null;
-            battleMapper.updateBattle(battleId.intValue(), opponentTeamId, mergedJson, mergedRounds.size(), winnerId);
-
-            out.put("summary", merged);
-            out.put("status","ok");
-            return out;
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("status", updatedState.get("status"));
+            response.put("summary", updatedState);
+            response.put("battleId", battleId);
+            response.put("newRounds", roundsCount(updatedState) - previousRounds);
+            return response;
         } catch (Exception e) {
-            out.put("error","apply_failed");
-            out.put("detail", e.getMessage());
-            return out;
+            return Map.of("error", "apply_failed", "detail", e.getMessage());
+        }
+    }
+
+    public Map<String, Object> confirmReplacement(Long battleId, Map<String, Object> selection) {
+        try {
+            Map<String, Object> row = battleMapper.findBattleWithOpponent(battleId);
+            if (row == null || row.isEmpty()) {
+                return Map.of("error", "not_found");
+            }
+
+            Map<String, Object> existingState = parseSummaryState(row.get("summary_json"));
+            if (existingState.isEmpty()) {
+                return Map.of("error", "battle_state_missing");
+            }
+            if (!"replacement".equals(existingState.get("phase"))) {
+                return Map.of("error", "replacement_closed", "summary", existingState);
+            }
+
+            Map<String, Object> updatedState = battleEngine.applyReplacementSelection(existingState, selection);
+            Integer opponentTeamId = row.get("opponent_team_id") == null ? null : ((Number) row.get("opponent_team_id")).intValue();
+            String playerTeamJson = toJson(updatedState.get("playerTeam"));
+            String phase = String.valueOf(updatedState.getOrDefault("phase", "battle"));
+
+            battleMapper.updateBattleState(battleId.intValue(), opponentTeamId, toJson(updatedState), roundsCount(updatedState), phase);
+            battleMapper.updateBattleTeamState(battleId.intValue(), playerTeamJson, toJson(updatedState), phase);
+
+            return Map.of(
+                    "battleId", battleId,
+                    "status", updatedState.get("status"),
+                    "summary", updatedState,
+                    "message", "替补上场已确认。"
+            );
+        } catch (IllegalArgumentException e) {
+            return Map.of("error", e.getMessage(), "message", "替补选择无效。");
+        } catch (Exception e) {
+            return Map.of("error", "replacement_confirm_failed", "detail", e.getMessage());
         }
     }
 
     public List<Map<String, Object>> samplePool(Integer rank) {
-        if (rank == null) rank = 0;
-        return poolService.sample(rank, 1, 5);
+        int targetRank = rank == null ? 0 : rank;
+        return poolService.sample(targetRank, 2, 5);
+    }
+
+    public Map<String, Object> confirmTeamPreview(Long battleId, Map<String, Object> selection) {
+        try {
+            Map<String, Object> row = battleMapper.findBattleWithOpponent(battleId);
+            if (row == null || row.isEmpty()) {
+                return Map.of("error", "not_found");
+            }
+
+            Map<String, Object> existingState = parseSummaryState(row.get("summary_json"));
+            if (existingState.isEmpty()) {
+                return Map.of("error", "battle_state_missing");
+            }
+            if (!"preview".equals(existingState.get("status")) && !"team-preview".equals(existingState.get("phase"))) {
+                return Map.of("error", "preview_closed", "summary", existingState);
+            }
+
+            Map<String, Object> updatedState = battleEngine.applyTeamPreviewSelection(existingState, selection, null);
+            Integer opponentTeamId = row.get("opponent_team_id") == null ? null : ((Number) row.get("opponent_team_id")).intValue();
+            String playerTeamJson = toJson(updatedState.get("playerTeam"));
+            String phase = String.valueOf(updatedState.getOrDefault("phase", "battle"));
+
+            battleMapper.updateBattleState(battleId.intValue(), opponentTeamId, toJson(updatedState), 0, phase);
+            battleMapper.updateBattleTeamState(battleId.intValue(), playerTeamJson, toJson(updatedState), phase);
+
+            return Map.of(
+                    "battleId", battleId,
+                    "status", updatedState.get("status"),
+                    "summary", updatedState,
+                    "message", "队伍预览已确认，对战开始。"
+            );
+        } catch (Exception e) {
+            return Map.of("error", "preview_confirm_failed", "detail", e.getMessage());
+        }
+    }
+
+    public Map<String, Object> updateBattleAfterExchange(Long battleId, int replacedIndex, String newPokemonJson) {
+        try {
+            Map<String, Object> battleStatus = getBattleStatus(battleId);
+            if (battleStatus.containsKey("error")) {
+                return battleStatus;
+            }
+
+            Map<String, Object> battle = castMap(battleStatus.get("battle"));
+            Map<String, Object> state = castMap(battleStatus.get("summary"));
+            if (!"completed".equals(state.get("status")) || !"player".equals(state.get("winner")) || !Boolean.TRUE.equals(state.get("exchangeAvailable"))) {
+                return Map.of("error", "exchange_not_available");
+            }
+
+            Map<String, Object> latestTeam = teamMapper.findLatestByPlayer(((Number) battle.get("player_id")).intValue());
+            if (latestTeam == null || latestTeam.get("id") == null) {
+                return Map.of("error", "team_not_found");
+            }
+
+            int playerTeamId = ((Number) latestTeam.get("id")).intValue();
+            int version = toInt(latestTeam.get("version"), 0);
+            List<Map<String, Object>> playerTeam = aiService.parseTeam(String.valueOf(latestTeam.get("team_json")));
+            if (replacedIndex < 0 || replacedIndex >= playerTeam.size()) {
+                return Map.of("error", "invalid_replaced_index");
+            }
+
+            Map<String, Object> replacement = castMap(objectMapper.readValue(newPokemonJson, Map.class));
+            Map<String, Object> replaced = playerTeam.set(replacedIndex, replacement);
+            String updatedTeamJson = toJson(playerTeam);
+
+            if (teamMapper.updateTeamWithVersion(playerTeamId, updatedTeamJson, version) == 0) {
+                return Map.of("error", "team_stale");
+            }
+
+            Map<String, Object> updatedState = battleEngine.replacePlayerTeamMember(state, replacedIndex, replacement);
+            battleMapper.updateBattleTeamState(battleId.intValue(), updatedTeamJson, toJson(updatedState), String.valueOf(updatedState.getOrDefault("phase", updatedState.getOrDefault("status", "completed"))));
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("status", "ok");
+            response.put("summary", updatedState);
+            response.put("replacedPokemon", replaced);
+            return response;
+        } catch (Exception e) {
+            return Map.of("error", "exchange_failed", "detail", e.getMessage());
+        }
+    }
+
+    private void enrichStateMetadata(Map<String, Object> state, String mode, String username, int playerRank, String opponentSource) {
+        Map<String, Object> factory = extractFactory(state);
+        factory.put("mode", mode);
+        factory.put("username", username);
+        factory.put("playerRank", playerRank);
+        factory.put("opponentSource", opponentSource);
+        factory.put("teamSize", FACTORY_TEAM_SIZE);
+    }
+
+    private void finalizePlayerProgress(Map<String, Object> battleRow, Map<String, Object> state) {
+        Integer playerId = battleRow.get("player_id") == null ? null : ((Number) battleRow.get("player_id")).intValue();
+        if (playerId == null) {
+            return;
+        }
+
+        Map<String, Object> factory = extractFactory(state);
+        if (Boolean.TRUE.equals(factory.get("progressApplied"))) {
+            return;
+        }
+
+        Map<String, Object> playerProfile = playerMapper.findByUsername(String.valueOf(factory.getOrDefault("username", "")));
+        if (playerProfile == null || playerProfile.isEmpty()) {
+            return;
+        }
+
+        int points = toInt(playerProfile.get("points"), 0);
+        points = "player".equals(state.get("winner")) ? points + 10 : Math.max(0, points - 3);
+        int rank = points / 30;
+        playerMapper.updateProgress(playerId, rank, points);
+        factory.put("progressApplied", true);
+        factory.put("playerRank", rank);
+        factory.put("playerPoints", points);
+    }
+
+    private void persistNewRounds(int battleId, Map<String, Object> oldState, Map<String, Object> newState) {
+        List<Map<String, Object>> oldRounds = extractRounds(oldState);
+        List<Map<String, Object>> newRounds = extractRounds(newState);
+        for (int index = oldRounds.size(); index < newRounds.size(); index++) {
+            Map<String, Object> round = newRounds.get(index);
+            try {
+                roundMapper.insertRound(battleId, toInt(round.get("round"), index + 1), toJson(round));
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private Map<String, Object> resolvePlayerTeam(Integer playerId, int playerRank, long seed, String requestedTeamJson) {
+        if (!aiService.isBlankTeamJson(requestedTeamJson)) {
+            teamMapper.insertTeam(playerId, "custom-" + seed, requestedTeamJson, "player");
+            return Map.of("teamId", teamMapper.lastInsertId(), "teamJson", requestedTeamJson, "source", "custom");
+        }
+
+        Map<String, Object> existing = teamMapper.findLatestByPlayer(playerId);
+        if (existing != null && existing.get("team_json") != null && !aiService.isBlankTeamJson(String.valueOf(existing.get("team_json")))) {
+            return Map.of("teamId", existing.get("id"), "teamJson", existing.get("team_json"), "source", "stored");
+        }
+
+        String generatedTeamJson = aiService.generateFactoryTeamJson(FACTORY_TEAM_SIZE, playerRank, seed, Set.of());
+        teamMapper.insertTeam(playerId, "factory-player-" + seed, generatedTeamJson, "generated");
+        return Map.of("teamId", teamMapper.lastInsertId(), "teamJson", generatedTeamJson, "source", "generated");
+    }
+
+    private Map<String, Object> resolveOpponentTeam(int playerRank, long seed, Set<String> excludedNames) {
+        List<Map<String, Object>> poolCandidates = poolService.sample(playerRank, 2, 3);
+        if (poolCandidates != null) {
+            for (Map<String, Object> candidate : poolCandidates) {
+                String teamJson = String.valueOf(candidate.get("team_json"));
+                if (!aiService.extractNames(teamJson).equals(excludedNames)) {
+                    return Map.of(
+                            "teamId", candidate.get("team_id"),
+                            "teamJson", teamJson,
+                            "source", "pool"
+                    );
+                }
+            }
+        }
+
+        String generatedTeamJson = aiService.generateFactoryTeamJson(FACTORY_TEAM_SIZE, Math.max(0, playerRank + 1), seed, excludedNames);
+        teamMapper.insertTeam(null, "factory-opponent-" + seed, generatedTeamJson, "generated");
+        return Map.of("teamId", teamMapper.lastInsertId(), "teamJson", generatedTeamJson, "source", "generated");
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> parseSummaryState(Object summaryJson) {
+        if (!(summaryJson instanceof String summary) || summary.isBlank()) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            return objectMapper.readValue(summary, Map.class);
+        } catch (Exception e) {
+            return new LinkedHashMap<>();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> extractRounds(Map<String, Object> state) {
+        Object rounds = state.get("rounds");
+        return rounds instanceof List ? (List<Map<String, Object>>) rounds : new ArrayList<>();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> extractFactory(Map<String, Object> state) {
+        Object factory = state.get("factory");
+        if (factory instanceof Map) {
+            return (Map<String, Object>) factory;
+        }
+        Map<String, Object> created = new LinkedHashMap<>();
+        state.put("factory", created);
+        return created;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> castMap(Object value) {
+        return value instanceof Map ? (Map<String, Object>) value : new LinkedHashMap<>();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> parsePlayerMoveMap(Object rawValue) {
+        if (rawValue instanceof Map<?, ?> rawMap) {
+            Map<String, String> moveMap = new LinkedHashMap<>();
+            rawMap.forEach((key, value) -> moveMap.put(String.valueOf(key), value == null ? "" : String.valueOf(value)));
+            return moveMap;
+        }
+        if (rawValue instanceof String rawString && !rawString.isBlank()) {
+            try {
+                return objectMapper.readValue(rawString, Map.class);
+            } catch (Exception ignored) {
+            }
+        }
+        return Map.of();
+    }
+
+    private int roundsCount(Map<String, Object> state) {
+        return extractRounds(state).size();
+    }
+
+    private int toInt(Object value, int fallback) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value != null) {
+            try {
+                return Integer.parseInt(value.toString());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return fallback;
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            return "{}";
+        }
     }
 }
