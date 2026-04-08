@@ -861,10 +861,9 @@ def main():
         print("📋 执行数据库初始化脚本...")
         import sqlite3
         conn = sqlite3.connect(DB_PATH)
-        # Try to find the sqlite initialization script; prefer backend/sql if present
+        # 数据库初始化脚本已经统一下沉到 common 模块资源目录。
         init_paths = [
-            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database_init_sqlite.sql'),
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pokemon-factory-backend', 'sql', 'database_init_sqlite.sql')
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'pokemon-factory-backend', 'common', 'src', 'main', 'resources', 'db', 'init', '001_core_schema.sql')
         ]
         init_script = None
         for p in init_paths:
@@ -872,7 +871,7 @@ def main():
                 init_script = p
                 break
         if not init_script:
-            raise FileNotFoundError('database_init_sqlite.sql not found in expected locations: ' + ','.join(init_paths))
+            raise FileNotFoundError('001_core_schema.sql not found in expected locations: ' + ','.join(init_paths))
         with open(init_script, 'r', encoding='utf-8') as f:
             sql_script = f.read()
             conn.executescript(sql_script)

@@ -42,6 +42,10 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
@@ -50,21 +54,22 @@
             <artifactId>sqlite-jdbc</artifactId>
         </dependency>
 
-        <!-- MyBatis starter -->
+        <!-- battleFactory 仍然显式声明运行时 MyBatis 依赖，避免 Spring Boot 4 场景下只依赖传递依赖导致 Mapper 代理异常 -->
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
             <version>4.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <version>3.5.9</version>
         </dependency>
 
         <dependency>
             <groupId>jakarta.annotation</groupId>
             <artifactId>jakarta.annotation-api</artifactId>
             <version>2.1.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

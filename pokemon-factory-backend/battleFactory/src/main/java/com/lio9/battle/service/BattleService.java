@@ -15,6 +15,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 手动对战业务编排服务。
+ * <p>
+ * 主要职责：
+ * 1. 组装玩家队伍与对手队伍；
+ * 2. 调用 BattleEngine 推进预览、补位和回合逻辑；
+ * 3. 把 battle / battle_round / player / team 等表的状态统一落库；
+ * 4. 在对战结束后更新玩家积分与对手池。
+ * </p>
+ */
 @Service
 public class BattleService {
     private static final int FACTORY_TEAM_SIZE = 6;
@@ -30,6 +40,9 @@ public class BattleService {
     private final AIService aiService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * 组装手动对战主链依赖。
+     */
     public BattleService(PlayerMapper playerMapper, TeamMapper teamMapper, PokemonMapper pokemonMapper, BattleMapper battleMapper, BattleRoundMapper roundMapper, BattleEngine battleEngine, OpponentPoolService poolService, AIService aiService) {
         this.playerMapper = playerMapper;
         this.teamMapper = teamMapper;
@@ -41,6 +54,9 @@ public class BattleService {
         this.aiService = aiService;
     }
 
+    /**
+     * 开始一场手动对战，并返回预览阶段状态。
+     */
     @SuppressWarnings("unchecked")
     public Map<String, Object> startMatch(Map<String, Object> req) {
         String username = String.valueOf(req.getOrDefault("username", "guest"));
@@ -85,6 +101,9 @@ public class BattleService {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 查询对战状态，并在可能时把 summary_json 解析成结构化对象返回给前端。
+     */
     public Map<String, Object> getBattleStatus(Long battleId) {
         Map<String, Object> row = battleMapper.findBattleWithOpponent(battleId);
         if (row == null || row.isEmpty()) {
@@ -103,6 +122,9 @@ public class BattleService {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 提交一回合玩家动作并推进战斗。
+     */
     public Map<String, Object> applyMove(Long battleId, Map<String, String> playerMoveMap) {
         try {
             Map<String, Object> row = battleMapper.findBattleWithOpponent(battleId);
@@ -164,6 +186,9 @@ public class BattleService {
         }
     }
 
+    /**
+     * 确认补位选择。
+     */
     public Map<String, Object> confirmReplacement(Long battleId, Map<String, Object> selection) {
         try {
             Map<String, Object> row = battleMapper.findBattleWithOpponent(battleId);
@@ -200,11 +225,17 @@ public class BattleService {
         }
     }
 
+    /**
+     * 抽样读取当前段位附近的对手池。
+     */
     public List<Map<String, Object>> samplePool(Integer rank) {
         int targetRank = rank == null ? 0 : rank;
         return poolService.sample(targetRank, 2, 5);
     }
 
+    /**
+     * 确认队伍预览阶段选择，并正式进入 battle 阶段。
+     */
     public Map<String, Object> confirmTeamPreview(Long battleId, Map<String, Object> selection) {
         try {
             Map<String, Object> row = battleMapper.findBattleWithOpponent(battleId);
@@ -239,6 +270,9 @@ public class BattleService {
         }
     }
 
+    /**
+     * 处理胜利后的交换奖励逻辑，并把变更后的队伍重新写回玩家当前队伍。
+     */
     public Map<String, Object> updateBattleAfterExchange(Long battleId, int replacedIndex, String newPokemonJson) {
         try {
             Map<String, Object> battleStatus = getBattleStatus(battleId);
@@ -285,6 +319,9 @@ public class BattleService {
         }
     }
 
+    /**
+     * 把对战工厂模式下需要展示的额外元信息写进 summary.factory。
+     */
     private void enrichStateMetadata(Map<String, Object> state, String mode, String username, int playerRank, String opponentSource) {
         Map<String, Object> factory = extractFactory(state);
         factory.put("mode", mode);
@@ -294,6 +331,9 @@ public class BattleService {
         factory.put("teamSize", FACTORY_TEAM_SIZE);
     }
 
+    /**
+     * 对战结束后结算玩家积分和段位。
+     */
     private void finalizePlayerProgress(Map<String, Object> battleRow, Map<String, Object> state) {
         Integer playerId = battleRow.get("player_id") == null ? null : ((Number) battleRow.get("player_id")).intValue();
         if (playerId == null) {
@@ -319,6 +359,9 @@ public class BattleService {
         factory.put("playerPoints", points);
     }
 
+    /**
+     * 只把新增出来的回合日志补写到 battle_round，避免重复插入旧回合。
+     */
     private void persistNewRounds(int battleId, Map<String, Object> oldState, Map<String, Object> newState) {
         List<Map<String, Object>> oldRounds = extractRounds(oldState);
         List<Map<String, Object>> newRounds = extractRounds(newState);
@@ -331,6 +374,12 @@ public class BattleService {
         }
     }
 
+    /**
+     * 解析玩家当前应使用的队伍。
+     * <p>
+     * 优先级依次为：请求自带队伍 > 玩家最近一次队伍 > 系统自动生成队伍。
+     * </p>
+     */
     private Map<String, Object> resolvePlayerTeam(Integer playerId, int playerRank, long seed, String requestedTeamJson) {
         if (!aiService.isBlankTeamJson(requestedTeamJson)) {
             teamMapper.insertTeam(playerId, "custom-" + seed, requestedTeamJson, "player");
@@ -347,6 +396,12 @@ public class BattleService {
         return Map.of("teamId", teamMapper.lastInsertId(), "teamJson", generatedTeamJson, "source", "generated");
     }
 
+    /**
+     * 解析本场对手队伍。
+     * <p>
+     * 优先从对手池抽取，若抽不到合适结果再退回到 AI 自动生成。
+     * </p>
+     */
     private Map<String, Object> resolveOpponentTeam(int playerRank, long seed, Set<String> excludedNames) {
         List<Map<String, Object>> poolCandidates = poolService.sample(playerRank, 2, 3);
         if (poolCandidates != null) {

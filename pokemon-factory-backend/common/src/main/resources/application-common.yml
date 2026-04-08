@@ -1,0 +1,47 @@
+spring:
+  datasource:
+    # 整个后端共享同一份 SQLite 数据库文件，业务模块不再各自维护连接配置。
+    url: jdbc:sqlite:${SQLITE_DB_PATH:${user.dir}/pokemon-factory-backend/pokemon-factory.db}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      # SQLite 并不适合大连接池，这里把连接数量控制在安全范围。
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 30000
+      idle-timeout: 300000
+      max-lifetime: 900000
+      connection-test-query: SELECT 1
+      connection-init-sql: PRAGMA foreign_keys = ON
+      validation-timeout: 3000
+      auto-commit: true
+      pool-name: PokemonFactorySQLiteCP
+  sql:
+    init:
+      # 数据库初始化由 common 自己的 ApplicationRunner 接管，关闭 Spring Boot 默认 SQL 初始化链，
+      # 避免它在 Spring Boot 4 下对 MyBatis Mapper 做额外依赖探测时触发兼容性问题。
+      mode: never
+
+mybatis:
+  # 统一扫描所有模块的 XML Mapper，业务模块只需要维护自己的 Mapper 接口。
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+pokemon-factory:
+  database:
+    # 默认情况下业务模块不会主动做数据库初始化，避免每次启动都重复跑脚本。
+    initialize-on-startup: false
+    bootstrap-scripts:
+      - classpath:db/init/001_core_schema.sql
+      - classpath:db/init/002_battle_schema.sql
+      - classpath:db/init/003_user_schema.sql
+
+logging:
+  level:
+    org.apache.ibatis: debug
+    org.mybatis: info
+    java.sql: debug
+    java.sql.Connection: info
+    java.sql.Statement: debug
+    java.sql.PreparedStatement: debug
+    java.sql.ResultSet: warn

@@ -1,12 +1,13 @@
-Migration notes
+Database notes
 
-- V5..V6 already applied: user table and team.version
-- V7__battle_add_player_move_map.sql: adds player_move_map TEXT to battle table so async matches can persist client-provided move mappings.
+- 数据库相关脚本已经统一收敛到 `pokemon-factory-backend\common\src\main\resources\db`。
+- `db\init` 保存当前真正参与初始化的脚本；`db\legacy` 保留历史模块迁移文件作为参考。
+- 启动 `common` 模块时会自动初始化核心公共表、对战表和用户表；业务模块不再各自执行 Flyway。
 
-How to run migrations:
+How to initialize database:
 
-1. Ensure Flyway is configured in application.properties (spring.flyway.locations includes classpath:db/migration)
-2. Run the application or `mvn -f pokemon-factory-backend\battleFactory flyway:migrate` to apply migrations.
+1. Build `pokemon-factory-backend\common`
+2. Run `java -jar pokemon-factory-backend\common\target\common-0.0.1-SNAPSHOT.jar`
 
 JWT and runtime notes:
-- Set JWT_SECRET env var for persistent tokens in production.
+- Set `JWT_SECRET` env var for persistent tokens in production.

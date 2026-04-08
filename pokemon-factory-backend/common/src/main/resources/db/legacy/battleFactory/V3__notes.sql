@@ -1,0 +1,2 @@
+-- V3: notes
+-- future migrations: add ranking history, battle_rewards, ai_profile tables

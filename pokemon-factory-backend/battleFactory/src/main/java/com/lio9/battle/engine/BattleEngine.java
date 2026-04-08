@@ -17,6 +17,13 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+/**
+ * 对战引擎。
+ * <p>
+ * 该类只关心战斗规则本身，不直接处理 HTTP 或数据库：
+ * 负责创建初始状态、执行队伍预览、推进回合、处理补位和交换后的状态修正。
+ * </p>
+ */
 @Component
 public class BattleEngine {
     private static final int LEVEL = 50;
@@ -32,6 +39,9 @@ public class BattleEngine {
         this.typeEfficacyMapper = typeEfficacyMapper;
     }
 
+    /**
+     * 创建“队伍预览阶段”的初始状态。
+     */
     public Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
         Map<String, Object> state = new LinkedHashMap<>();
         List<Map<String, Object>> playerRoster = normalizeRoster(parseTeam(playerTeamJson));
@@ -66,11 +76,20 @@ public class BattleEngine {
         return state;
     }
 
+    /**
+     * 直接创建可进入战斗的状态。
+     * <p>
+     * 该方法会在内部自动完成 6 选 4 和首发选择，主要用于异步自动模拟。
+     * </p>
+     */
     public Map<String, Object> createBattleState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
         Map<String, Object> preview = createPreviewState(playerTeamJson, opponentTeamJson, maxRounds, seed);
         return applyTeamPreviewSelection(preview, autoSelect(roster(preview, true), seed), autoSelect(roster(preview, false), seed + 31L));
     }
 
+    /**
+     * 应用队伍预览阶段的选择，并把状态切到 running/battle。
+     */
     public Map<String, Object> applyTeamPreviewSelection(Map<String, Object> rawState, Map<String, Object> playerSelectionInput, Map<String, Object> opponentSelectionInput) {
         Map<String, Object> state = cloneState(rawState);
         List<Map<String, Object>> playerRoster = roster(state, true);
@@ -112,6 +131,9 @@ public class BattleEngine {
         return state;
     }
 
+    /**
+     * 推进一整个回合。
+     */
     public Map<String, Object> playRound(Map<String, Object> rawState, Map<String, String> playerMoveMap) {
         Map<String, Object> state = cloneState(rawState);
         if (!"running".equals(state.get("status")) || !"battle".equals(state.getOrDefault("phase", "battle"))) {
@@ -427,6 +449,12 @@ public class BattleEngine {
         return state;
     }
 
+    /**
+     * 自动把一场战斗从当前状态推进到结束。
+     * <p>
+     * 如果中途进入 replacement 阶段，会自动替玩家补位后继续推进。
+     * </p>
+     */
     public Map<String, Object> autoPlay(Map<String, Object> rawState, Map<String, String> playerMoveMap) {
         Map<String, Object> state = cloneState(rawState);
         while ("running".equals(state.get("status"))) {
@@ -439,6 +467,9 @@ public class BattleEngine {
         return state;
     }
 
+    /**
+     * 应用玩家补位选择。
+     */
     public Map<String, Object> applyReplacementSelection(Map<String, Object> rawState, Map<String, Object> selectionInput) {
         Map<String, Object> state = cloneState(rawState);
         if (!"replacement".equals(state.getOrDefault("phase", "battle"))) {
@@ -494,11 +525,17 @@ public class BattleEngine {
         return state;
     }
 
+    /**
+     * 直接执行一场完整自动模拟。
+     */
     public Map<String, Object> simulate(String playerTeamJson, String opponentTeamJson, int maxRounds, Map<String, String> playerMoveMap) {
         long seed = Math.abs((playerTeamJson + opponentTeamJson).hashCode()) + maxRounds;
         return autoPlay(createBattleState(playerTeamJson, opponentTeamJson, maxRounds, seed), playerMoveMap);
     }
 
+    /**
+     * 在胜利交换奖励后，用新成员替换玩家原队伍中的一名成员。
+     */
     public Map<String, Object> replacePlayerTeamMember(Map<String, Object> rawState, int replacedIndex, Map<String, Object> newMember) {
         Map<String, Object> state = cloneState(rawState);
         List<Map<String, Object>> playerRoster = roster(state, true);

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lio9.user.mapper.UserMapper">
+
+    <!-- 用户账号结果映射：统一在 XML 中处理下划线字段到 Java 属性的转换 -->
+    <resultMap id="UserAccountResultMap" type="com.lio9.user.model.UserAccount">
+        <id property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="displayName" column="display_name"/>
+        <result property="passwordHash" column="password_hash"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="lastLoginAt" column="last_login_at"/>
+    </resultMap>
+
+    <!-- 新建账号时统一补齐展示名与审计时间字段 -->
+    <insert id="insertUser">
+        INSERT INTO app_user(username, display_name, password_hash, created_at, updated_at)
+        VALUES(#{username}, #{displayName}, #{passwordHash}, datetime('now'), datetime('now'))
+    </insert>
+
+    <!-- 登录、注册、恢复会话都复用这条查询 -->
+    <select id="findByUsername" resultMap="UserAccountResultMap">
+        SELECT id, username, display_name, password_hash, created_at, updated_at, last_login_at
+        FROM app_user
+        WHERE username = #{username}
+    </select>
+
+    <!-- 登录成功后刷新最后登录时间，便于会话展示与追踪 -->
+    <update id="touchLogin">
+        UPDATE app_user
+        SET last_login_at = datetime('now'),
+            updated_at = datetime('now')
+        WHERE id = #{id}
+    </update>
+</mapper>

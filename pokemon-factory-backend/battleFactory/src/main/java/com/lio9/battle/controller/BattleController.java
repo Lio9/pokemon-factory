@@ -10,6 +10,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * 对战工厂 HTTP 接口入口。
+ * <p>
+ * 该控制器只负责请求参数整理、认证用户名注入和响应透传，
+ * 真正的对战编排、状态推进和持久化都下沉到 BattleService / BattleExecutor。
+ * </p>
+ */
 @RestController
 @RequestMapping("/api/battle")
 public class BattleController {
@@ -24,12 +31,21 @@ public class BattleController {
         this.playerMapper = playerMapper;
     }
 
+    /**
+     * 开始一场手动对战。
+     * <p>
+     * 当前登录用户名统一从安全上下文中读取，不允许前端伪造其他用户名。
+     * </p>
+     */
     @PostMapping("/start")
     public ResponseEntity<?> startBattle(@RequestBody Map<String, Object> req) {
         req.put("username", authenticatedUsername());
         return ResponseEntity.ok(battleService.startMatch(req));
     }
 
+    /**
+     * 提交一场异步自动模拟任务。
+     */
     @PostMapping("/start-async")
     public ResponseEntity<?> startAsync(@RequestBody Map<String, Object> req) {
         String username = authenticatedUsername();
@@ -41,31 +57,49 @@ public class BattleController {
         return ResponseEntity.ok(Map.of("battleId", battleId));
     }
 
+    /**
+     * 查询当前对战状态与摘要。
+     */
     @GetMapping("/status/{battleId}")
     public ResponseEntity<?> status(@PathVariable Long battleId) {
         return ResponseEntity.ok(battleService.getBattleStatus(battleId));
     }
 
+    /**
+     * 抽样查看当前段位附近的对手池。
+     */
     @GetMapping("/pool")
     public ResponseEntity<?> pool(@RequestParam(required = false) Integer rank) {
         return ResponseEntity.ok(battleService.samplePool(rank));
     }
 
+    /**
+     * 确认队伍预览阶段的 6 选 4 与首发选择。
+     */
     @PostMapping("/{battleId}/preview")
     public ResponseEntity<?> confirmPreview(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
         return ResponseEntity.ok(battleService.confirmTeamPreview(battleId, req));
     }
 
+    /**
+     * 确认倒下补位选择。
+     */
     @PostMapping("/{battleId}/replacement")
     public ResponseEntity<?> confirmReplacement(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
         return ResponseEntity.ok(battleService.confirmReplacement(battleId, req));
     }
 
+    /**
+     * 提交当前回合动作。
+     */
     @PostMapping("/{battleId}/move")
     public ResponseEntity<?> move(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
         return ResponseEntity.ok(battleService.applyMove(battleId, normalizeMoveMap(req)));
     }
 
+    /**
+     * 胜利后执行交换奖励逻辑。
+     */
     @PostMapping("/exchange")
     public ResponseEntity<?> exchange(@RequestBody Map<String, Object> req) {
         Number battleId = (Number) req.get("battleId");
@@ -78,6 +112,9 @@ public class BattleController {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 兼容前端不同形态的出招提交结构，统一折叠成 battle service 能识别的扁平 Map。
+     */
     private Map<String, String> normalizeMoveMap(Map<String, Object> req) {
         if (req == null) {
             return Map.of();
@@ -99,6 +136,9 @@ public class BattleController {
         return Map.of();
     }
 
+    /**
+     * 把任意原始动作对象转成 JSON，供异步任务直接落库。
+     */
     private String toMoveJson(Object rawMoveMap) {
         try {
             return rawMoveMap == null ? null : objectMapper.writeValueAsString(rawMoveMap);
@@ -107,6 +147,9 @@ public class BattleController {
         }
     }
 
+    /**
+     * 从安全上下文中提取当前认证用户名。
+     */
     private String authenticatedUsername() {
         return String.valueOf(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal());
     }

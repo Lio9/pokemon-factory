@@ -1,0 +1,12 @@
+spring:
+  application:
+    # common 现在不仅提供公共模型与服务，也承担数据库初始化入口。
+    name: common
+  main:
+    # common 作为数据库初始化程序启动时不需要对外提供 Web 服务。
+    web-application-type: none
+
+pokemon-factory:
+  database:
+    # 只有启动 common 时才会真正执行数据库初始化脚本。
+    initialize-on-startup: true

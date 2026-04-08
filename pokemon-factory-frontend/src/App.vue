@@ -27,13 +27,31 @@
                 :key="item.path"
                 :to="item.path"
                 class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden"
-                :class="$route.path === item.path || (item.path !== '/' && $route.path.startsWith(item.path)) 
+                :class="route.path === item.path || (item.path !== '/' && route.path.startsWith(item.path)) 
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
               >
                 {{ item.name }}
               </router-link>
             </nav>
+
+            <div class="ml-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <span class="text-sm font-semibold text-slate-700">{{ authDisplayName }}</span>
+              <button
+                v-if="isAuthenticated"
+                class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700"
+                @click="handleLogout"
+              >
+                退出登录
+              </button>
+              <router-link
+                v-else
+                to="/login"
+                class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
+              >
+                去登录
+              </router-link>
+            </div>
 
             <!-- 主题切换按钮 (桌面) -->
             <button
@@ -73,6 +91,22 @@
                       class="w-full"
                     >
                       {{ item.name }}
+                    </router-link>
+                  </el-dropdown-item>
+                  <el-dropdown-item v-if="isAuthenticated">
+                    <button
+                      class="w-full text-left"
+                      @click="handleLogout"
+                    >
+                      退出登录（{{ authDisplayName }}）
+                    </button>
+                  </el-dropdown-item>
+                  <el-dropdown-item v-else>
+                    <router-link
+                      to="/login"
+                      class="w-full"
+                    >
+                      登录
                     </router-link>
                   </el-dropdown-item>
                 </el-dropdown-menu>
@@ -151,37 +185,52 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Menu, Sun, Moon } from 'lucide-vue-next'
 import GlobalLoader from './components/GlobalLoader.vue'
 import ErrorHandler from './components/ErrorHandler.vue'
+import { useAuth } from './composables/useAuth'
 
-export default {
-  name: 'App',
-  components: { Menu, Sun, Moon, GlobalLoader, ErrorHandler },
-  data() {
-    return {
-        navItems: [
-          { name: '宝可梦', path: '/pokemon' },
-          { name: '技能', path: '/moves' },
-          { name: '特性', path: '/abilities' },
-          { name: '物品', path: '/items' },
-          { name: '伤害计算', path: '/damage-calculator' },
-          { name: '导入管理', path: '/import' },
-          { name: '对战工厂', path: '/battle' }
-        ],
-      theme: localStorage.getItem('theme') || 'light'
-    }
-  },
-  mounted() {
-    document.documentElement.classList.toggle('dark', this.theme === 'dark')
-  },
-  methods: {
-    toggleTheme() {
-      this.theme = this.theme === 'dark' ? 'light' : 'dark'
-      document.documentElement.classList.toggle('dark', this.theme === 'dark')
-      localStorage.setItem('theme', this.theme)
-    }
+const route = useRoute()
+const router = useRouter()
+const auth = useAuth()
+// 顶部导航集中定义，方便桌面端和移动端共用同一份菜单数据。
+const navItems = [
+  { name: '宝可梦', path: '/pokemon' },
+  { name: '技能', path: '/moves' },
+  { name: '特性', path: '/abilities' },
+  { name: '物品', path: '/items' },
+  { name: '伤害计算', path: '/damage-calculator' },
+  { name: '导入管理', path: '/import' },
+  { name: '对战工厂', path: '/battle' }
+]
+const theme = ref(localStorage.getItem('theme') || 'light')
+const isAuthenticated = computed(() => auth.isAuthenticated.value)
+const authDisplayName = computed(() => auth.displayName.value)
+
+onMounted(async () => {
+  document.documentElement.classList.toggle('dark', theme.value === 'dark')
+
+  // 应用初始化时恢复一次会话，保证刷新后顶部导航和受保护页面状态一致。
+  if (auth.state.token && !auth.state.initialized) {
+    await auth.restoreSession()
+  }
+})
+
+function toggleTheme() {
+  // 主题状态同时写入 DOM class 和 localStorage，保证刷新后仍保持用户选择。
+  theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  document.documentElement.classList.toggle('dark', theme.value === 'dark')
+  localStorage.setItem('theme', theme.value)
+}
+
+async function handleLogout() {
+  // 退出后如果当前页本身需要登录，立即跳回登录页，避免继续停留在受保护页面。
+  auth.logout()
+  if (route.meta?.requiresAuth) {
+    await router.push('/login')
   }
 }
 </script>

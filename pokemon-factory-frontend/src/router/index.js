@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuth } from '../composables/useAuth'
 
 // 路由懒加载 - 按需加载组件，减少首屏加载时间
 const routes = [
@@ -75,14 +76,31 @@ const router = createRouter({
   }
 })
 
-router.beforeEach((to, from, next) => {
+const auth = useAuth()
+
+// 全局前置守卫统一处理页面标题、登录恢复和受保护页面跳转。
+router.beforeEach(async (to) => {
   document.title = to.meta.title ? `${to.meta.title} - Pokemon Factory` : 'Pokemon Factory'
-  const requiresAuth = to.meta && to.meta.requiresAuth
-  if (requiresAuth) {
-    const token = localStorage.getItem('jwt_token')
-    if (!token) return next({ name: 'Login' })
+
+  // 只有本地存在 token 时才向后端恢复会话，避免普通页面反复请求 /me。
+  if (!auth.state.initialized && auth.state.token) {
+    await auth.restoreSession()
   }
-  next()
+
+  if (to.meta?.requiresAuth && !auth.isAuthenticated.value) {
+    // 未登录访问受保护页面时，带上原始目标地址，登录成功后可原路跳回。
+    return {
+      name: 'Login',
+      query: {
+        redirect: to.fullPath
+      }
+    }
+  }
+
+  if (to.name === 'Login' && auth.isAuthenticated.value) {
+    // 已登录用户再次访问登录页时，直接送回业务页，避免停留在无意义的登录页面。
+    return typeof to.query.redirect === 'string' ? to.query.redirect : '/battle'
+  }
 })
 
 export default router
