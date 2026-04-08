@@ -1,0 +1,19 @@
+mybatis-plus:
+  # 这部分配置只给 pokeDex 使用，避免 battleFactory 在 Spring Boot 4 环境下误触发 MyBatis-Plus 的 Mapper 代理链。
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.lio9.common.model
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+    default-executor-type: BATCH
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      sql-injector: com.baomidou.mybatisplus.core.injector.DefaultSqlInjector
+
+logging:
+  level:
+    com.baomidou.mybatisplus: debug

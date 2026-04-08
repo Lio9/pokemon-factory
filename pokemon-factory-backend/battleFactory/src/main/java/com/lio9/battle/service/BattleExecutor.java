@@ -18,6 +18,13 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * 异步对战执行器。
+ * <p>
+ * 该组件负责把“自动模拟”模式转成后台任务：
+ * 提交任务、恢复未完成任务、生成对手、运行 BattleEngine、落库回合日志和更新 job 状态。
+ * </p>
+ */
 @Component
 public class BattleExecutor {
     private static final int FACTORY_ROUND_LIMIT = 12;
@@ -34,6 +41,9 @@ public class BattleExecutor {
     private final ObjectMapper mapper = new ObjectMapper();
     private ExecutorService executor;
 
+    /**
+     * 组装异步对战执行链依赖。
+     */
     public BattleExecutor(BattleMapper battleMapper, OpponentPoolMapper opponentPoolMapper, TeamMapper teamMapper, PokemonMapper pokemonMapper, BattleRoundMapper roundMapper, JobMapper jobMapper, BattleEngine engine, OpponentPoolService poolService, AIService aiService) {
         this.battleMapper = battleMapper;
         this.opponentPoolMapper = opponentPoolMapper;
@@ -46,12 +56,18 @@ public class BattleExecutor {
         this.aiService = aiService;
     }
 
+    /**
+     * 初始化线程池，并尝试恢复进程重启前遗留的异步任务。
+     */
     @PostConstruct
     public void init() {
         this.executor = Executors.newFixedThreadPool(2);
         recoverPendingJobs();
     }
 
+    /**
+     * 提交一场异步自动模拟任务。
+     */
     public Integer submitAsyncBattle(Integer playerId, String playerTeamJson, String playerMoveMapJson) {
         try {
             String normalizedPlayerTeamJson = playerTeamJson;
@@ -71,6 +87,9 @@ public class BattleExecutor {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 真正执行一场后台自动战斗。
+     */
     private void runBattle(Integer battleId, Integer playerId, String playerTeamJson) {
         try {
             long seed = System.currentTimeMillis() + battleId;
@@ -110,6 +129,9 @@ public class BattleExecutor {
         }
     }
 
+    /**
+     * 启动时重新拉起数据库里仍处于待执行状态的任务。
+     */
     private void recoverPendingJobs() {
         try {
             List<Map<String, Object>> pending = jobMapper.findPendingJobs();
@@ -136,6 +158,9 @@ public class BattleExecutor {
         }
     }
 
+    /**
+     * 获取或生成玩家当前应使用的队伍。
+     */
     private String generatePlayerTeam(Integer playerId) {
         Map<String, Object> existing = teamMapper.findLatestByPlayer(playerId);
         if (existing != null && existing.get("team_json") != null && !aiService.isBlankTeamJson(String.valueOf(existing.get("team_json")))) {
@@ -146,6 +171,9 @@ public class BattleExecutor {
         return generated;
     }
 
+    /**
+     * 获取异步模拟使用的对手队伍。
+     */
     private Map<String, Object> resolveOpponent(long seed, String playerTeamJson) {
         List<Map<String, Object>> poolCandidates = poolService.sample(0, 2, 3);
         if (poolCandidates != null) {
@@ -163,6 +191,9 @@ public class BattleExecutor {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 从 battle 表中恢复玩家预设动作。
+     */
     private Map<String, String> parseMoveMap(Integer battleId) {
         try {
             Map<String, Object> row = battleMapper.findBattleWithOpponent(battleId.longValue());
@@ -179,11 +210,17 @@ public class BattleExecutor {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 从状态对象中安全读取 rounds 列表。
+     */
     private List<Map<String, Object>> rounds(Map<String, Object> state) {
         Object rounds = state.get("rounds");
         return rounds instanceof List ? (List<Map<String, Object>>) rounds : new ArrayList<>();
     }
 
+    /**
+     * 把自动战斗产出的所有回合日志写入 battle_round。
+     */
     private void persistRounds(Integer battleId, Map<String, Object> state) {
         for (Map<String, Object> round : rounds(state)) {
             try {
@@ -193,6 +230,9 @@ public class BattleExecutor {
         }
     }
 
+    /**
+     * 更新异步任务状态。
+     */
     private void markJobDone(Integer battleId, String status) {
         try {
             List<Map<String, Object>> jobs = jobMapper.findPendingJobs();

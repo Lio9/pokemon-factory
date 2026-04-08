@@ -6,47 +6,15 @@ server:
     min-response-size: 1024
 
 spring:
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    mixed: true
+  config:
+    # 统一从 common 导入数据库配置，当前模块只保留业务侧配置。
+    import: optional:classpath:application-common.yml,optional:classpath:application-common-pokedex.yml
+  application:
+    name: poke-dex
   main:
     allow-bean-definition-overriding: true
-  datasource:
-    # Use SQLITE_DB_PATH env var to control the DB file location. Default places DB in backend folder.
-    # Use SQLITE_DB_PATH env var to control the DB file location. Default places DB in backend folder.
-    url: jdbc:sqlite:${SQLITE_DB_PATH:${user.dir}/pokemon-factory-backend/pokemon-factory.db}
-    driver-class-name: org.sqlite.JDBC
-    hikari:
-      maximum-pool-size: 5  # SQLite是单连接数据库，连接池不宜过大
-      minimum-idle: 2
-      connection-timeout: 30000
-      idle-timeout: 300000
-      max-lifetime: 900000  # 15分钟
-      connection-test-query: SELECT 1
-      connection-init-sql: PRAGMA foreign_keys = ON
-      validation-timeout: 3000
-      leak-detection-threshold: 60000  # 1分钟，检测连接泄露
-      auto-commit: true
-      pool-name: PokemonFactorySQLiteCP
   jackson:
     property-naming-strategy: SNAKE_CASE
-
-mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: com.lio9.common.model
-  configuration:
-    map-underscore-to-camel-case: true
-    cache-enabled: false
-    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
-    default-executor-type: BATCH
-  global-config:
-    db-config:
-      id-type: auto
-      logic-delete-value: 1
-      logic-not-delete-value: 0
-      sql-injector: com.baomidou.mybatisplus.core.injector.DefaultSqlInjector
 
 # 导入任务配置
 import:
@@ -77,15 +45,7 @@ logging:
   level:
     com.lio9.common: debug
     com.lio9.pokedex: debug
-    com.baomidou.mybatisplus: debug
-    org.apache.ibatis: debug
-    java.sql: debug
-    java.sql.Connection: info
-    java.sql.Statement: debug
-    java.sql.PreparedStatement: debug
-    java.sql.ResultSet: warn
     org.springframework.web: info
-    org.mybatis: info
   config: classpath:log4j2.xml
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

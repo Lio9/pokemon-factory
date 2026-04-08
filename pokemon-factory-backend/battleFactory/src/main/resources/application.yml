@@ -1,0 +1,10 @@
+spring:
+  config:
+    # 所有数据库连接、MyBatis 与初始化脚本入口都从 common 导入。
+    import: optional:classpath:application-common.yml
+  application:
+    name: battle-factory
+
+server:
+  # 避免与 pokeDex 默认端口冲突。
+  port: 8090

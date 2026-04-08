@@ -13,6 +13,13 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+/**
+ * 对战工厂 AI 队伍生成服务。
+ * <p>
+ * 负责从图鉴公共表中挑选候选宝可梦、构造可对战的队伍 JSON，
+ * 并补齐招式、能力、道具、努力值和战斗属性等信息。
+ * </p>
+ */
 @Service
 public class AIService {
     private static final int LEVEL = 50;
@@ -35,14 +42,23 @@ public class AIService {
     private final BattleDexMapper battleDexMapper;
     private final ObjectMapper mapper = new ObjectMapper();
 
+    /**
+     * 注入 battleFactory 侧使用的图鉴查询能力。
+     */
     public AIService(BattleDexMapper battleDexMapper) {
         this.battleDexMapper = battleDexMapper;
     }
 
+    /**
+     * 判断队伍 JSON 是否为空。
+     */
     public boolean isBlankTeamJson(String teamJson) {
         return teamJson == null || teamJson.isBlank() || "[]".equals(teamJson.trim());
     }
 
+    /**
+     * 生成一支对战工厂使用的标准队伍 JSON。
+     */
     public String generateFactoryTeamJson(int size, int rank, long seed, Set<String> excludedNames) {
         int normalizedSize = Math.max(4, Math.min(6, size));
         List<Map<String, Object>> candidates = battleDexMapper.selectRandomDefaultForms(normalizedSize * 10);
@@ -77,6 +93,9 @@ public class AIService {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 把队伍 JSON 解析成前后端共享的 List<Map> 结构。
+     */
     public List<Map<String, Object>> parseTeam(String teamJson) {
         if (isBlankTeamJson(teamJson)) {
             return new ArrayList<>();
@@ -94,6 +113,9 @@ public class AIService {
         return new ArrayList<>();
     }
 
+    /**
+     * 提取队伍中已经使用过的物种名，用于避免镜像对局。
+     */
     public Set<String> extractNames(String teamJson) {
         Set<String> names = new LinkedHashSet<>();
         for (Map<String, Object> pokemon : parseTeam(teamJson)) {
@@ -108,6 +130,9 @@ public class AIService {
         return normalizeNames(names);
     }
 
+    /**
+     * 基于图鉴候选构造单只可参战宝可梦。
+     */
     private Map<String, Object> buildCompetitivePokemon(Map<String, Object> candidate, Random random, List<String> itemPool) {
         Integer formId = toInt(candidate.get("form_id"), null);
         if (formId == null) {

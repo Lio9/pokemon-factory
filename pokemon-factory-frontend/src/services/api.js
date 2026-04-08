@@ -1,3 +1,7 @@
+// 所有前端请求都从这里统一发出：
+// 1. 统一拼接 base url；
+// 2. 统一附带 JWT；
+// 3. 统一解析错误，避免每个页面自己处理一套请求逻辑。
 const API_BASE = normalizeBaseUrl(import.meta.env.VITE_API_BASE, '/api/pokedex')
 const DAMAGE_API_BASE = normalizeBaseUrl(import.meta.env.VITE_DAMAGE_API_BASE, '/api/damage')
 const SPRITES_BASE = normalizeBaseUrl(import.meta.env.VITE_SPRITES_BASE, 'http://127.0.0.1:8080')
@@ -9,6 +13,7 @@ function normalizeBaseUrl(value, fallback) {
 }
 
 async function request(url, options = {}) {
+  // JWT 统一从本地会话读取；这样登录后其他 API 调用无需再逐页手工传 token。
   const token = localStorage.getItem('jwt_token')
   const headers = {
     'Content-Type': 'application/json',
@@ -27,6 +32,7 @@ async function request(url, options = {}) {
   const payload = await parseResponseBody(response)
 
   if (!response.ok) {
+    // 后端错误结构并不完全统一，这里按 message/error/HTTP 状态码 兜底，保证页面能拿到可展示的错误信息。
     throw new Error(payload?.message || payload?.error || `HTTP error! status: ${response.status}`)
   }
 
@@ -34,6 +40,7 @@ async function request(url, options = {}) {
 }
 
 async function parseResponseBody(response) {
+  // 后端大多数接口返回 JSON，但初始化/错误场景仍可能直接回纯文本，这里统一兼容。
   const contentType = response.headers.get('content-type') || ''
   if (contentType.includes('application/json')) {
     return response.json()
@@ -138,11 +145,14 @@ export const damageApi = {
   getTypeEfficacyByType: (typeId) => request(`${DAMAGE_API_BASE}/type-efficacy/${typeId}`)
 }
 
+// 用户认证接口集中收口到这里，供 useAuth 统一调用。
 export const userApi = {
   login: (body) => request(`${API_ROOT}/user/login`, { method: 'POST', body: JSON.stringify(body) }),
-  register: (body) => request(`${API_ROOT}/user/register`, { method: 'POST', body: JSON.stringify(body) })
+  register: (body) => request(`${API_ROOT}/user/register`, { method: 'POST', body: JSON.stringify(body) }),
+  me: () => request(`${API_ROOT}/user/me`)
 }
 
+// 对战工厂接口单独分组，便于 Battle.vue 直接按业务语义调用。
 export const battleApi = {
   start: (body) => request(`${API_ROOT}/battle/start`, { method: 'POST', body: JSON.stringify(body) }),
   startAsync: (body) => request(`${API_ROOT}/battle/start-async`, { method: 'POST', body: JSON.stringify(body) }),
@@ -154,6 +164,7 @@ export const battleApi = {
   move: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/move`, { method: 'POST', body: JSON.stringify(body) })
 }
 
+// 精灵图资源地址也统一从这里生成，避免各页面自己拼接静态资源路径。
 export const sprites = {
   pokemon: (id) => `${SPRITES_BASE}/pokemon/${id}.png`,
   official: (id) => `${SPRITES_BASE}/pokemon/other/official-artwork/${id}.png`,

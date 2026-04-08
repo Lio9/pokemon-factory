@@ -17,6 +17,13 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+/**
+ * 对战引擎。
+ * <p>
+ * 该类只关心战斗规则本身，不直接处理 HTTP 或数据库：
+ * 负责创建初始状态、执行队伍预览、推进回合、处理补位和交换后的状态修正。
+ * </p>
+ */
 @Component
 public class BattleEngine {
     private static final int LEVEL = 50;
@@ -32,6 +39,9 @@ public class BattleEngine {
         this.typeEfficacyMapper = typeEfficacyMapper;
     }
 
+    /**
+     * 创建“队伍预览阶段”的初始状态。
+     */
     public Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
         Map<String, Object> state = new LinkedHashMap<>();
         List<Map<String, Object>> playerRoster = normalizeRoster(parseTeam(playerTeamJson));
@@ -66,11 +76,20 @@ public class BattleEngine {
         return state;
     }
 
+    /**
+     * 直接创建可进入战斗的状态。
+     * <p>
+     * 该方法会在内部自动完成 6 选 4 和首发选择，主要用于异步自动模拟。
+     * </p>
+     */
     public Map<String, Object> createBattleState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
         Map<String, Object> preview = createPreviewState(playerTeamJson, opponentTeamJson, maxRounds, seed);
         return applyTeamPreviewSelection(preview, autoSelect(roster(preview, true), seed), autoSelect(roster(preview, false), seed + 31L));
     }
 
+    /**
+     * 应用队伍预览阶段的选择，并把状态切到 running/battle。
+     */
     public Map<String, Object> applyTeamPreviewSelection(Map<String, Object> rawState, Map<String, Object> playerSelectionInput, Map<String, Object> opponentSelectionInput) {
         Map<String, Object> state = cloneState(rawState);
         List<Map<String, Object>> playerRoster = roster(state, true);
@@ -112,6 +131,9 @@ public class BattleEngine {
         return state;
     }
 
+    /**
+     * 推进一整个回合。
+     */
     public Map<String, Object> playRound(Map<String, Object> rawState, Map<String, String> playerMoveMap) {
         Map<String, Object> state = cloneState(rawState);
         if (!"running".equals(state.get("status")) || !"battle".equals(state.getOrDefault("phase", "battle"))) {
@@ -427,6 +449,12 @@ public class BattleEngine {
         return state;
     }
 
+    /**
+     * 自动把一场战斗从当前状态推进到结束。
+     * <p>
+     * 如果中途进入 replacement 阶段，会自动替玩家补位后继续推进。
+     * </p>
+     */
     public Map<String, Object> autoPlay(Map<String, Object> rawState, Map<String, String> playerMoveMap) {
         Map<String, Object> state = cloneState(rawState);
         while ("running".equals(state.get("status"))) {
@@ -439,6 +467,9 @@ public class BattleEngine {
         return state;
     }
 
+    /**
+     * 应用玩家补位选择。
+     */
     public Map<String, Object> applyReplacementSelection(Map<String, Object> rawState, Map<String, Object> selectionInput) {
         Map<String, Object> state = cloneState(rawState);
         if (!"replacement".equals(state.getOrDefault("phase", "battle"))) {
@@ -494,11 +525,17 @@ public class BattleEngine {
         return state;
     }
 
+    /**
+     * 直接执行一场完整自动模拟。
+     */
     public Map<String, Object> simulate(String playerTeamJson, String opponentTeamJson, int maxRounds, Map<String, String> playerMoveMap) {
         long seed = Math.abs((playerTeamJson + opponentTeamJson).hashCode()) + maxRounds;
         return autoPlay(createBattleState(playerTeamJson, opponentTeamJson, maxRounds, seed), playerMoveMap);
     }
 
+    /**
+     * 在胜利交换奖励后，用新成员替换玩家原队伍中的一名成员。
+     */
     public Map<String, Object> replacePlayerTeamMember(Map<String, Object> rawState, int replacedIndex, Map<String, Object> newMember) {
         Map<String, Object> state = cloneState(rawState);
         List<Map<String, Object>> playerRoster = roster(state, true);
@@ -552,7 +589,7 @@ public class BattleEngine {
             if (!isAvailableMon(opponentTeam, monIndex)) {
                 continue;
             }
-            int switchToIndex = chooseAISwitch(opponentTeam, activeSlots, monIndex, fieldSlot, random);
+            int switchToIndex = chooseAISwitch(opponentTeam, activeSlots, monIndex, fieldSlot, random, state);
             if (switchToIndex >= 0) {
                 actions.add(Action.switchAction("opponent", monIndex, fieldSlot, switchToIndex, speedValue(opponentTeam.get(monIndex), state, false)));
                 continue;
@@ -581,23 +618,88 @@ public class BattleEngine {
         return firstAvailableBench(team, activeSlots);
     }
 
-    private int chooseAISwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int activeTeamIndex, int fieldSlot, Random random) {
+    private int chooseAISwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int activeTeamIndex, int fieldSlot, Random random, Map<String, Object> state) {
         Map<String, Object> mon = team.get(activeTeamIndex);
         int currentHp = toInt(mon.get("currentHp"), 0);
         int maxHp = toInt(castMap(mon.get("stats")).get("hp"), Math.max(1, currentHp));
         if (currentHp <= 0 || maxHp <= 0) {
             return -1;
         }
-        boolean lowHp = currentHp * 100 <= maxHp * 30;
-        if (!lowHp || random.nextDouble() >= 0.35d) {
+
+        int hpPercent = currentHp * 100 / maxHp;
+        List<Integer> playerDamageTypeIds = activePlayerDamageTypeIds(state, true);
+        double currentVulnerabilityFactor = maxTypeFactorAgainst(mon, playerDamageTypeIds);
+        boolean criticalHp = hpPercent <= 30;
+        boolean lowHp = hpPercent <= 50;
+        boolean superEffectiveVulnerable = currentVulnerabilityFactor > 1.0;
+
+        double switchProbability;
+        if (criticalHp) {
+            switchProbability = 0.60;
+        } else if (lowHp && superEffectiveVulnerable) {
+            switchProbability = 0.45;
+        } else if (superEffectiveVulnerable) {
+            switchProbability = 0.25;
+        } else {
             return -1;
         }
-        for (int candidate = 0; candidate < team.size(); candidate++) {
-            if (canSwitch(team, activeSlots, fieldSlot, candidate)) {
-                return candidate;
+
+        if (random.nextDouble() >= switchProbability) {
+            return -1;
+        }
+
+        return findBestDefensiveSwitch(team, activeSlots, fieldSlot, playerDamageTypeIds);
+    }
+
+    private List<Integer> activePlayerDamageTypeIds(Map<String, Object> state, boolean playerSide) {
+        List<Integer> typeIds = new ArrayList<>();
+        for (Integer slot : activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0 || slot >= team(state, playerSide).size()) {
+                continue;
+            }
+            for (Map<String, Object> move : moves(team(state, playerSide).get(slot))) {
+                if (toInt(move.get("power"), 0) > 0) {
+                    typeIds.add(toInt(move.get("type_id"), 0));
+                }
             }
         }
-        return -1;
+        return typeIds;
+    }
+
+    private double maxTypeFactorAgainst(Map<String, Object> mon, List<Integer> moveTypeIds) {
+        if (moveTypeIds.isEmpty()) {
+            return 1.0;
+        }
+        List<Map<String, Object>> monTypes = castList(mon.get("types"));
+        double maxFactor = 0.0;
+        for (int moveTypeId : moveTypeIds) {
+            double moveFactor = 1.0;
+            for (Map<String, Object> monType : monTypes) {
+                moveFactor *= typeFactor(moveTypeId, toInt(monType.get("type_id"), 0)) / 100.0;
+            }
+            maxFactor = Math.max(maxFactor, moveFactor);
+        }
+        return maxFactor;
+    }
+
+    private int findBestDefensiveSwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int fieldSlot, List<Integer> playerMoveTypeIds) {
+        int bestCandidate = -1;
+        double bestScore = Double.MAX_VALUE;
+        int bestHp = -1;
+        for (int candidate = 0; candidate < team.size(); candidate++) {
+            if (!canSwitch(team, activeSlots, fieldSlot, candidate)) {
+                continue;
+            }
+            Map<String, Object> candidateMon = team.get(candidate);
+            double score = maxTypeFactorAgainst(candidateMon, playerMoveTypeIds);
+            int candidateHp = toInt(candidateMon.get("currentHp"), 0);
+            if (score < bestScore || (score == bestScore && candidateHp > bestHp)) {
+                bestScore = score;
+                bestCandidate = candidate;
+                bestHp = candidateHp;
+            }
+        }
+        return bestCandidate;
     }
 
     private Map<String, Object> selectPlayerMove(Map<String, Object> mon, Map<String, String> playerMoveMap, int fieldSlot, int currentRound) {

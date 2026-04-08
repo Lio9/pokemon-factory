@@ -1,17 +1,30 @@
 package com.lio9.user.mapper;
 
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
+import com.lio9.user.model.UserAccount;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 
-import java.util.Map;
-
-@Mapper
+/**
+ * 用户模块数据访问接口。
+ * <p>
+ * 这里故意保持接口层极简，把 SQL 细节全部放到 XML，
+ * 以便和项目里其他 MyBatis XML 写法保持一致。
+ * </p>
+ */
 public interface UserMapper {
-    @Insert("INSERT INTO app_user(username, password_hash, created_at) VALUES(#{username}, #{passwordHash}, datetime('now'))")
-    void insertUser(@Param("username") String username, @Param("passwordHash") String passwordHash);
+    /**
+     * 新建用户账号。
+     */
+    void insertUser(@Param("username") String username,
+                    @Param("displayName") String displayName,
+                    @Param("passwordHash") String passwordHash);
 
-    @Select("SELECT id, username, password_hash AS passwordHash FROM app_user WHERE username = #{username}")
-    Map<String,Object> findByUsername(@Param("username") String username);
+    /**
+     * 按用户名查询账号信息。
+     */
+    UserAccount findByUsername(@Param("username") String username);
+
+    /**
+     * 登录成功后刷新登录时间与更新时间。
+     */
+    void touchLogin(@Param("id") Long id);
 }

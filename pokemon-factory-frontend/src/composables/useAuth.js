@@ -1,0 +1,120 @@
+import { computed, reactive, readonly } from 'vue'
+import api from '../services/api'
+
+// 统一维护前端登录态使用的 localStorage key，避免不同页面各自读写造成状态分裂。
+const TOKEN_KEY = 'jwt_token'
+const USER_KEY = 'auth_user'
+const LEGACY_USERNAME_KEY = 'username'
+const initialToken = localStorage.getItem(TOKEN_KEY) || ''
+
+const state = reactive({
+  token: initialToken,
+  user: readStoredUser(),
+  restoring: false,
+  initialized: !initialToken
+})
+
+// 启动时尽可能恢复上次保存的用户资料；如果 JSON 损坏，则清理掉脏数据避免页面报错。
+function readStoredUser() {
+  const raw = localStorage.getItem(USER_KEY)
+  if (!raw) {
+    return null
+  }
+
+  try {
+    return JSON.parse(raw)
+  } catch {
+    localStorage.removeItem(USER_KEY)
+    return null
+  }
+}
+
+// 把 token 与用户资料同步写入本地存储，保持刷新页面后仍可恢复会话。
+function persistSession(token, user) {
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token)
+  } else {
+    localStorage.removeItem(TOKEN_KEY)
+  }
+
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user))
+    localStorage.setItem(LEGACY_USERNAME_KEY, user.username)
+  } else {
+    localStorage.removeItem(USER_KEY)
+    localStorage.removeItem(LEGACY_USERNAME_KEY)
+  }
+}
+
+// 用统一入口更新内存状态和本地缓存，避免 login/register/restoreSession 各自维护不同逻辑。
+function setSession(session) {
+  state.token = session?.token || ''
+  state.user = session?.user || null
+  state.initialized = true
+  persistSession(state.token, state.user)
+}
+
+function clearSession() {
+  setSession(null)
+}
+
+// 页面刷新后优先用 /me 校验 token 是否仍有效，防止本地残留的过期 token 误导页面展示。
+async function restoreSession() {
+  if (state.restoring) {
+    return state.user
+  }
+
+  if (!state.token) {
+    state.initialized = true
+    state.user = null
+    return null
+  }
+
+  state.restoring = true
+  try {
+    const response = await api.user.me()
+    setSession({
+      token: state.token,
+      user: response.user
+    })
+    return state.user
+  } catch {
+    // token 失效时直接清掉本地会话，避免页面继续展示过期用户信息。
+    clearSession()
+    return null
+  } finally {
+    state.restoring = false
+    state.initialized = true
+  }
+}
+
+// 登录成功后直接刷新统一会话状态，页面其他位置只读 useAuth 暴露的只读状态即可。
+async function login(credentials) {
+  const response = await api.user.login(credentials)
+  setSession(response)
+  return response.user
+}
+
+// 注册成功后立即建立会话，和后端“注册即登录”的返回语义保持一致。
+async function register(credentials) {
+  const response = await api.user.register(credentials)
+  setSession(response)
+  return response.user
+}
+
+const isAuthenticated = computed(() => Boolean(state.token && state.user))
+const displayName = computed(() => state.user?.displayName || state.user?.username || '游客')
+
+// 对外只暴露只读状态和受控操作，避免任意组件直接改内部 state。
+export function useAuth() {
+  return {
+    state: readonly(state),
+    isAuthenticated,
+    displayName,
+    login,
+    register,
+    restoreSession,
+    clearSession,
+    logout: clearSession
+  }
+}

@@ -228,6 +228,7 @@ helm/
 *.mdb
 *.accdb
 *.sql
+!pokemon-factory-backend/common/src/main/resources/db/**/*.sql
 *.dump
 
 # NoSQL

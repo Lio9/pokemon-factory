@@ -321,8 +321,13 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import BattleArena from '../components/BattleArena.vue'
 import ExchangeModal from '../components/ExchangeModal.vue'
 import api from '../services/api'
+import { useAuth } from '../composables/useAuth'
 
-const currentUser = ref(localStorage.getItem('username') || 'guest')
+// 对战页本身不维护登录逻辑，只消费 useAuth 暴露的当前用户展示名。
+const auth = useAuth()
+const currentUser = computed(() => auth.displayName.value)
+
+// 以下状态分别对应：后端原始返回、当前战斗摘要、玩家本回合操作、队伍预览选择、补位选择等 UI 状态。
 const resultText = ref('等待开始对战')
 const summary = ref(null)
 const selectedActions = ref({})
@@ -338,6 +343,7 @@ const replacedHighlight = ref(-1)
 const currentBattleId = ref(null)
 let pollTimer = null
 
+// 对战当前处于哪个阶段，完全以后端 summary 返回的状态为准。
 const isPreviewPhase = computed(() => summary.value?.status === 'preview' || summary.value?.phase === 'team-preview')
 const isReplacementPhase = computed(() => summary.value?.phase === 'replacement')
 const playerTeam = computed(() => summary.value?.playerTeam || [])
@@ -346,6 +352,7 @@ const opponentRoster = computed(() => summary.value?.opponentRoster || [])
 const exchangeCandidates = computed(() => opponentRoster.value.length ? opponentRoster.value : (summary.value?.opponentTeam || []))
 const pendingReplacementCount = computed(() => Number(summary.value?.playerPendingReplacementCount || 0))
 
+// 顶部状态文案根据当前阶段动态生成，避免模板里堆过多条件分支。
 const statusText = computed(() => {
   if (!summary.value) return '未开始'
   if (isPreviewPhase.value) return '队伍预览中'
@@ -356,6 +363,7 @@ const statusText = computed(() => {
   return `进行中 · 第 ${summary.value.currentRound || 0} 回合`
 })
 
+// 把后端给出的当前在场槽位映射成前端更容易渲染的结构，顺便补上 fieldSlot / maxHp。
 const playerActiveMons = computed(() => {
   const activeSlots = summary.value?.playerActiveSlots || []
   return activeSlots.map((teamIndex, fieldSlot) => {
@@ -370,6 +378,7 @@ const playerActiveMons = computed(() => {
   }).filter(Boolean)
 })
 
+// 可被选中的对手目标只来自当前仍在场的敌方槽位。
 const opponentActiveOptions = computed(() => {
   const activeSlots = summary.value?.opponentActiveSlots || []
   const opponentTeam = summary.value?.opponentTeam || []
@@ -379,6 +388,7 @@ const opponentActiveOptions = computed(() => {
   }))
 })
 
+// 换人候选只能从存活且当前不在场的己方宝可梦里选。
 const playerBenchOptions = computed(() => {
   const activeSlots = summary.value?.playerActiveSlots || []
   return playerTeam.value
@@ -390,6 +400,7 @@ const playerBenchOptions = computed(() => {
     .filter((pokemon) => pokemon.hp > 0 && !activeSlots.includes(pokemon.value))
 })
 
+// 补位阶段进一步受后端允许列表约束，避免前端展示出后端不接受的替补对象。
 const replacementBenchOptions = computed(() => {
   const allowed = new Set(summary.value?.playerPendingReplacementOptions || [])
   return playerBenchOptions.value
@@ -445,6 +456,7 @@ function stopPolling() {
   }
 }
 
+// 队伍预览阶段，如果后端已进入 preview 但前端还没有本地选择，就给出默认的 4 选 2 初始值。
 function initializePreviewSelections() {
   if (!playerRoster.value.length) return
   if (selectedRosterIndexes.value.length !== 4) {
@@ -455,6 +467,7 @@ function initializePreviewSelections() {
   }
 }
 
+// 补位阶段每次刷新状态后，都需要把已经失效的选择从本地状态里剔除掉。
 function ensureReplacementSelections() {
   const available = replacementBenchOptions.value.map((option) => option.value)
   selectedReplacementIndexes.value = selectedReplacementIndexes.value.filter((index) => available.includes(index))
@@ -463,6 +476,7 @@ function ensureReplacementSelections() {
   }
 }
 
+// 根据当前在场宝可梦、可选目标和替补席情况，自动修正本地动作选择，避免界面保留过期值。
 function ensureMoveSelections() {
   const actionNext = { ...selectedActions.value }
   const moveNext = { ...selectedMoves.value }
@@ -512,6 +526,7 @@ function selectedMoveObject(mon) {
   return (mon?.moves || []).find((move) => (move.name_en || move.name) === moveName) || null
 }
 
+// 当前只把需要明确指定对手单体的招式视为“必须额外选择目标”。
 function moveNeedsOpponentTarget(move) {
   const targetId = Number(move?.target_id || 10)
   return targetId === 10
@@ -537,6 +552,7 @@ function moveTargetText(move) {
   }
 }
 
+// 后端在不同接口里返回 summary 的层级略有差异，这里统一规整成 Battle.vue 使用的一份状态。
 function applyBattlePayload(payload) {
   const nextSummary = payload?.summary || payload?.battle?.summary || null
   if (!nextSummary && payload?.battle?.summary_json) {
@@ -563,6 +579,7 @@ function applyBattlePayload(payload) {
     ensureMoveSelections()
   }
 
+  // 胜利且满足交换条件时，弹出交换面板，作为当前流程的额外奖励环节。
   if (summary.value?.status === 'completed' && summary.value?.winner === 'player' && summary.value?.exchangeAvailable) {
     replacedIndex.value = 0
     showExchange.value = true
@@ -611,6 +628,7 @@ async function refreshStatus() {
   }
 }
 
+// 异步模拟模式下定时刷新状态；一旦结束就停止轮询，避免页面持续空转请求。
 function startPolling() {
   stopPolling()
   pollTimer = setInterval(async () => {
@@ -641,6 +659,7 @@ async function submitMove() {
     return
   }
   try {
+    // battleFactory 当前使用 playerMoveMap 这一扁平结构承载双打两只上场宝可梦的动作。
     const playerMoveMap = {}
     for (const mon of playerActiveMons.value) {
       const actionType = selectedActions.value[`action-slot-${mon.fieldSlot}`] || 'move'
@@ -704,6 +723,7 @@ async function onConfirmExchange(pickedIdx) {
   }
 }
 
+// 队伍预览阶段最多选 4 只；如果取消选择，也同步把首发标记移除。
 function toggleRoster(index) {
   if (selectedRosterIndexes.value.includes(index)) {
     selectedRosterIndexes.value = selectedRosterIndexes.value.filter((item) => item !== index)
@@ -716,6 +736,7 @@ function toggleRoster(index) {
   selectedRosterIndexes.value = [...selectedRosterIndexes.value, index]
 }
 
+// 首发必须从已选的 4 只里产生，且最多保留 2 只。
 function toggleLead(index) {
   if (!selectedRosterIndexes.value.includes(index)) {
     return
@@ -731,6 +752,7 @@ function toggleLead(index) {
   leadRosterIndexes.value = [...leadRosterIndexes.value, index]
 }
 
+// 补位阶段按后端要求数量精确选择替补。
 function toggleReplacement(index) {
   if (!replacementBenchOptions.value.some((option) => option.value === index)) {
     return
