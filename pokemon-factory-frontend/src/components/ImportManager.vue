@@ -177,6 +177,10 @@
 <script>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { importApi } from '../services/api'
+
+const IMPORT_TASKS_STORAGE_KEY = 'pokemon-factory-import-tasks'
+const IMPORT_SUCCESS_CODES = new Set([200, 2002, 2003])
 
 export default {
   name: 'ImportManager',
@@ -185,25 +189,86 @@ export default {
     const taskList = ref([])
     let refreshTimer = null
 
-    // API基础URL
-    const API_BASE = 'http://localhost:8081/api'
+    const loadStoredTasks = () => {
+      try {
+        const stored = localStorage.getItem(IMPORT_TASKS_STORAGE_KEY)
+        return stored ? JSON.parse(stored) : []
+      } catch (error) {
+        console.error('读取导入任务缓存失败:', error)
+        return []
+      }
+    }
+
+    const persistTasks = (tasks) => {
+      localStorage.setItem(IMPORT_TASKS_STORAGE_KEY, JSON.stringify(tasks))
+    }
+
+    const mergeTask = (task) => {
+      const nextTasks = [
+        task,
+        ...taskList.value.filter(item => item.taskId !== task.taskId)
+      ].slice(0, 20)
+
+      taskList.value = nextTasks
+      persistTasks(nextTasks)
+    }
+
+    const normalizeProgress = (progress) => {
+      if (typeof progress === 'number') {
+        return Math.min(100, Math.max(0, progress))
+      }
+
+      if (!progress || typeof progress !== 'object') {
+        return 0
+      }
+
+      const totalData = Number(progress.totalData || 0)
+      if (totalData <= 0) {
+        return progress.error ? 0 : 5
+      }
+
+      const estimatedTarget = 15000
+      return Math.min(99, Math.round((totalData / estimatedTarget) * 100))
+    }
+
+    const normalizeTask = (task) => {
+      const data = task.data && typeof task.data === 'object'
+        ? task.data
+        : task.progress && typeof task.progress === 'object'
+          ? task.progress
+          : {}
+
+      return {
+        taskId: task.taskId,
+        taskType: task.taskType || task.importType || 'IMPORT_ALL',
+        status: task.status || 'pending',
+        progress: normalizeProgress(task.progress),
+        rawProgress: task.progress,
+        message: task.message || '等待中',
+        data,
+        startTime: task.startTime || Date.now(),
+        endTime: task.status === 'completed' || task.status === 'failed' ? (task.endTime || Date.now()) : null
+      }
+    }
 
     // 开始导入
     const startImport = async () => {
       try {
-        const response = await fetch(`${API_BASE}/import/all`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        const result = await response.json()
+        const result = await importApi.startAll()
 
-        if (result.code === 200) {
+        if (IMPORT_SUCCESS_CODES.has(result.code)) {
           const taskId = result.data?.taskId
           if (taskId) {
+            const task = normalizeTask({
+              ...result.data,
+              taskId,
+              taskType: 'IMPORT_ALL',
+              startTime: Date.now()
+            })
+
+            currentTask.value = task
+            mergeTask(task)
             ElMessage.success(`导入任务已启动，任务ID: ${taskId}`)
-            // 延迟刷新，确保任务状态已更新
             setTimeout(() => {
               refreshStatus()
             }, 500)
@@ -223,73 +288,87 @@ export default {
     const clearAllData = async () => {
       try {
         await ElMessageBox.confirm(
-          '确定要清空所有数据吗？此操作不可恢复！',
-          '警告',
+          '当前后端没有提供清空所有数据的接口，这个按钮先改为清空本地任务历史。是否继续？',
+          '提示',
           {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
-            type: 'warning'
+            type: 'info'
           }
         )
 
-        const response = await fetch(`${API_BASE}/import/all`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        const result = await response.json()
-
-        if (result.code === 200) {
-          ElMessage.success('数据已清空')
-          refreshStatus()
-        } else {
-          ElMessage.error(result.message || '清空数据失败')
-        }
+        taskList.value = []
+        currentTask.value = null
+        localStorage.removeItem(IMPORT_TASKS_STORAGE_KEY)
+        ElMessage.success('本地任务历史已清空')
       } catch (error) {
         if (error !== 'cancel') {
-          console.error('清空数据失败:', error)
-          ElMessage.error('网络错误，请稍后重试')
+          console.error('清空本地任务历史失败:', error)
+          ElMessage.error('清空本地任务历史失败')
         }
       }
     }
 
     // 刷新状态
     const refreshStatus = async () => {
+      if (!taskList.value.length) {
+        currentTask.value = null
+        return
+      }
+
       try {
-        // 获取任务列表
-        const tasksResponse = await fetch(`${API_BASE}/import/tasks`)
-        const tasksResult = await tasksResponse.json()
-
-        // debug logs removed: tasks list response
-
-        if (tasksResult.code === 200) {
-          const tasks = tasksResult.data || []
-          taskList.value = tasks
-
-          // 找到当前正在运行的任务
-          const runningTask = tasks.find(t => t.status === 'running')
-          if (runningTask) {
-            // debug logs removed: running task
-            // 获取当前任务的详细状态
-            const statusResponse = await fetch(`${API_BASE}/import/status/${runningTask.taskId}`)
-            const statusResult = await statusResponse.json()
-
-            // debug logs removed: status response
-
-            if (statusResult.code === 200) {
-              currentTask.value = statusResult.data
+        const tasks = await Promise.all(
+          taskList.value.map(async (task) => {
+            if (task.status !== 'running' && task.status !== 'pending') {
+              return task
             }
-          } else if (tasks.length > 0) {
-            // 如果没有运行中的任务，显示最近的一个
-            currentTask.value = tasks[0]
-            // debug logs removed: show latest task
-          } else {
-            currentTask.value = null
-          }
+
+            const statusResult = await importApi.getStatus(task.taskId)
+            if (!IMPORT_SUCCESS_CODES.has(statusResult.code)) {
+              return {
+                ...task,
+                status: 'failed',
+                endTime: Date.now(),
+                message: statusResult.message || '获取导入状态失败'
+              }
+            }
+
+            const statusData = normalizeTask({
+              ...task,
+              ...statusResult.data,
+              taskId: task.taskId,
+              startTime: task.startTime
+            })
+
+            if (statusData.status === 'completed' || statusData.status === 'failed') {
+              statusData.endTime = Date.now()
+              if (statusData.progress < 100 && statusData.status === 'completed') {
+                statusData.progress = 100
+              }
+            }
+
+            return statusData
+          })
+        )
+
+        taskList.value = tasks
+        persistTasks(tasks)
+
+        const runningTask = tasks.find(task => task.status === 'running' || task.status === 'pending')
+        if (runningTask) {
+          currentTask.value = runningTask
+        } else {
+          currentTask.value = tasks[0] || null
         }
       } catch (error) {
         console.error('刷新状态失败:', error)
+        const latestTask = taskList.value[0]
+        if (latestTask) {
+          currentTask.value = {
+            ...latestTask,
+            message: '状态刷新失败，请稍后重试'
+          }
+        }
       }
     }
 
@@ -332,12 +411,12 @@ export default {
 
     // 组件挂载时开始刷新
     onMounted(() => {
+      taskList.value = loadStoredTasks()
+      currentTask.value = taskList.value[0] || null
       refreshStatus()
-      // 每3秒自动刷新一次状态
       refreshTimer = setInterval(refreshStatus, 3000)
     })
 
-    // 组件卸载时清除定时器
     onUnmounted(() => {
       if (refreshTimer) {
         clearInterval(refreshTimer)

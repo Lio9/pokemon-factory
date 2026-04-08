@@ -5,14 +5,9 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import VueVirtualScroller from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
-import axios from 'axios'
 import './index.css'
 
-// 配置全局axios
-axios.defaults.baseURL = '/api'
-
 const app = createApp(App)
-app.config.globalProperties.$http = axios
 app.use(ElementPlus)
 app.use(router)
 app.use(VueVirtualScroller)

@@ -1,12 +1,20 @@
 <template>
   <transition name="fade">
-    <div v-if="visible" class="global-loader-overlay">
+    <div
+      v-if="visible"
+      class="global-loader-overlay"
+    >
       <div class="loader-content">
         <div class="spinner">
-          <div class="double-bounce1"></div>
-          <div class="double-bounce2"></div>
+          <div class="double-bounce1" />
+          <div class="double-bounce2" />
         </div>
-        <p v-if="message" class="loader-message">{{ message }}</p>
+        <p
+          v-if="message"
+          class="loader-message"
+        >
+          {{ message }}
+        </p>
       </div>
     </div>
   </transition>

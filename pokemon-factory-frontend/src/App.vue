@@ -1,10 +1,16 @@
 <template>
-  <div id="app" class="min-h-screen bg-slate-50 text-slate-800 font-sans">
+  <div
+    id="app"
+    class="min-h-screen bg-slate-50 text-slate-800 font-sans"
+  >
     <el-container>
       <!-- Header -->
       <el-header class="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-gray-100 shadow-sm !p-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <router-link to="/" class="flex items-center gap-3 group">
+          <router-link
+            to="/"
+            class="flex items-center gap-3 group"
+          >
             <div class="w-10 h-10 bg-gradient-to-br from-red-500 via-orange-500 to-amber-500 rounded-xl shadow-lg flex items-center justify-center text-white font-bold text-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
               P
             </div>
@@ -30,15 +36,27 @@
             </nav>
 
             <!-- 主题切换按钮 (桌面) -->
-            <button @click="toggleTheme" class="px-3 py-2 rounded-lg text-gray-600 bg-white/60 dark:bg-transparent border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-colors">
-              <component :is="theme === 'dark' ? Moon : Sun" class="w-5 h-5" />
+            <button
+              class="px-3 py-2 rounded-lg text-gray-600 bg-white/60 dark:bg-transparent border border-gray-100 dark:border-gray-700 hover:shadow-sm transition-colors"
+              @click="toggleTheme"
+            >
+              <component
+                :is="theme === 'dark' ? Moon : Sun"
+                class="w-5 h-5"
+              />
             </button>
           </div>
 
           <!-- 移动端菜单 & 主题切换 -->
           <div class="md:hidden flex items-center gap-2">
-            <button @click="toggleTheme" class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">
-              <component :is="theme === 'dark' ? Moon : Sun" class="w-6 h-6" />
+            <button
+              class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+              @click="toggleTheme"
+            >
+              <component
+                :is="theme === 'dark' ? Moon : Sun"
+                class="w-6 h-6"
+              />
             </button>
             <el-dropdown trigger="click">
               <button class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
@@ -46,8 +64,16 @@
               </button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item v-for="item in navItems" :key="item.path">
-                    <router-link :to="item.path" class="w-full">{{ item.name }}</router-link>
+                  <el-dropdown-item
+                    v-for="item in navItems"
+                    :key="item.path"
+                  >
+                    <router-link
+                      :to="item.path"
+                      class="w-full"
+                    >
+                      {{ item.name }}
+                    </router-link>
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -60,17 +86,50 @@
         <div class="content bg-white rounded-2xl shadow-sm p-4 sm:p-6 min-h-[calc(100vh-180px)]">
           <div class="hero card-glass mb-6 p-6 rounded-2xl flex items-center justify-between gap-4">
             <div>
-              <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">探索宝可梦世界</h2>
-              <p class="mt-2 text-sm text-slate-500">快速浏览、收藏与比较。使用筛选提高搜索效率。</p>
+              <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">
+                探索宝可梦世界
+              </h2>
+              <p class="mt-2 text-sm text-slate-500">
+                快速浏览、收藏与比较。使用筛选提高搜索效率。
+              </p>
             </div>
             <div class="hidden sm:flex items-center">
-              <svg class="w-20 h-20 opacity-80" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                <circle cx="32" cy="32" r="30" fill="url(#g)" stroke="#fff" stroke-width="2" />
-                <circle cx="32" cy="32" r="14" fill="#fff" />
+              <svg
+                class="w-20 h-20 opacity-80"
+                viewBox="0 0 64 64"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden
+              >
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="30"
+                  fill="url(#g)"
+                  stroke="#fff"
+                  stroke-width="2"
+                />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="14"
+                  fill="#fff"
+                />
                 <defs>
-                  <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-                    <stop offset="0%" stop-color="#ff6b6b" />
-                    <stop offset="100%" stop-color="#f59e0b" />
+                  <linearGradient
+                    id="g"
+                    x1="0"
+                    x2="1"
+                    y1="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="0%"
+                      stop-color="#ff6b6b"
+                    />
+                    <stop
+                      offset="100%"
+                      stop-color="#f59e0b"
+                    />
                   </linearGradient>
                 </defs>
               </svg>
@@ -102,13 +161,15 @@ export default {
   components: { Menu, Sun, Moon, GlobalLoader, ErrorHandler },
   data() {
     return {
-      navItems: [
-        { name: '宝可梦', path: '/pokemon' },
-        { name: '技能', path: '/moves' },
-        { name: '特性', path: '/abilities' },
-        { name: '物品', path: '/items' },
-        { name: '伤害计算', path: '/damage-calculator' }
-      ],
+        navItems: [
+          { name: '宝可梦', path: '/pokemon' },
+          { name: '技能', path: '/moves' },
+          { name: '特性', path: '/abilities' },
+          { name: '物品', path: '/items' },
+          { name: '伤害计算', path: '/damage-calculator' },
+          { name: '导入管理', path: '/import' },
+          { name: '对战工厂', path: '/battle' }
+        ],
       theme: localStorage.getItem('theme') || 'light'
     }
   },

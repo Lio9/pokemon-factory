@@ -22,7 +22,7 @@ public class OpponentPoolService {
     public List<Map<String, Object>> sample(int rank, int window, int limit) {
         int low = Math.max(0, rank - window);
         int high = rank + window;
-        return opponentPoolMapper.sample(low, high, limit);
+        return opponentPoolMapper.sample(low, high, limit, rank);
     }
 
     public void cleanupOlderThanDays(int days) {

@@ -1,60 +1,49 @@
 package com.lio9.battle.controller;
 
-import com.lio9.battle.mapper.PlayerMapper;
-import com.lio9.battle.mapper.TeamMapper;
-import com.lio9.battle.mapper.BattleExchangeMapper;
-import com.lio9.battle.service.BattleService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.service.BattleExecutor;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.lio9.battle.service.BattleService;
+import com.lio9.battle.mapper.PlayerMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/battle")
 public class BattleController {
+    private final BattleService battleService;
+    private final BattleExecutor battleExecutor;
+    private final PlayerMapper playerMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Autowired
-    private BattleService battleService;
-
-    @Autowired
-    private BattleExecutor battleExecutor;
-
-    @Autowired
-    private PlayerMapper playerMapper;
-
-    @Autowired
-    private TeamMapper teamMapper;
-
-    @Autowired
-    private BattleExchangeMapper exchangeMapper;
+    public BattleController(BattleService battleService, BattleExecutor battleExecutor, PlayerMapper playerMapper) {
+        this.battleService = battleService;
+        this.battleExecutor = battleExecutor;
+        this.playerMapper = playerMapper;
+    }
 
     @PostMapping("/start")
     public ResponseEntity<?> startBattle(@RequestBody Map<String, Object> req) {
-        // username must come from authenticated principal
-        String username = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        req.put("username", username);
-        Map<String, Object> result = battleService.startMatch(req);
-        return ResponseEntity.ok(result);
+        req.put("username", authenticatedUsername());
+        return ResponseEntity.ok(battleService.startMatch(req));
     }
 
     @PostMapping("/start-async")
     public ResponseEntity<?> startAsync(@RequestBody Map<String, Object> req) {
-        String username = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String username = authenticatedUsername();
         playerMapper.insertIgnore(username);
         Integer playerId = playerMapper.findIdByUsername(username);
-        String teamJson = (String) req.get("teamJson");
-        String pmJson = null;
-        try { pmJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(req.get("playerMoveMap")); } catch (Exception ignore) {}
-        Integer battleId = battleExecutor.submitAsyncBattle(playerId, teamJson == null ? "[]" : teamJson, pmJson);
+        String teamJson = req.get("teamJson") instanceof String ? req.get("teamJson").toString() : null;
+        String moveJson = toMoveJson(req.get("playerMoveMap"));
+        Integer battleId = battleExecutor.submitAsyncBattle(playerId, teamJson, moveJson);
         return ResponseEntity.ok(Map.of("battleId", battleId));
     }
 
     @GetMapping("/status/{battleId}")
     public ResponseEntity<?> status(@PathVariable Long battleId) {
-        Map<String, Object> status = battleService.getBattleStatus(battleId);
-        return ResponseEntity.ok(status);
+        return ResponseEntity.ok(battleService.getBattleStatus(battleId));
     }
 
     @GetMapping("/pool")
@@ -62,76 +51,63 @@ public class BattleController {
         return ResponseEntity.ok(battleService.samplePool(rank));
     }
 
-    @GetMapping("/{battleId}/state")
-    public ResponseEntity<?> state(@PathVariable Long battleId) {
-        Map<String, Object> status = battleService.getBattleStatus(battleId);
-        return ResponseEntity.ok(status);
+    @PostMapping("/{battleId}/preview")
+    public ResponseEntity<?> confirmPreview(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
+        return ResponseEntity.ok(battleService.confirmTeamPreview(battleId, req));
+    }
+
+    @PostMapping("/{battleId}/replacement")
+    public ResponseEntity<?> confirmReplacement(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
+        return ResponseEntity.ok(battleService.confirmReplacement(battleId, req));
     }
 
     @PostMapping("/{battleId}/move")
     public ResponseEntity<?> move(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
-        try {
-            Map<String,String> moveMap = null;
-            if (req != null && req.containsKey("playerMoveMap")) {
-                Object o = req.get("playerMoveMap");
-                if (o instanceof Map) moveMap = (Map<String,String>) o;
-                else moveMap = new com.fasterxml.jackson.databind.ObjectMapper().readValue(o.toString(), Map.class);
-            }
-            Map<String,Object> res = battleService.applyMove(battleId, moveMap == null ? java.util.Map.of() : moveMap);
-            return ResponseEntity.ok(res);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error","move_failed","detail", e.getMessage()));
-        }
+        return ResponseEntity.ok(battleService.applyMove(battleId, normalizeMoveMap(req)));
     }
 
     @PostMapping("/exchange")
     public ResponseEntity<?> exchange(@RequestBody Map<String, Object> req) {
-        try {
-            Number bidNum = (Number) req.get("battleId");
-            if (bidNum == null) return ResponseEntity.badRequest().body(Map.of("error","missing_battleId"));
-            Long battleId = bidNum.longValue();
-
-            Number repNum = (Number) req.get("replacedIndex");
-            int replacedIndex = repNum == null ? -1 : repNum.intValue();
-
-            String newPokemonJson = (String) req.get("newPokemonJson");
-
-            Map<String,Object> battle = battleService.getBattleStatus(battleId);
-            if (battle.containsKey("error")) return ResponseEntity.badRequest().body(Map.of("error","battle_not_found"));
-            Map<String,Object> b = (Map<String,Object>) battle.get("battle");
-
-            Number pNum = (Number) b.get("player_id");
-            if (pNum == null) return ResponseEntity.badRequest().body(Map.of("error","player_not_found"));
-            Integer playerId = pNum.intValue();
-
-            Map<String,Object> teamRow = teamMapper.findLatestByPlayer(playerId);
-            if (teamRow == null || !teamRow.containsKey("id")) return ResponseEntity.badRequest().body(Map.of("error","team_not_found"));
-            Integer playerTeamId = (Integer) teamRow.get("id");
-            String teamJson = (String) teamRow.get("team_json");
-            Integer version = teamRow.get("version") == null ? 0 : ((Number)teamRow.get("version")).intValue();
-
-            var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            var arr = mapper.readValue(teamJson, java.util.List.class);
-            Object replacedPokemon = null;
-            if (replacedIndex >=0 && replacedIndex < arr.size()) {
-                replacedPokemon = arr.set(replacedIndex, mapper.readValue(newPokemonJson, java.util.Map.class));
-            } else {
-                return ResponseEntity.badRequest().body(Map.of("error","invalid_replaced_index"));
-            }
-            String updated = mapper.writeValueAsString(arr);
-
-            int updatedRows = teamMapper.updateTeamWithVersion(playerTeamId, updated, version);
-            if (updatedRows == 0) {
-                return ResponseEntity.status(409).body(Map.of("error","team_stale","message","Team was updated concurrently. Please refresh and try again."));
-            }
-
-            Number oppNum = (Number) b.get("opponent_team_id");
-            Integer opponentTeamId = oppNum == null ? null : oppNum.intValue();
-
-            exchangeMapper.insertExchange(battleId, playerTeamId, opponentTeamId, replacedIndex, mapper.writeValueAsString(replacedPokemon), newPokemonJson);
-            return ResponseEntity.ok(Map.of("status","ok"));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "exchange_failed", "detail", e.getMessage()));
+        Number battleId = (Number) req.get("battleId");
+        Number replacedIndex = (Number) req.get("replacedIndex");
+        String newPokemonJson = req.get("newPokemonJson") == null ? null : req.get("newPokemonJson").toString();
+        if (battleId == null || replacedIndex == null || newPokemonJson == null || newPokemonJson.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "missing_fields"));
         }
+        return ResponseEntity.ok(battleService.updateBattleAfterExchange(battleId.longValue(), replacedIndex.intValue(), newPokemonJson));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> normalizeMoveMap(Map<String, Object> req) {
+        if (req == null) {
+            return Map.of();
+        }
+        if (req.get("playerMoveMap") instanceof Map<?, ?> rawMap) {
+            Map<String, String> moveMap = new LinkedHashMap<>();
+            rawMap.forEach((key, value) -> moveMap.put(String.valueOf(key), value == null ? "" : String.valueOf(value)));
+            return moveMap;
+        }
+        if (req.get("playerMoveMap") instanceof String rawJson && !rawJson.isBlank()) {
+            try {
+                return objectMapper.readValue(rawJson, Map.class);
+            } catch (Exception ignored) {
+            }
+        }
+        if (req.get("move") != null) {
+            return Map.of("__active", String.valueOf(req.get("move")));
+        }
+        return Map.of();
+    }
+
+    private String toMoveJson(Object rawMoveMap) {
+        try {
+            return rawMoveMap == null ? null : objectMapper.writeValueAsString(rawMoveMap);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String authenticatedUsername() {
+        return String.valueOf(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal());
     }
 }

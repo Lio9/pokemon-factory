@@ -1,194 +1,773 @@
 <template>
-  <div class="p-4">
-    <h1 class="text-2xl font-bold mb-4">对战工厂</h1>
-    <div class="grid grid-cols-2 gap-4">
+  <div class="space-y-6">
+    <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-start lg:justify-between">
       <div>
-        <BattleArena :summary="summary" />
+        <h1 class="text-2xl font-bold text-slate-900">
+          对战工厂
+        </h1>
+        <p class="mt-2 text-sm text-slate-500">
+          当前对战遵循 VGC 双打核心流程：队伍预览、6 选 4、指定 2 只首发，再进入双打回合。
+        </p>
       </div>
-      <div>
-              <div class="mb-4">
-          <label class="block">当前用户</label>
-          <div class="p-2 bg-gray-100 rounded">{{ currentUser || '未登录' }}</div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 px-4 py-3">
+          <div class="text-xs text-slate-500">
+            当前用户
+          </div>
+          <div class="mt-1 font-semibold text-slate-900">
+            {{ currentUser }}
+          </div>
         </div>
-        <div class="mb-4">
-          <label class="block">出招映射 (JSON，例如 {"Pikachu":"Thunderbolt"})</label>
-          <textarea v-model="playerMoveText" class="w-full p-2 rounded bg-white" rows="3" placeholder='{"Pikachu":"Thunderbolt"}'></textarea>
+        <div class="rounded-xl bg-slate-50 px-4 py-3">
+          <div class="text-xs text-slate-500">
+            Battle ID
+          </div>
+          <div class="mt-1 font-semibold text-slate-900">
+            {{ currentBattleId || '-' }}
+          </div>
         </div>
-        <button @click="start" class="bg-blue-500 text-white px-4 py-2 rounded">开始匹配</button>
-        <button @click="startAsync" class="bg-green-500 text-white px-4 py-2 rounded ml-2">异步匹配</button>
-
-        <div v-if="playerTeam.length">
-          <label class="block mt-4">选择出招（当前活跃宝可梦）</label>
-          <select v-model="selectedMove" class="p-2 rounded bg-white">
-            <option v-for="m in playerTeam[0].moves" :key="m.name" :value="m.name">{{ m.name }} (power: {{ m.power }})</option>
-          </select>
-          <button @click="submitMove" class="bg-indigo-500 text-white px-3 py-1 rounded ml-2">提交回合出招</button>
+        <div class="rounded-xl bg-slate-50 px-4 py-3">
+          <div class="text-xs text-slate-500">
+            状态
+          </div>
+          <div
+            class="mt-1 font-semibold"
+            :class="summary?.status === 'completed' ? 'text-emerald-600' : summary?.status === 'preview' ? 'text-amber-600' : 'text-blue-600'"
+          >
+            {{ statusText }}
+          </div>
         </div>
-
-        <pre class="mt-4 bg-gray-100 p-2 rounded">{{ resultText }}</pre>
-
-        <ExchangeModal v-if="showExchange" :opponentTeam="opponentTeam" v-model:replacedIndex="replacedIndex" @close="showExchange=false" @confirm="onConfirmExchange" />
       </div>
     </div>
+
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(420px,0.9fr)]">
+      <BattleArena
+        :summary="summary"
+        :highlight-index="replacedHighlight"
+      />
+
+      <div class="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div class="flex flex-wrap gap-3">
+          <button
+            class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+            @click="startBattle"
+          >
+            开始手动对战
+          </button>
+          <button
+            class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+            @click="startAsyncBattle"
+          >
+            开始异步模拟
+          </button>
+          <button
+            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            :disabled="!currentBattleId"
+            @click="refreshStatus"
+          >
+            刷新状态
+          </button>
+        </div>
+
+        <section
+          v-if="isPreviewPhase"
+          class="rounded-xl bg-amber-50 p-4"
+        >
+          <div class="mb-3 text-sm font-semibold text-slate-800">
+            队伍预览：从 6 只里选择 4 只，并指定 2 只首发
+          </div>
+          <div class="grid gap-4 lg:grid-cols-2">
+            <div>
+              <div class="mb-2 text-xs font-semibold text-slate-500">
+                你的队伍
+              </div>
+              <div class="space-y-2">
+                <button
+                  v-for="(pokemon, index) in playerRoster"
+                  :key="`player-roster-${index}`"
+                  type="button"
+                  :class="previewCardClass(index)"
+                  @click="toggleRoster(index)"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="text-left">
+                      <div class="font-semibold text-slate-900">
+                        {{ pokemon.name || pokemon.name_en || `宝可梦 ${index + 1}` }}
+                      </div>
+                      <div class="text-xs text-slate-500">
+                        {{ formatTypes(pokemon.types) }}
+                      </div>
+                    </div>
+                    <div class="text-right text-xs text-slate-500">
+                      <div>{{ isPicked(index) ? '已选入' : '未选入' }}</div>
+                      <div>{{ isLead(index) ? '首发' : '后备' }}</div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div class="mb-2 text-xs font-semibold text-slate-500">
+                对手公开队伍
+              </div>
+              <div class="space-y-2">
+                <div
+                  v-for="(pokemon, index) in opponentRoster"
+                  :key="`opponent-roster-${index}`"
+                  class="rounded-xl border border-slate-200 bg-white p-3"
+                >
+                  <div class="font-semibold text-slate-900">
+                    {{ pokemon.name || pokemon.name_en || `宝可梦 ${index + 1}` }}
+                  </div>
+                  <div class="text-xs text-slate-500">
+                    {{ formatTypes(pokemon.types) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 rounded-xl bg-white p-4">
+            <div class="text-sm text-slate-700">
+              已选择 {{ selectedRosterIndexes.length }}/4 只；首发 {{ leadRosterIndexes.length }}/2 只
+            </div>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button
+                v-for="index in selectedRosterIndexes"
+                :key="`lead-${index}`"
+                type="button"
+                class="rounded-full px-3 py-1 text-xs font-semibold"
+                :class="isLead(index) ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'"
+                @click="toggleLead(index)"
+              >
+                {{ playerRoster[index]?.name || playerRoster[index]?.name_en || `宝可梦 ${index + 1}` }}{{ isLead(index) ? ' · 首发' : '' }}
+              </button>
+            </div>
+            <button
+              class="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              :disabled="!canConfirmPreview"
+              @click="confirmPreview"
+            >
+              确认 6 选 4 与首发
+            </button>
+          </div>
+        </section>
+
+        <section
+          v-if="isReplacementPhase"
+          class="rounded-xl bg-rose-50 p-4"
+        >
+          <div class="mb-3 text-sm font-semibold text-slate-800">
+            倒下补位：请选择 {{ pendingReplacementCount }} 只后备宝可梦上场
+          </div>
+          <div class="space-y-2">
+            <button
+              v-for="option in replacementBenchOptions"
+              :key="`replacement-${option.value}`"
+              type="button"
+              class="w-full rounded-xl border p-3 text-left"
+              :class="selectedReplacementIndexes.includes(option.value) ? 'border-rose-500 bg-white' : 'border-slate-200 bg-white hover:border-slate-300'"
+              @click="toggleReplacement(option.value)"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="font-semibold text-slate-900">
+                    {{ option.label }}
+                  </div>
+                  <div class="text-xs text-slate-500">
+                    {{ option.types }}
+                  </div>
+                </div>
+                <div class="text-xs text-slate-500">
+                  HP {{ option.hp }}
+                </div>
+              </div>
+            </button>
+          </div>
+          <button
+            class="mt-4 w-full rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            :disabled="!canConfirmReplacement"
+            @click="confirmReplacement"
+          >
+            确认替补上场
+          </button>
+        </section>
+
+        <section class="rounded-xl bg-slate-50 p-4">
+          <div class="mb-3 text-sm font-semibold text-slate-800">
+            {{ isReplacementPhase ? '当前回合已暂停，等待补位' : '当前可选招式' }}
+          </div>
+          <div
+            v-if="playerActiveMons.length && !isPreviewPhase && !isReplacementPhase"
+            class="space-y-4"
+          >
+            <div
+              v-for="mon in playerActiveMons"
+              :key="mon.fieldSlot"
+              class="rounded-xl border border-slate-200 bg-white p-4"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="font-semibold text-slate-900">
+                    {{ mon.name }}
+                  </div>
+                  <div class="text-xs text-slate-500">
+                    槽位 {{ mon.fieldSlot + 1 }} · HP {{ mon.currentHp }}/{{ mon.maxHp }}
+                  </div>
+                </div>
+                <div class="text-xs text-slate-500">
+                  {{ formatTypes(mon.types) }}
+                </div>
+              </div>
+
+              <select
+                v-model="selectedActions[`action-slot-${mon.fieldSlot}`]"
+                class="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="move">
+                  使用招式
+                </option>
+                <option
+                  value="switch"
+                  :disabled="!playerBenchOptions.length"
+                >
+                  换人
+                </option>
+              </select>
+
+              <template v-if="selectedActions[`action-slot-${mon.fieldSlot}`] === 'switch'">
+                <select
+                  v-model="selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`]"
+                  class="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option
+                    v-for="target in playerBenchOptions"
+                    :key="`switch-${mon.fieldSlot}-${target.value}`"
+                    :value="target.value"
+                  >
+                    换上：{{ target.label }} · HP {{ target.hp }}
+                  </option>
+                </select>
+              </template>
+              <template v-else>
+                <select
+                  v-model="selectedMoves[`slot-${mon.fieldSlot}`]"
+                  class="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option
+                    v-for="move in mon.moves"
+                    :key="move.name_en || move.name"
+                    :value="move.name_en || move.name"
+                  >
+                    {{ move.name || move.name_en }} · 威力 {{ move.power || 0 }} · 优先度 {{ move.priority || 0 }} · {{ moveTargetText(move) }}
+                  </option>
+                </select>
+
+                <select
+                  v-if="moveNeedsOpponentTarget(selectedMoveObject(mon))"
+                  v-model="selectedTargets[`target-slot-${mon.fieldSlot}`]"
+                  class="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option
+                    v-for="target in opponentActiveOptions"
+                    :key="`target-${mon.fieldSlot}-${target.value}`"
+                    :value="target.value"
+                  >
+                    目标：对手槽位 {{ target.value + 1 }} · {{ target.label }}
+                  </option>
+                </select>
+              </template>
+            </div>
+
+            <button
+              class="w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              :disabled="!canSubmitMove"
+              @click="submitMove"
+            >
+              提交当前回合
+            </button>
+          </div>
+          <div
+            v-else
+            class="text-sm text-slate-500"
+          >
+            {{ isPreviewPhase ? '先完成队伍预览后，才能提交回合操作。' : isReplacementPhase ? '有宝可梦倒下时，必须先完成替补上场。' : '先开始一场手动对战后，这里会显示你当前两只在场宝可梦的出招选择。' }}
+          </div>
+        </section>
+
+        <div class="rounded-xl bg-slate-50 p-4">
+          <div class="mb-2 text-sm font-semibold text-slate-800">
+            原始返回
+          </div>
+          <pre class="max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-slate-900 p-3 text-xs text-slate-100">{{ resultText }}</pre>
+        </div>
+      </div>
+    </div>
+
+    <ExchangeModal
+      v-if="showExchange"
+      v-model:replaced-index="replacedIndex"
+      :opponent-team="exchangeCandidates"
+      :max-slot="playerRoster.length || 6"
+      @close="showExchange = false"
+      @confirm="onConfirmExchange"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import BattleArena from '../components/BattleArena.vue'
 import ExchangeModal from '../components/ExchangeModal.vue'
 import api from '../services/api'
 
-const username = ref(localStorage.getItem('username') || 'guest')
-const currentUser = localStorage.getItem('username') || null
-const resultText = ref('')
+const currentUser = ref(localStorage.getItem('username') || 'guest')
+const resultText = ref('等待开始对战')
 const summary = ref(null)
-const opponentTeam = ref([])
-const playerTeam = ref([])
-const selectedMove = ref('')
-
+const selectedActions = ref({})
+const selectedMoves = ref({})
+const selectedTargets = ref({})
+const selectedSwitchTargets = ref({})
+const selectedRosterIndexes = ref([])
+const leadRosterIndexes = ref([])
+const selectedReplacementIndexes = ref([])
 const showExchange = ref(false)
 const replacedIndex = ref(0)
 const replacedHighlight = ref(-1)
-const playerMoveText = ref('{}')
-let currentBattleId = null
+const currentBattleId = ref(null)
+let pollTimer = null
 
-async function start() {
-  resultText.value = '匹配中...'
-  try {
-    let pm = null
-    try { pm = playerMoveText.value ? JSON.parse(playerMoveText.value) : null } catch(e) { resultText.value = '出招映射 JSON 有误'; return }
-    const res = await api.battle.start({ username: username.value, playerMoveMap: pm })
-    resultText.value = '匹配完成'
-    summary.value = res.summary || res
-    opponentTeam.value = JSON.parse(res.opponentTeamJson || '[]')
-    try { playerTeam.value = JSON.parse(res.playerTeamJson || '[]') } catch(e) { playerTeam.value = [] }
-    if (playerTeam.value && playerTeam.value.length && playerTeam.value[0].moves && playerTeam.value[0].moves.length) {
-      selectedMove.value = playerTeam.value[0].moves[0].name
-    }
-    currentBattleId = res.battleId
-    // if player won, open exchange modal
-    if ((res.summary || {}).winner === 'player') {
-      replacedIndex.value = 0
-      showExchange.value = true
-    }
-  } catch (e) {
-    resultText.value = '请求失败: ' + e.message
+const isPreviewPhase = computed(() => summary.value?.status === 'preview' || summary.value?.phase === 'team-preview')
+const isReplacementPhase = computed(() => summary.value?.phase === 'replacement')
+const playerTeam = computed(() => summary.value?.playerTeam || [])
+const playerRoster = computed(() => summary.value?.playerRoster || [])
+const opponentRoster = computed(() => summary.value?.opponentRoster || [])
+const exchangeCandidates = computed(() => opponentRoster.value.length ? opponentRoster.value : (summary.value?.opponentTeam || []))
+const pendingReplacementCount = computed(() => Number(summary.value?.playerPendingReplacementCount || 0))
+
+const statusText = computed(() => {
+  if (!summary.value) return '未开始'
+  if (isPreviewPhase.value) return '队伍预览中'
+  if (isReplacementPhase.value) return '补位选择中'
+  if (summary.value.status === 'completed') {
+    return `已结束 · ${summary.value.winner === 'player' ? '玩家胜利' : '对手胜利'}`
   }
-}
+  return `进行中 · 第 ${summary.value.currentRound || 0} 回合`
+})
 
-async function startAsync(){
-  resultText.value = '提交异步对战...'
-  try {
-    let pm = null
-    try { pm = playerMoveText.value ? JSON.parse(playerMoveText.value) : null } catch(e) { resultText.value = '出招映射 JSON 有误'; return }
-    const res = await api.battle.startAsync({ username: username.value, playerMoveMap: pm })
-    currentBattleId = res.battleId
-    resultText.value = '异步对战已提交. battleId=' + currentBattleId + '，开始轮询结果'
-    // poll for status
-    let attempts = 0
-    const maxAttempts = 60
-    const intervalMs = 2000
-    const poll = setInterval(async () => {
-      attempts++
-      try {
-        const status = await api.battle.status(currentBattleId)
-        if (status && status.battle) {
-          // finished when ended_at or summary exists
-          if (status.battle.ended_at || status.battle.summary_json) {
-            clearInterval(poll)
-            resultText.value = '对战完成'
-            const summaryJson = status.battle.summary_json || null
-            if (summaryJson) {
-              try { summary.value = typeof summaryJson === 'string' ? JSON.parse(summaryJson) : summaryJson } catch(e){ summary.value = summaryJson }
-            }
-            // load opponent team and player team if provided
-            if (status.battle.opponent_team_json) {
-              try { opponentTeam.value = JSON.parse(status.battle.opponent_team_json) } catch(e){ opponentTeam.value = [] }
-            }
-            if (status.battle.player_team_json) {
-              try { playerTeam.value = JSON.parse(status.battle.player_team_json); if (playerTeam.value[0] && playerTeam.value[0].moves && playerTeam.value[0].moves.length) selectedMove.value = playerTeam.value[0].moves[0].name } catch(e){ playerTeam.value = [] }
-            }
-            // if player won, open exchange modal automatically
-            try {
-              if (summary.value && summary.value.winner === 'player') {
-                replacedIndex.value = 0
-                showExchange.value = true
-              }
-            } catch(e) {}
-            return
-          }
-        }
-      } catch (e) {
-        // ignore transient errors
+const playerActiveMons = computed(() => {
+  const activeSlots = summary.value?.playerActiveSlots || []
+  return activeSlots.map((teamIndex, fieldSlot) => {
+    const mon = playerTeam.value?.[teamIndex]
+    if (!mon) return null
+    return {
+      ...mon,
+      teamIndex,
+      fieldSlot,
+      maxHp: mon?.stats?.hp || mon?.currentHp || 0
+    }
+  }).filter(Boolean)
+})
+
+const opponentActiveOptions = computed(() => {
+  const activeSlots = summary.value?.opponentActiveSlots || []
+  const opponentTeam = summary.value?.opponentTeam || []
+  return activeSlots.map((teamIndex, fieldSlot) => ({
+    value: fieldSlot,
+    label: opponentTeam?.[teamIndex]?.name || opponentTeam?.[teamIndex]?.name_en || `对手 ${fieldSlot + 1}`
+  }))
+})
+
+const playerBenchOptions = computed(() => {
+  const activeSlots = summary.value?.playerActiveSlots || []
+  return playerTeam.value
+    .map((pokemon, teamIndex) => ({
+      value: teamIndex,
+      label: pokemon?.name || pokemon?.name_en || `替补 ${teamIndex + 1}`,
+      hp: pokemon?.currentHp || 0
+    }))
+    .filter((pokemon) => pokemon.hp > 0 && !activeSlots.includes(pokemon.value))
+})
+
+const replacementBenchOptions = computed(() => {
+  const allowed = new Set(summary.value?.playerPendingReplacementOptions || [])
+  return playerBenchOptions.value
+    .filter((pokemon) => allowed.has(pokemon.value))
+    .map((pokemon) => ({
+      ...pokemon,
+      types: formatTypes(playerTeam.value?.[pokemon.value]?.types)
+    }))
+})
+
+const canConfirmPreview = computed(() => {
+  return selectedRosterIndexes.value.length === 4
+    && leadRosterIndexes.value.length === 2
+    && leadRosterIndexes.value.every((index) => selectedRosterIndexes.value.includes(index))
+})
+
+const canSubmitMove = computed(() => {
+  if (!currentBattleId.value || summary.value?.status !== 'running' || !playerActiveMons.value.length || isReplacementPhase.value) {
+    return false
+  }
+  const usedSwitchTargets = new Set()
+  return playerActiveMons.value.every((mon) => {
+    const actionType = selectedActions.value[`action-slot-${mon.fieldSlot}`] || 'move'
+    if (actionType === 'switch') {
+      const switchTarget = selectedSwitchTargets.value[`switch-slot-${mon.fieldSlot}`]
+      if (switchTarget === undefined || switchTarget === null || usedSwitchTargets.has(switchTarget)) {
+        return false
       }
-      if (attempts >= maxAttempts) {
-        clearInterval(poll)
-        resultText.value = '轮询超时，请稍后手动查询 status.'
-      }
-    }, intervalMs)
-  } catch (e) {
-    resultText.value = '提交失败: ' + e.message
-  }
-}
-
-async function onConfirmExchange(pickedIdx){
-  // send exchange request
-  const picked = opponentTeam.value[pickedIdx]
-  const newPokemonJson = JSON.stringify(picked)
-  try {
-    const res = await api.battle.exchange({ battleId: currentBattleId, replacedIndex: replacedIndex.value, newPokemonJson })
-    showExchange.value = false
-    resultText.value = '已交换: ' + JSON.stringify(res)
-    // refresh status and update arena
-    if (currentBattleId) {
-      try {
-        const status = await api.battle.status(currentBattleId)
-        if (status && status.battle) {
-          const summaryJson = status.battle.summary_json || null
-          if (summaryJson) {
-            try { summary.value = typeof summaryJson === 'string' ? JSON.parse(summaryJson) : summaryJson } catch(e){ summary.value = summaryJson }
-          }
-          if (status.battle.opponent_team_json) {
-            try { opponentTeam.value = JSON.parse(status.battle.opponent_team_json) } catch(e){}
-          }
-          if (status.battle.player_team_json) {
-            try { playerTeam.value = JSON.parse(status.battle.player_team_json); if (playerTeam.value[0] && playerTeam.value[0].moves && playerTeam.value[0].moves.length) selectedMove.value = playerTeam.value[0].moves[0].name } catch(e){}
-          }
-        }
-      } catch(e){}
+      usedSwitchTargets.add(switchTarget)
+      return true
     }
-    replacedHighlight.value = replacedIndex.value
-    setTimeout(()=> replacedHighlight.value = -1, 4000)
-  } catch (e) {
-    resultText.value = '交换失败: ' + (e.message || e)
+    const move = selectedMoveObject(mon)
+    if (!move) {
+      return false
+    }
+    if (!moveNeedsOpponentTarget(move)) {
+      return true
+    }
+    return selectedTargets.value[`target-slot-${mon.fieldSlot}`] !== undefined
+  })
+})
+
+const canConfirmReplacement = computed(() => {
+  return currentBattleId.value
+    && isReplacementPhase.value
+    && selectedReplacementIndexes.value.length === pendingReplacementCount.value
+})
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
   }
 }
 
-async function submitMove(){
-  if (!currentBattleId) { resultText.value = '无效的 battleId'; return }
-  if (!selectedMove.value) { resultText.value = '请先选择一个招式'; return }
-  resultText.value = '提交回合出招...'
-  try {
-    const body = { username: username.value, move: selectedMove.value }
-    const res = await api.battle.move(currentBattleId, body)
-    resultText.value = '提交成功: ' + JSON.stringify(res)
-    // refresh status to get new summary/teams
+function initializePreviewSelections() {
+  if (!playerRoster.value.length) return
+  if (selectedRosterIndexes.value.length !== 4) {
+    selectedRosterIndexes.value = playerRoster.value.slice(0, 4).map((_, index) => index)
+  }
+  if (leadRosterIndexes.value.length !== 2) {
+    leadRosterIndexes.value = selectedRosterIndexes.value.slice(0, 2)
+  }
+}
+
+function ensureReplacementSelections() {
+  const available = replacementBenchOptions.value.map((option) => option.value)
+  selectedReplacementIndexes.value = selectedReplacementIndexes.value.filter((index) => available.includes(index))
+  if (selectedReplacementIndexes.value.length > pendingReplacementCount.value) {
+    selectedReplacementIndexes.value = selectedReplacementIndexes.value.slice(0, pendingReplacementCount.value)
+  }
+}
+
+function ensureMoveSelections() {
+  const actionNext = { ...selectedActions.value }
+  const moveNext = { ...selectedMoves.value }
+  const targetNext = { ...selectedTargets.value }
+  const switchNext = { ...selectedSwitchTargets.value }
+  for (const mon of playerActiveMons.value) {
+    const actionKey = `action-slot-${mon.fieldSlot}`
+    const moveKey = `slot-${mon.fieldSlot}`
+    const targetKey = `target-slot-${mon.fieldSlot}`
+    const switchKey = `switch-slot-${mon.fieldSlot}`
+    if (!['move', 'switch'].includes(actionNext[actionKey])) {
+      actionNext[actionKey] = 'move'
+    }
+    const moveNames = (mon.moves || []).map((move) => move.name_en || move.name)
+    if (!moveNames.length) {
+      delete moveNext[moveKey]
+    } else if (!moveNames.includes(moveNext[moveKey])) {
+      moveNext[moveKey] = moveNames[0]
+    }
+
+    const selectedMove = (mon.moves || []).find((move) => (move.name_en || move.name) === moveNext[moveKey])
+    const targetValues = opponentActiveOptions.value.map((target) => target.value)
+    if (!moveNeedsOpponentTarget(selectedMove)) {
+      delete targetNext[targetKey]
+    } else if (!targetValues.length) {
+      delete targetNext[targetKey]
+    } else if (!targetValues.includes(targetNext[targetKey])) {
+      targetNext[targetKey] = targetValues[Math.min(mon.fieldSlot, targetValues.length - 1)]
+    }
+
+    const switchValues = playerBenchOptions.value.map((target) => target.value)
+    if (!switchValues.length) {
+      delete switchNext[switchKey]
+      actionNext[actionKey] = 'move'
+    } else if (!switchValues.includes(switchNext[switchKey])) {
+      switchNext[switchKey] = switchValues[0]
+    }
+  }
+  selectedActions.value = actionNext
+  selectedMoves.value = moveNext
+  selectedTargets.value = targetNext
+  selectedSwitchTargets.value = switchNext
+}
+
+function selectedMoveObject(mon) {
+  const moveName = selectedMoves.value[`slot-${mon.fieldSlot}`]
+  return (mon?.moves || []).find((move) => (move.name_en || move.name) === moveName) || null
+}
+
+function moveNeedsOpponentTarget(move) {
+  const targetId = Number(move?.target_id || 10)
+  return targetId === 10
+}
+
+function moveTargetText(move) {
+  const targetId = Number(move?.target_id || 10)
+  switch (targetId) {
+    case 7:
+      return '目标：自身'
+    case 8:
+      return '目标：随机对手'
+    case 9:
+      return '目标：场上其他宝可梦'
+    case 11:
+      return '目标：对手全体'
+    case 13:
+      return '目标：自身与队友'
+    case 14:
+      return '目标：场上全体'
+    default:
+      return '目标：单体'
+  }
+}
+
+function applyBattlePayload(payload) {
+  const nextSummary = payload?.summary || payload?.battle?.summary || null
+  if (!nextSummary && payload?.battle?.summary_json) {
     try {
-      const status = await api.battle.status(currentBattleId)
-      if (status && status.battle) {
-        if (status.battle.summary_json) {
-          try { summary.value = typeof status.battle.summary_json === 'string' ? JSON.parse(status.battle.summary_json) : status.battle.summary_json } catch(e){}
-        }
-        if (status.battle.player_team_json) { try { playerTeam.value = JSON.parse(status.battle.player_team_json) } catch(e){} }
-        if (status.battle.opponent_team_json) { try { opponentTeam.value = JSON.parse(status.battle.opponent_team_json) } catch(e){} }
-      }
-    } catch(e){}
-  } catch (e) {
-    resultText.value = '提交失败: ' + (e.message || e)
+      summary.value = typeof payload.battle.summary_json === 'string' ? JSON.parse(payload.battle.summary_json) : payload.battle.summary_json
+    } catch {
+      summary.value = null
+    }
+  } else {
+    summary.value = nextSummary
+  }
+
+  if (payload?.battleId) {
+    currentBattleId.value = payload.battleId
+  } else if (payload?.battle?.id) {
+    currentBattleId.value = payload.battle.id
+  }
+
+  if (isPreviewPhase.value) {
+    initializePreviewSelections()
+  } else if (isReplacementPhase.value) {
+    ensureReplacementSelections()
+  } else {
+    ensureMoveSelections()
+  }
+
+  if (summary.value?.status === 'completed' && summary.value?.winner === 'player' && summary.value?.exchangeAvailable) {
+    replacedIndex.value = 0
+    showExchange.value = true
   }
 }
-</script>
 
-<style scoped>
-</style>
+async function startBattle() {
+  stopPolling()
+  resultText.value = '正在开始手动对战...'
+  try {
+    const res = await api.battle.start({})
+    applyBattlePayload(res)
+    resultText.value = JSON.stringify(res, null, 2)
+  } catch (error) {
+    resultText.value = `开始失败: ${error.message || error}`
+  }
+}
+
+async function startAsyncBattle() {
+  stopPolling()
+  resultText.value = '正在提交异步模拟...'
+  try {
+    const res = await api.battle.startAsync({})
+    currentBattleId.value = res.battleId
+    resultText.value = JSON.stringify(res, null, 2)
+    startPolling()
+  } catch (error) {
+    resultText.value = `提交失败: ${error.message || error}`
+  }
+}
+
+async function refreshStatus() {
+  if (!currentBattleId.value) {
+    resultText.value = '请先开始对战'
+    return
+  }
+  try {
+    const res = await api.battle.status(currentBattleId.value)
+    applyBattlePayload(res)
+    resultText.value = JSON.stringify(res, null, 2)
+    if (summary.value?.status === 'completed') {
+      stopPolling()
+    }
+  } catch (error) {
+    resultText.value = `刷新失败: ${error.message || error}`
+  }
+}
+
+function startPolling() {
+  stopPolling()
+  pollTimer = setInterval(async () => {
+    await refreshStatus()
+  }, 2000)
+}
+
+async function confirmPreview() {
+  if (!canConfirmPreview.value) {
+    resultText.value = '请选择 4 只宝可梦，并从中指定 2 只首发'
+    return
+  }
+  try {
+    const res = await api.battle.preview(currentBattleId.value, {
+      pickedRosterIndexes: selectedRosterIndexes.value,
+      leadRosterIndexes: leadRosterIndexes.value
+    })
+    applyBattlePayload(res)
+    resultText.value = JSON.stringify(res, null, 2)
+  } catch (error) {
+    resultText.value = `确认失败: ${error.message || error}`
+  }
+}
+
+async function submitMove() {
+  if (!canSubmitMove.value) {
+    resultText.value = '请为两只在场宝可梦分别选择行动；若使用招式还需指定目标'
+    return
+  }
+  try {
+    const playerMoveMap = {}
+    for (const mon of playerActiveMons.value) {
+      const actionType = selectedActions.value[`action-slot-${mon.fieldSlot}`] || 'move'
+      playerMoveMap[`action-slot-${mon.fieldSlot}`] = actionType
+      if (actionType === 'switch') {
+        playerMoveMap[`switch-slot-${mon.fieldSlot}`] = String(selectedSwitchTargets.value[`switch-slot-${mon.fieldSlot}`])
+      } else {
+        playerMoveMap[`slot-${mon.fieldSlot}`] = selectedMoves.value[`slot-${mon.fieldSlot}`]
+        if (moveNeedsOpponentTarget(selectedMoveObject(mon))) {
+          playerMoveMap[`target-slot-${mon.fieldSlot}`] = String(selectedTargets.value[`target-slot-${mon.fieldSlot}`])
+        }
+      }
+    }
+    const res = await api.battle.move(currentBattleId.value, {
+      playerMoveMap
+    })
+    applyBattlePayload(res)
+    resultText.value = JSON.stringify(res, null, 2)
+  } catch (error) {
+    resultText.value = `提交失败: ${error.message || error}`
+  }
+}
+
+async function confirmReplacement() {
+  if (!canConfirmReplacement.value) {
+    resultText.value = `请选择 ${pendingReplacementCount.value} 只后备宝可梦上场`
+    return
+  }
+  try {
+    const res = await api.battle.replacement(currentBattleId.value, {
+      replacementIndexes: selectedReplacementIndexes.value
+    })
+    applyBattlePayload(res)
+    resultText.value = JSON.stringify(res, null, 2)
+  } catch (error) {
+    resultText.value = `补位失败: ${error.message || error}`
+  }
+}
+
+async function onConfirmExchange(pickedIdx) {
+  const picked = exchangeCandidates.value[pickedIdx]
+  if (!picked) {
+    resultText.value = '未找到可交换的宝可梦'
+    return
+  }
+  try {
+    const res = await api.battle.exchange({
+      battleId: currentBattleId.value,
+      replacedIndex: replacedIndex.value,
+      newPokemonJson: JSON.stringify(picked)
+    })
+    showExchange.value = false
+    replacedHighlight.value = replacedIndex.value
+    applyBattlePayload(res)
+    resultText.value = JSON.stringify(res, null, 2)
+    setTimeout(() => {
+      replacedHighlight.value = -1
+    }, 4000)
+  } catch (error) {
+    resultText.value = `交换失败: ${error.message || error}`
+  }
+}
+
+function toggleRoster(index) {
+  if (selectedRosterIndexes.value.includes(index)) {
+    selectedRosterIndexes.value = selectedRosterIndexes.value.filter((item) => item !== index)
+    leadRosterIndexes.value = leadRosterIndexes.value.filter((item) => item !== index)
+    return
+  }
+  if (selectedRosterIndexes.value.length >= 4) {
+    return
+  }
+  selectedRosterIndexes.value = [...selectedRosterIndexes.value, index]
+}
+
+function toggleLead(index) {
+  if (!selectedRosterIndexes.value.includes(index)) {
+    return
+  }
+  if (leadRosterIndexes.value.includes(index)) {
+    leadRosterIndexes.value = leadRosterIndexes.value.filter((item) => item !== index)
+    return
+  }
+  if (leadRosterIndexes.value.length >= 2) {
+    leadRosterIndexes.value = [leadRosterIndexes.value[1], index]
+    return
+  }
+  leadRosterIndexes.value = [...leadRosterIndexes.value, index]
+}
+
+function toggleReplacement(index) {
+  if (!replacementBenchOptions.value.some((option) => option.value === index)) {
+    return
+  }
+  if (selectedReplacementIndexes.value.includes(index)) {
+    selectedReplacementIndexes.value = selectedReplacementIndexes.value.filter((item) => item !== index)
+    return
+  }
+  if (selectedReplacementIndexes.value.length >= pendingReplacementCount.value) {
+    return
+  }
+  selectedReplacementIndexes.value = [...selectedReplacementIndexes.value, index]
+}
+
+function isPicked(index) {
+  return selectedRosterIndexes.value.includes(index)
+}
+
+function isLead(index) {
+  return leadRosterIndexes.value.includes(index)
+}
+
+function previewCardClass(index) {
+  if (isLead(index)) {
+    return 'w-full rounded-xl border border-indigo-500 bg-indigo-50 p-3 text-left'
+  }
+  if (isPicked(index)) {
+    return 'w-full rounded-xl border border-blue-500 bg-blue-50 p-3 text-left'
+  }
+  return 'w-full rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-slate-300'
+}
+
+function formatTypes(types) {
+  return (types || []).map((type) => type.name || type.name_zh || `属性${type.type_id}`).join(' / ') || '未知属性'
+}
+
+onBeforeUnmount(() => {
+  stopPolling()
+})
+</script>
