@@ -17,6 +17,7 @@
 
 	<modules>
 		<module>common</module>
+		<module>user-module</module>
 		<module>pokeDex</module>
 		<module>battleFactory</module>
 	</modules>
