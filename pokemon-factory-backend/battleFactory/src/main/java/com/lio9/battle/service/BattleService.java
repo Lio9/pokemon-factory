@@ -3,10 +3,12 @@ package com.lio9.battle.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.engine.BattleEngine;
 import com.lio9.battle.mapper.BattleMapper;
+import com.lio9.battle.mapper.BattleExchangeMapper;
 import com.lio9.battle.mapper.BattleRoundMapper;
 import com.lio9.battle.mapper.PlayerMapper;
 import com.lio9.battle.mapper.PokemonMapper;
 import com.lio9.battle.mapper.TeamMapper;
+import com.lio9.battle.mapper.FactoryRunMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -35,23 +37,28 @@ public class BattleService {
     private final PokemonMapper pokemonMapper;
     private final BattleMapper battleMapper;
     private final BattleRoundMapper roundMapper;
+    private final BattleExchangeMapper exchangeMapper;
     private final OpponentPoolService poolService;
     private final BattleEngine battleEngine;
     private final AIService aiService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final FactoryRunMapper factoryRunMapper;
+    private final ObjectMapper objectMapper;
 
     /**
      * 组装手动对战主链依赖。
      */
-    public BattleService(PlayerMapper playerMapper, TeamMapper teamMapper, PokemonMapper pokemonMapper, BattleMapper battleMapper, BattleRoundMapper roundMapper, BattleEngine battleEngine, OpponentPoolService poolService, AIService aiService) {
+    public BattleService(PlayerMapper playerMapper, TeamMapper teamMapper, PokemonMapper pokemonMapper, BattleMapper battleMapper, BattleRoundMapper roundMapper, BattleExchangeMapper exchangeMapper, BattleEngine battleEngine, OpponentPoolService poolService, AIService aiService, FactoryRunMapper factoryRunMapper, ObjectMapper objectMapper) {
         this.playerMapper = playerMapper;
         this.teamMapper = teamMapper;
         this.pokemonMapper = pokemonMapper;
         this.battleMapper = battleMapper;
         this.roundMapper = roundMapper;
+        this.exchangeMapper = exchangeMapper;
         this.battleEngine = battleEngine;
         this.poolService = poolService;
         this.aiService = aiService;
+        this.factoryRunMapper = factoryRunMapper;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -79,8 +86,16 @@ public class BattleService {
         Map<String, Object> state = battleEngine.createPreviewState(playerTeamJson, opponentTeamJson, FACTORY_ROUND_LIMIT, seed);
         enrichStateMetadata(state, "manual", username, playerRank, String.valueOf(opponentTeam.get("source")));
 
+        Integer factoryRunId = req.get("factoryRunId") instanceof Number n ? n.intValue() : null;
+        Integer runBattleNumber = req.get("runBattleNumber") instanceof Number n ? n.intValue() : null;
+        if (factoryRunId != null) {
+            Map<String, Object> factory = extractFactory(state);
+            factory.put("factoryRunId", factoryRunId);
+            factory.put("runBattleNumber", runBattleNumber);
+        }
+
         try {
-            battleMapper.insertInitial(playerId, opponentTeamId, 0, toJson(playerMoveMap), playerTeamJson, String.valueOf(state.get("phase")));
+            battleMapper.insertInitial(playerId, opponentTeamId, 0, toJson(playerMoveMap), playerTeamJson, String.valueOf(state.get("phase")), factoryRunId, runBattleNumber);
             Integer battleId = battleMapper.lastInsertId();
             battleMapper.updateBattleState(battleId, opponentTeamId, toJson(state), 0, String.valueOf(state.get("phase")));
 
@@ -234,6 +249,42 @@ public class BattleService {
     }
 
     /**
+     * 玩家认输，直接结束当前对战。
+     */
+    public Map<String, Object> forfeitBattle(Long battleId, String username) {
+        try {
+            Map<String, Object> row = battleMapper.findBattleWithOpponent(battleId);
+            if (row == null || row.isEmpty()) {
+                return Map.of("error", "not_found");
+            }
+
+            Map<String, Object> existingState = parseSummaryState(row.get("summary_json"));
+            if ("completed".equals(existingState.get("status"))) {
+                return Map.of("error", "already_completed", "summary", existingState);
+            }
+
+            existingState.put("status", "completed");
+            existingState.put("phase", "completed");
+            existingState.put("winner", "opponent");
+            existingState.put("forfeit", true);
+
+            Integer opponentTeamId = row.get("opponent_team_id") == null ? null : ((Number) row.get("opponent_team_id")).intValue();
+            battleMapper.updateBattle(battleId.intValue(), opponentTeamId, toJson(existingState), roundsCount(existingState), null, "completed");
+            finalizePlayerProgress(row, existingState);
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("status", "completed");
+            response.put("winner", "opponent");
+            response.put("forfeit", true);
+            response.put("summary", existingState);
+            response.put("message", "你选择了认输。");
+            return response;
+        } catch (Exception e) {
+            return Map.of("error", "forfeit_failed", "detail", e.getMessage());
+        }
+    }
+
+    /**
      * 确认队伍预览阶段选择，并正式进入 battle 阶段。
      */
     public Map<String, Object> confirmTeamPreview(Long battleId, Map<String, Object> selection) {
@@ -302,6 +353,13 @@ public class BattleService {
             Map<String, Object> replaced = playerTeam.set(replacedIndex, replacement);
             String updatedTeamJson = toJson(playerTeam);
 
+            // 持久化交换记录
+            try {
+                exchangeMapper.insertExchange(battleId, playerTeamId, null, replacedIndex, toJson(replaced), newPokemonJson);
+            } catch (Exception ignored) {
+                // 交换记录仅作参考，不影响主流程
+            }
+
             if (teamMapper.updateTeamWithVersion(playerTeamId, updatedTeamJson, version) == 0) {
                 return Map.of("error", "team_stale");
             }
@@ -351,12 +409,53 @@ public class BattleService {
         }
 
         int points = toInt(playerProfile.get("points"), 0);
-        points = "player".equals(state.get("winner")) ? points + 10 : Math.max(0, points - 3);
+        int tier = toInt(playerProfile.get("tier"), 0);
+        int tierPoints = toInt(playerProfile.get("tier_points"), 0);
+        int totalPoints = toInt(playerProfile.get("total_points"), 0);
+        int highestTier = toInt(playerProfile.get("highest_tier"), 0);
+        int totalWins = toInt(playerProfile.get("wins"), 0);
+        int totalLosses = toInt(playerProfile.get("losses"), 0);
+        boolean won = "player".equals(state.get("winner"));
+
+        // 工厂挑战模式下，积分由 FactoryRunService 统一结算
+        Integer factoryRunId = factory.get("factoryRunId") instanceof Number n ? n.intValue() : null;
+        if (factoryRunId != null) {
+            // 通知工厂挑战服务单场结束
+            try {
+                factoryRunMapper.findById(factoryRunId); // 验证 run 存在
+            } catch (Exception ignored) {}
+            factory.put("progressApplied", true);
+            factory.put("playerTier", tier);
+            factory.put("playerTierName", TierService.tierName(tier));
+            // 更新胜负统计
+            playerMapper.updateTierProgress(playerId, tier, tierPoints, totalPoints, highestTier, totalWins + (won ? 1 : 0), totalLosses + (won ? 0 : 1));
+            return;
+        }
+
+        // 非工厂模式：单场积分结算
+        int delta = TierService.calculateSingleBattleReward(tier, won);
+        Map<String, Object> tierResult = TierService.applyPoints(tier, tierPoints, totalPoints, delta);
+        int newTier = (int) tierResult.get("tier");
+        int newTierPoints = (int) tierResult.get("tierPoints");
+        int newTotalPoints = (int) tierResult.get("totalPoints");
+        int newHighestTier = Math.max(highestTier, newTier);
+
+        // 兼容旧 rank/points 字段
+        points = won ? points + 10 : Math.max(0, points - 3);
         int rank = points / 30;
         playerMapper.updateProgress(playerId, rank, points);
+        playerMapper.updateTierProgress(playerId, newTier, newTierPoints, newTotalPoints, newHighestTier, totalWins + (won ? 1 : 0), totalLosses + (won ? 0 : 1));
+
         factory.put("progressApplied", true);
         factory.put("playerRank", rank);
         factory.put("playerPoints", points);
+        factory.put("playerTier", newTier);
+        factory.put("playerTierName", TierService.tierName(newTier));
+        factory.put("playerTierPoints", newTierPoints);
+        factory.put("playerTotalPoints", newTotalPoints);
+        factory.put("pointsDelta", delta);
+        factory.put("promoted", tierResult.get("promoted"));
+        factory.put("demoted", tierResult.get("demoted"));
     }
 
     /**

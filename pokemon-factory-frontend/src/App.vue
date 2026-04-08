@@ -118,7 +118,7 @@
       
       <el-main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 !pb-0 w-full">
         <div class="content bg-white rounded-2xl shadow-sm p-4 sm:p-6 min-h-[calc(100vh-180px)]">
-          <div class="hero card-glass mb-6 p-6 rounded-2xl flex items-center justify-between gap-4">
+          <div v-if="showHero" class="hero card-glass mb-6 p-6 rounded-2xl flex items-center justify-between gap-4">
             <div>
               <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">
                 探索宝可梦世界
@@ -175,12 +175,11 @@
       
       <!-- Footer -->
       <el-footer class="text-center py-6 text-gray-400 text-sm">
-        <p>© 2024 宝可梦图鉴 - Pokemon Factory</p>
+        <p>© 2024-{{ new Date().getFullYear() }} 宝可梦图鉴 - Pokemon Factory</p>
       </el-footer>
     </el-container>
 
     <!-- 全局组件 -->
-    <GlobalLoader />
     <ErrorHandler />
   </div>
 </template>
@@ -189,7 +188,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Menu, Sun, Moon } from 'lucide-vue-next'
-import GlobalLoader from './components/GlobalLoader.vue'
 import ErrorHandler from './components/ErrorHandler.vue'
 import { useAuth } from './composables/useAuth'
 
@@ -209,6 +207,7 @@ const navItems = [
 const theme = ref(localStorage.getItem('theme') || 'light')
 const isAuthenticated = computed(() => auth.isAuthenticated.value)
 const authDisplayName = computed(() => auth.displayName.value)
+const showHero = computed(() => !['/battle', '/login'].includes(route.path))
 
 onMounted(async () => {
   document.documentElement.classList.toggle('dark', theme.value === 'dark')

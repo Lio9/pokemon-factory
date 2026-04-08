@@ -9,6 +9,16 @@ export default defineConfig({
     port: 3000,
     historyApiFallback: true,
     proxy: {
+      // battleFactory (8090): 对战、用户认证
+      '/api/battle': {
+        target: 'http://localhost:8090',
+        changeOrigin: true
+      },
+      '/api/user': {
+        target: 'http://localhost:8090',
+        changeOrigin: true
+      },
+      // pokeDex (8081): 图鉴数据，后端路由不含 /api 前缀
       '/api': {
         target: 'http://localhost:8081',
         changeOrigin: true,

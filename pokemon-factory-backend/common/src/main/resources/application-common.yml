@@ -11,7 +11,7 @@ spring:
       idle-timeout: 300000
       max-lifetime: 900000
       connection-test-query: SELECT 1
-      connection-init-sql: PRAGMA foreign_keys = ON
+      connection-init-sql: PRAGMA journal_mode=WAL; PRAGMA foreign_keys = ON
       validation-timeout: 3000
       auto-commit: true
       pool-name: PokemonFactorySQLiteCP
@@ -38,10 +38,10 @@ pokemon-factory:
 
 logging:
   level:
-    org.apache.ibatis: debug
+    org.apache.ibatis: info
     org.mybatis: info
-    java.sql: debug
-    java.sql.Connection: info
-    java.sql.Statement: debug
-    java.sql.PreparedStatement: debug
+    java.sql: warn
+    java.sql.Connection: warn
+    java.sql.Statement: warn
+    java.sql.PreparedStatement: warn
     java.sql.ResultSet: warn

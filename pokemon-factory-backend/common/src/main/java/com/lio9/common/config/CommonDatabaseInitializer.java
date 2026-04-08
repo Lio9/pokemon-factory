@@ -66,9 +66,32 @@ public class CommonDatabaseInitializer implements ApplicationRunner {
             ensureColumnExists(connection, "battle", "player_move_map", "TEXT");
             ensureColumnExists(connection, "battle", "player_team_json", "TEXT");
             ensureColumnExists(connection, "battle", "battle_phase", "TEXT DEFAULT 'team-preview'");
+            ensureColumnExists(connection, "battle", "factory_run_id", "INTEGER");
+            ensureColumnExists(connection, "battle", "run_battle_number", "INTEGER");
+            ensureColumnExists(connection, "player", "tier", "INTEGER DEFAULT 0");
+            ensureColumnExists(connection, "player", "tier_points", "INTEGER DEFAULT 0");
+            ensureColumnExists(connection, "player", "total_points", "INTEGER DEFAULT 0");
+            ensureColumnExists(connection, "player", "highest_tier", "INTEGER DEFAULT 0");
+            ensureColumnExists(connection, "player", "wins", "INTEGER DEFAULT 0");
+            ensureColumnExists(connection, "player", "losses", "INTEGER DEFAULT 0");
+            ensureColumnExists(connection, "player", "tier_reached_at", "TEXT");
             ensureColumnExists(connection, "app_user", "display_name", "TEXT");
             ensureColumnExists(connection, "app_user", "updated_at", "TEXT");
             ensureColumnExists(connection, "app_user", "last_login_at", "TEXT");
+
+            // 补充索引（对已有库幂等追加）
+            String[] extraIndexes = {
+                "CREATE INDEX IF NOT EXISTS idx_player_tier_total ON player(tier, total_points DESC)",
+                "CREATE INDEX IF NOT EXISTS idx_battle_round_battle ON battle_round(battle_id, round_number)",
+                "CREATE INDEX IF NOT EXISTS idx_battle_job_status ON battle_job(status)",
+                "CREATE INDEX IF NOT EXISTS idx_factory_run_player_status ON factory_run(player_id, status)",
+                "CREATE INDEX IF NOT EXISTS idx_battle_exchange_battle ON battle_exchange(battle_id)"
+            };
+            for (String ddl : extraIndexes) {
+                try (var stmt = connection.createStatement()) {
+                    stmt.execute(ddl);
+                } catch (Exception ignored) {}
+            }
         }
         log.info("common 数据库初始化完成。");
     }

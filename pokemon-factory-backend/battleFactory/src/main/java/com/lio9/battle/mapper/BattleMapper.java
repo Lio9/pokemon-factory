@@ -19,8 +19,8 @@ public interface BattleMapper {
     /**
      * 插入一条初始 battle 记录。
      */
-    @Insert("INSERT INTO battle(player_id, opponent_team_id, rounds, player_move_map, player_team_json, battle_phase, started_at) VALUES(#{playerId}, #{opponentTeamId}, #{rounds}, #{playerMoveMapJson}, #{playerTeamJson}, #{battlePhase}, datetime('now'))")
-    void insertInitial(@Param("playerId") Integer playerId, @Param("opponentTeamId") Integer opponentTeamId, @Param("rounds") Integer rounds, @Param("playerMoveMapJson") String playerMoveMapJson, @Param("playerTeamJson") String playerTeamJson, @Param("battlePhase") String battlePhase);
+    @Insert("INSERT INTO battle(player_id, opponent_team_id, rounds, player_move_map, player_team_json, battle_phase, factory_run_id, run_battle_number, started_at) VALUES(#{playerId}, #{opponentTeamId}, #{rounds}, #{playerMoveMapJson}, #{playerTeamJson}, #{battlePhase}, #{factoryRunId}, #{runBattleNumber}, datetime('now'))")
+    void insertInitial(@Param("playerId") Integer playerId, @Param("opponentTeamId") Integer opponentTeamId, @Param("rounds") Integer rounds, @Param("playerMoveMapJson") String playerMoveMapJson, @Param("playerTeamJson") String playerTeamJson, @Param("battlePhase") String battlePhase, @Param("factoryRunId") Integer factoryRunId, @Param("runBattleNumber") Integer runBattleNumber);
 
     /**
      * 插入一条已结束的 battle 记录。

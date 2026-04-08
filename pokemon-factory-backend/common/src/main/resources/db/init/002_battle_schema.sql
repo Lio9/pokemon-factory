@@ -2,14 +2,18 @@ PRAGMA foreign_keys = ON;
 
 -- ============================================================
 -- 对战工厂最终态表结构
--- 这份脚本不再按历史 Flyway 增量迁移执行，而是直接描述当前 battleFactory 需要的最终表结构。
--- 其中“旧库补列”由 CommonDatabaseInitializer 通过元数据判断后补齐，
--- 避免 SQLite 对 ALTER TABLE IF NOT EXISTS 语法兼容性不足导致初始化失败。
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS player (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
+    tier INTEGER DEFAULT 0,
+    tier_points INTEGER DEFAULT 0,
+    total_points INTEGER DEFAULT 0,
+    highest_tier INTEGER DEFAULT 0,
+    wins INTEGER DEFAULT 0,
+    losses INTEGER DEFAULT 0,
+    tier_reached_at TEXT,
     rank INTEGER DEFAULT 0,
     points INTEGER DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -35,10 +39,29 @@ CREATE TABLE IF NOT EXISTS opponent_pool (
     FOREIGN KEY(team_id) REFERENCES team(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS factory_run (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER NOT NULL,
+    current_battle INTEGER DEFAULT 0,
+    max_battles INTEGER DEFAULT 9,
+    wins INTEGER DEFAULT 0,
+    losses INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active',
+    team_json TEXT,
+    tier_at_start INTEGER DEFAULT 0,
+    points_earned INTEGER DEFAULT 0,
+    current_battle_id INTEGER,
+    started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    ended_at TEXT,
+    FOREIGN KEY(player_id) REFERENCES player(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS battle (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     player_id INTEGER NOT NULL,
     opponent_team_id INTEGER,
+    factory_run_id INTEGER,
+    run_battle_number INTEGER,
     started_at TEXT DEFAULT CURRENT_TIMESTAMP,
     ended_at TEXT,
     winner_player_id INTEGER,
@@ -48,7 +71,8 @@ CREATE TABLE IF NOT EXISTS battle (
     player_team_json TEXT,
     battle_phase TEXT DEFAULT 'team-preview',
     FOREIGN KEY(player_id) REFERENCES player(id) ON DELETE CASCADE,
-    FOREIGN KEY(opponent_team_id) REFERENCES team(id) ON DELETE CASCADE
+    FOREIGN KEY(opponent_team_id) REFERENCES team(id) ON DELETE CASCADE,
+    FOREIGN KEY(factory_run_id) REFERENCES factory_run(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS battle_round (
@@ -88,12 +112,20 @@ CREATE TABLE IF NOT EXISTS battle_job (
 );
 
 CREATE INDEX IF NOT EXISTS idx_player_username ON player(username);
+CREATE INDEX IF NOT EXISTS idx_player_tier_total ON player(tier, total_points DESC);
 CREATE INDEX IF NOT EXISTS idx_team_player ON team(player_id);
 CREATE INDEX IF NOT EXISTS idx_team_created_at ON team(created_at);
 CREATE INDEX IF NOT EXISTS idx_opponent_pool_rank ON opponent_pool(rank);
 CREATE INDEX IF NOT EXISTS idx_opponent_pool_team_id ON opponent_pool(team_id);
 CREATE INDEX IF NOT EXISTS idx_battle_player ON battle(player_id);
+CREATE INDEX IF NOT EXISTS idx_battle_factory_run ON battle(factory_run_id);
+CREATE INDEX IF NOT EXISTS idx_battle_round_battle ON battle_round(battle_id, round_number);
+CREATE INDEX IF NOT EXISTS idx_battle_job_status ON battle_job(status);
+CREATE INDEX IF NOT EXISTS idx_factory_run_player_status ON factory_run(player_id, status);
 CREATE INDEX IF NOT EXISTS idx_battle_exchange_battle ON battle_exchange(battle_id);
+CREATE INDEX IF NOT EXISTS idx_battle_exchange_battle ON battle_exchange(battle_id);
+CREATE INDEX IF NOT EXISTS idx_factory_run_player ON factory_run(player_id);
+CREATE INDEX IF NOT EXISTS idx_factory_run_status ON factory_run(status);
 
 INSERT OR IGNORE INTO skill_catalog(name, default_cooldown) VALUES ('team_shield', 2);
 INSERT OR IGNORE INTO skill_catalog(name, default_cooldown) VALUES ('protect', 2);

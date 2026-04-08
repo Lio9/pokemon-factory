@@ -1,34 +1,49 @@
 <template>
   <div class="space-y-6">
+    <!-- 顶部：玩家信息 + 段位 + 工厂挑战进度 -->
     <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-start lg:justify-between">
       <div>
         <h1 class="text-2xl font-bold text-slate-900">
           对战工厂
         </h1>
         <p class="mt-2 text-sm text-slate-500">
-          当前对战遵循 VGC 双打核心流程：队伍预览、6 选 4、指定 2 只首发，再进入双打回合。
+          VGC 双打规则 · 9 轮工厂挑战 · 段位积分制
         </p>
       </div>
-      <div class="grid gap-3 sm:grid-cols-3">
+      <div class="grid gap-3 sm:grid-cols-4">
         <div class="rounded-xl bg-slate-50 px-4 py-3">
           <div class="text-xs text-slate-500">
-            当前用户
+            玩家
           </div>
           <div class="mt-1 font-semibold text-slate-900">
             {{ currentUser }}
           </div>
         </div>
-        <div class="rounded-xl bg-slate-50 px-4 py-3">
-          <div class="text-xs text-slate-500">
-            Battle ID
+        <div class="rounded-xl px-4 py-3" :class="tierBgClass">
+          <div class="text-xs" :class="tierTextClass">
+            段位
           </div>
-          <div class="mt-1 font-semibold text-slate-900">
-            {{ currentBattleId || '-' }}
+          <div class="mt-1 font-semibold" :class="tierTextClass">
+            {{ tierDisplayName }}
+          </div>
+          <div class="mt-0.5 text-xs" :class="tierTextClass">
+            {{ playerProfile?.tierPoints ?? 0 }} / 2000 分
           </div>
         </div>
         <div class="rounded-xl bg-slate-50 px-4 py-3">
           <div class="text-xs text-slate-500">
-            状态
+            总积分
+          </div>
+          <div class="mt-1 font-semibold text-slate-900">
+            {{ playerProfile?.totalPoints ?? 0 }}
+          </div>
+          <div class="mt-0.5 text-xs text-slate-500">
+            {{ playerProfile?.wins ?? 0 }}胜 / {{ playerProfile?.losses ?? 0 }}负
+          </div>
+        </div>
+        <div class="rounded-xl bg-slate-50 px-4 py-3">
+          <div class="text-xs text-slate-500">
+            当前状态
           </div>
           <div
             class="mt-1 font-semibold"
@@ -40,6 +55,29 @@
       </div>
     </div>
 
+    <!-- 工厂挑战进度条 -->
+    <div
+      v-if="factoryRun"
+      class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm"
+    >
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-semibold text-indigo-900">
+          工厂挑战 · 第 {{ factoryRun.current_battle || 0 }} / {{ factoryRun.max_battles || 9 }} 轮
+        </div>
+        <div class="text-sm text-indigo-700">
+          {{ factoryRun.wins || 0 }}胜 {{ factoryRun.losses || 0 }}负
+        </div>
+      </div>
+      <div class="mt-2 flex gap-1">
+        <div
+          v-for="i in (factoryRun.max_battles || 9)"
+          :key="i"
+          class="h-2 flex-1 rounded-full"
+          :class="factoryRoundClass(i)"
+        />
+      </div>
+    </div>
+
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(420px,0.9fr)]">
       <BattleArena
         :summary="summary"
@@ -48,24 +86,61 @@
 
       <div class="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div class="flex flex-wrap gap-3">
-          <button
-            class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-            @click="startBattle"
-          >
-            开始手动对战
-          </button>
-          <button
-            class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-            @click="startAsyncBattle"
-          >
-            开始异步模拟
-          </button>
+          <template v-if="!factoryRun && !currentBattleId">
+            <button
+              class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              @click="startFactoryChallenge"
+            >
+              开始工厂挑战（9 轮）
+            </button>
+            <button
+              class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+              @click="startBattle"
+            >
+              单场手动对战
+            </button>
+            <button
+              class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              @click="startAsyncBattle"
+            >
+              异步模拟
+            </button>
+          </template>
+          <template v-else-if="factoryRun && !currentBattleId">
+            <button
+              class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              @click="nextFactoryBattle"
+            >
+              进入第 {{ (factoryRun.current_battle || 0) + 1 }} 轮
+            </button>
+            <button
+              class="rounded-xl border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+              @click="abandonFactoryRun"
+            >
+              放弃本次挑战
+            </button>
+          </template>
+          <template v-else>
+            <button
+              class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              :disabled="!currentBattleId"
+              @click="refreshStatus"
+            >
+              刷新状态
+            </button>
+            <button
+              v-if="currentBattleId && summary?.status === 'running'"
+              class="rounded-xl border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+              @click="forfeitBattle"
+            >
+              投降
+            </button>
+          </template>
           <button
             class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            :disabled="!currentBattleId"
-            @click="refreshStatus"
+            @click="openLeaderboard"
           >
-            刷新状态
+            排行榜
           </button>
         </div>
 
@@ -313,11 +388,134 @@
       @close="showExchange = false"
       @confirm="onConfirmExchange"
     />
+
+    <!-- 对战结算面板 -->
+    <div
+      v-if="settlement"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+    >
+      <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div class="text-center">
+          <div
+            class="text-3xl font-bold"
+            :class="settlement.won ? 'text-emerald-600' : 'text-rose-600'"
+          >
+            {{ settlement.won ? '胜利！' : '失败' }}
+          </div>
+          <div
+            v-if="settlement.factoryRound"
+            class="mt-2 text-sm text-slate-500"
+          >
+            工厂挑战第 {{ settlement.factoryRound }} / 9 轮
+          </div>
+        </div>
+        <div class="mt-5 space-y-3">
+          <div
+            v-if="settlement.pointsDelta != null"
+            class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
+          >
+            <span class="text-sm text-slate-600">积分变动</span>
+            <span
+              class="font-semibold"
+              :class="settlement.pointsDelta >= 0 ? 'text-emerald-600' : 'text-rose-600'"
+            >
+              {{ settlement.pointsDelta >= 0 ? '+' : '' }}{{ settlement.pointsDelta }}
+            </span>
+          </div>
+          <div
+            v-if="settlement.tierChange"
+            class="flex items-center justify-between rounded-xl px-4 py-3"
+            :class="settlement.tierChange === 'promoted' ? 'bg-amber-50' : 'bg-rose-50'"
+          >
+            <span class="text-sm" :class="settlement.tierChange === 'promoted' ? 'text-amber-700' : 'text-rose-600'">
+              {{ settlement.tierChange === 'promoted' ? '段位晋升！' : '段位下降' }}
+            </span>
+            <span class="font-semibold" :class="settlement.tierChange === 'promoted' ? 'text-amber-700' : 'text-rose-600'">
+              {{ settlement.newTierName }}
+            </span>
+          </div>
+          <div
+            v-if="settlement.runFinished"
+            class="rounded-xl bg-indigo-50 px-4 py-3 text-center text-sm text-indigo-700"
+          >
+            工厂挑战结束 · {{ settlement.runWins }}胜{{ settlement.runLosses }}负
+            <span v-if="settlement.runReward"> · 奖励 +{{ settlement.runReward }} 分</span>
+          </div>
+        </div>
+        <div class="mt-5 flex gap-3">
+          <button
+            v-if="factoryRun && !settlement.runFinished"
+            class="flex-1 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+            @click="settlement = null"
+          >
+            继续下一轮
+          </button>
+          <button
+            class="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            @click="onSettlementClose"
+          >
+            {{ settlement.runFinished || !factoryRun ? '返回' : '查看战场' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 排行榜 -->
+    <div
+      v-if="showLeaderboard"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      @click.self="showLeaderboard = false"
+    >
+      <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-slate-900">
+            大师球段位排行榜
+          </h2>
+          <button
+            class="text-slate-400 hover:text-slate-600"
+            @click="showLeaderboard = false"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="mt-4 max-h-96 space-y-2 overflow-y-auto">
+          <div
+            v-for="(entry, index) in leaderboardData"
+            :key="entry.username"
+            class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
+          >
+            <div class="flex items-center gap-3">
+              <span
+                class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
+                :class="index < 3 ? 'bg-amber-400 text-white' : 'bg-slate-200 text-slate-600'"
+              >
+                {{ index + 1 }}
+              </span>
+              <span class="font-semibold text-slate-900">{{ entry.username }}</span>
+            </div>
+            <div class="text-right">
+              <div class="font-semibold text-indigo-600">
+                {{ entry.totalPoints }} 分
+              </div>
+              <div class="text-xs text-slate-500">
+                {{ entry.wins }}胜 {{ entry.losses }}负
+              </div>
+            </div>
+          </div>
+          <div
+            v-if="!leaderboardData.length"
+            class="py-8 text-center text-sm text-slate-500"
+          >
+            暂无大师球段位玩家
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import BattleArena from '../components/BattleArena.vue'
 import ExchangeModal from '../components/ExchangeModal.vue'
 import api from '../services/api'
@@ -342,6 +540,47 @@ const replacedIndex = ref(0)
 const replacedHighlight = ref(-1)
 const currentBattleId = ref(null)
 let pollTimer = null
+
+// 工厂挑战 & 玩家信息
+const factoryRun = ref(null)
+const playerProfile = ref(null)
+const settlement = ref(null)
+const showLeaderboard = ref(false)
+const leaderboardData = ref([])
+
+const TIER_NAMES = ['精灵球', '超级球', '高级球', '大师球']
+const tierDisplayName = computed(() => TIER_NAMES[playerProfile.value?.tier ?? 0] || '精灵球')
+
+// 统一工厂挑战对象字段名（后端两处返回格式不同：startRun 用 camelCase，findActiveRun 用 snake_case）
+function normalizeRun(raw) {
+  if (!raw) return null
+  return {
+    id: raw.id,
+    current_battle: raw.current_battle ?? raw.currentBattle ?? 0,
+    max_battles: raw.max_battles ?? raw.maxBattles ?? 9,
+    current_battle_id: raw.current_battle_id ?? raw.currentBattleId ?? null,
+    wins: raw.wins ?? 0,
+    losses: raw.losses ?? 0,
+    status: raw.status,
+    team_json: raw.team_json ?? raw.teamJson
+  }
+}
+const tierBgClass = computed(() => {
+  switch (playerProfile.value?.tier) {
+    case 3: return 'bg-purple-50'
+    case 2: return 'bg-amber-50'
+    case 1: return 'bg-blue-50'
+    default: return 'bg-slate-50'
+  }
+})
+const tierTextClass = computed(() => {
+  switch (playerProfile.value?.tier) {
+    case 3: return 'text-purple-700'
+    case 2: return 'text-amber-700'
+    case 1: return 'text-blue-700'
+    default: return 'text-slate-700'
+  }
+})
 
 // 对战当前处于哪个阶段，完全以后端 summary 返回的状态为准。
 const isPreviewPhase = computed(() => summary.value?.status === 'preview' || summary.value?.phase === 'team-preview')
@@ -584,6 +823,39 @@ function applyBattlePayload(payload) {
     replacedIndex.value = 0
     showExchange.value = true
   }
+
+  // 对战结束时生成结算信息
+  if (summary.value?.status === 'completed') {
+    const factory = summary.value?.factory || {}
+    const meta = payload?.factoryMeta || factory
+    const won = summary.value.winner === 'player'
+
+    // 判断段位变化
+    let tierChange = null
+    let newTierName = null
+    if (meta.promoted) {
+      tierChange = 'promoted'
+      newTierName = meta.playerTierName || TIER_NAMES[meta.playerTier] || ''
+    } else if (meta.demoted) {
+      tierChange = 'demoted'
+      newTierName = meta.playerTierName || TIER_NAMES[meta.playerTier] || ''
+    }
+
+    settlement.value = {
+      won,
+      pointsDelta: meta.pointsDelta ?? null,
+      tierChange,
+      newTierName,
+      factoryRound: meta.runBattleNumber ?? null,
+      runFinished: meta.runFinished ?? false,
+      runWins: meta.runWins ?? null,
+      runLosses: meta.runLosses ?? null,
+      runReward: meta.runReward ?? null
+    }
+    // 刷新工厂挑战状态
+    loadFactoryStatus()
+    loadProfile()
+  }
 }
 
 async function startBattle() {
@@ -788,6 +1060,138 @@ function previewCardClass(index) {
 function formatTypes(types) {
   return (types || []).map((type) => type.name || type.name_zh || `属性${type.type_id}`).join(' / ') || '未知属性'
 }
+
+// ---------- 工厂挑战进度条颜色 ----------
+function factoryRoundClass(i) {
+  if (!factoryRun.value) return 'bg-slate-200'
+  const done = factoryRun.value.current_battle || 0
+  if (i <= done) {
+    // 已完成的轮次根据胜负记录着色（简单方式：已打完的都标一个颜色）
+    return 'bg-indigo-500'
+  }
+  if (i === done + 1 && currentBattleId.value) return 'bg-indigo-300 animate-pulse'
+  return 'bg-slate-200'
+}
+
+// ---------- 玩家信息加载 ----------
+async function loadProfile() {
+  try {
+    const res = await api.battle.profile()
+    // 后端返回 { profile: { tier, tierPoints, ... }, activeRun, ... }
+    playerProfile.value = res?.profile || res
+  } catch {
+    // 忽略——可能还没打过
+  }
+}
+
+async function loadFactoryStatus() {
+  try {
+    const res = await api.battle.factoryStatus()
+    const run = normalizeRun(res?.activeRun || res)
+    if (run && run.id) {
+      factoryRun.value = run
+    } else {
+      factoryRun.value = null
+    }
+  } catch {
+    factoryRun.value = null
+  }
+}
+
+async function loadLeaderboard() {
+  try {
+    leaderboardData.value = await api.battle.leaderboard() || []
+  } catch {
+    leaderboardData.value = []
+  }
+}
+
+async function openLeaderboard() {
+  showLeaderboard.value = true
+  await loadLeaderboard()
+}
+
+// ---------- 工厂挑战流程 ----------
+async function startFactoryChallenge() {
+  stopPolling()
+  resultText.value = '正在开始工厂挑战...'
+  try {
+    const res = await api.battle.factoryStart()
+    factoryRun.value = normalizeRun(res.run || res)
+    if (res.battleId || res.battle?.id) {
+      currentBattleId.value = res.battleId || res.battle?.id
+      applyBattlePayload(res)
+    }
+    resultText.value = JSON.stringify(res, null, 2)
+    await loadProfile()
+  } catch (error) {
+    resultText.value = `开始挑战失败: ${error.message || error}`
+  }
+}
+
+async function nextFactoryBattle() {
+  if (!factoryRun.value?.id) return
+  stopPolling()
+  resultText.value = '正在进入下一轮...'
+  try {
+    const res = await api.battle.factoryNext(factoryRun.value.id)
+    if (res.run) factoryRun.value = normalizeRun(res.run)
+    if (res.battleId || res.battle?.id) {
+      currentBattleId.value = res.battleId || res.battle?.id
+      applyBattlePayload(res)
+    }
+    resultText.value = JSON.stringify(res, null, 2)
+  } catch (error) {
+    resultText.value = `进入下一轮失败: ${error.message || error}`
+  }
+}
+
+async function abandonFactoryRun() {
+  try {
+    await api.battle.factoryAbandon()
+    factoryRun.value = null
+    currentBattleId.value = null
+    summary.value = null
+    resultText.value = '已放弃本次工厂挑战'
+    await loadProfile()
+  } catch (error) {
+    resultText.value = `放弃失败: ${error.message || error}`
+  }
+}
+
+async function forfeitBattle() {
+  if (!currentBattleId.value) return
+  try {
+    const res = await api.battle.forfeit(currentBattleId.value)
+    applyBattlePayload(res)
+    resultText.value = JSON.stringify(res, null, 2)
+  } catch (error) {
+    resultText.value = `投降失败: ${error.message || error}`
+  }
+}
+
+// 结算面板关闭后的善后操作
+function onSettlementClose() {
+  const wasRunFinished = settlement.value?.runFinished
+  settlement.value = null
+  if (wasRunFinished || !factoryRun.value) {
+    // 挑战结束，重置所有状态
+    factoryRun.value = null
+    currentBattleId.value = null
+    summary.value = null
+    resultText.value = '等待开始对战'
+    loadProfile()
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([loadProfile(), loadFactoryStatus()])
+  // 如果有进行中的工厂挑战，尝试恢复
+  if (factoryRun.value?.current_battle_id) {
+    currentBattleId.value = factoryRun.value.current_battle_id
+    await refreshStatus()
+  }
+})
 
 onBeforeUnmount(() => {
   stopPolling()

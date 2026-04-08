@@ -10,44 +10,44 @@ const routes = [
   { 
     path: '/pokemon', 
     name: 'PokemonList', 
-    component: () => import('../components/PokemonList.vue'),
+    component: () => import('../views/PokemonList.vue'),
     meta: { title: '宝可梦图鉴' }
   },
   { 
     path: '/pokemon/:id', 
     name: 'PokemonDetail', 
-    component: () => import('../components/PokemonDetail.vue'), 
+    component: () => import('../views/PokemonDetail.vue'), 
     props: true,
     meta: { title: '宝可梦详情' }
   },
   { 
     path: '/moves', 
     name: 'MoveList', 
-    component: () => import('../components/MoveList.vue'),
+    component: () => import('../views/MoveList.vue'),
     meta: { title: '技能列表' }
   },
   { 
     path: '/abilities', 
     name: 'AbilityList', 
-    component: () => import('../components/AbilityList.vue'),
+    component: () => import('../views/AbilityList.vue'),
     meta: { title: '特性列表' }
   },
   { 
     path: '/items', 
     name: 'ItemList', 
-    component: () => import('../components/ItemList.vue'),
+    component: () => import('../views/ItemList.vue'),
     meta: { title: '物品列表' }
   },
   { 
     path: '/damage-calculator', 
     name: 'DamageCalculator', 
-    component: () => import('../components/DamageCalculator.vue'),
+    component: () => import('../views/DamageCalculator.vue'),
     meta: { title: '伤害计算器' }
   },
   {
     path: '/import',
     name: 'ImportManager',
-    component: () => import('../components/ImportManager.vue'),
+    component: () => import('../views/ImportManager.vue'),
     meta: { title: '导入管理' }
   },
   { 
@@ -61,6 +61,11 @@ const routes = [
     name: 'Login',
     component: () => import('../views/Login.vue'),
     meta: { title: '登录' }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    redirect: '/pokemon'
   }
 ]
 

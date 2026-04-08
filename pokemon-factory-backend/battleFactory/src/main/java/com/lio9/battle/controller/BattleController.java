@@ -3,6 +3,7 @@ package com.lio9.battle.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.service.BattleExecutor;
 import com.lio9.battle.service.BattleService;
+import com.lio9.battle.service.FactoryRunService;
 import com.lio9.battle.mapper.PlayerMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,12 +24,15 @@ public class BattleController {
     private final BattleService battleService;
     private final BattleExecutor battleExecutor;
     private final PlayerMapper playerMapper;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final FactoryRunService factoryRunService;
+    private final ObjectMapper objectMapper;
 
-    public BattleController(BattleService battleService, BattleExecutor battleExecutor, PlayerMapper playerMapper) {
+    public BattleController(BattleService battleService, BattleExecutor battleExecutor, PlayerMapper playerMapper, FactoryRunService factoryRunService, ObjectMapper objectMapper) {
         this.battleService = battleService;
         this.battleExecutor = battleExecutor;
         this.playerMapper = playerMapper;
+        this.factoryRunService = factoryRunService;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -109,6 +113,66 @@ public class BattleController {
             return ResponseEntity.badRequest().body(Map.of("error", "missing_fields"));
         }
         return ResponseEntity.ok(battleService.updateBattleAfterExchange(battleId.longValue(), replacedIndex.intValue(), newPokemonJson));
+    }
+
+    /**
+     * 认输：主动放弃当前对战。
+     */
+    @PostMapping("/{battleId}/forfeit")
+    public ResponseEntity<?> forfeit(@PathVariable Long battleId) {
+        return ResponseEntity.ok(battleService.forfeitBattle(battleId, authenticatedUsername()));
+    }
+
+    // ========== 工厂挑战（9 轮连续对战）==========
+
+    /**
+     * 开始一次工厂挑战（9 轮连续对战）。
+     */
+    @PostMapping("/factory/start")
+    public ResponseEntity<?> startFactoryRun() {
+        return ResponseEntity.ok(factoryRunService.startRun(authenticatedUsername()));
+    }
+
+    /**
+     * 在工厂挑战中开始下一场对战。
+     */
+    @PostMapping("/factory/{runId}/next")
+    public ResponseEntity<?> nextFactoryBattle(@PathVariable Integer runId) {
+        return ResponseEntity.ok(factoryRunService.startNextBattle(authenticatedUsername(), runId));
+    }
+
+    /**
+     * 放弃当前工厂挑战并结算。
+     */
+    @PostMapping("/factory/abandon")
+    public ResponseEntity<?> abandonFactoryRun() {
+        return ResponseEntity.ok(factoryRunService.abandonRun(authenticatedUsername()));
+    }
+
+    /**
+     * 获取当前工厂挑战状态。
+     */
+    @GetMapping("/factory/status")
+    public ResponseEntity<?> factoryRunStatus() {
+        return ResponseEntity.ok(factoryRunService.getRunStatus(authenticatedUsername()));
+    }
+
+    // ========== 玩家信息 ==========
+
+    /**
+     * 获取玩家完整信息（段位、积分、历史战绩）。
+     */
+    @GetMapping("/profile")
+    public ResponseEntity<?> profile() {
+        return ResponseEntity.ok(factoryRunService.getProfile(authenticatedUsername()));
+    }
+
+    /**
+     * 排行榜（大师球段位）。
+     */
+    @GetMapping("/leaderboard")
+    public ResponseEntity<?> leaderboard(@RequestParam(defaultValue = "50") int limit) {
+        return ResponseEntity.ok(factoryRunService.getLeaderboard(limit));
     }
 
     @SuppressWarnings("unchecked")

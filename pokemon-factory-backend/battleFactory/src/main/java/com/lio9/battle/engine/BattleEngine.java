@@ -30,13 +30,14 @@ public class BattleEngine {
     private static final int BATTLE_TEAM_SIZE = 4;
     private static final int ACTIVE_SLOTS = 2;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
     private final SkillService skillService;
     private final TypeEfficacyMapper typeEfficacyMapper;
 
-    public BattleEngine(SkillService skillService, TypeEfficacyMapper typeEfficacyMapper) {
+    public BattleEngine(SkillService skillService, TypeEfficacyMapper typeEfficacyMapper, ObjectMapper mapper) {
         this.skillService = skillService;
         this.typeEfficacyMapper = typeEfficacyMapper;
+        this.mapper = mapper;
     }
 
     /**

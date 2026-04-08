@@ -38,13 +38,13 @@ public class BattleExecutor {
     private final BattleEngine engine;
     private final OpponentPoolService poolService;
     private final AIService aiService;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
     private ExecutorService executor;
 
     /**
      * 组装异步对战执行链依赖。
      */
-    public BattleExecutor(BattleMapper battleMapper, OpponentPoolMapper opponentPoolMapper, TeamMapper teamMapper, PokemonMapper pokemonMapper, BattleRoundMapper roundMapper, JobMapper jobMapper, BattleEngine engine, OpponentPoolService poolService, AIService aiService) {
+    public BattleExecutor(BattleMapper battleMapper, OpponentPoolMapper opponentPoolMapper, TeamMapper teamMapper, PokemonMapper pokemonMapper, BattleRoundMapper roundMapper, JobMapper jobMapper, BattleEngine engine, OpponentPoolService poolService, AIService aiService, ObjectMapper mapper) {
         this.battleMapper = battleMapper;
         this.opponentPoolMapper = opponentPoolMapper;
         this.teamMapper = teamMapper;
@@ -54,6 +54,7 @@ public class BattleExecutor {
         this.engine = engine;
         this.poolService = poolService;
         this.aiService = aiService;
+        this.mapper = mapper;
     }
 
     /**
@@ -76,7 +77,7 @@ public class BattleExecutor {
             }
             final String finalPlayerTeamJson = normalizedPlayerTeamJson;
 
-            battleMapper.insertInitial(playerId, null, 0, playerMoveMapJson, finalPlayerTeamJson, "queued");
+            battleMapper.insertInitial(playerId, null, 0, playerMoveMapJson, finalPlayerTeamJson, "queued", null, null);
             Integer battleId = battleMapper.lastInsertId();
             jobMapper.insertJob(battleId, "PENDING", playerMoveMapJson);
             executor.submit(() -> runBattle(battleId, playerId, finalPlayerTeamJson));

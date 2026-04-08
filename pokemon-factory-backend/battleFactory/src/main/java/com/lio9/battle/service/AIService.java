@@ -40,13 +40,14 @@ public class AIService {
     );
 
     private final BattleDexMapper battleDexMapper;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
 
     /**
      * 注入 battleFactory 侧使用的图鉴查询能力。
      */
-    public AIService(BattleDexMapper battleDexMapper) {
+    public AIService(BattleDexMapper battleDexMapper, ObjectMapper mapper) {
         this.battleDexMapper = battleDexMapper;
+        this.mapper = mapper;
     }
 
     /**

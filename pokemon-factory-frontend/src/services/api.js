@@ -161,7 +161,18 @@ export const battleApi = {
   preview: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/preview`, { method: 'POST', body: JSON.stringify(body) }),
   replacement: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/replacement`, { method: 'POST', body: JSON.stringify(body) }),
   exchange: (body) => request(`${API_ROOT}/battle/exchange`, { method: 'POST', body: JSON.stringify(body) }),
-  move: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/move`, { method: 'POST', body: JSON.stringify(body) })
+  move: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/move`, { method: 'POST', body: JSON.stringify(body) }),
+  forfeit: (battleId) => request(`${API_ROOT}/battle/${battleId}/forfeit`, { method: 'POST' }),
+
+  // 工厂挑战（9 轮连续对战）
+  factoryStart: () => request(`${API_ROOT}/battle/factory/start`, { method: 'POST' }),
+  factoryNext: (runId) => request(`${API_ROOT}/battle/factory/${runId}/next`, { method: 'POST' }),
+  factoryAbandon: () => request(`${API_ROOT}/battle/factory/abandon`, { method: 'POST' }),
+  factoryStatus: () => request(`${API_ROOT}/battle/factory/status`),
+
+  // 玩家信息
+  profile: () => request(`${API_ROOT}/battle/profile`),
+  leaderboard: (limit = 50) => request(`${API_ROOT}/battle/leaderboard?limit=${limit}`)
 }
 
 // 精灵图资源地址也统一从这里生成，避免各页面自己拼接静态资源路径。
