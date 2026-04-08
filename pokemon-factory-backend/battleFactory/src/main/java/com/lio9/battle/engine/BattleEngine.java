@@ -552,7 +552,7 @@ public class BattleEngine {
             if (!isAvailableMon(opponentTeam, monIndex)) {
                 continue;
             }
-            int switchToIndex = chooseAISwitch(opponentTeam, activeSlots, monIndex, fieldSlot, random);
+            int switchToIndex = chooseAISwitch(opponentTeam, activeSlots, monIndex, fieldSlot, random, state);
             if (switchToIndex >= 0) {
                 actions.add(Action.switchAction("opponent", monIndex, fieldSlot, switchToIndex, speedValue(opponentTeam.get(monIndex), state, false)));
                 continue;
@@ -581,23 +581,88 @@ public class BattleEngine {
         return firstAvailableBench(team, activeSlots);
     }
 
-    private int chooseAISwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int activeTeamIndex, int fieldSlot, Random random) {
+    private int chooseAISwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int activeTeamIndex, int fieldSlot, Random random, Map<String, Object> state) {
         Map<String, Object> mon = team.get(activeTeamIndex);
         int currentHp = toInt(mon.get("currentHp"), 0);
         int maxHp = toInt(castMap(mon.get("stats")).get("hp"), Math.max(1, currentHp));
         if (currentHp <= 0 || maxHp <= 0) {
             return -1;
         }
-        boolean lowHp = currentHp * 100 <= maxHp * 30;
-        if (!lowHp || random.nextDouble() >= 0.35d) {
+
+        int hpPercent = currentHp * 100 / maxHp;
+        List<Integer> playerDamageTypeIds = activePlayerDamageTypeIds(state, true);
+        double currentVulnerabilityFactor = maxTypeFactorAgainst(mon, playerDamageTypeIds);
+        boolean criticalHp = hpPercent <= 30;
+        boolean lowHp = hpPercent <= 50;
+        boolean superEffectiveVulnerable = currentVulnerabilityFactor > 1.0;
+
+        double switchProbability;
+        if (criticalHp) {
+            switchProbability = 0.60;
+        } else if (lowHp && superEffectiveVulnerable) {
+            switchProbability = 0.45;
+        } else if (superEffectiveVulnerable) {
+            switchProbability = 0.25;
+        } else {
             return -1;
         }
-        for (int candidate = 0; candidate < team.size(); candidate++) {
-            if (canSwitch(team, activeSlots, fieldSlot, candidate)) {
-                return candidate;
+
+        if (random.nextDouble() >= switchProbability) {
+            return -1;
+        }
+
+        return findBestDefensiveSwitch(team, activeSlots, fieldSlot, playerDamageTypeIds);
+    }
+
+    private List<Integer> activePlayerDamageTypeIds(Map<String, Object> state, boolean playerSide) {
+        List<Integer> typeIds = new ArrayList<>();
+        for (Integer slot : activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0 || slot >= team(state, playerSide).size()) {
+                continue;
+            }
+            for (Map<String, Object> move : moves(team(state, playerSide).get(slot))) {
+                if (toInt(move.get("power"), 0) > 0) {
+                    typeIds.add(toInt(move.get("type_id"), 0));
+                }
             }
         }
-        return -1;
+        return typeIds;
+    }
+
+    private double maxTypeFactorAgainst(Map<String, Object> mon, List<Integer> moveTypeIds) {
+        if (moveTypeIds.isEmpty()) {
+            return 1.0;
+        }
+        List<Map<String, Object>> monTypes = castList(mon.get("types"));
+        double maxFactor = 0.0;
+        for (int moveTypeId : moveTypeIds) {
+            double moveFactor = 1.0;
+            for (Map<String, Object> monType : monTypes) {
+                moveFactor *= typeFactor(moveTypeId, toInt(monType.get("type_id"), 0)) / 100.0;
+            }
+            maxFactor = Math.max(maxFactor, moveFactor);
+        }
+        return maxFactor;
+    }
+
+    private int findBestDefensiveSwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int fieldSlot, List<Integer> playerMoveTypeIds) {
+        int bestCandidate = -1;
+        double bestScore = Double.MAX_VALUE;
+        int bestHp = -1;
+        for (int candidate = 0; candidate < team.size(); candidate++) {
+            if (!canSwitch(team, activeSlots, fieldSlot, candidate)) {
+                continue;
+            }
+            Map<String, Object> candidateMon = team.get(candidate);
+            double score = maxTypeFactorAgainst(candidateMon, playerMoveTypeIds);
+            int candidateHp = toInt(candidateMon.get("currentHp"), 0);
+            if (score < bestScore || (score == bestScore && candidateHp > bestHp)) {
+                bestScore = score;
+                bestCandidate = candidate;
+                bestHp = candidateHp;
+            }
+        }
+        return bestCandidate;
     }
 
     private Map<String, Object> selectPlayerMove(Map<String, Object> mon, Map<String, String> playerMoveMap, int fieldSlot, int currentRound) {
