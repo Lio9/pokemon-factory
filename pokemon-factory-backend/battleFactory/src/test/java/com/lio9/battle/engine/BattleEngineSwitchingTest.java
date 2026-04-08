@@ -1872,6 +1872,131 @@ class BattleEngineSwitchingTest {
         assertTrue((Integer) fieldEffects.get("electricTerrainTurns") > 0);
     }
 
+    @Test
+    void chooseAISwitch_switchesToTypeResistantCandidateWhenThreatened() {
+        // Use a TypeEfficacyMapper where Normal moves are resisted by Grass-type (factor 50).
+        // This lets us verify that the AI picks the Grass-type bench mon when the active
+        // Normal-type mon is critically threatened by the player's Normal-type attacks.
+        BattleEngine engine = new BattleEngine(new SkillService(new SkillMapper() {
+            @Override
+            public List<Map<String, Object>> findAll() {
+                return List.of();
+            }
+        }), new TypeEfficacyMapper() {
+            private static final int TYPE_NORMAL = 1;
+            private static final int TYPE_GRASS = 12;
+
+            @Override
+            public List<Map<String, Object>> selectAllTypeEfficacy() {
+                return List.of();
+            }
+
+            @Override
+            public List<Map<String, Object>> selectByDamageTypeId(Integer damageTypeId) {
+                return List.of();
+            }
+
+            @Override
+            public Integer selectDamageFactor(Integer damageTypeId, Integer targetTypeId) {
+                // Normal vs Grass = 50 (resisted – Grass-type bench is the safest switch-in)
+                if (damageTypeId == TYPE_NORMAL && targetTypeId == TYPE_GRASS) return 50;
+                return 100;
+            }
+        });
+
+        // Player has two Normal-type attackers on the field using Normal-type moves.
+        // Opponent has a low-HP Normal-type lead and a Grass-type bench that resists
+        // Normal moves (factor 50). The AI should prefer Grass-Defender as a switch target.
+        String playerTeam = buildPlayerTeamForSwitchTestJson();
+        String opponentTeam = buildOpponentTeamForSwitchTestJson();
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 11111L);
+
+        // Manually set the active opponent's HP to 20% (critical threshold) to guarantee switch
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> opponentBattleTeam = (List<Map<String, Object>>) state.get("opponentTeam");
+        Map<String, Object> activeMon = opponentBattleTeam.get(0);
+        int maxHp = (Integer) ((Map<?, ?>) activeMon.get("stats")).get("hp");
+        activeMon.put("currentHp", maxHp / 5); // 20% HP – critical
+
+        // Play many rounds to observe that the AI eventually switches in the grass-type defender
+        boolean switchedToGrass = false;
+        Map<String, Object> currentState = state;
+        for (int i = 0; i < 20 && !switchedToGrass; i++) {
+            currentState = engine.playRound(currentState, Map.of());
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> rounds = (List<Map<String, Object>>) currentState.get("rounds");
+            @SuppressWarnings("unchecked")
+            List<String> events = (List<String>) rounds.get(rounds.size() - 1).get("events");
+            if (events.stream().anyMatch(e -> e.contains("Grass-Defender"))) {
+                switchedToGrass = true;
+            }
+            if ("completed".equals(currentState.get("status"))) {
+                break;
+            }
+            // Reset the active mon HP to keep it in critical zone for subsequent rounds
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> oppTeam = (List<Map<String, Object>>) currentState.get("opponentTeam");
+            if (!oppTeam.isEmpty() && (Integer) oppTeam.get(0).get("currentHp") > 0) {
+                oppTeam.get(0).put("currentHp", (Integer) ((Map<?, ?>) oppTeam.get(0).get("stats")).get("hp") / 5);
+            }
+        }
+
+        assertTrue(switchedToGrass, "AI should have switched in Grass-Defender as a type-resistant cover when active mon was in critical HP");
+    }
+
+    private static String buildPlayerTeamForSwitchTestJson() {
+        // Player team uses normal-type damaging moves (type_id=1)
+        return "[" +
+                "{\"name\":\"Normal-Striker\",\"name_en\":\"normal-striker\",\"battleScore\":200,\"heldItem\":\"\"," +
+                "\"ability\":{\"name_en\":\"\",\"name\":\"\"}," +
+                "\"types\":[{\"type_id\":1,\"name\":\"Normal\"}]," +
+                "\"stats\":{\"hp\":200,\"attack\":120,\"defense\":80,\"specialAttack\":70,\"specialDefense\":70,\"speed\":100}," +
+                "\"moves\":[{\"name\":\"Tackle\",\"name_en\":\"tackle\",\"power\":80,\"accuracy\":100,\"priority\":0,\"damage_class_id\":1,\"type_id\":1,\"target_id\":10}]}," +
+                "{\"name\":\"Normal-Partner\",\"name_en\":\"normal-partner\",\"battleScore\":200,\"heldItem\":\"\"," +
+                "\"ability\":{\"name_en\":\"\",\"name\":\"\"}," +
+                "\"types\":[{\"type_id\":1,\"name\":\"Normal\"}]," +
+                "\"stats\":{\"hp\":200,\"attack\":110,\"defense\":80,\"specialAttack\":70,\"specialDefense\":70,\"speed\":90}," +
+                "\"moves\":[{\"name\":\"Tackle\",\"name_en\":\"tackle\",\"power\":80,\"accuracy\":100,\"priority\":0,\"damage_class_id\":1,\"type_id\":1,\"target_id\":10}]}," +
+                "{\"name\":\"Bench-P1\",\"name_en\":\"bench-p1\",\"battleScore\":200,\"heldItem\":\"\"," +
+                "\"ability\":{\"name_en\":\"\",\"name\":\"\"}," +
+                "\"types\":[{\"type_id\":1,\"name\":\"Normal\"}]," +
+                "\"stats\":{\"hp\":180,\"attack\":90,\"defense\":80,\"specialAttack\":70,\"specialDefense\":70,\"speed\":80}," +
+                "\"moves\":[{\"name\":\"Tackle\",\"name_en\":\"tackle\",\"power\":60,\"accuracy\":100,\"priority\":0,\"damage_class_id\":1,\"type_id\":1,\"target_id\":10}]}," +
+                "{\"name\":\"Bench-P2\",\"name_en\":\"bench-p2\",\"battleScore\":200,\"heldItem\":\"\"," +
+                "\"ability\":{\"name_en\":\"\",\"name\":\"\"}," +
+                "\"types\":[{\"type_id\":1,\"name\":\"Normal\"}]," +
+                "\"stats\":{\"hp\":180,\"attack\":90,\"defense\":80,\"specialAttack\":70,\"specialDefense\":70,\"speed\":75}," +
+                "\"moves\":[{\"name\":\"Tackle\",\"name_en\":\"tackle\",\"power\":60,\"accuracy\":100,\"priority\":0,\"damage_class_id\":1,\"type_id\":1,\"target_id\":10}]}" +
+                "]";
+    }
+
+    private static String buildOpponentTeamForSwitchTestJson() {
+        // Opponent: two normal-type leads (vulnerable to nothing in mock), a grass-type bench (resists Normal moves factor=50)
+        return "[" +
+                "{\"name\":\"Normal-Lead\",\"name_en\":\"normal-lead\",\"battleScore\":200,\"heldItem\":\"\"," +
+                "\"ability\":{\"name_en\":\"\",\"name\":\"\"}," +
+                "\"types\":[{\"type_id\":1,\"name\":\"Normal\"}]," +
+                "\"stats\":{\"hp\":200,\"attack\":100,\"defense\":80,\"specialAttack\":70,\"specialDefense\":70,\"speed\":85}," +
+                "\"moves\":[{\"name\":\"Tackle\",\"name_en\":\"tackle\",\"power\":60,\"accuracy\":100,\"priority\":0,\"damage_class_id\":1,\"type_id\":1,\"target_id\":10}]}," +
+                "{\"name\":\"Normal-Support\",\"name_en\":\"normal-support\",\"battleScore\":200,\"heldItem\":\"\"," +
+                "\"ability\":{\"name_en\":\"\",\"name\":\"\"}," +
+                "\"types\":[{\"type_id\":1,\"name\":\"Normal\"}]," +
+                "\"stats\":{\"hp\":200,\"attack\":90,\"defense\":80,\"specialAttack\":70,\"specialDefense\":70,\"speed\":80}," +
+                "\"moves\":[{\"name\":\"Tackle\",\"name_en\":\"tackle\",\"power\":60,\"accuracy\":100,\"priority\":0,\"damage_class_id\":1,\"type_id\":1,\"target_id\":10}]}," +
+                "{\"name\":\"Grass-Defender\",\"name_en\":\"grass-defender\",\"battleScore\":200,\"heldItem\":\"\"," +
+                "\"ability\":{\"name_en\":\"\",\"name\":\"\"}," +
+                "\"types\":[{\"type_id\":12,\"name\":\"Grass\"}]," +
+                "\"stats\":{\"hp\":220,\"attack\":95,\"defense\":90,\"specialAttack\":80,\"specialDefense\":90,\"speed\":70}," +
+                "\"moves\":[{\"name\":\"Vine Whip\",\"name_en\":\"vine-whip\",\"power\":45,\"accuracy\":100,\"priority\":0,\"damage_class_id\":1,\"type_id\":12,\"target_id\":10}]}," +
+                "{\"name\":\"Bench-Opp2\",\"name_en\":\"bench-opp2\",\"battleScore\":200,\"heldItem\":\"\"," +
+                "\"ability\":{\"name_en\":\"\",\"name\":\"\"}," +
+                "\"types\":[{\"type_id\":1,\"name\":\"Normal\"}]," +
+                "\"stats\":{\"hp\":180,\"attack\":85,\"defense\":75,\"specialAttack\":70,\"specialDefense\":70,\"speed\":65}," +
+                "\"moves\":[{\"name\":\"Tackle\",\"name_en\":\"tackle\",\"power\":50,\"accuracy\":100,\"priority\":0,\"damage_class_id\":1,\"type_id\":1,\"target_id\":10}]}" +
+                "]";
+    }
+
     private static BattleEngine createEngine() {
         return new BattleEngine(new SkillService(new SkillMapper() {
             @Override
