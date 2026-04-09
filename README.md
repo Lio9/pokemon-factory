@@ -109,38 +109,43 @@ cd pokemon-factory-backend\common
 mvn -DskipTests package
 ```
 
-2. 运行初始化脚本（会：备份并删除旧 sqlite、启动 common、初始化数据库、导入 CSV、校验数据）
+2. 运行初始化脚本（会：备份并删除旧 sqlite、启动 common、由 Java 初始化链自动建表并导入 CSV、最后校验数据）
 
 ```bash
-python scripts\init_db.py
+python scripts/init_db.py
 ```
 
 可选环境变量：
 - SQLITE_DB_PATH - 指定 sqlite 文件路径（默认：pokemon-factory-backend/pokemon-factory.db）
-- JAR_PATH - 指定后端 jar 路径（默认 target 下的 common-0.0.1-SNAPSHOT.jar）
+- JAR_PATH - 指定后端 jar 路径（默认 target 下的 common-0.0.1-SNAPSHOT-exec.jar）
 - MIGRATION_TIMEOUT - 等待迁移完成超时，单位秒（默认 120）
 
-脚本运行完成后会自动调用 scripts/import_to_sqlite.py 进行数据导入，并运行 scripts/verify_sqlite.py 做基本校验。
+脚本运行完成后会由 common 的 Java 初始化链直接完成 CSV 导入，并运行 scripts/verify_sqlite.py 做基本校验。
 
 ### 2. 手动初始化（替代）
 
-- 使用提供的 PowerShell 启动脚本初始化数据库：
+- 推荐使用跨平台启动脚本初始化数据库：
+
+```bash
+python scripts/start-backend.py
+```
+
+- Windows 下也可以继续使用 PowerShell 包装脚本：
 
 ```powershell
-.\scripts\start-backend.ps1
+./scripts/start-backend.ps1
 ```
 
 - 或手动启动 common JAR：
 
 ```bash
-java -jar pokemon-factory-backend\common\target\common-0.0.1-SNAPSHOT.jar
+java -jar pokemon-factory-backend/common/target/common-0.0.1-SNAPSHOT-exec.jar
 ```
 
-然后运行导入脚本：
+common 启动完成后，如果本地存在 csv/ 目录，会自动导入核心图鉴与对战数据；也可以手动运行校验脚本：
 
 ```bash
-python scripts\import_to_sqlite.py
-python scripts\verify_sqlite.py
+python scripts/verify_sqlite.py
 ```
 
 注意：仓库已将 sqlite 文件从主分支移除（不应将生成的数据库提交）。初始化脚本会在本地生成并备份旧文件。
@@ -171,24 +176,24 @@ npm run dev
 
 ## 数据初始化与导入脚本说明
 
-### 脚本特性
+### 当前脚本职责
 
-- **智能重试**：最多重试8次，指数退避延迟
-- **并发处理**：支持50个并发连接
-- **批量导入**：每批200个宝可梦
-- **错误处理**：详细的日志记录和错误恢复
+- `scripts/init_db.py`：一键删库、启动 common、等待 Java 初始化链建表并导入 CSV、最后校验
+- `scripts/start-backend.py`：跨平台直接启动 common 的 exec jar，手动观察初始化日志
+- `scripts/verify_sqlite.py`：校验 SQLite 关键表和核心数据量
+- `scripts/start-backend.ps1`：Windows 包装脚本，内部转调 `scripts/start-backend.py`
 
 ### 使用方法
 
 ```bash
 # 一键初始化数据库 + 导入 CSV + 校验
-python scripts\init_db.py
+python scripts/init_db.py
 
-# 只执行 CSV 导入（默认假定 common 已完成建库）
-python scripts\import_to_sqlite.py
+# 跨平台手动启动 common
+python scripts/start-backend.py
 
 # 校验 SQLite 数据
-python scripts\verify_sqlite.py
+python scripts/verify_sqlite.py
 ```
 
 ### 配置说明

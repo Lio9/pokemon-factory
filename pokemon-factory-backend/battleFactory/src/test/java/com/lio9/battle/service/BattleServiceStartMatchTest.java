@@ -1,5 +1,6 @@
 package com.lio9.battle.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.engine.BattleEngine;
 import com.lio9.battle.service.AIService;
 import org.junit.jupiter.api.AfterEach;
@@ -48,6 +49,7 @@ public class BattleServiceStartMatchTest {
         DataSource ds = createDataSource();
         JdbcTemplate jdbc = new JdbcTemplate(ds);
         createSchema(jdbc);
+        ObjectMapper objectMapper = new ObjectMapper();
 
         // insert sample pokemon used for generated team
         jdbc.update("INSERT INTO pokemon(id,name,base_experience) VALUES(?,?,?)", 1, "Poke", 64);
@@ -59,12 +61,18 @@ public class BattleServiceStartMatchTest {
                 public java.util.List<java.util.Map<String, Object>> selectAllTypeEfficacy() { return java.util.List.of(); }
                 public java.util.List<java.util.Map<String, Object>> selectByDamageTypeId(Integer damageTypeId) { return java.util.List.of(); }
                 public Integer selectDamageFactor(Integer damageTypeId, Integer targetTypeId) { return 100; }
-            }) {
+            }, objectMapper) {
             @Override
-            public java.util.Map<String, Object> simulate(String playerTeamJson, String opponentTeamJson, int maxRounds, java.util.Map<String,String> playerMoveMap) {
+            public java.util.Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
                 Map<String, Object> out = new HashMap<>();
-                out.put("winner", "player");
-                out.put("roundsCount", 1);
+                out.put("status", "preview");
+                out.put("phase", "team-preview");
+                out.put("currentRound", 0);
+                out.put("roundLimit", maxRounds);
+                out.put("playerTeam", java.util.List.of());
+                out.put("opponentTeam", java.util.List.of());
+                out.put("playerActiveSlots", java.util.List.of());
+                out.put("opponentActiveSlots", java.util.List.of());
                 out.put("rounds", java.util.List.of());
                 return out;
             }
@@ -78,9 +86,18 @@ public class BattleServiceStartMatchTest {
                 java.util.List<java.util.Map<String, Object>> rows = jdbc.queryForList("SELECT id, username, rank, points FROM player WHERE username = ?", username);
                 return rows.isEmpty() ? null : rows.get(0);
             }
+            public java.util.Map<String, Object> findById(Integer id) {
+                java.util.List<java.util.Map<String, Object>> rows = jdbc.queryForList("SELECT id, username, rank, points FROM player WHERE id = ?", id);
+                return rows.isEmpty() ? null : rows.get(0);
+            }
             public void updateProgress(Integer playerId, Integer rank, Integer points) {
                 jdbc.update("UPDATE player SET rank = ?, points = ? WHERE id = ?", rank, points, playerId);
             }
+            public void updateTierProgress(Integer playerId, Integer tier, Integer tierPoints, Integer totalPoints, Integer highestTier, Integer wins, Integer losses) {
+                jdbc.update("UPDATE player SET rank = COALESCE(rank, 0) WHERE id = ?", playerId);
+            }
+            public java.util.List<java.util.Map<String, Object>> leaderboard(Integer limit) { return java.util.List.of(); }
+            public java.util.List<java.util.Map<String, Object>> findBattleHistory(Integer playerId, Integer limit) { return java.util.List.of(); }
         };
 
         com.lio9.battle.mapper.TeamMapper teamMapper = new com.lio9.battle.mapper.TeamMapper() {
@@ -99,7 +116,7 @@ public class BattleServiceStartMatchTest {
         };
 
         com.lio9.battle.mapper.BattleMapper battleMapper = new com.lio9.battle.mapper.BattleMapper() {
-            public void insertInitial(Integer playerId, Integer opponentTeamId, Integer rounds, String playerMoveMapJson, String playerTeamJson, String battlePhase) { jdbc.update("INSERT INTO battle(player_id, opponent_team_id, rounds, player_move_map, player_team_json, battle_phase, started_at) VALUES(?, ?, ?, ?, ?, ?, datetime('now'))", playerId, opponentTeamId, rounds, playerMoveMapJson, playerTeamJson, battlePhase); }
+            public void insertInitial(Integer playerId, Integer opponentTeamId, Integer rounds, String playerMoveMapJson, String playerTeamJson, String battlePhase, Integer factoryRunId, Integer runBattleNumber) { jdbc.update("INSERT INTO battle(player_id, opponent_team_id, rounds, player_move_map, player_team_json, battle_phase, started_at) VALUES(?, ?, ?, ?, ?, ?, datetime('now'))", playerId, opponentTeamId, rounds, playerMoveMapJson, playerTeamJson, battlePhase); }
             public void insertFinal(Integer playerId, Integer opponentTeamId, Integer rounds, String summaryJson, Integer winnerPlayerId, String battlePhase) { jdbc.update("INSERT INTO battle(player_id, opponent_team_id, rounds, summary_json, battle_phase, started_at, ended_at, winner_player_id) VALUES(?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)", playerId, opponentTeamId, rounds, summaryJson, battlePhase, winnerPlayerId); }
             public Integer lastInsertId() { return jdbc.queryForObject("SELECT id FROM battle ORDER BY id DESC LIMIT 1", Integer.class); }
             public java.util.Map<String,Object> findBattleWithOpponent(Long id) { java.util.List<java.util.Map<String,Object>> rows = jdbc.queryForList("SELECT b.id, b.player_id, b.opponent_team_id, b.player_move_map, b.player_team_json, b.battle_phase, b.started_at, b.ended_at, b.summary_json, t.team_json AS opponent_team_json FROM battle b LEFT JOIN team t ON b.opponent_team_id = t.id WHERE b.id = ?", id); return rows.isEmpty() ? null : rows.get(0); }
@@ -112,6 +129,22 @@ public class BattleServiceStartMatchTest {
             public void insertRound(Integer battleId, Integer roundNumber, String logJson) {
                 // startMatch 测试只验证对战持久化，不依赖 battle_round 明细
             }
+        };
+
+        com.lio9.battle.mapper.BattleExchangeMapper exchangeMapper = new com.lio9.battle.mapper.BattleExchangeMapper() {
+            public void insertExchange(Long battleId, Integer playerTeamId, Integer opponentTeamId, Integer replacedIndex, String replacedPokemonJson, String newPokemonJson) {
+                // startMatch 测试不会触发交换逻辑
+            }
+        };
+
+        com.lio9.battle.mapper.FactoryRunMapper factoryRunMapper = new com.lio9.battle.mapper.FactoryRunMapper() {
+            public void insertRun(Integer playerId, Integer maxBattles, String teamJson, Integer tierAtStart) {}
+            public Integer lastInsertId() { return null; }
+            public java.util.Map<String, Object> findById(Integer id) { return null; }
+            public java.util.Map<String, Object> findActiveRun(Integer playerId) { return null; }
+            public void updateProgress(Integer id, Integer currentBattle, Integer wins, Integer losses, Integer currentBattleId, String teamJson) {}
+            public void finishRun(Integer id, String status, Integer pointsEarned) {}
+            public java.util.List<java.util.Map<String, Object>> findRecentRuns(Integer playerId, Integer limit) { return java.util.List.of(); }
         };
 
         // simple pool service stub
@@ -128,14 +161,14 @@ public class BattleServiceStartMatchTest {
             public java.util.List<java.util.Map<String, Object>> selectFormTypes(Integer formId) { return java.util.List.of(); }
             public java.util.List<java.util.Map<String, Object>> selectFormAbilities(Integer formId) { return java.util.List.of(); }
             public java.util.List<java.util.Map<String, Object>> selectCompetitiveMoves(Integer formId, int limit) { return java.util.List.of(); }
-        }) {
+        }, objectMapper) {
             @Override
             public String generateFactoryTeamJson(int size, int rank, long seed, java.util.Set<String> excludedNames) {
                 return "[{\"name\":\"Poke\",\"name_en\":\"poke\",\"moves\":[{\"name\":\"tackle\",\"name_en\":\"tackle\",\"power\":40,\"accuracy\":100,\"priority\":0,\"damage_class_id\":1,\"type_id\":1}],\"types\":[{\"type_id\":1}],\"stats\":{\"hp\":120,\"attack\":80,\"defense\":70,\"specialAttack\":60,\"specialDefense\":60,\"speed\":70}}]";
             }
         };
 
-        BattleService service = new BattleService(playerMapper, teamMapper, pokemonMapper, battleMapper, roundMapper, engine, poolService, aiService);
+        BattleService service = new BattleService(playerMapper, teamMapper, pokemonMapper, battleMapper, roundMapper, exchangeMapper, engine, poolService, aiService, factoryRunMapper, objectMapper);
 
         Map<String, Object> req = new HashMap<>();
         req.put("username", "tester");

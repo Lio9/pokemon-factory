@@ -17,22 +17,6 @@ spring:
     property-naming-strategy: SNAKE_CASE
 
 # 导入任务配置
-import:
-  timeout:
-    minutes: 120  # 导入任务超时时间（分钟）
-  retry:
-    max-attempts: 3
-    initial-delay: 1000
-  network:
-    check-interval: 30000
-    connect-timeout: 15000
-    read-timeout: 60000
-  script:
-    path: scripts/import_scheduler.py  # Python导入脚本路径（相对于项目根目录）
-    directory: scripts  # Python脚本工作目录（相对于项目根目录）
-  log:
-    directory: logs  # 日志目录（相对于项目根目录）
-
 # HTTP 客户端配置
 http:
   client:
@@ -46,7 +30,6 @@ logging:
     com.lio9.common: debug
     com.lio9.pokedex: debug
     org.springframework.web: info
-  config: classpath:log4j2.xml
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   file:

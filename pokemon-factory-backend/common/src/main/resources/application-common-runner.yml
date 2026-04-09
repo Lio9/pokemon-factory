@@ -10,3 +10,4 @@ pokemon-factory:
   database:
     # 只有启动 common 时才会真正执行数据库初始化脚本。
     initialize-on-startup: true
+    import-csv-on-startup: true

@@ -1,7 +1,8 @@
 spring:
   datasource:
-    # 整个后端共享同一份 SQLite 数据库文件，业务模块不再各自维护连接配置。
-    url: jdbc:sqlite:${SQLITE_DB_PATH:${user.dir}/pokemon-factory-backend/pokemon-factory.db}
+    # 整个后端共享同一份 SQLite 数据库文件。
+    # 实际落点由 common 的路径解析器统一决定，避免因 user.dir 不同而生成多份数据库文件。
+    url: ${SQLITE_DB_URL:}
     driver-class-name: org.sqlite.JDBC
     hikari:
       # SQLite 并不适合大连接池，这里把连接数量控制在安全范围。
@@ -31,6 +32,8 @@ pokemon-factory:
   database:
     # 默认情况下业务模块不会主动做数据库初始化，避免每次启动都重复跑脚本。
     initialize-on-startup: false
+    import-csv-on-startup: false
+    csv-directory: ${CSV_DIR:}
     bootstrap-scripts:
       - classpath:db/init/001_core_schema.sql
       - classpath:db/init/002_battle_schema.sql

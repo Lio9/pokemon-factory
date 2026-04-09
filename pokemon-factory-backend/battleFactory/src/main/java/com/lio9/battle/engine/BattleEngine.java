@@ -220,6 +220,7 @@ public class BattleEngine {
                 Map<String, Object> switchedIn = actingTeam.get(action.switchToTeamIndex);
                 actionLog.put("actionType", "switch");
                 actionLog.put("switchTo", switchedIn.get("name"));
+                applySwitchOutEffects(actor, events);
                 actor.put("choiceLockedMove", null);
                 resetBattleStages(actor);
                 switchedIn.put("entryRound", toInt(state.get("currentRound"), 0) + 1);
@@ -281,6 +282,22 @@ public class BattleEngine {
                 continue;
             }
 
+            if (isSandstorm(move)) {
+                activateWeather(state, "sand", actor, actionLog, events);
+                actionLogs.add(actionLog);
+                rememberChoiceMove(actor, move);
+                applyCooldown(actor, move);
+                continue;
+            }
+
+            if (isSnowWeather(move)) {
+                activateWeather(state, "snow", actor, actionLog, events);
+                actionLogs.add(actionLog);
+                rememberChoiceMove(actor, move);
+                applyCooldown(actor, move);
+                continue;
+            }
+
             if (isElectricTerrain(move)) {
                 activateTerrain(state, "electric", actor, actionLog, events);
                 actionLogs.add(actionLog);
@@ -291,6 +308,22 @@ public class BattleEngine {
 
             if (isPsychicTerrain(move)) {
                 activateTerrain(state, "psychic", actor, actionLog, events);
+                actionLogs.add(actionLog);
+                rememberChoiceMove(actor, move);
+                applyCooldown(actor, move);
+                continue;
+            }
+
+            if (isGrassyTerrain(move)) {
+                activateTerrain(state, "grassy", actor, actionLog, events);
+                actionLogs.add(actionLog);
+                rememberChoiceMove(actor, move);
+                applyCooldown(actor, move);
+                continue;
+            }
+
+            if (isMistyTerrain(move)) {
+                activateTerrain(state, "misty", actor, actionLog, events);
                 actionLogs.add(actionLog);
                 rememberChoiceMove(actor, move);
                 applyCooldown(actor, move);
@@ -372,12 +405,12 @@ public class BattleEngine {
                 }
 
                 if (isThunderWave(move)) {
-                    applyParalysis(actor, target, move, targetLog, events);
+                    applyParalysis(state, actor, target, move, targetLog, events);
                     actionLogs.add(targetLog);
                     continue;
                 }
                 if (isWillOWisp(move)) {
-                    applyBurn(actor, target, move, targetLog, events);
+                    applyBurn(state, actor, target, move, targetLog, events);
                     actionLogs.add(targetLog);
                     continue;
                 }
@@ -388,6 +421,11 @@ public class BattleEngine {
                 }
                 if (isSpore(move)) {
                     applySleep(state, actor, target, move, targetLog, events, random, round);
+                    actionLogs.add(targetLog);
+                    continue;
+                }
+
+                if (applyDefenderAbilityImmunity(state, actor, target, move, targetLog, events)) {
                     actionLogs.add(targetLog);
                     continue;
                 }
@@ -409,7 +447,8 @@ public class BattleEngine {
                 actionLogs.add(targetLog);
                 events.add(sideName(action.side) + " 的 " + actor.get("name") + " 使用 " + move.get("name") + " 对 " + target.get("name") + " 造成了 " + actualDamage + " 点伤害");
 
-                applyDefenderItemEffects(target, targetLog, events);
+                applyDefenderItemEffects(target, move, actualDamage, targetLog, events);
+                applyReactiveContactEffects(actor, target, move, targetLog, events);
                 totalDamage += actualDamage;
                 anyHit = true;
                 if (isFakeOut(move) && remainingHp > 0) {
@@ -863,6 +902,17 @@ public class BattleEngine {
                     || opposingSideLikelyUsingPriority(state, playerSide))) {
                 return move;
             }
+            if (isGrassyTerrain(move)
+                    && (sidePrefersTerrain(state, playerSide, DamageCalculatorUtil.TYPE_GRASS)
+                    || sideHasGroundedType(state, playerSide, DamageCalculatorUtil.TYPE_GRASS))) {
+                return move;
+            }
+            if (isMistyTerrain(move)
+                    && (sideHasGroundedType(state, playerSide, DamageCalculatorUtil.TYPE_FAIRY)
+                    || opposingSideLikelyUsingStatus(state, playerSide)
+                    || opposingSideLikelyUsingType(state, playerSide, DamageCalculatorUtil.TYPE_DRAGON))) {
+                return move;
+            }
         }
         return null;
     }
@@ -932,10 +982,20 @@ public class BattleEngine {
             if (cooldown(mon, move) != 0 || !canUseMove(mon, move, currentRound)) {
                 continue;
             }
-            if (isRainDance(move) && rainTurns(state) == 0 && sidePrefersWeather(state, playerSide, DamageCalculatorUtil.TYPE_WATER)) {
+            if (isRainDance(move) && weatherTurns(state) == 0 && sidePrefersWeather(state, playerSide, DamageCalculatorUtil.TYPE_WATER)) {
                 return move;
             }
-            if (isSunnyDay(move) && sunTurns(state) == 0 && sidePrefersWeather(state, playerSide, DamageCalculatorUtil.TYPE_FIRE)) {
+            if (isSunnyDay(move) && weatherTurns(state) == 0 && sidePrefersWeather(state, playerSide, DamageCalculatorUtil.TYPE_FIRE)) {
+                return move;
+            }
+            if (isSandstorm(move) && weatherTurns(state) == 0
+                    && (sideHasType(state, playerSide, DamageCalculatorUtil.TYPE_ROCK)
+                    || sideHasType(state, playerSide, DamageCalculatorUtil.TYPE_GROUND)
+                    || sideHasType(state, playerSide, DamageCalculatorUtil.TYPE_STEEL))) {
+                return move;
+            }
+            if (isSnowWeather(move) && weatherTurns(state) == 0
+                    && sideHasType(state, playerSide, DamageCalculatorUtil.TYPE_ICE)) {
                 return move;
             }
         }
@@ -1046,6 +1106,46 @@ public class BattleEngine {
         return false;
     }
 
+    private boolean sideHasType(Map<String, Object> state, boolean playerSide, int typeId) {
+        for (Integer slot : activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0 || slot >= team(state, playerSide).size()) {
+                continue;
+            }
+            if (targetHasType(team(state, playerSide).get(slot), typeId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean sideHasGroundedType(Map<String, Object> state, boolean playerSide, int typeId) {
+        for (Integer slot : activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0 || slot >= team(state, playerSide).size()) {
+                continue;
+            }
+            Map<String, Object> activeMon = team(state, playerSide).get(slot);
+            if (isGrounded(activeMon) && targetHasType(activeMon, typeId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean opposingSideLikelyUsingType(Map<String, Object> state, boolean playerSide, int typeId) {
+        for (Integer slot : activeSlots(state, !playerSide)) {
+            if (slot == null || slot < 0 || slot >= team(state, !playerSide).size()) {
+                continue;
+            }
+            Map<String, Object> target = team(state, !playerSide).get(slot);
+            for (Map<String, Object> move : moves(target)) {
+                if (toInt(move.get("type_id"), 0) == typeId && toInt(move.get("power"), 0) > 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private boolean opposingSideLikelyUsingStatus(Map<String, Object> state, boolean playerSide) {
         for (Integer slot : activeSlots(state, !playerSide)) {
             if (slot == null || slot < 0 || slot >= team(state, !playerSide).size()) {
@@ -1143,9 +1243,10 @@ public class BattleEngine {
         int attackStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
                 ? modifiedAttackStat(attacker, toInt(attackerStats.get("attack"), 100), damageClassId)
                 : modifiedAttackStat(attacker, toInt(attackerStats.get("specialAttack"), 100), damageClassId);
-        int defenseStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
-                ? Math.max(1, toInt(defenderStats.get("defense"), 100))
-                : Math.max(1, modifiedDefenseStat(defender, toInt(defenderStats.get("specialDefense"), 100), damageClassId));
+        int baseDefenseStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
+            ? toInt(defenderStats.get("defense"), 100)
+            : toInt(defenderStats.get("specialDefense"), 100);
+        int defenseStat = Math.max(1, modifiedDefenseStat(defender, baseDefenseStat, damageClassId, state));
 
         int power = Math.max(1, toInt(move.get("power"), 1));
         int baseDamage = DamageCalculatorUtil.calculateBaseDamage(LEVEL, power, attackStat, defenseStat);
@@ -1156,19 +1257,15 @@ public class BattleEngine {
             modifier *= DamageCalculatorUtil.STAB_MULTIPLIER;
         }
 
-        List<Map<String, Object>> defenderTypes = castList(defender.get("types"));
         int moveTypeId = toInt(move.get("type_id"), 0);
-        for (Map<String, Object> defenderType : defenderTypes) {
-            int factor = typeFactor(moveTypeId, toInt(defenderType.get("type_id"), 0));
-            modifier *= factor / 100.0d;
-        }
+        modifier *= typeModifier(defender, moveTypeId);
 
         modifier *= itemDamageModifier(attacker, moveTypeId);
         if (Boolean.TRUE.equals(helpingHandBoosts.get(attacker))) {
             modifier *= 1.5d;
         }
         modifier *= weatherDamageModifier(state, moveTypeId);
-        modifier *= terrainDamageModifier(state, attacker, moveTypeId);
+        modifier *= terrainDamageModifier(state, attacker, defender, moveTypeId);
         modifier *= screenDamageModifier(state, defender, damageClassId);
 
         modifier *= (0.85d + (random.nextDouble() * 0.15d));
@@ -1178,6 +1275,16 @@ public class BattleEngine {
     private int typeFactor(int attackingTypeId, int defendingTypeId) {
         Integer factor = typeEfficacyMapper.selectDamageFactor(attackingTypeId, defendingTypeId);
         return factor == null ? 100 : factor;
+    }
+
+    private double typeModifier(Map<String, Object> defender, int moveTypeId) {
+        double modifier = 1.0d;
+        List<Map<String, Object>> defenderTypes = castList(defender.get("types"));
+        for (Map<String, Object> defenderType : defenderTypes) {
+            int factor = typeFactor(moveTypeId, toInt(defenderType.get("type_id"), 0));
+            modifier *= factor / 100.0d;
+        }
+        return modifier;
     }
 
     private void applyCooldown(Map<String, Object> mon, Map<String, Object> move) {
@@ -1404,6 +1511,16 @@ public class BattleEngine {
         return "sunny-day".equalsIgnoreCase(nameEn) || "sunny day".equalsIgnoreCase(nameEn);
     }
 
+    private boolean isSandstorm(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "sandstorm".equalsIgnoreCase(nameEn);
+    }
+
+    private boolean isSnowWeather(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "snowscape".equalsIgnoreCase(nameEn) || "hail".equalsIgnoreCase(nameEn);
+    }
+
     private boolean isElectricTerrain(Map<String, Object> move) {
         String nameEn = String.valueOf(move.get("name_en"));
         return "electric-terrain".equalsIgnoreCase(nameEn) || "electric terrain".equalsIgnoreCase(nameEn);
@@ -1412,6 +1529,16 @@ public class BattleEngine {
     private boolean isPsychicTerrain(Map<String, Object> move) {
         String nameEn = String.valueOf(move.get("name_en"));
         return "psychic-terrain".equalsIgnoreCase(nameEn) || "psychic terrain".equalsIgnoreCase(nameEn);
+    }
+
+    private boolean isGrassyTerrain(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "grassy-terrain".equalsIgnoreCase(nameEn) || "grassy terrain".equalsIgnoreCase(nameEn);
+    }
+
+    private boolean isMistyTerrain(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "misty-terrain".equalsIgnoreCase(nameEn) || "misty terrain".equalsIgnoreCase(nameEn);
     }
 
     private boolean isIcyWind(Map<String, Object> move) {
@@ -1737,7 +1864,7 @@ public class BattleEngine {
         normalized.put("moves", normalizeMoves(castList(normalized.get("moves"))));
         normalized.putIfAbsent("currentHp", toInt(castMap(normalized.get("stats")).get("hp"), 1));
         normalized.putIfAbsent("cooldowns", new LinkedHashMap<>());
-        normalized.putIfAbsent("statStages", new LinkedHashMap<>(Map.of("attack", 0, "speed", 0)));
+        normalized.putIfAbsent("statStages", new LinkedHashMap<>(Map.of("attack", 0, "specialAttack", 0, "speed", 0)));
         normalized.putIfAbsent("condition", null);
         normalized.putIfAbsent("entryRound", 1);
         normalized.putIfAbsent("flinched", false);
@@ -1867,20 +1994,35 @@ public class BattleEngine {
             if ("burn".equals(mon.get("condition"))) {
                 baseStat = Math.max(1, (int) Math.floor(baseStat * 0.5d));
             }
+        } else if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
+            baseStat = applyStageModifier(baseStat, statStage(mon, "specialAttack"));
         }
         String item = heldItem(mon);
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL && "choice-band".equals(item)) {
             return (int) Math.floor(baseStat * 1.5d);
         }
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL && "choice-specs".equals(item)) {
-            return (int) Math.floor(baseStat * 1.5d);
+            baseStat = (int) Math.floor(baseStat * 1.5d);
+        }
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL && Boolean.TRUE.equals(mon.get("flashFireBoost"))) {
+            baseStat = (int) Math.floor(baseStat * 1.5d);
         }
         return baseStat;
     }
 
-    private int modifiedDefenseStat(Map<String, Object> mon, int baseStat, int damageClassId) {
+    private int modifiedDefenseStat(Map<String, Object> mon, int baseStat, int damageClassId, Map<String, Object> state) {
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL && "assault-vest".equals(heldItem(mon))) {
-            return (int) Math.floor(baseStat * 1.5d);
+            baseStat = (int) Math.floor(baseStat * 1.5d);
+        }
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL
+                && sandTurns(state) > 0
+                && targetHasType(mon, DamageCalculatorUtil.TYPE_ROCK)) {
+            baseStat = (int) Math.floor(baseStat * 1.5d);
+        }
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
+                && snowTurns(state) > 0
+                && targetHasType(mon, DamageCalculatorUtil.TYPE_ICE)) {
+            baseStat = (int) Math.floor(baseStat * 1.5d);
         }
         return baseStat;
     }
@@ -1935,8 +2077,13 @@ public class BattleEngine {
         return Boolean.TRUE.equals(mon.get("itemConsumed"));
     }
 
-    private void applyParalysis(Map<String, Object> source, Map<String, Object> target, Map<String, Object> move,
+    private void applyParalysis(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target, Map<String, Object> move,
                                 Map<String, Object> actionLog, List<String> events) {
+        if (mistyTerrainActiveFor(target, state)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 受到薄雾场地保护，无法陷入异常状态");
+            return;
+        }
         if (targetHasType(target, DamageCalculatorUtil.TYPE_ELECTRIC)) {
             actionLog.put("result", "status-immune");
             events.add(target.get("name") + " 免疫麻痹");
@@ -1958,8 +2105,13 @@ public class BattleEngine {
         events.add(source.get("name") + " 让 " + target.get("name") + " 陷入了麻痹状态");
     }
 
-    private void applyBurn(Map<String, Object> source, Map<String, Object> target, Map<String, Object> move,
+    private void applyBurn(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target, Map<String, Object> move,
                            Map<String, Object> actionLog, List<String> events) {
+        if (mistyTerrainActiveFor(target, state)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 受到薄雾场地保护，无法陷入异常状态");
+            return;
+        }
         if (targetHasType(target, DamageCalculatorUtil.TYPE_FIRE)) {
             actionLog.put("result", "status-immune");
             events.add(target.get("name") + " 免疫灼伤");
@@ -1986,6 +2138,11 @@ public class BattleEngine {
         if (electricTerrainActiveFor(target, state)) {
             actionLog.put("result", "status-immune");
             events.add(target.get("name") + " 受到电气场地保护，无法陷入睡眠");
+            return;
+        }
+        if (mistyTerrainActiveFor(target, state)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 受到薄雾场地保护，无法陷入异常状态");
             return;
         }
         if (isPowderImmune(target)) {
@@ -2020,13 +2177,164 @@ public class BattleEngine {
             return;
         }
         target.put("tauntTurns", 3);
+        if ("mental-herb".equals(heldItem(target)) && !itemConsumed(target)) {
+            target.put("tauntTurns", 0);
+            consumeItem(target);
+            actionLog.put("mentalHerb", true);
+            events.add(target.get("name") + " 的心灵香草解除了挑衅");
+            return;
+        }
         actionLog.put("result", "taunt");
         actionLog.put("tauntTurns", 3);
         events.add(source.get("name") + " 挑衅了 " + target.get("name"));
     }
 
+    private boolean applyDefenderAbilityImmunity(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> target,
+                                                 Map<String, Object> move, Map<String, Object> actionLog, List<String> events) {
+        int moveTypeId = toInt(move.get("type_id"), 0);
+        if (moveTypeId <= 0 || isStatusMove(move)) {
+            return false;
+        }
+        String ability = abilityName(target);
+        if (("flash-fire".equalsIgnoreCase(ability) || "flash fire".equalsIgnoreCase(ability))
+                && moveTypeId == DamageCalculatorUtil.TYPE_FIRE) {
+            target.put("flashFireBoost", true);
+            actionLog.put("result", "ability-immune");
+            actionLog.put("damage", 0);
+            actionLog.put("ability", "flash-fire");
+            events.add(target.get("name") + " 的引火吸收了火属性招式");
+            return true;
+        }
+        if (("lightning-rod".equalsIgnoreCase(ability) || "lightning rod".equalsIgnoreCase(ability))
+                && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
+            int previousStage = statStage(target, "specialAttack");
+            int nextStage = Math.min(6, previousStage + 1);
+            statStages(target).put("specialAttack", nextStage);
+            actionLog.put("result", "ability-immune");
+            actionLog.put("damage", 0);
+            actionLog.put("ability", "lightning-rod");
+            events.add(target.get("name") + " 的避雷针吸收了电属性招式，特攻提升了");
+            return true;
+        }
+        if (("storm-drain".equalsIgnoreCase(ability) || "storm drain".equalsIgnoreCase(ability))
+                && moveTypeId == DamageCalculatorUtil.TYPE_WATER) {
+            int previousStage = statStage(target, "specialAttack");
+            int nextStage = Math.min(6, previousStage + 1);
+            statStages(target).put("specialAttack", nextStage);
+            actionLog.put("result", "ability-immune");
+            actionLog.put("damage", 0);
+            actionLog.put("ability", "storm-drain");
+            events.add(target.get("name") + " 的引水吸收了水属性招式，特攻提升了");
+            return true;
+        }
+        if (("water-absorb".equalsIgnoreCase(ability) || "water absorb".equalsIgnoreCase(ability))
+                && moveTypeId == DamageCalculatorUtil.TYPE_WATER) {
+            int heal = healFraction(target, 4);
+            actionLog.put("result", "ability-immune");
+            actionLog.put("damage", 0);
+            actionLog.put("ability", "water-absorb");
+            actionLog.put("heal", heal);
+            events.add(target.get("name") + " 的储水吸收了水属性招式，回复了 " + heal + " 点 HP");
+            return true;
+        }
+        if (("volt-absorb".equalsIgnoreCase(ability) || "volt absorb".equalsIgnoreCase(ability))
+                && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
+            int heal = healFraction(target, 4);
+            actionLog.put("result", "ability-immune");
+            actionLog.put("damage", 0);
+            actionLog.put("ability", "volt-absorb");
+            actionLog.put("heal", heal);
+            events.add(target.get("name") + " 的蓄电吸收了电属性招式，回复了 " + heal + " 点 HP");
+            return true;
+        }
+        if (("motor-drive".equalsIgnoreCase(ability) || "motor drive".equalsIgnoreCase(ability))
+                && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
+            int previousStage = statStage(target, "speed");
+            int nextStage = Math.min(6, previousStage + 1);
+            statStages(target).put("speed", nextStage);
+            actionLog.put("result", "ability-immune");
+            actionLog.put("damage", 0);
+            actionLog.put("ability", "motor-drive");
+            events.add(target.get("name") + " 的电气引擎吸收了电属性招式，速度提升了");
+            return true;
+        }
+        if (("sap-sipper".equalsIgnoreCase(ability) || "sap sipper".equalsIgnoreCase(ability))
+                && moveTypeId == DamageCalculatorUtil.TYPE_GRASS) {
+            int previousStage = statStage(target, "attack");
+            int nextStage = Math.min(6, previousStage + 1);
+            statStages(target).put("attack", nextStage);
+            actionLog.put("result", "ability-immune");
+            actionLog.put("damage", 0);
+            actionLog.put("ability", "sap-sipper");
+            events.add(target.get("name") + " 的食草吸收了草属性招式，攻击提升了");
+            return true;
+        }
+        return false;
+    }
+
+    private void applyReactiveContactEffects(Map<String, Object> attacker, Map<String, Object> target,
+                                             Map<String, Object> move, Map<String, Object> actionLog, List<String> events) {
+        if (!isContactMove(move)
+                || !"rocky-helmet".equals(heldItem(target))
+                || toInt(attacker.get("currentHp"), 0) <= 0) {
+            return;
+        }
+        int maxHp = toInt(castMap(attacker.get("stats")).get("hp"), 1);
+        int recoil = Math.max(1, maxHp / 6);
+        int remainingHp = Math.max(0, toInt(attacker.get("currentHp"), 0) - recoil);
+        attacker.put("currentHp", remainingHp);
+        if (remainingHp == 0) {
+            attacker.put("status", "fainted");
+        }
+        actionLog.put("rockyHelmet", recoil);
+        events.add(attacker.get("name") + " 因凸凸头盔损失了 " + recoil + " 点 HP");
+    }
+
+    private boolean isContactMove(Map<String, Object> move) {
+        Object contact = move.get("contact");
+        if (contact instanceof Boolean bool) {
+            return bool;
+        }
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "strike".equalsIgnoreCase(nameEn)
+                || "tackle".equalsIgnoreCase(nameEn)
+                || "fake-out".equalsIgnoreCase(nameEn)
+                || "fake out".equalsIgnoreCase(nameEn)
+                || "vine-whip".equalsIgnoreCase(nameEn)
+                || "vine whip".equalsIgnoreCase(nameEn);
+    }
+
+    private void applySwitchOutEffects(Map<String, Object> mon, List<String> events) {
+        if (toInt(mon.get("currentHp"), 0) <= 0) {
+            return;
+        }
+        String ability = abilityName(mon);
+        if ("regenerator".equalsIgnoreCase(ability)) {
+            int maxHp = toInt(castMap(mon.get("stats")).get("hp"), 1);
+            int currentHp = toInt(mon.get("currentHp"), 0);
+            if (currentHp >= maxHp) {
+                return;
+            }
+            int heal = Math.max(1, maxHp / 3);
+            mon.put("currentHp", Math.min(maxHp, currentHp + heal));
+            events.add(mon.get("name") + " 通过再生力回复了 " + heal + " 点 HP");
+        }
+    }
+
     private void consumeItem(Map<String, Object> mon) {
         mon.put("itemConsumed", true);
+    }
+
+    private int healFraction(Map<String, Object> mon, int denominator) {
+        int currentHp = toInt(mon.get("currentHp"), 0);
+        int maxHp = toInt(castMap(mon.get("stats")).get("hp"), Math.max(1, currentHp));
+        if (currentHp <= 0 || currentHp >= maxHp) {
+            return 0;
+        }
+        int heal = Math.max(1, maxHp / denominator);
+        int actualHeal = Math.min(heal, maxHp - currentHp);
+        mon.put("currentHp", currentHp + actualHeal);
+        return actualHeal;
     }
 
     private int applyIncomingDamage(Map<String, Object> target, int damage, Map<String, Object> actionLog, List<String> events) {
@@ -2043,8 +2351,24 @@ public class BattleEngine {
         return Math.max(0, currentHp - actualDamage);
     }
 
-    private void applyDefenderItemEffects(Map<String, Object> target, Map<String, Object> actionLog, List<String> events) {
-        if (!"sitrus-berry".equals(heldItem(target)) || itemConsumed(target) || toInt(target.get("currentHp"), 0) <= 0) {
+    private void applyDefenderItemEffects(Map<String, Object> target, Map<String, Object> move, int actualDamage,
+                                          Map<String, Object> actionLog, List<String> events) {
+        if (toInt(target.get("currentHp"), 0) <= 0) {
+            return;
+        }
+        if ("weakness-policy".equals(heldItem(target))
+                && !itemConsumed(target)
+                && actualDamage > 0
+                && typeModifier(target, toInt(move.get("type_id"), 0)) > 1.0d) {
+            int attackStage = Math.min(6, statStage(target, "attack") + 2);
+            int specialAttackStage = Math.min(6, statStage(target, "specialAttack") + 2);
+            statStages(target).put("attack", attackStage);
+            statStages(target).put("specialAttack", specialAttackStage);
+            consumeItem(target);
+            actionLog.put("weaknessPolicy", true);
+            events.add(target.get("name") + " 的弱点保险发动了，攻击和特攻大幅提升");
+        }
+        if (!"sitrus-berry".equals(heldItem(target)) || itemConsumed(target)) {
             return;
         }
         int maxHp = toInt(castMap(target.get("stats")).get("hp"), 1);
@@ -2079,6 +2403,60 @@ public class BattleEngine {
         applyEndTurnStatusEffects(team(state, false), events);
         applyEndTurnHealing(team(state, true), events);
         applyEndTurnHealing(team(state, false), events);
+        applyEndTurnFieldEffects(state, events);
+    }
+
+    private void applyEndTurnFieldEffects(Map<String, Object> state, List<String> events) {
+        if (sandTurns(state) > 0) {
+            applySandstormDamage(state, true, events);
+            applySandstormDamage(state, false, events);
+        }
+        if (grassyTerrainTurns(state) > 0) {
+            applyGrassyTerrainHealing(state, true, events);
+            applyGrassyTerrainHealing(state, false, events);
+        }
+    }
+
+    private void applySandstormDamage(Map<String, Object> state, boolean playerSide, List<String> events) {
+        for (Integer slot : activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0 || slot >= team(state, playerSide).size()) {
+                continue;
+            }
+            Map<String, Object> mon = team(state, playerSide).get(slot);
+            if (toInt(mon.get("currentHp"), 0) <= 0 || sandstormImmune(mon)) {
+                continue;
+            }
+            int maxHp = toInt(castMap(mon.get("stats")).get("hp"), 1);
+            int damage = Math.max(1, maxHp / 16);
+            int remainingHp = Math.max(0, toInt(mon.get("currentHp"), 0) - damage);
+            mon.put("currentHp", remainingHp);
+            if (remainingHp == 0) {
+                mon.put("status", "fainted");
+                events.add(mon.get("name") + " 被沙暴击倒了");
+            } else {
+                events.add(mon.get("name") + " 受沙暴影响损失了 " + damage + " 点 HP");
+            }
+        }
+    }
+
+    private void applyGrassyTerrainHealing(Map<String, Object> state, boolean playerSide, List<String> events) {
+        for (Integer slot : activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0 || slot >= team(state, playerSide).size()) {
+                continue;
+            }
+            Map<String, Object> mon = team(state, playerSide).get(slot);
+            if (toInt(mon.get("currentHp"), 0) <= 0 || !grassyTerrainActiveFor(mon, state)) {
+                continue;
+            }
+            int maxHp = toInt(castMap(mon.get("stats")).get("hp"), 1);
+            int currentHp = toInt(mon.get("currentHp"), 0);
+            if (currentHp >= maxHp) {
+                continue;
+            }
+            int heal = Math.max(1, maxHp / 16);
+            mon.put("currentHp", Math.min(maxHp, currentHp + heal));
+            events.add(mon.get("name") + " 受青草场地影响回复了 " + heal + " 点 HP");
+        }
     }
 
     private void decrementTauntEffects(Map<String, Object> state, List<String> events) {
@@ -2178,12 +2556,28 @@ public class BattleEngine {
                 activateWeather(state, "sun", source, null, events);
                 continue;
             }
+            if ("sand-stream".equalsIgnoreCase(ability) || "sand stream".equalsIgnoreCase(ability)) {
+                activateWeather(state, "sand", source, null, events);
+                continue;
+            }
+            if ("snow-warning".equalsIgnoreCase(ability) || "snow warning".equalsIgnoreCase(ability)) {
+                activateWeather(state, "snow", source, null, events);
+                continue;
+            }
             if ("electric-surge".equalsIgnoreCase(ability) || "electric surge".equalsIgnoreCase(ability)) {
                 activateTerrain(state, "electric", source, null, events);
                 continue;
             }
             if ("psychic-surge".equalsIgnoreCase(ability) || "psychic surge".equalsIgnoreCase(ability)) {
                 activateTerrain(state, "psychic", source, null, events);
+                continue;
+            }
+            if ("grassy-surge".equalsIgnoreCase(ability) || "grassy surge".equalsIgnoreCase(ability)) {
+                activateTerrain(state, "grassy", source, null, events);
+                continue;
+            }
+            if ("misty-surge".equalsIgnoreCase(ability) || "misty surge".equalsIgnoreCase(ability)) {
+                activateTerrain(state, "misty", source, null, events);
             }
         }
     }
@@ -2207,6 +2601,7 @@ public class BattleEngine {
             int nextStage = Math.max(-6, previousStage - 1);
             statStages(target).put("attack", nextStage);
             if (nextStage != previousStage) {
+                triggerStatDropAbilities(target, events);
                 events.add(source.get("name") + " 的威吓使 " + target.get("name") + " 的攻击下降了");
                 activated = true;
             }
@@ -2228,7 +2623,29 @@ public class BattleEngine {
         statStages(target).put("speed", nextStage);
         if (nextStage != previousStage) {
             actionLog.put("speedStageChange", -1);
+            triggerStatDropAbilities(target, events);
             events.add(source.get("name") + " 使 " + target.get("name") + " 的速度下降了");
+        }
+    }
+
+    private void triggerStatDropAbilities(Map<String, Object> target, List<String> events) {
+        String ability = abilityName(target);
+        if ("defiant".equalsIgnoreCase(ability)) {
+            int previousStage = statStage(target, "attack");
+            int nextStage = Math.min(6, previousStage + 2);
+            statStages(target).put("attack", nextStage);
+            if (nextStage != previousStage) {
+                events.add(target.get("name") + " 因不服输触发，攻击大幅提升了");
+            }
+            return;
+        }
+        if ("competitive".equalsIgnoreCase(ability)) {
+            int previousStage = statStage(target, "specialAttack");
+            int nextStage = Math.min(6, previousStage + 2);
+            statStages(target).put("specialAttack", nextStage);
+            if (nextStage != previousStage) {
+                events.add(target.get("name") + " 因好胜触发，特攻大幅提升了");
+            }
         }
     }
 
@@ -2246,11 +2663,13 @@ public class BattleEngine {
         if (value instanceof Map) {
             Map<String, Object> existing = (Map<String, Object>) value;
             existing.putIfAbsent("attack", 0);
+            existing.putIfAbsent("specialAttack", 0);
             existing.putIfAbsent("speed", 0);
             return existing;
         }
         Map<String, Object> created = new LinkedHashMap<>();
         created.put("attack", 0);
+        created.put("specialAttack", 0);
         created.put("speed", 0);
         mon.put("statStages", created);
         return created;
@@ -2262,6 +2681,7 @@ public class BattleEngine {
 
     private void resetBattleStages(Map<String, Object> mon) {
         statStages(mon).put("attack", 0);
+        statStages(mon).put("specialAttack", 0);
         statStages(mon).put("speed", 0);
         mon.put("tauntTurns", 0);
     }
@@ -2302,6 +2722,22 @@ public class BattleEngine {
 
     private boolean electricTerrainActiveFor(Map<String, Object> mon, Map<String, Object> state) {
         return state != null && electricTerrainTurns(state) > 0 && isGrounded(mon);
+    }
+
+    private boolean mistyTerrainActiveFor(Map<String, Object> mon, Map<String, Object> state) {
+        return state != null && mistyTerrainTurns(state) > 0 && isGrounded(mon);
+    }
+
+    private boolean grassyTerrainActiveFor(Map<String, Object> mon, Map<String, Object> state) {
+        return state != null && grassyTerrainTurns(state) > 0 && isGrounded(mon);
+    }
+
+    private boolean sandstormImmune(Map<String, Object> mon) {
+        return targetHasType(mon, DamageCalculatorUtil.TYPE_ROCK)
+                || targetHasType(mon, DamageCalculatorUtil.TYPE_GROUND)
+                || targetHasType(mon, DamageCalculatorUtil.TYPE_STEEL)
+                || "safety-goggles".equals(heldItem(mon))
+                || "overcoat".equalsIgnoreCase(abilityName(mon));
     }
 
     private boolean isBlockedByPsychicTerrain(Map<String, Object> state, String actingSide, Map<String, Object> target, Map<String, Object> move) {
@@ -2402,8 +2838,12 @@ public class BattleEngine {
         effects.put("trickRoomTurns", 0);
         effects.put("rainTurns", 0);
         effects.put("sunTurns", 0);
+        effects.put("sandTurns", 0);
+        effects.put("snowTurns", 0);
         effects.put("electricTerrainTurns", 0);
         effects.put("psychicTerrainTurns", 0);
+        effects.put("grassyTerrainTurns", 0);
+        effects.put("mistyTerrainTurns", 0);
         effects.put("playerReflectTurns", 0);
         effects.put("opponentReflectTurns", 0);
         effects.put("playerLightScreenTurns", 0);
@@ -2438,6 +2878,14 @@ public class BattleEngine {
         return toInt(fieldEffects(state).get("sunTurns"), 0);
     }
 
+    private int sandTurns(Map<String, Object> state) {
+        return toInt(fieldEffects(state).get("sandTurns"), 0);
+    }
+
+    private int snowTurns(Map<String, Object> state) {
+        return toInt(fieldEffects(state).get("snowTurns"), 0);
+    }
+
     private int electricTerrainTurns(Map<String, Object> state) {
         return toInt(fieldEffects(state).get("electricTerrainTurns"), 0);
     }
@@ -2446,8 +2894,20 @@ public class BattleEngine {
         return toInt(fieldEffects(state).get("psychicTerrainTurns"), 0);
     }
 
+    private int grassyTerrainTurns(Map<String, Object> state) {
+        return toInt(fieldEffects(state).get("grassyTerrainTurns"), 0);
+    }
+
+    private int mistyTerrainTurns(Map<String, Object> state) {
+        return toInt(fieldEffects(state).get("mistyTerrainTurns"), 0);
+    }
+
+    private int weatherTurns(Map<String, Object> state) {
+        return Math.max(Math.max(rainTurns(state), sunTurns(state)), Math.max(sandTurns(state), snowTurns(state)));
+    }
+
     private int terrainTurns(Map<String, Object> state) {
-        return Math.max(electricTerrainTurns(state), psychicTerrainTurns(state));
+        return Math.max(Math.max(electricTerrainTurns(state), psychicTerrainTurns(state)), Math.max(grassyTerrainTurns(state), mistyTerrainTurns(state)));
     }
 
     private int reflectTurns(Map<String, Object> state, boolean playerSide) {
@@ -2479,40 +2939,95 @@ public class BattleEngine {
 
     private void activateWeather(Map<String, Object> state, String weather, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
         Map<String, Object> effects = fieldEffects(state);
-        if ("rain".equals(weather)) {
-            effects.put("rainTurns", 5);
-            effects.put("sunTurns", 0);
-            if (actionLog != null) {
-                actionLog.put("result", "rain");
-            }
-            events.add(actor.get("name") + " 让大雨落了下来");
-            return;
-        }
-        effects.put("sunTurns", 5);
         effects.put("rainTurns", 0);
-        if (actionLog != null) {
-            actionLog.put("result", "sun");
+        effects.put("sunTurns", 0);
+        effects.put("sandTurns", 0);
+        effects.put("snowTurns", 0);
+        int duration = weatherDuration(actor, weather);
+        switch (weather) {
+            case "rain" -> {
+                effects.put("rainTurns", duration);
+                if (actionLog != null) {
+                    actionLog.put("result", "rain");
+                }
+                events.add(actor.get("name") + " 让大雨落了下来");
+            }
+            case "sun" -> {
+                effects.put("sunTurns", duration);
+                if (actionLog != null) {
+                    actionLog.put("result", "sun");
+                }
+                events.add(actor.get("name") + " 让阳光变得炽烈了");
+            }
+            case "sand" -> {
+                effects.put("sandTurns", duration);
+                if (actionLog != null) {
+                    actionLog.put("result", "sandstorm");
+                }
+                events.add(actor.get("name") + " 掀起了沙暴");
+            }
+            default -> {
+                effects.put("snowTurns", duration);
+                if (actionLog != null) {
+                    actionLog.put("result", "snow");
+                }
+                events.add(actor.get("name") + " 让雪景覆盖了场地");
+            }
         }
-        events.add(actor.get("name") + " 让阳光变得炽烈了");
     }
 
     private void activateTerrain(Map<String, Object> state, String terrain, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
         Map<String, Object> effects = fieldEffects(state);
         effects.put("electricTerrainTurns", 0);
         effects.put("psychicTerrainTurns", 0);
-        if ("electric".equals(terrain)) {
-            effects.put("electricTerrainTurns", 5);
-            if (actionLog != null) {
-                actionLog.put("result", "electric-terrain");
+        effects.put("grassyTerrainTurns", 0);
+        effects.put("mistyTerrainTurns", 0);
+        int duration = terrainDuration(actor);
+        switch (terrain) {
+            case "electric" -> {
+                effects.put("electricTerrainTurns", duration);
+                if (actionLog != null) {
+                    actionLog.put("result", "electric-terrain");
+                }
+                events.add(actor.get("name") + " 让电气场地展开了");
             }
-            events.add(actor.get("name") + " 让电气场地展开了");
-            return;
+            case "psychic" -> {
+                effects.put("psychicTerrainTurns", duration);
+                if (actionLog != null) {
+                    actionLog.put("result", "psychic-terrain");
+                }
+                events.add(actor.get("name") + " 让精神场地展开了");
+            }
+            case "grassy" -> {
+                effects.put("grassyTerrainTurns", duration);
+                if (actionLog != null) {
+                    actionLog.put("result", "grassy-terrain");
+                }
+                events.add(actor.get("name") + " 让青草场地展开了");
+            }
+            default -> {
+                effects.put("mistyTerrainTurns", duration);
+                if (actionLog != null) {
+                    actionLog.put("result", "misty-terrain");
+                }
+                events.add(actor.get("name") + " 让薄雾场地展开了");
+            }
         }
-        effects.put("psychicTerrainTurns", 5);
-        if (actionLog != null) {
-            actionLog.put("result", "psychic-terrain");
-        }
-        events.add(actor.get("name") + " 让精神场地展开了");
+    }
+
+    private int weatherDuration(Map<String, Object> actor, String weather) {
+        String item = heldItem(actor);
+        return switch (weather) {
+            case "rain" -> "damp-rock".equals(item) ? 8 : 5;
+            case "sun" -> "heat-rock".equals(item) ? 8 : 5;
+            case "sand" -> "smooth-rock".equals(item) ? 8 : 5;
+            case "snow" -> "icy-rock".equals(item) ? 8 : 5;
+            default -> 5;
+        };
+    }
+
+    private int terrainDuration(Map<String, Object> actor) {
+        return "terrain-extender".equals(heldItem(actor)) ? 8 : 5;
     }
 
     private void activateScreen(Map<String, Object> state, String screen, boolean playerSide, Map<String, Object> actor,
@@ -2534,8 +3049,12 @@ public class BattleEngine {
         decrementFieldEffect(state, fieldSnapshot, "trickRoomTurns", "戏法空间结束了", events);
         decrementFieldEffect(state, fieldSnapshot, "rainTurns", "雨停了", events);
         decrementFieldEffect(state, fieldSnapshot, "sunTurns", "炽烈的阳光消失了", events);
+        decrementFieldEffect(state, fieldSnapshot, "sandTurns", "沙暴平息了", events);
+        decrementFieldEffect(state, fieldSnapshot, "snowTurns", "雪景消散了", events);
         decrementFieldEffect(state, fieldSnapshot, "electricTerrainTurns", "电气场地消失了", events);
         decrementFieldEffect(state, fieldSnapshot, "psychicTerrainTurns", "精神场地消失了", events);
+        decrementFieldEffect(state, fieldSnapshot, "grassyTerrainTurns", "青草场地消失了", events);
+        decrementFieldEffect(state, fieldSnapshot, "mistyTerrainTurns", "薄雾场地消失了", events);
         decrementFieldEffect(state, fieldSnapshot, "playerReflectTurns", "我方反射壁消失了", events);
         decrementFieldEffect(state, fieldSnapshot, "opponentReflectTurns", "对手反射壁消失了", events);
         decrementFieldEffect(state, fieldSnapshot, "playerLightScreenTurns", "我方光墙消失了", events);
@@ -2580,15 +3099,25 @@ public class BattleEngine {
         return 1.0d;
     }
 
-    private double terrainDamageModifier(Map<String, Object> state, Map<String, Object> attacker, int moveTypeId) {
+    private double terrainDamageModifier(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> defender, int moveTypeId) {
         if (!isGrounded(attacker)) {
-            return 1.0d;
+            return mistyTerrainTurns(state) > 0
+                    && moveTypeId == DamageCalculatorUtil.TYPE_DRAGON
+                    && isGrounded(defender)
+                    ? 0.5d
+                    : 1.0d;
         }
         if (electricTerrainTurns(state) > 0 && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
             return 1.3d;
         }
         if (psychicTerrainTurns(state) > 0 && moveTypeId == DamageCalculatorUtil.TYPE_PSYCHIC) {
             return 1.3d;
+        }
+        if (grassyTerrainTurns(state) > 0 && moveTypeId == DamageCalculatorUtil.TYPE_GRASS) {
+            return 1.3d;
+        }
+        if (mistyTerrainTurns(state) > 0 && moveTypeId == DamageCalculatorUtil.TYPE_DRAGON && isGrounded(defender)) {
+            return 0.5d;
         }
         return 1.0d;
     }

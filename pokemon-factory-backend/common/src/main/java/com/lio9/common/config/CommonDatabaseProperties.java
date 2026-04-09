@@ -32,6 +32,16 @@ public class CommonDatabaseProperties {
      */
     private List<String> bootstrapScripts = new ArrayList<>();
 
+    /**
+     * 是否在建表后继续执行 CSV 数据导入。
+     */
+    private boolean importCsvOnStartup;
+
+    /**
+     * CSV 数据目录，默认自动探测仓库根目录下的 csv/。
+     */
+    private String csvDirectory;
+
     public boolean isInitializeOnStartup() {
         return initializeOnStartup;
     }
@@ -46,5 +56,21 @@ public class CommonDatabaseProperties {
 
     public void setBootstrapScripts(List<String> bootstrapScripts) {
         this.bootstrapScripts = bootstrapScripts;
+    }
+
+    public boolean isImportCsvOnStartup() {
+        return importCsvOnStartup;
+    }
+
+    public void setImportCsvOnStartup(boolean importCsvOnStartup) {
+        this.importCsvOnStartup = importCsvOnStartup;
+    }
+
+    public String getCsvDirectory() {
+        return csvDirectory;
+    }
+
+    public void setCsvDirectory(String csvDirectory) {
+        this.csvDirectory = csvDirectory;
     }
 }

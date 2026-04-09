@@ -14,7 +14,9 @@ import org.springframework.context.annotation.ComponentScan;
  * 3. 不再自己维护数据库脚本和迁移入口。
  * </p>
  */
-@SpringBootApplication
+@SpringBootApplication(excludeName = {
+    "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration"
+})
 // pokeDex 仍需要扫描 common 中沉淀下来的图鉴公共 Service/配置，
 // 因为图鉴业务本身大量复用了 common 里的公共查询能力。
 @ComponentScan(basePackages = {"com.lio9.pokedex", "com.lio9.common"})

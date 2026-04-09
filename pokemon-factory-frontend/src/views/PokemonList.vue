@@ -4,7 +4,7 @@
     class="pokemon-list"
   >
     <!-- 搜索和筛选区域 -->
-    <div class="search-section mb-8 card-glass rounded-2xl shadow-lg p-6 border border-transparent sticky top-0 z-10 transition-all duration-300 hover:shadow-xl">
+    <div class="search-section mb-6 rounded-2xl border border-transparent p-4 shadow-lg transition-all duration-300 hover:shadow-xl sticky top-[4.25rem] z-10 sm:mb-8 sm:p-6 sm:top-[4.75rem] card-glass">
       <div class="flex flex-col lg:flex-row gap-4">
         <!-- 搜索框 -->
         <div class="flex-1">
@@ -31,7 +31,7 @@
         </div>
         
         <!-- 属性筛选 -->
-        <div class="w-48">
+        <div class="w-full sm:w-48">
           <el-select
             v-model="selectedType"
             placeholder="属性筛选"
@@ -58,7 +58,7 @@
         </div>
         
         <!-- 世代筛选 -->
-        <div class="w-40">
+        <div class="w-full sm:w-40">
           <el-select
             v-model="selectedGeneration"
             placeholder="世代"
@@ -77,7 +77,7 @@
         </div>
 
         <!-- 排序 -->
-        <div class="w-40">
+        <div class="w-full sm:w-40">
           <el-select
             v-model="sortBy"
             placeholder="排序"
@@ -105,7 +105,7 @@
         </div>
 
         <!-- 视图切换 -->
-        <div class="flex items-center gap-2 bg-gray-100 rounded-xl p-1">
+        <div class="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-100 p-1 sm:w-auto sm:justify-start">
           <button 
             class="p-2 rounded-lg transition-all duration-300"
             :class="viewMode === 'grid' ? 'bg-white shadow-md' : 'hover:bg-gray-200'"
@@ -126,7 +126,7 @@
       </div>
 
       <!-- 快速筛选标签 -->
-      <div class="flex flex-wrap gap-2 mt-4">
+      <div class="mt-4 flex flex-wrap gap-2">
         <button
           v-for="quickFilter in quickFilters"
           :key="quickFilter.key"
@@ -181,7 +181,7 @@
       <!-- 网格视图 -->
       <div
         v-if="viewMode === 'grid'"
-        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5"
+        class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 md:grid-cols-4 lg:grid-cols-6"
       >
         <router-link
           v-for="pokemon in pokemons"
@@ -294,13 +294,13 @@
       <!-- 列表视图 -->
       <div
         v-else
-        class="space-y-4"
+        class="space-y-3 sm:space-y-4"
       >
         <router-link
           v-for="pokemon in pokemons"
           :key="pokemon.id"
           :to="`/pokemon/${pokemon.id}`"
-          class="pokemon-card-list bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden group border-2 border-transparent hover:border-blue-200 flex items-center gap-4 p-4 relative"
+          class="pokemon-card-list relative flex flex-col gap-4 overflow-hidden rounded-2xl border-2 border-transparent bg-white p-4 shadow-lg transition-all duration-300 hover:border-blue-200 hover:shadow-2xl sm:flex-row sm:items-center"
         >
           <!-- 收藏按钮 -->
           <button 
@@ -338,7 +338,7 @@
           </div>
           
           <!-- 信息 -->
-          <div class="flex-1 min-w-0">
+          <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 mb-1">
               <h3 class="font-bold text-gray-900 text-lg truncate group-hover:text-blue-600 transition-colors">
                 {{ pokemon.name }}

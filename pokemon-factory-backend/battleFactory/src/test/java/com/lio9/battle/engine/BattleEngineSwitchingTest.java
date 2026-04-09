@@ -1,5 +1,6 @@
 package com.lio9.battle.engine;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.mapper.SkillMapper;
 import com.lio9.battle.service.SkillService;
 import com.lio9.common.mapper.TypeEfficacyMapper;
@@ -1902,7 +1903,7 @@ class BattleEngineSwitchingTest {
                 if (damageTypeId == TYPE_NORMAL && targetTypeId == TYPE_GRASS) return 50;
                 return 100;
             }
-        });
+                }, new ObjectMapper());
 
         // Player has two Normal-type attackers on the field using Normal-type moves.
         // Opponent has a low-HP Normal-type lead and a Grass-type bench that resists
@@ -1943,6 +1944,778 @@ class BattleEngineSwitchingTest {
         }
 
         assertTrue(switchedToGrass, "AI should have switched in Grass-Defender as a type-resistant cover when active mon was in critical HP");
+    }
+
+    @Test
+    void createBattleState_sandStreamStartsSandstormAndBoostsRockSpecialDefense() {
+        BattleEngine engine = createEngine();
+
+        String baselinePlayer = "[" +
+                pokemonJson("Lead-A", 220, 120) + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String sandPlayer = "[" +
+                pokemonJson("Sand-A", 220, 120, "", 60, "sand-stream") + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Special-Opp", 260, 70) + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> baseline = engine.createBattleState(baselinePlayer, opponentTeam, 12, 515151L);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> baselinePlayerTeam = (List<Map<String, Object>>) baseline.get("playerTeam");
+        baselinePlayerTeam.get(0).put("types", List.of(Map.of("type_id", DamageCalculatorUtil.TYPE_ROCK, "name", "Rock")));
+        setMoves(baseline, true, 0, List.of(move("Strike", "strike", 40, 100, 0, 1, 1, 10)));
+        setMoves(baseline, true, 1, List.of(protectMove()));
+        setMoves(baseline, false, 0, List.of(move("Special Strike", "special-strike", 80, 100, 0, 2, DamageCalculatorUtil.TYPE_WATER, 10)));
+        setMoves(baseline, false, 1, List.of(protectMove()));
+        Map<String, Object> baselineRound = engine.playRound(baseline, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        Map<String, Object> sand = engine.createBattleState(sandPlayer, opponentTeam, 12, 515151L);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sandPlayerTeam = (List<Map<String, Object>>) sand.get("playerTeam");
+        sandPlayerTeam.get(0).put("types", List.of(Map.of("type_id", DamageCalculatorUtil.TYPE_ROCK, "name", "Rock")));
+        setMoves(sand, true, 0, List.of(move("Strike", "strike", 40, 100, 0, 1, 1, 10)));
+        setMoves(sand, true, 1, List.of(protectMove()));
+        setMoves(sand, false, 0, List.of(move("Special Strike", "special-strike", 80, 100, 0, 2, DamageCalculatorUtil.TYPE_WATER, 10)));
+        setMoves(sand, false, 1, List.of(protectMove()));
+        Map<String, Object> sandRound = engine.playRound(sand, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> baselineAfter = (List<Map<String, Object>>) baselineRound.get("playerTeam");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sandAfter = (List<Map<String, Object>>) sandRound.get("playerTeam");
+        assertTrue((Integer) sandAfter.get(0).get("currentHp") > (Integer) baselineAfter.get(0).get("currentHp"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> fieldEffects = (Map<String, Object>) sand.get("fieldEffects");
+        assertTrue((Integer) fieldEffects.get("sandTurns") > 0);
+    }
+
+    @Test
+    void playRound_sandstormDamagesNonImmuneTargetsButNotOvercoat() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Sand-A", 220, 120) + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Target-Opp", 220, 70) + "," +
+                pokemonJson("Overcoat-Opp", 220, 60, "", 60, "overcoat") + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 525252L);
+        setMoves(state, true, 0, List.of(
+                move("Sandstorm", "sandstorm", 0, 100, 0, 3, DamageCalculatorUtil.TYPE_ROCK, 13),
+                protectMove()
+        ));
+        setMoves(state, true, 1, List.of(protectMove()));
+        setMoves(state, false, 0, List.of(protectMove()));
+        setMoves(state, false, 1, List.of(protectMove()));
+
+        Map<String, Object> updatedState = engine.playRound(state, Map.of(
+                "slot-0", "sandstorm",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> opponentState = (List<Map<String, Object>>) updatedState.get("opponentTeam");
+        assertTrue((Integer) opponentState.get(0).get("currentHp") < 220);
+        assertEquals(220, opponentState.get(1).get("currentHp"));
+    }
+
+    @Test
+    void playRound_grassyTerrainHealsGroundedPokemonAndBoostsGrassDamage() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Terrain-A", 220, 120) + "," +
+                pokemonJson("Grass-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Target-Opp", 400, 70) + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> baseline = engine.createBattleState(playerTeam, opponentTeam, 12, 535353L);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> baselinePlayerState = (List<Map<String, Object>>) baseline.get("playerTeam");
+        baselinePlayerState.get(0).put("currentHp", 180);
+        setMoves(baseline, true, 0, List.of(protectMove()));
+        setMoves(baseline, true, 1, List.of(move("Grass Strike", "grass-strike", 40, 100, 0, 1, DamageCalculatorUtil.TYPE_GRASS, 10)));
+        setMoves(baseline, false, 0, List.of(move("Strike", "strike", 40, 100, 0, 1, 1, 10)));
+        setMoves(baseline, false, 1, List.of(protectMove()));
+        Map<String, Object> baselineRound = engine.playRound(baseline, Map.of(
+                "slot-0", "protect",
+                "slot-1", "grass-strike",
+                "target-slot-1", "0"
+        ));
+
+        Map<String, Object> grassy = engine.createBattleState(playerTeam, opponentTeam, 12, 535353L);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> grassyPlayerState = (List<Map<String, Object>>) grassy.get("playerTeam");
+        grassyPlayerState.get(0).put("currentHp", 180);
+        setMoves(grassy, true, 0, List.of(
+                move("Grassy Terrain", "grassy-terrain", 0, 100, 0, 3, DamageCalculatorUtil.TYPE_GRASS, 13),
+                protectMove()
+        ));
+        setMoves(grassy, true, 1, List.of(move("Grass Strike", "grass-strike", 40, 100, 0, 1, DamageCalculatorUtil.TYPE_GRASS, 10)));
+        setMoves(grassy, false, 0, List.of(move("Strike", "strike", 40, 100, 0, 1, 1, 10)));
+        setMoves(grassy, false, 1, List.of(protectMove()));
+        Map<String, Object> grassySetupRound = engine.playRound(grassy, Map.of(
+                "slot-0", "grassy-terrain",
+                "slot-1", "protect"
+        ));
+        Map<String, Object> grassyRound = engine.playRound(grassySetupRound, Map.of(
+                "slot-0", "protect",
+                "slot-1", "grass-strike",
+                "target-slot-1", "0"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> baselineOpponent = (List<Map<String, Object>>) baselineRound.get("opponentTeam");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> grassyOpponent = (List<Map<String, Object>>) grassyRound.get("opponentTeam");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> grassyPlayerAfter = (List<Map<String, Object>>) grassySetupRound.get("playerTeam");
+        assertTrue((Integer) grassyOpponent.get(0).get("currentHp") < 400);
+        assertTrue((Integer) grassyPlayerAfter.get(0).get("currentHp") > 180);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> fieldEffects = (Map<String, Object>) grassyRound.get("fieldEffects");
+        assertTrue((Integer) fieldEffects.get("grassyTerrainTurns") > 0);
+    }
+
+    @Test
+    void playRound_mistyTerrainBlocksStatusAndWeakensDragonDamage() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Terrain-A", 220, 120) + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Status-Opp", 220, 70) + "," +
+                pokemonJson("Dragon-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 545454L);
+        setMoves(state, true, 0, List.of(
+                move("Misty Terrain", "misty-terrain", 0, 100, 0, 3, DamageCalculatorUtil.TYPE_FAIRY, 13),
+                protectMove()
+        ));
+        setMoves(state, true, 1, List.of(protectMove()));
+        setMoves(state, false, 0, List.of(move("Thunder Wave", "thunder-wave", 0, 100, 0, 3, DamageCalculatorUtil.TYPE_ELECTRIC, 10)));
+        setMoves(state, false, 1, List.of(move("Dragon Strike", "dragon-strike", 80, 100, 0, 2, DamageCalculatorUtil.TYPE_DRAGON, 10)));
+
+        Map<String, Object> afterTerrain = engine.playRound(state, Map.of(
+                "slot-0", "misty-terrain",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> playerAfterTerrain = (List<Map<String, Object>>) afterTerrain.get("playerTeam");
+        assertEquals(null, playerAfterTerrain.get(0).get("condition"));
+
+        Map<String, Object> baseline = engine.createBattleState(playerTeam, opponentTeam, 12, 545454L);
+        setMoves(baseline, true, 0, List.of(move("Strike", "strike", 40, 100, 0, 1, 1, 10)));
+        setMoves(baseline, true, 1, List.of(protectMove()));
+        setMoves(baseline, false, 0, List.of(protectMove()));
+        setMoves(baseline, false, 1, List.of(move("Dragon Strike", "dragon-strike", 80, 100, 0, 2, DamageCalculatorUtil.TYPE_DRAGON, 10)));
+        Map<String, Object> baselineRound = engine.playRound(baseline, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        Map<String, Object> terrainDamageRound = engine.playRound(afterTerrain, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> baselinePlayer = (List<Map<String, Object>>) baselineRound.get("playerTeam");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> terrainPlayer = (List<Map<String, Object>>) terrainDamageRound.get("playerTeam");
+        assertTrue((Integer) terrainPlayer.get(0).get("currentHp") > (Integer) baselinePlayer.get(0).get("currentHp"));
+    }
+
+    @Test
+    void playRound_flashFireAbsorbsFireAndBoostsNextFireAttack() {
+        BattleEngine engine = createEngine();
+
+        String boostedPlayer = "[" +
+                pokemonJson("Flash-A", 220, 120, "", 60, "flash-fire") + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String baselinePlayer = "[" +
+                pokemonJson("Flash-A", 220, 120) + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Target-Opp", 320, 70) + "," +
+                pokemonJson("Fire-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> boosted = engine.createBattleState(boostedPlayer, opponentTeam, 12, 565656L);
+        keepOnlyActiveSlot(boosted, true, 0);
+        keepOnlyActiveSlot(boosted, false, 1);
+        setMoves(boosted, true, 0, List.of(
+                move("Fire Strike", "fire-strike", 70, 100, 0, 2, DamageCalculatorUtil.TYPE_FIRE, 10),
+                move("Strike", "strike", 30, 100, 0, 1, 1, 10)
+        ));
+        setMoves(boosted, false, 1, List.of(move("Fire Strike", "fire-strike", 70, 100, 0, 2, DamageCalculatorUtil.TYPE_FIRE, 10)));
+        Map<String, Object> boostedSetup = engine.playRound(boosted, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> boostedPlayerAfterSetup = (List<Map<String, Object>>) boostedSetup.get("playerTeam");
+        assertEquals(Boolean.TRUE, boostedPlayerAfterSetup.get(0).get("flashFireBoost"));
+        Map<String, Object> boostedAttack = engine.playRound(boostedSetup, Map.of(
+                "slot-0", "fire-strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        Map<String, Object> baseline = engine.createBattleState(baselinePlayer, opponentTeam, 12, 565656L);
+        keepOnlyActiveSlot(baseline, true, 0);
+        keepOnlyActiveSlot(baseline, false, 1);
+        setMoves(baseline, true, 0, List.of(
+                move("Fire Strike", "fire-strike", 70, 100, 0, 2, DamageCalculatorUtil.TYPE_FIRE, 10),
+                protectMove()
+        ));
+        setMoves(baseline, false, 1, List.of(protectMove()));
+        Map<String, Object> baselineAttack = engine.playRound(baseline, Map.of(
+                "slot-0", "fire-strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> boostedOpponent = (List<Map<String, Object>>) boostedAttack.get("opponentTeam");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> baselineOpponent = (List<Map<String, Object>>) baselineAttack.get("opponentTeam");
+        assertTrue((Integer) boostedOpponent.get(1).get("currentHp") < (Integer) baselineOpponent.get(1).get("currentHp"));
+    }
+
+    @Test
+    void playRound_stormDrainAbsorbsWaterAndBoostsSpecialAttack() {
+        BattleEngine engine = createEngine();
+
+        String boostedPlayer = "[" +
+                pokemonJson("Drain-A", 220, 120, "", 60, "storm-drain") + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String baselinePlayer = "[" +
+                pokemonJson("Drain-A", 220, 120) + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Target-Opp", 320, 70) + "," +
+                pokemonJson("Water-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> boosted = engine.createBattleState(boostedPlayer, opponentTeam, 12, 575757L);
+        keepOnlyActiveSlot(boosted, true, 0);
+        keepOnlyActiveSlot(boosted, false, 1);
+        setMoves(boosted, true, 0, List.of(
+                move("Water Pulse", "water-pulse", 70, 100, 0, 2, DamageCalculatorUtil.TYPE_WATER, 10),
+                move("Strike", "strike", 30, 100, 0, 1, 1, 10)
+        ));
+        setMoves(boosted, false, 1, List.of(move("Water Pulse", "water-pulse", 70, 100, 0, 2, DamageCalculatorUtil.TYPE_WATER, 10)));
+        Map<String, Object> boostedSetup = engine.playRound(boosted, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> boostedPlayerAfterSetup = (List<Map<String, Object>>) boostedSetup.get("playerTeam");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> boostedStages = (Map<String, Object>) boostedPlayerAfterSetup.get(0).get("statStages");
+        assertEquals(1, boostedStages.get("specialAttack"));
+        Map<String, Object> boostedAttack = engine.playRound(boostedSetup, Map.of(
+                "slot-0", "water-pulse",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        Map<String, Object> baseline = engine.createBattleState(baselinePlayer, opponentTeam, 12, 575757L);
+        keepOnlyActiveSlot(baseline, true, 0);
+        keepOnlyActiveSlot(baseline, false, 1);
+        setMoves(baseline, true, 0, List.of(
+                move("Water Pulse", "water-pulse", 70, 100, 0, 2, DamageCalculatorUtil.TYPE_WATER, 10),
+                protectMove()
+        ));
+        setMoves(baseline, false, 1, List.of(protectMove()));
+        Map<String, Object> baselineAttack = engine.playRound(baseline, Map.of(
+                "slot-0", "water-pulse",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> boostedOpponent = (List<Map<String, Object>>) boostedAttack.get("opponentTeam");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> baselineOpponent = (List<Map<String, Object>>) baselineAttack.get("opponentTeam");
+        assertTrue((Integer) boostedOpponent.get(1).get("currentHp") < (Integer) baselineOpponent.get(1).get("currentHp"));
+    }
+
+    @Test
+    void playRound_sapSipperAbsorbsGrassAndBoostsAttack() {
+        BattleEngine engine = createEngine();
+
+        String boostedPlayer = "[" +
+                pokemonJson("Sap-A", 220, 120, "", 60, "sap-sipper") + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String baselinePlayer = "[" +
+                pokemonJson("Sap-A", 220, 120) + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Target-Opp", 320, 70) + "," +
+                pokemonJson("Grass-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> boosted = engine.createBattleState(boostedPlayer, opponentTeam, 12, 585858L);
+        keepOnlyActiveSlot(boosted, true, 0);
+        keepOnlyActiveSlot(boosted, false, 1);
+        setMoves(boosted, true, 0, List.of(move("Strike", "strike", 70, 100, 0, 1, 1, 10), protectMove()));
+        setMoves(boosted, false, 1, List.of(move("Leaf Hit", "leaf-hit", 70, 100, 0, 1, DamageCalculatorUtil.TYPE_GRASS, 10)));
+        Map<String, Object> boostedSetup = engine.playRound(boosted, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> boostedPlayerAfterSetup = (List<Map<String, Object>>) boostedSetup.get("playerTeam");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> boostedStages = (Map<String, Object>) boostedPlayerAfterSetup.get(0).get("statStages");
+        assertEquals(1, boostedStages.get("attack"));
+        Map<String, Object> boostedAttack = engine.playRound(boostedSetup, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        Map<String, Object> baseline = engine.createBattleState(baselinePlayer, opponentTeam, 12, 585858L);
+        keepOnlyActiveSlot(baseline, true, 0);
+        keepOnlyActiveSlot(baseline, false, 1);
+        setMoves(baseline, true, 0, List.of(move("Strike", "strike", 70, 100, 0, 1, 1, 10), protectMove()));
+        setMoves(baseline, false, 1, List.of(protectMove()));
+        Map<String, Object> baselineAttack = engine.playRound(baseline, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> boostedOpponent = (List<Map<String, Object>>) boostedAttack.get("opponentTeam");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> baselineOpponent = (List<Map<String, Object>>) baselineAttack.get("opponentTeam");
+        assertTrue((Integer) boostedOpponent.get(1).get("currentHp") < (Integer) baselineOpponent.get(1).get("currentHp"));
+    }
+
+    @Test
+    void playRound_regeneratorHealsOnManualSwitch() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Regen-A", 240, 120, "", 60, "regenerator") + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 180, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Target-Opp", 220, 70) + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 595959L);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> playerState = (List<Map<String, Object>>) state.get("playerTeam");
+        playerState.get(0).put("currentHp", 120);
+
+        Map<String, Object> switched = engine.playRound(state, Map.of(
+                "action-slot-0", "switch",
+                "switch-slot-0", "2",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> switchedPlayer = (List<Map<String, Object>>) switched.get("playerTeam");
+        assertTrue((Integer) switchedPlayer.get(0).get("currentHp") > 120);
+    }
+
+    @Test
+    void playRound_rockyHelmetDamagesContactAttacker() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Helmet-A", 220, 120, "rocky-helmet", 60) + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Contact-Opp", 240, 70) + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 606060L);
+        setMoves(state, true, 0, List.of(move("Strike", "strike", 30, 100, 0, 1, 1, 10)));
+        setMoves(state, true, 1, List.of(protectMove()));
+        setMoves(state, false, 0, List.of(contactMove("Contact Strike", "contact-strike", 70, DamageCalculatorUtil.TYPE_NORMAL)));
+        setMoves(state, false, 1, List.of(protectMove()));
+
+        Map<String, Object> updated = engine.playRound(state, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> opponentState = (List<Map<String, Object>>) updated.get("opponentTeam");
+        assertTrue((Integer) opponentState.get(0).get("currentHp") < 240);
+    }
+
+    @Test
+    void playRound_mentalHerbClearsTauntImmediately() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Herb-A", 220, 120, "mental-herb", 60) + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Taunt-Opp", 220, 70) + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 616161L);
+        keepOnlyActiveSlot(state, true, 0);
+        keepOnlyActiveSlot(state, false, 0);
+        setMoves(state, true, 0, List.of(move("Strike", "strike", 30, 100, 0, 1, 1, 10)));
+        setMoves(state, false, 0, List.of(move("Taunt", "taunt", 0, 100, 0, 3, DamageCalculatorUtil.TYPE_DARK, 10)));
+
+        Map<String, Object> updated = engine.playRound(state, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> playerState = (List<Map<String, Object>>) updated.get("playerTeam");
+        assertEquals(0, playerState.get(0).get("tauntTurns"));
+        assertEquals(Boolean.TRUE, playerState.get(0).get("itemConsumed"));
+    }
+
+    @Test
+    void playRound_lightningRodAbsorbsElectricAndBoostsSpecialAttack() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Rod-A", 220, 120, "", 60, "lightning-rod") + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Shock-Opp", 220, 70) + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 626262L);
+        keepOnlyActiveSlot(state, true, 0);
+        keepOnlyActiveSlot(state, false, 0);
+        setMoves(state, true, 0, List.of(move("Strike", "strike", 30, 100, 0, 1, 1, 10)));
+        setMoves(state, false, 0, List.of(move("Thunderbolt", "thunderbolt", 80, 100, 0, 2, DamageCalculatorUtil.TYPE_ELECTRIC, 10)));
+
+        Map<String, Object> updated = engine.playRound(state, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> playerState = (List<Map<String, Object>>) updated.get("playerTeam");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> stages = (Map<String, Object>) playerState.get(0).get("statStages");
+        assertEquals(1, stages.get("specialAttack"));
+        assertEquals(220, playerState.get(0).get("currentHp"));
+    }
+
+    @Test
+    void playRound_waterAbsorbHealsOnWaterHit() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Water-A", 240, 120, "", 60, "water-absorb") + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Water-Opp", 220, 70) + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 636363L);
+        keepOnlyActiveSlot(state, true, 0);
+        keepOnlyActiveSlot(state, false, 0);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> playerState = (List<Map<String, Object>>) state.get("playerTeam");
+        playerState.get(0).put("currentHp", 120);
+        setMoves(state, true, 0, List.of(move("Strike", "strike", 30, 100, 0, 1, 1, 10)));
+        setMoves(state, false, 0, List.of(move("Water Pulse", "water-pulse", 70, 100, 0, 2, DamageCalculatorUtil.TYPE_WATER, 10)));
+
+        Map<String, Object> updated = engine.playRound(state, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> updatedPlayer = (List<Map<String, Object>>) updated.get("playerTeam");
+        assertTrue((Integer) updatedPlayer.get(0).get("currentHp") > 120);
+    }
+
+    @Test
+    void playRound_voltAbsorbHealsOnElectricHit() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Volt-A", 240, 120, "", 60, "volt-absorb") + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Shock-Opp", 220, 70) + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 646464L);
+        keepOnlyActiveSlot(state, true, 0);
+        keepOnlyActiveSlot(state, false, 0);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> playerState = (List<Map<String, Object>>) state.get("playerTeam");
+        playerState.get(0).put("currentHp", 120);
+        setMoves(state, true, 0, List.of(move("Strike", "strike", 30, 100, 0, 1, 1, 10)));
+        setMoves(state, false, 0, List.of(move("Thunderbolt", "thunderbolt", 80, 100, 0, 2, DamageCalculatorUtil.TYPE_ELECTRIC, 10)));
+
+        Map<String, Object> updated = engine.playRound(state, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> updatedPlayer = (List<Map<String, Object>>) updated.get("playerTeam");
+        assertTrue((Integer) updatedPlayer.get(0).get("currentHp") > 120);
+    }
+
+    @Test
+    void playRound_motorDriveAbsorbsElectricAndBoostsSpeed() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Motor-A", 220, 120, "", 60, "motor-drive") + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Shock-Opp", 220, 70) + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 656565L);
+        keepOnlyActiveSlot(state, true, 0);
+        keepOnlyActiveSlot(state, false, 0);
+        setMoves(state, true, 0, List.of(move("Strike", "strike", 30, 100, 0, 1, 1, 10)));
+        setMoves(state, false, 0, List.of(move("Thunderbolt", "thunderbolt", 80, 100, 0, 2, DamageCalculatorUtil.TYPE_ELECTRIC, 10)));
+
+        Map<String, Object> updated = engine.playRound(state, Map.of(
+                "slot-0", "strike",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> playerState = (List<Map<String, Object>>) updated.get("playerTeam");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> stages = (Map<String, Object>) playerState.get(0).get("statStages");
+        assertEquals(1, stages.get("speed"));
+        assertEquals(220, playerState.get(0).get("currentHp"));
+    }
+
+    @Test
+    void applyIntimidate_triggersDefiantBoost() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Intimidate-A", 220, 120, "", 60, "intimidate") + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Defiant-Opp", 220, 70, "", 60, "defiant") + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 666666L);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> opponentState = (List<Map<String, Object>>) state.get("opponentTeam");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> stages = (Map<String, Object>) opponentState.get(0).get("statStages");
+        assertEquals(1, stages.get("attack"));
+    }
+
+    @Test
+    void playRound_icyWindTriggersCompetitiveBoost() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Wind-A", 220, 120) + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Competitive-Opp", 220, 70, "", 60, "competitive") + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 676767L);
+        keepOnlyActiveSlot(state, true, 0);
+        keepOnlyActiveSlot(state, false, 0);
+        setMoves(state, true, 0, List.of(move("Icy Wind", "icy-wind", 55, 100, 0, 2, DamageCalculatorUtil.TYPE_ICE, 10)));
+        setMoves(state, false, 0, List.of(move("Strike", "strike", 30, 100, 0, 1, 1, 10)));
+
+        Map<String, Object> updated = engine.playRound(state, Map.of(
+                "slot-0", "icy-wind",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> opponentState = (List<Map<String, Object>>) updated.get("opponentTeam");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> stages = (Map<String, Object>) opponentState.get(0).get("statStages");
+        assertEquals(2, stages.get("specialAttack"));
+        assertEquals(-1, stages.get("speed"));
+    }
+
+    @Test
+    void playRound_weaknessPolicyBoostsAfterSuperEffectiveHit() {
+        BattleEngine engine = createEngine();
+
+        String playerTeam = "[" +
+                pokemonJson("Fire-A", 220, 120) + "," +
+                pokemonJson("Partner-A", 220, 90) + "," +
+                pokemonJson("Bench-A", 110, 60) + "," +
+                pokemonJson("Bench-B", 108, 50) +
+                "]";
+        String opponentTeam = "[" +
+                pokemonJson("Policy-Opp", 240, 70, "weakness-policy", 60) + "," +
+                pokemonJson("Partner-Opp", 220, 60) + "," +
+                pokemonJson("Bench-C", 110, 50) + "," +
+                pokemonJson("Bench-D", 108, 40) +
+                "]";
+
+        Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 686868L);
+        keepOnlyActiveSlot(state, true, 0);
+        keepOnlyActiveSlot(state, false, 0);
+        setTypes(state, false, 0, List.of(DamageCalculatorUtil.TYPE_GRASS));
+        setMoves(state, true, 0, List.of(move("Flamethrower", "flamethrower", 90, 100, 0, 2, DamageCalculatorUtil.TYPE_FIRE, 10)));
+        setMoves(state, false, 0, List.of(move("Strike", "strike", 30, 100, 0, 1, 1, 10)));
+
+        Map<String, Object> updated = engine.playRound(state, Map.of(
+                "slot-0", "flamethrower",
+                "target-slot-0", "0",
+                "slot-1", "protect"
+        ));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> opponentState = (List<Map<String, Object>>) updated.get("opponentTeam");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> stages = (Map<String, Object>) opponentState.get(0).get("statStages");
+        assertEquals(2, stages.get("attack"));
+        assertEquals(2, stages.get("specialAttack"));
+        assertEquals(Boolean.TRUE, opponentState.get(0).get("itemConsumed"));
     }
 
     private static String buildPlayerTeamForSwitchTestJson() {
@@ -2016,9 +2789,18 @@ class BattleEngineSwitchingTest {
 
             @Override
             public Integer selectDamageFactor(Integer damageTypeId, Integer targetTypeId) {
+                                if (damageTypeId == null || targetTypeId == null) {
+                                        return 100;
+                                }
+                                if (damageTypeId == DamageCalculatorUtil.TYPE_FIRE && targetTypeId == DamageCalculatorUtil.TYPE_GRASS) {
+                                        return 200;
+                                }
+                                if (damageTypeId == DamageCalculatorUtil.TYPE_NORMAL && targetTypeId == DamageCalculatorUtil.TYPE_GRASS) {
+                                        return 50;
+                                }
                 return 100;
             }
-        });
+                }, new ObjectMapper());
     }
 
     private static String pokemonJson(String name, int hp, int speed) {
@@ -2055,6 +2837,19 @@ class BattleEngineSwitchingTest {
         team.get(teamIndex).put("moves", moves);
     }
 
+        @SuppressWarnings("unchecked")
+        private static void setTypes(Map<String, Object> state, boolean player, int teamIndex, List<Integer> typeIds) {
+                List<Map<String, Object>> team = (List<Map<String, Object>>) state.get(player ? "playerTeam" : "opponentTeam");
+                List<Map<String, Object>> types = typeIds.stream()
+                                .map(typeId -> Map.<String, Object>of("type_id", typeId, "name", String.valueOf(typeId)))
+                                .toList();
+                team.get(teamIndex).put("types", types);
+        }
+
+        private static void keepOnlyActiveSlot(Map<String, Object> state, boolean player, int teamIndex) {
+                state.put(player ? "playerActiveSlots" : "opponentActiveSlots", List.of(teamIndex));
+        }
+
     private static int firstActionIndex(List<Map<String, Object>> actions, String side, String moveName) {
         for (int index = 0; index < actions.size(); index++) {
             Map<String, Object> action = actions.get(index);
@@ -2077,6 +2872,12 @@ class BattleEngineSwitchingTest {
                 "target_id", targetId
         );
     }
+
+        private static Map<String, Object> contactMove(String name, String nameEn, int power, int typeId) {
+                Map<String, Object> move = new java.util.LinkedHashMap<>(move(name, nameEn, power, 100, 0, 1, typeId, 10));
+                move.put("contact", true);
+                return move;
+        }
 
     private static Map<String, Object> protectMove() {
         return move("Guard", "protect", 0, 100, 4, 3, 1, 7);

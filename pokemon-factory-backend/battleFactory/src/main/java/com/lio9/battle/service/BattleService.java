@@ -76,11 +76,11 @@ public class BattleService {
         String requestedTeamJson = req.get("teamJson") instanceof String ? req.get("teamJson").toString() : null;
         Map<String, Object> playerTeam = resolvePlayerTeam(playerId, playerRank, seed, requestedTeamJson);
         String playerTeamJson = String.valueOf(playerTeam.get("teamJson"));
-        Integer playerTeamId = (Integer) playerTeam.get("teamId");
+        Integer playerTeamId = playerTeam.get("teamId") == null ? null : ((Number) playerTeam.get("teamId")).intValue();
 
         Map<String, Object> opponentTeam = resolveOpponentTeam(playerRank, seed + 97, aiService.extractNames(playerTeamJson));
         String opponentTeamJson = String.valueOf(opponentTeam.get("teamJson"));
-        Integer opponentTeamId = (Integer) opponentTeam.get("teamId");
+        Integer opponentTeamId = opponentTeam.get("teamId") == null ? null : ((Number) opponentTeam.get("teamId")).intValue();
 
         Map<String, String> playerMoveMap = parsePlayerMoveMap(req.get("playerMoveMap"));
         Map<String, Object> state = battleEngine.createPreviewState(playerTeamJson, opponentTeamJson, FACTORY_ROUND_LIMIT, seed);

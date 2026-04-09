@@ -31,11 +31,14 @@ public class CommonDatabaseInitializer implements ApplicationRunner {
 
     private final DataSource dataSource;
     private final CommonDatabaseProperties properties;
+    private final CommonCsvDataImporter csvDataImporter;
     private final DefaultResourceLoader resourceLoader = new DefaultResourceLoader();
 
-    public CommonDatabaseInitializer(DataSource dataSource, CommonDatabaseProperties properties) {
+    public CommonDatabaseInitializer(DataSource dataSource, CommonDatabaseProperties properties,
+                                     CommonCsvDataImporter csvDataImporter) {
         this.dataSource = dataSource;
         this.properties = properties;
+        this.csvDataImporter = csvDataImporter;
     }
 
     @Override
@@ -78,6 +81,32 @@ public class CommonDatabaseInitializer implements ApplicationRunner {
             ensureColumnExists(connection, "app_user", "display_name", "TEXT");
             ensureColumnExists(connection, "app_user", "updated_at", "TEXT");
             ensureColumnExists(connection, "app_user", "last_login_at", "TEXT");
+            ensureTableExists(connection, """
+                    CREATE TABLE IF NOT EXISTS ability_effect (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        ability_id INTEGER NOT NULL,
+                        effect_type TEXT NOT NULL,
+                        effect_value TEXT,
+                        target TEXT NOT NULL,
+                        condition TEXT,
+                        description TEXT,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (ability_id) REFERENCES ability(id)
+                    )
+                    """);
+            ensureTableExists(connection, """
+                    CREATE TABLE IF NOT EXISTS item_effect (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        item_id INTEGER NOT NULL,
+                        effect_type TEXT NOT NULL,
+                        effect_value TEXT,
+                        target TEXT NOT NULL,
+                        condition TEXT,
+                        description TEXT,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (item_id) REFERENCES item(id)
+                    )
+                    """);
 
             // 补充索引（对已有库幂等追加）
             String[] extraIndexes = {
@@ -85,13 +114,20 @@ public class CommonDatabaseInitializer implements ApplicationRunner {
                 "CREATE INDEX IF NOT EXISTS idx_battle_round_battle ON battle_round(battle_id, round_number)",
                 "CREATE INDEX IF NOT EXISTS idx_battle_job_status ON battle_job(status)",
                 "CREATE INDEX IF NOT EXISTS idx_factory_run_player_status ON factory_run(player_id, status)",
-                "CREATE INDEX IF NOT EXISTS idx_battle_exchange_battle ON battle_exchange(battle_id)"
+                "CREATE INDEX IF NOT EXISTS idx_battle_exchange_battle ON battle_exchange(battle_id)",
+                "CREATE INDEX IF NOT EXISTS idx_ability_effect_ability ON ability_effect(ability_id)",
+                "CREATE INDEX IF NOT EXISTS idx_ability_effect_type ON ability_effect(effect_type)",
+                "CREATE INDEX IF NOT EXISTS idx_item_effect_item ON item_effect(item_id)",
+                "CREATE INDEX IF NOT EXISTS idx_item_effect_type ON item_effect(effect_type)"
             };
             for (String ddl : extraIndexes) {
                 try (var stmt = connection.createStatement()) {
                     stmt.execute(ddl);
                 } catch (Exception ignored) {}
             }
+
+            csvDataImporter.importIfNeeded(connection);
+            csvDataImporter.syncEffectSeeds(connection);
         }
         log.info("common 数据库初始化完成。");
     }
@@ -181,6 +217,12 @@ public class CommonDatabaseInitializer implements ApplicationRunner {
             statement.execute(sql);
         }
         log.info("已为表 {} 补齐缺失列 {}。", tableName, columnName);
+    }
+
+    private void ensureTableExists(Connection connection, String ddl) throws Exception {
+        try (Statement statement = connection.createStatement()) {
+            statement.execute(ddl);
+        }
     }
 
     /**

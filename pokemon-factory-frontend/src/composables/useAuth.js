@@ -59,9 +59,12 @@ function clearSession() {
 }
 
 // 页面刷新后优先用 /me 校验 token 是否仍有效，防止本地残留的过期 token 误导页面展示。
+// 用 restorePromise 记录正在进行中的恢复请求，让并发调用者共享同一个 Promise，避免重复发起请求。
+let restorePromise = null
+
 async function restoreSession() {
   if (state.restoring) {
-    return state.user
+    return restorePromise
   }
 
   if (!state.token) {
@@ -71,21 +74,25 @@ async function restoreSession() {
   }
 
   state.restoring = true
-  try {
-    const response = await api.user.me()
-    setSession({
-      token: state.token,
-      user: response.user
-    })
-    return state.user
-  } catch {
-    // token 失效时直接清掉本地会话，避免页面继续展示过期用户信息。
-    clearSession()
-    return null
-  } finally {
-    state.restoring = false
-    state.initialized = true
-  }
+  restorePromise = (async () => {
+    try {
+      const response = await api.user.me()
+      setSession({
+        token: state.token,
+        user: response.user
+      })
+      return state.user
+    } catch {
+      // token 失效时直接清掉本地会话，避免页面继续展示过期用户信息。
+      clearSession()
+      return null
+    } finally {
+      state.restoring = false
+      state.initialized = true
+      restorePromise = null
+    }
+  })()
+  return restorePromise
 }
 
 // 登录成功后直接刷新统一会话状态，页面其他位置只读 useAuth 暴露的只读状态即可。

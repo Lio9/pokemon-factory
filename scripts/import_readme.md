@@ -1,47 +1,34 @@
-# Pokemon Factory 数据导入脚本
+# Pokemon Factory 初始化脚本
 
-将 PokeAPI CSV 数据导入到 SQLite 数据库。
+数据库初始化和 CSV 导入已经收敛到 common 模块的 Java 初始化链，`scripts/` 目录只保留少量编排和校验脚本。
 
-## 目录结构
+## 当前保留文件
 
-```
+```text
 scripts/
-├── import_from_csv.py          # 从 CSV 文件导入数据（主脚本）
-├── import_to_sqlite.py         # SQLite 导入工具
-├── import_move_flags.py        # 导入技能标签
-├── insert_ability_item_effects.py  # 导入特性/道具效果
-├── create_tables.py            # 建表脚本
-├── init_db.py                  # 数据库初始化
-├── add_indexes.py              # 添加索引
-├── check_data.py               # 数据校验
-├── verify_move_flags.py        # 校验技能标签
-├── verify_sqlite.py            # 校验 SQLite 数据
-└── start-backend.ps1           # 后端启动脚本 (PowerShell)
+├── init_db.py          # 删库 -> 构建/启动 common exec jar -> 等待建表与 CSV 导入 -> 校验
+├── start-backend.py    # 跨平台启动 common exec jar，手动观察初始化日志
+├── verify_sqlite.py    # 校验 SQLite 关键表和核心数据量
+└── start-backend.ps1   # Windows 包装脚本，内部转调 start-backend.py
 ```
-
-## 数据源
-
-CSV 文件位于项目根目录 `csv/`（已从 Git 跟踪中移除，需本地保留）。
 
 ## 快速开始
 
 ```bash
-# 1. 从 CSV 导入基础数据
-python scripts/import_from_csv.py
+# 一键重建数据库并导入 CSV
+python scripts/init_db.py
 
-# 2. 导入技能标签
-python scripts/import_move_flags.py
+# 跨平台手动启动 common，观察初始化日志
+python scripts/start-backend.py
 
-# 3. 导入特性/道具效果
-python scripts/insert_ability_item_effects.py
-
-# 4. 校验数据完整性
-python scripts/check_data.py
+# 校验当前 SQLite 数据
 python scripts/verify_sqlite.py
 ```
 
 ## 注意事项
 
-- 项目已切换到 SQLite，数据库文件由后端 `CommonDatabaseInitializer` 自动创建
-- CSV 文件约 35MB，不纳入 Git 版本管理
-- 语言 ID 参考：12=简体中文, 4=繁体中文, 9=英文, 1=日文
+- SQLite 默认路径为 `pokemon-factory-backend/pokemon-factory.db`
+- common 默认可执行产物为 `pokemon-factory-backend/common/target/common-0.0.1-SNAPSHOT-exec.jar`
+- CSV 文件目录默认为仓库根目录 `csv/`
+- Windows 下仍可运行 `scripts/start-backend.ps1`，但推荐统一使用 `python scripts/start-backend.py`
+- 历史上的 MySQL / Python 导入脚本已经移除，避免与 Java 初始化链重复维护

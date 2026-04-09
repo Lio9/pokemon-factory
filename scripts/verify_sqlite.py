@@ -4,7 +4,8 @@
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pokemon-factory.db")
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.getenv('SQLITE_DB_PATH') or os.path.join(ROOT_DIR, "pokemon-factory-backend", "pokemon-factory.db")
 
 def verify_data():
     print("=" * 60)

@@ -1,6 +1,7 @@
 package com.lio9.common;
 
 import com.lio9.common.config.CommonDatabaseInitializer;
+import com.lio9.common.config.CommonDataSourceConfig;
 import com.lio9.common.config.CommonDatabaseProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -18,6 +19,7 @@ import java.util.Map;
  */
 @SpringBootApplication(
         scanBasePackageClasses = {
+                CommonDataSourceConfig.class,
                 CommonDatabaseInitializer.class,
                 CommonDatabaseProperties.class
         },

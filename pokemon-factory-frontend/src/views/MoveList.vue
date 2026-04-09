@@ -4,7 +4,7 @@
     class="move-list"
   >
     <!-- 搜索和筛选 -->
-    <div class="bg-white rounded-xl shadow-sm p-4 mb-6 sticky top-0 z-10">
+    <div class="sticky top-[4.25rem] z-10 mb-5 rounded-xl bg-white p-4 shadow-sm sm:top-[4.75rem] sm:mb-6">
       <div class="flex flex-col gap-4">
         <!-- 搜索和基本筛选 -->
         <div class="flex flex-wrap gap-3">
@@ -23,7 +23,7 @@
               </template>
             </el-input>
           </div>
-          <div class="w-32">
+          <div class="w-full sm:w-32">
             <el-select
               v-model="selectedType"
               placeholder="属性"
@@ -38,7 +38,7 @@
               />
             </el-select>
           </div>
-          <div class="w-32">
+          <div class="w-full sm:w-32">
             <el-select
               v-model="selectedDamageClass"
               placeholder="分类"
@@ -236,7 +236,7 @@
     </div>
 
     <!-- 统计信息 -->
-    <div class="grid grid-cols-3 gap-4 mb-6">
+  <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
       <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-4 text-white">
         <div class="text-2xl font-bold">
           {{ total }}
@@ -267,7 +267,7 @@
     <div v-if="loading && moves.length === 0">
       <div
         v-if="viewMode === 'grid'"
-        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
       >
         <el-skeleton
           v-for="i in 6"

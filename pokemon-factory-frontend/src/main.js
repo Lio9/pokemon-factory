@@ -22,8 +22,11 @@ app.directive('infinite-scroll', {
       const { scrollTop, scrollHeight, clientHeight } = el
       if (scrollTop + clientHeight >= scrollHeight - 10 && !isLoading) {
         isLoading = true
-        await callback()
-        isLoading = false
+        try {
+          await callback()
+        } finally {
+          isLoading = false
+        }
       }
     }
     

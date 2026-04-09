@@ -31,4 +31,10 @@ public interface JobMapper {
      */
     @Update("UPDATE battle_job SET status = #{status}, updated_at = datetime('now') WHERE id = #{id}")
     void updateJobStatus(@Param("id") Integer id, @Param("status") String status);
+
+    /**
+     * 按 battleId 直接更新异步任务状态，避免扫描全表。
+     */
+    @Update("UPDATE battle_job SET status = #{status}, updated_at = datetime('now') WHERE battle_id = #{battleId} AND (status = 'PENDING' OR status = 'RUNNING')")
+    void updateJobStatusByBattleId(@Param("battleId") Integer battleId, @Param("status") String status);
 }

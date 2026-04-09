@@ -14,7 +14,9 @@ import org.springframework.context.annotation.ComponentScan;
  * 3. 不再自己维护数据库迁移目录与底层连接配置。
  * </p>
  */
-@SpringBootApplication
+@SpringBootApplication(excludeName = {
+    "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration"
+})
 // battleFactory 只扫描自己的业务 Bean 和 user-module 的认证 Bean；
 // common 中的 ServiceImpl 主要服务图鉴模块，不能再整包扫进来，否则会把不需要的 MyBatis-Plus 依赖一起拉入启动链。
 @ComponentScan(basePackages = {"com.lio9.battle","com.lio9.user"})

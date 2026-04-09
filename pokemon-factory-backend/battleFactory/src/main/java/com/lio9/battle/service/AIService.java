@@ -144,8 +144,11 @@ public class AIService {
         List<Map<String, Object>> types = battleDexMapper.selectFormTypes(formId);
         List<Map<String, Object>> abilities = battleDexMapper.selectFormAbilities(formId);
         List<Map<String, Object>> movePool = battleDexMapper.selectCompetitiveMoves(formId, 36);
-        if (stats.isEmpty() || types.isEmpty() || movePool.isEmpty()) {
+        if (stats == null || stats.isEmpty() || types == null || types.isEmpty() || movePool == null || movePool.isEmpty()) {
             return null;
+        }
+        if (abilities == null) {
+            abilities = new ArrayList<>();
         }
 
         Map<Integer, Integer> statMap = new LinkedHashMap<>();
@@ -264,13 +267,11 @@ public class AIService {
             selected.add(protect);
         }
 
-        while (selected.size() < 4 && !attacks.isEmpty()) {
-            Map<String, Object> move = attacks.get(random.nextInt(attacks.size()));
-            if (selected.stream().noneMatch(existing -> existing.get("name_en").equals(move.get("name_en")))) {
-                selected.add(move);
-            } else {
-                break;
-            }
+        List<Map<String, Object>> remaining = new ArrayList<>(attacks);
+        remaining.removeIf(m -> selected.stream().anyMatch(s -> s.get("name_en").equals(m.get("name_en"))));
+        while (selected.size() < 4 && !remaining.isEmpty()) {
+            int idx = random.nextInt(remaining.size());
+            selected.add(remaining.remove(idx));
         }
 
         return selected;

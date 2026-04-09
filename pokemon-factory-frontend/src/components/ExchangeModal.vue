@@ -1,63 +1,96 @@
 <template>
-  <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
-    <div class="w-11/12 max-w-4xl rounded-2xl bg-white p-6 shadow-xl">
-      <h3 class="mb-2 font-bold">
-        交换宝可梦
-      </h3>
-      <p class="text-sm text-gray-500">
-        从对手队伍中选择一只替换你队伍中的第
-        <input
-          v-model.number="localReplaced"
-          type="number"
-          min="1"
-          :max="maxSlot"
-          class="mx-1 inline-block w-16 rounded border p-1"
-        >
-        只宝可梦（输入1-{{ maxSlot }}）
-      </p>
-      <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+  <div class="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/50 p-2 backdrop-blur-sm sm:items-center sm:p-4">
+    <div class="w-full max-w-5xl rounded-t-[28px] border border-white/70 bg-white/95 p-4 shadow-[0_28px_120px_-50px_rgba(15,23,42,0.8)] backdrop-blur sm:rounded-[28px] sm:p-6 max-h-[92vh] overflow-y-auto">
+      <div class="flex flex-col gap-4 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+            Exchange Reward
+          </div>
+          <h3 class="mt-2 text-2xl font-black tracking-tight text-slate-950">
+            交换宝可梦
+          </h3>
+          <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            你赢下了这场战斗。现在可以从对手队伍中挑一只，替换你自己队伍中的一名成员，为后续工厂轮次做准备。
+          </p>
+        </div>
+
+        <label class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 shadow-sm">
+          替换我方第
+          <input
+            v-model.number="localReplaced"
+            type="number"
+            min="1"
+            :max="maxSlot"
+            class="mx-2 inline-block w-16 rounded-xl border border-slate-300 bg-white px-2 py-1 text-center font-semibold text-slate-900 outline-none ring-0"
+          >
+          只（1-{{ maxSlot }}）
+        </label>
+      </div>
+
+      <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3 sm:gap-4">
         <div
           v-for="(p, idx) in opponentTeam"
           :key="idx"
-          :class="['cursor-pointer rounded-xl border p-4 transition', sel === idx ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300']"
+          :class="['cursor-pointer rounded-[24px] border p-4 transition shadow-sm', sel === idx ? 'border-sky-500 bg-[linear-gradient(180deg,rgba(224,242,254,0.8),rgba(255,255,255,0.96))] shadow-sky-100' : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300']"
           @click="select(idx)"
         >
-          <div class="font-semibold">
-            {{ p.name || p.id }}
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-base font-bold text-slate-900 sm:text-lg">
+                {{ p.name || p.id }}
+              </div>
+              <div class="mt-1 text-xs text-slate-500">
+                {{ formatTypes(p.types) }}
+              </div>
+            </div>
+            <span
+              v-if="sel === idx"
+              class="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-sky-700"
+            >
+              已选择
+            </span>
           </div>
-          <div class="mt-1 text-xs text-gray-500">
-            {{ formatTypes(p.types) }}
-          </div>
-          <div class="mt-2 text-xs text-gray-500">
-            持有物：{{ p.heldItem || '无' }}
+          <div class="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-slate-50 p-3 text-xs text-slate-500">
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.16em] text-slate-400">持有物</div>
+              <div class="mt-1 font-semibold text-slate-700">{{ p.heldItem || '无' }}</div>
+            </div>
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.16em] text-slate-400">基础面板</div>
+              <div class="mt-1 font-semibold text-slate-700">HP {{ p?.stats?.hp || '-' }} / 速度 {{ p?.stats?.speed || '-' }}</div>
+            </div>
           </div>
           <div class="mt-3 flex flex-wrap gap-2">
             <span
               v-for="move in p.moves || []"
               :key="move.name_en || move.name"
-              class="rounded-full bg-white px-2 py-1 text-xs text-slate-600"
+              class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600"
             >
               {{ move.name || move.name_en }}
             </span>
           </div>
-          <div class="mt-3 text-xs text-gray-500">
-            HP {{ p?.stats?.hp || '-' }} / 速度 {{ p?.stats?.speed || '-' }}
-          </div>
         </div>
       </div>
-      <div class="mt-6 text-right">
-        <button
-          class="mr-2 rounded-lg px-3 py-1"
-          @click="$emit('close')"
-        >
-          取消
-        </button>
-        <button
-          class="rounded-lg bg-blue-500 px-3 py-1 text-white"
-          @click="confirm"
-        >
-          确认交换
-        </button>
+
+      <div class="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="text-sm text-slate-500">
+          {{ sel === null ? '先选中一只想带走的对手宝可梦。' : `将把选中的宝可梦换入我方第 ${Math.max(1, Math.min(maxSlot, localReplaced || 1))} 号位。` }}
+        </div>
+        <div class="grid grid-cols-2 gap-3 sm:flex sm:gap-3">
+          <button
+            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            @click="$emit('close')"
+          >
+            取消
+          </button>
+          <button
+            class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            :disabled="sel === null || submitting"
+            @click="confirm"
+          >
+            {{ submitting ? '交换中...' : '确认交换' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -75,6 +108,10 @@ const props = defineProps({
   maxSlot: {
     type: Number,
     default: 6
+  },
+  submitting: {
+    type: Boolean,
+    default: false
   }
 })
 

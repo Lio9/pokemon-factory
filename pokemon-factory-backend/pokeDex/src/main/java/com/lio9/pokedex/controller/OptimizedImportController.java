@@ -1,7 +1,6 @@
 package com.lio9.pokedex.controller;
 
 import com.lio9.pokedex.service.PokeapiDataService;
-import com.lio9.pokedex.service.EfficientImportService;
 import com.lio9.common.response.ResultResponse;
 import com.lio9.common.response.ResponseCode;
 import com.lio9.common.response.ImportResponse;
@@ -12,22 +11,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 优化的导入控制器
  * <p>
- * 提供多种高性能的导入接口，支持异步处理、进度监控和状态查询。
- * 包括Python调度器导入、Java直接导入和快速导入等多种方式。
+ * 提供图鉴导入相关接口，支持异步处理、进度监控和状态查询。
  * <p>
  * 支持的导入方式：
- * - Python调度器导入：使用Python脚本进行高效导入
- * - Java直接导入：通过Java代码直接执行导入
- * - 快速导入：优化的异步导入流程
+ * - 快速导入：优化的 Java 导入流程
  * - 异步导入：非阻塞的后台导入任务
  * <p>
  * 主要功能：
@@ -50,12 +43,6 @@ public class OptimizedImportController {
     @Autowired
     private PokeapiDataService pokeapiDataService;
 
-    @Autowired
-    private EfficientImportService efficientImportService;
-
-    @Autowired
-    private com.lio9.pokedex.service.impl.EfficientImportServiceImpl efficientImportServiceImpl;
-
 
     /**
      * 快速导入所有数据（优化版）
@@ -73,8 +60,7 @@ public class OptimizedImportController {
             // 异步执行快速导入
             CompletableFuture.runAsync(() -> {
                 try {
-                    // 调用EfficientImportService执行新的Python调度脚本
-                    Map<String, Object> importResult = efficientImportService.callPythonSchedulerImport();
+                    Map<String, Object> importResult = pokeapiDataService.importAllPokemonDataOptimized();
 
                     if ((Boolean) importResult.get("success")) {
                         logger.info("快速导入完成");
@@ -150,98 +136,6 @@ public class OptimizedImportController {
     }
 
     /**
-     * 使用新的Python调度脚本导入所有数据
-     */
-    @PostMapping("/python-scheduler")
-    public ResponseEntity<Map<String, Object>> pythonSchedulerImport() {
-        String taskId = "PYTHON-SCHEDULER-" + System.currentTimeMillis();
-
-        try {
-            logger.info("启动Python调度导入任务，任务ID: {}", taskId);
-
-            // 异步执行导入任务，避免超时
-            CompletableFuture.runAsync(() -> {
-                try {
-                    // 调用EfficientImportService执行新的Python调度脚本
-                    Map<String, Object> importResult = efficientImportService.callPythonSchedulerImport();
-
-                    if ((Boolean) importResult.get("success")) {
-                        logger.info("Python调度导入任务 {} 执行成功", taskId);
-                    } else {
-                        logger.error("Python调度导入任务 {} 执行失败: {}", taskId, importResult.get("error"));
-                    }
-                } catch (Exception e) {
-                    logger.error("Python调度导入任务 {} 执行异常: {}", taskId, e.getMessage(), e);
-                }
-            });
-
-            return ResponseEntity.ok(
-
-                    ImportResponse.buildImportTaskResponse(taskId, "Python调度导入任务已启动", "python-scheduler")
-
-            );
-
-
-        } catch (Exception e) {
-
-            logger.error("启动Python调度导入任务失败: {}", e.getMessage(), e);
-
-            return ResponseEntity.ok(
-
-                    ImportResponse.buildImportErrorResponse(taskId, "启动Python调度导入任务失败: " + e.getMessage())
-
-            );
-
-        }
-    }
-
-    /**
-     * 使用Python调度脚本导入特定类型数据
-     */
-    @PostMapping("/python-scheduler/{type}")
-    public ResponseEntity<Map<String, Object>> pythonSchedulerImportType(@PathVariable String type) {
-        String taskId = "PYTHON-SCHEDULER-" + type.toUpperCase() + "-" + System.currentTimeMillis();
-
-        try {
-            logger.info("启动Python调度导入任务，任务ID: {}, 类型: {}", taskId, type);
-
-            // 异步执行导入任务，避免超时
-            CompletableFuture.runAsync(() -> {
-                try {
-                    // 调用EfficientImportService执行新的Python调度脚本
-                    Map<String, Object> importResult = efficientImportService.callPythonSchedulerImportType(type);
-
-                    if ((Boolean) importResult.get("success")) {
-                        logger.info("Python调度导入任务 {} 执行成功", taskId);
-                    } else {
-                        logger.error("Python调度导入任务 {} 执行失败: {}", taskId, importResult.get("error"));
-                    }
-                } catch (Exception e) {
-                    logger.error("Python调度导入任务 {} 执行异常: {}", taskId, e.getMessage(), e);
-                }
-            });
-
-            return ResponseEntity.ok(
-
-                    ImportResponse.buildImportTaskResponse(taskId, "Python调度导入任务已启动", "python-scheduler")
-
-            );
-
-
-        } catch (Exception e) {
-
-            logger.error("启动Python调度导入任务失败: {}", e.getMessage(), e);
-
-            return ResponseEntity.ok(
-
-                    ImportResponse.buildImportErrorResponse(taskId, "启动Python调度导入任务失败: " + e.getMessage())
-
-            );
-
-        }
-    }
-
-    /**
      * 获取性能监控数据
      */
     @GetMapping("/performance-stats")
@@ -269,136 +163,22 @@ public class OptimizedImportController {
     @GetMapping("/import-status/{taskId}")
     public ResponseEntity<Map<String, Object>> getImportStatus(@PathVariable String taskId) {
         try {
-            // 检查是否是Python调度器的任务
-            if (taskId.startsWith("PYTHON-")) {
-                Map<String, Object> status = efficientImportService.getImportStatus(taskId);
-                return ResponseEntity.ok(ResultResponse.buildSuccess("获取状态成功", status));
+            Map<String, Object> status = new HashMap<>();
+            status.put("taskId", taskId);
+            if (taskId.startsWith("ASYNC-")) {
+                status.put("status", "running");
+                status.put("message", "异步导入任务进行中");
+                status.put("importType", "async");
             } else {
-                // 检查是否是Java导入任务
-                Map<String, Object> javaStatus = new HashMap<>();
-                javaStatus.put("taskId", taskId);
-
-                // 根据任务ID判断导入类型
-                if (taskId.startsWith("JAVA-IMPORT-")) {
-                    javaStatus.put("status", "running");
-                    javaStatus.put("message", "Java代码直接导入任务进行中");
-                    javaStatus.put("importType", "java-direct");
-                } else if (taskId.startsWith("ASYNC-")) {
-                    javaStatus.put("status", "running");
-                    javaStatus.put("message", "异步导入任务进行中");
-                    javaStatus.put("importType", "async");
-                } else if (taskId.startsWith("FAST-IMPORT-")) {
-                    javaStatus.put("status", "running");
-                    javaStatus.put("message", "快速导入任务进行中");
-                    javaStatus.put("importType", "optimized");
-                } else {
-                    javaStatus.put("status", "running");
-                    javaStatus.put("message", "Java导入任务进行中");
-                    javaStatus.put("importType", "optimized");
-                }
-
-                // 获取导入进度状态
-                Map<String, Object> progressStatus = pokeapiDataService.getImportProgressStatus();
-                javaStatus.put("progress", progressStatus);
-
-                return ResponseEntity.ok(ResultResponse.buildSuccess("获取状态成功", javaStatus));
+                status.put("status", "running");
+                status.put("message", "快速导入任务进行中");
+                status.put("importType", "optimized");
             }
+            status.put("progress", pokeapiDataService.getImportProgressStatus());
+            return ResponseEntity.ok(ResultResponse.buildSuccess("获取状态成功", status));
         } catch (Exception e) {
             logger.error("获取导入状态失败: {}", e.getMessage());
             return ResponseEntity.ok(ResultResponse.buildError("获取导入状态失败", e.getMessage()));
-        }
-    }
-
-    /**
-     * Java代码直接导入所有数据
-     * 直接调用Java代码进行导入，不通过Python脚本
-     */
-    @PostMapping("/java-import/all")
-    public ResponseEntity<Map<String, Object>> javaImportAllData() {
-        String taskId = "JAVA-IMPORT-" + System.currentTimeMillis();
-
-        try {
-            logger.info("启动Java代码直接导入任务，任务ID: {}", taskId);
-
-            // 异步执行Java导入
-            CompletableFuture.runAsync(() -> {
-                try {
-                    // 调用EfficientImportService的Java直接导入实现
-                    Map<String, Object> importResult = efficientImportService.callJavaDirectImport();
-
-                    if ((Boolean) importResult.get("success")) {
-                        logger.info("Java代码直接导入完成");
-                    } else {
-                        logger.error("Java代码直接导入失败: {}", importResult.get("error"));
-                    }
-                } catch (Exception e) {
-                    logger.error("Java代码直接导入失败: {}", e.getMessage(), e);
-                }
-            });
-
-            return ResponseEntity.ok(
-
-                    ImportResponse.buildImportTaskResponse(taskId, "Java代码直接导入任务已启动", "java-direct")
-
-            );
-
-
-        } catch (Exception e) {
-
-            logger.error("启动Java代码直接导入任务失败: {}", e.getMessage(), e);
-
-            return ResponseEntity.ok(
-
-                    ImportResponse.buildImportErrorResponse(taskId, "启动Java代码直接导入任务失败: " + e.getMessage())
-
-            );
-
-        }
-    }
-
-    /**
-     * Java代码直接导入特定类型数据
-     */
-    @PostMapping("/java-import/{type}")
-    public ResponseEntity<Map<String, Object>> javaImportType(@PathVariable String type) {
-        String taskId = "JAVA-IMPORT-" + type.toUpperCase() + "-" + System.currentTimeMillis();
-
-        try {
-            logger.info("启动Java代码直接导入任务，任务ID: {}, 类型: {}", taskId, type);
-
-            // 异步执行Java导入
-            CompletableFuture.runAsync(() -> {
-                try {
-                    // 调用EfficientImportService的Java直接导入实现
-                    Map<String, Object> importResult = efficientImportService.callJavaDirectImportType(type);
-
-                    if ((Boolean) importResult.get("success")) {
-                        logger.info("Java代码直接导入任务 {} 执行成功", taskId);
-                    } else {
-                        logger.error("Java代码直接导入任务 {} 执行失败: {}", taskId, importResult.get("error"));
-                    }
-                } catch (Exception e) {
-                    logger.error("Java代码直接导入任务 {} 执行异常: {}", taskId, e.getMessage(), e);
-                }
-            });
-
-            return ResponseEntity.ok(
-
-                    ImportResponse.buildImportTaskResponse(taskId, "Java代码直接导入任务已启动", "java-direct")
-
-            );
-
-
-        } catch (Exception e) {
-
-            logger.error("启动Java代码直接导入任务失败: {}", e.getMessage(), e);
-
-            return ResponseEntity.ok(
-
-                    ImportResponse.buildImportErrorResponse(taskId, "启动Java代码直接导入任务失败: " + e.getMessage())
-
-            );
-
         }
     }
 }

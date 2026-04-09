@@ -1,22 +1,27 @@
 <template>
   <div
     id="app"
-    class="min-h-screen bg-slate-50 text-slate-800 font-sans"
+    class="app-shell min-h-screen text-slate-800 font-sans"
   >
     <el-container>
       <!-- Header -->
-      <el-header class="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-gray-100 shadow-sm !p-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <el-header class="sticky top-0 z-30 border-b border-white/60 bg-white/75 backdrop-blur-xl shadow-[0_16px_40px_-28px_rgba(15,23,42,0.35)] !p-0">
+        <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 sm:h-16 sm:px-6 lg:px-8 w-full">
           <router-link
             to="/"
-            class="flex items-center gap-3 group"
+            class="group flex min-w-0 items-center gap-2.5 sm:gap-3"
           >
-            <div class="w-10 h-10 bg-gradient-to-br from-red-500 via-orange-500 to-amber-500 rounded-xl shadow-lg flex items-center justify-center text-white font-bold text-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+            <div class="flex h-9 w-9 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0f172a,#0ea5e9,#f97316)] text-sm font-bold text-white shadow-lg shadow-sky-500/20 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 sm:h-10 sm:w-10">
               P
             </div>
-            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700">
-              宝可梦图鉴
-            </h1>
+            <div class="min-w-0">
+              <h1 class="truncate text-base font-black tracking-tight text-transparent bg-[linear-gradient(135deg,#0f172a,#0f766e,#0284c7)] bg-clip-text sm:text-xl">
+                Pokemon Factory
+              </h1>
+              <div class="hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400 sm:block">
+                Data Dex + Battle Lab
+              </div>
+            </div>
           </router-link>
           
           <!-- 导航菜单 + 主题切换 -->
@@ -66,7 +71,10 @@
           </div>
 
           <!-- 移动端菜单 & 主题切换 -->
-          <div class="md:hidden flex items-center gap-2">
+          <div class="md:hidden flex items-center gap-1.5">
+            <div class="max-w-[110px] truncate rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
+              {{ authDisplayName }}
+            </div>
             <button
               class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
               @click="toggleTheme"
@@ -116,15 +124,15 @@
         </div>
       </el-header>
       
-      <el-main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 !pb-0 w-full">
-        <div class="content bg-white rounded-2xl shadow-sm p-4 sm:p-6 min-h-[calc(100vh-180px)]">
-          <div v-if="showHero" class="hero card-glass mb-6 p-6 rounded-2xl flex items-center justify-between gap-4">
+      <el-main class="mx-auto w-full max-w-7xl px-3 py-4 !pb-0 sm:px-6 sm:py-8 lg:px-8">
+        <div class="content min-h-[calc(100vh-156px)] rounded-[24px] border border-white/60 bg-white/72 p-3 shadow-[0_30px_120px_-80px_rgba(15,23,42,0.65)] backdrop-blur-xl sm:min-h-[calc(100vh-180px)] sm:rounded-[32px] sm:p-6">
+          <div v-if="showHero" class="hero card-glass mb-5 flex flex-col justify-between gap-4 rounded-[22px] border border-white/65 p-4 sm:mb-6 sm:flex-row sm:items-center sm:rounded-[28px] sm:p-6">
             <div>
-              <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">
-                探索宝可梦世界
+              <h2 class="text-[clamp(1.4rem,4vw,2rem)] font-black tracking-tight text-slate-950">
+                探索图鉴，进入战斗实验室
               </h2>
-              <p class="mt-2 text-sm text-slate-500">
-                快速浏览、收藏与比较。使用筛选提高搜索效率。
+              <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                现在的首页不只是查询入口，也承担战斗工厂的导航壳层。筛选、查看、模拟和对战被放进同一套更统一的视觉语言里。
               </p>
             </div>
             <div class="hidden sm:flex items-center">
@@ -174,7 +182,7 @@
       </el-main>
       
       <!-- Footer -->
-      <el-footer class="text-center py-6 text-gray-400 text-sm">
+      <el-footer class="px-4 py-5 text-center text-xs text-gray-400 sm:py-6 sm:text-sm">
         <p>© 2024-{{ new Date().getFullYear() }} 宝可梦图鉴 - Pokemon Factory</p>
       </el-footer>
     </el-container>
@@ -236,9 +244,20 @@ async function handleLogout() {
 
 <style>
 #app {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.app-shell {
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 18%),
+    radial-gradient(circle at top right, rgba(249, 115, 22, 0.12), transparent 20%),
+    linear-gradient(180deg, #eef6ff 0%, #f8fafc 24%, #f4f7fb 100%);
+}
+
+html {
+  font-size: clamp(14px, 0.82vw + 11px, 16px);
 }
 
 html, body {
@@ -265,6 +284,12 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #2563eb, #7c3aed);
+}
+
+@media (max-width: 640px) {
+  .content {
+    box-shadow: 0 20px 70px -60px rgba(15, 23, 42, 0.45);
+  }
 }
 
 /* 动画效果 */

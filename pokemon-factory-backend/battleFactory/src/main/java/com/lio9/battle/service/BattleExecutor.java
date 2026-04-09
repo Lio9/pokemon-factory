@@ -93,9 +93,10 @@ public class BattleExecutor {
      */
     private void runBattle(Integer battleId, Integer playerId, String playerTeamJson) {
         try {
+            jobMapper.updateJobStatusByBattleId(battleId, "RUNNING");
             long seed = System.currentTimeMillis() + battleId;
             Map<String, Object> opponent = resolveOpponent(seed, playerTeamJson);
-            Integer opponentTeamId = (Integer) opponent.get("teamId");
+            Integer opponentTeamId = opponent.get("teamId") == null ? null : ((Number) opponent.get("teamId")).intValue();
             String opponentTeamJson = String.valueOf(opponent.get("teamJson"));
 
             Map<String, String> playerMoveMap = parseMoveMap(battleId);
@@ -236,17 +237,7 @@ public class BattleExecutor {
      */
     private void markJobDone(Integer battleId, String status) {
         try {
-            List<Map<String, Object>> jobs = jobMapper.findPendingJobs();
-            if (jobs == null) {
-                return;
-            }
-            for (Map<String, Object> job : jobs) {
-                Integer queuedBattleId = job.get("battle_id") == null ? null : ((Number) job.get("battle_id")).intValue();
-                Integer jobId = job.get("id") == null ? null : ((Number) job.get("id")).intValue();
-                if (queuedBattleId != null && queuedBattleId.equals(battleId) && jobId != null) {
-                    jobMapper.updateJobStatus(jobId, status);
-                }
-            }
+            jobMapper.updateJobStatusByBattleId(battleId, status);
         } catch (Exception ignored) {
         }
     }

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""初始化数据库流程：删除旧 SQLite、启动 common 触发数据库初始化、导入 CSV、验证数据。
+"""初始化数据库流程：删除旧 SQLite、启动 common 触发数据库初始化与 CSV 导入、验证数据。
 使用环境变量：
   SQLITE_DB_PATH - sqlite 文件路径（可选）
   JAR_PATH - 后端 jar 路径（可选）
   MIGRATION_TIMEOUT - 等待数据库初始化完成的超时时间（秒，默认 120）
 
 运行示例：
-  python scripts\init_db.py
+    python scripts/init_db.py
 
-脚本会启动 java -jar <JAR_PATH>，等待 generation / player / app_user 等核心表创建完成，
-之后运行 scripts/import_to_sqlite.py 导入 CSV，并运行 scripts/verify_sqlite.py 验证。
+脚本会启动 java -jar <JAR_PATH>，等待 common 完成建表与 CSV 导入，
+之后运行 scripts/verify_sqlite.py 验证。
 """
 from pathlib import Path
 import os
@@ -19,6 +19,7 @@ import sqlite3
 import shutil
 import subprocess
 from datetime import datetime
+from shutil import which
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -38,7 +39,63 @@ def find_jar(default=None):
         return p
     if default:
         return Path(default)
-    return ROOT.joinpath('pokemon-factory-backend','common','target','common-0.0.1-SNAPSHOT.jar')
+    return ROOT.joinpath('pokemon-factory-backend','common','target','common-0.0.1-SNAPSHOT-exec.jar')
+
+
+def common_sources_newer_than_jar(jar_path: Path):
+    """判断 common 代码或资源是否比当前 jar 更新。"""
+    if not jar_path.exists():
+        return True
+    jar_mtime = jar_path.stat().st_mtime
+    common_root = ROOT.joinpath('pokemon-factory-backend', 'common')
+    watch_paths = [
+        common_root.joinpath('pom.xml'),
+        common_root.joinpath('src', 'main', 'java'),
+        common_root.joinpath('src', 'main', 'resources'),
+    ]
+    for path in watch_paths:
+        if not path.exists():
+            continue
+        if path.is_file() and path.stat().st_mtime > jar_mtime:
+            return True
+        if path.is_dir():
+            for child in path.rglob('*'):
+                if child.is_file() and child.stat().st_mtime > jar_mtime:
+                    return True
+    return False
+
+
+def ensure_common_jar(jar_path: Path):
+    """确保 common 的 jar 为最新构建产物。"""
+    if not common_sources_newer_than_jar(jar_path):
+        log('common jar 已是最新，跳过构建')
+        return True
+
+    log('检测到 common jar 缺失或已过期，开始重新构建...')
+    backend_root = ROOT.joinpath('pokemon-factory-backend')
+    maven_command = resolve_maven_command()
+    result = subprocess.run(
+        maven_command + ['-pl', 'common', '-DskipTests', 'package'],
+        cwd=str(backend_root)
+    )
+    if result.returncode != 0:
+        log(f'错误: 构建 common jar 失败，退出码 {result.returncode}')
+        return False
+    if not jar_path.exists():
+        log('错误: Maven 构建完成后仍未找到 common jar')
+        return False
+    return True
+
+
+def resolve_maven_command():
+    """解析当前环境下可用的 Maven 命令。"""
+    for candidate in ('mvn.cmd', 'mvn.bat', 'mvn'):
+        resolved = which(candidate)
+        if resolved:
+            return [resolved]
+    if os.name == 'nt':
+        return ['cmd', '/c', 'mvn']
+    return ['mvn']
 
 
 def find_db(default=None):
@@ -67,10 +124,11 @@ def backup_and_remove(db_path: Path):
         log("未发现已有 sqlite 文件，跳过删除步骤")
 
 
-def wait_for_schema(db_path: Path, timeout: int=120):
-    """轮询 common 初始化结果，直到核心表和业务表都创建完成。"""
-    required_tables = {'generation', 'move', 'pokemon', 'player', 'battle', 'app_user'}
-    log(f"等待 common 完成数据库初始化（目标表: {sorted(required_tables)}），超时 {timeout}s...")
+def wait_for_initialization(db_path: Path, timeout: int=120):
+    """轮询 common 初始化结果，直到核心表和关键 CSV 数据都已写入。"""
+    required_tables = {'generation', 'move', 'pokemon_species', 'player', 'battle', 'app_user'}
+    required_counts = {'pokemon_species': 1, 'move': 1, 'item': 1}
+    log(f"等待 common 完成数据库初始化与 CSV 导入，超时 {timeout}s...")
     start = time.time()
     while time.time() - start < timeout:
         if db_path.exists():
@@ -81,9 +139,19 @@ def wait_for_schema(db_path: Path, timeout: int=120):
                 current_tables = {row[0] for row in cur.fetchall()}
                 missing_tables = sorted(required_tables - current_tables)
                 if not missing_tables:
-                    conn.close()
-                    return True
-                log(f"仍缺少数据表: {missing_tables}")
+                    counts_ready = True
+                    for table_name, minimum in required_counts.items():
+                        cur.execute(f"SELECT COUNT(*) FROM {table_name}")
+                        if cur.fetchone()[0] < minimum:
+                            counts_ready = False
+                            break
+                    if counts_ready:
+                        conn.close()
+                        return True
+                if missing_tables:
+                    log(f"仍缺少数据表: {missing_tables}")
+                else:
+                    log("表结构已创建，等待 CSV 数据导入完成...")
                 conn.close()
             except sqlite3.Error as e:
                 log(f"打开 sqlite 文件失败: {e}")
@@ -91,27 +159,14 @@ def wait_for_schema(db_path: Path, timeout: int=120):
     return False
 
 
-def run_import_and_verify(py: str, root: Path):
-    """在 common 建库完成后继续执行 CSV 导入与数据校验。"""
-    import_script = root.joinpath('scripts','import_to_sqlite.py')
+def run_verify(py: str, root: Path):
+    """在 common 完成建库与导入后执行数据校验。"""
     verify_script = root.joinpath('scripts','verify_sqlite.py')
 
-    if not import_script.exists():
-        log(f"找不到导入脚本: {import_script}")
-        return False
-
     env = os.environ.copy()
-    # common 已经完成数据库初始化，这里只负责导入数据，不再重复跑 schema。
-    env['SKIP_DB_INIT'] = '1'
 
-    log("开始执行数据导入脚本 (import_to_sqlite.py)...")
-    r = subprocess.run([py, str(import_script)], env=env, cwd=str(root))
-    if r.returncode != 0:
-        log(f"导入脚本返回非零退出码: {r.returncode}")
-        return False
-
-    log("导入完成，运行数据校验脚本 (verify_sqlite.py) ...")
     if verify_script.exists():
+        log("运行数据校验脚本 (verify_sqlite.py) ...")
         r2 = subprocess.run([py, str(verify_script)], env=env, cwd=str(root))
         if r2.returncode != 0:
             log(f"校验脚本返回非零退出码: {r2.returncode}")
@@ -132,8 +187,7 @@ def main():
     log(f"使用 JAR: {jar}")
     log(f"使用 SQLite DB: {db}")
 
-    if not jar.exists():
-        log("错误: 找不到后端 JAR，请先构建后端（mvn package）或设置环境变量 JAR_PATH 指向 jar 文件")
+    if not ensure_common_jar(jar):
         sys.exit(2)
 
     # 这里保留“备份后重建”的策略，是为了让导入脚本始终从可预期的干净结构开始跑。
@@ -150,24 +204,24 @@ def main():
     log(f'common 进程 PID={proc.pid}')
 
     try:
-        ok = wait_for_schema(db, timeout=timeout)
+        ok = wait_for_initialization(db, timeout=timeout)
         if not ok:
-            log('错误: common 数据库初始化未在超时时间内完成')
+            log('错误: common 数据库初始化或 CSV 导入未在超时时间内完成')
             # 尝试输出简单提示并退出非零
             proc.terminate()
             proc.wait(timeout=10)
             sys.exit(3)
 
-        log('数据库结构初始化完成，开始导入数据...')
+        log('数据库结构与 CSV 数据导入完成，开始校验...')
         py = sys.executable
-        success = run_import_and_verify(py, ROOT)
+        success = run_verify(py, ROOT)
         if not success:
-            log('错误: 导入或校验失败')
+            log('错误: 数据校验失败')
             proc.terminate()
             proc.wait(timeout=10)
             sys.exit(4)
 
-        log('数据导入与校验完成')
+        log('数据初始化与校验完成')
 
     finally:
         # 初始化脚本只把 common 当作一次性的建库工具使用，导入结束后主动结束进程。

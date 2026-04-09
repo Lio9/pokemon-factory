@@ -354,6 +354,34 @@ CREATE TABLE item_flag_map (
     UNIQUE (item_id, flag_id)
 );
 
+-- 特性效果表
+DROP TABLE IF EXISTS ability_effect;
+CREATE TABLE ability_effect (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ability_id INTEGER NOT NULL,
+    effect_type TEXT NOT NULL,
+    effect_value TEXT,
+    target TEXT NOT NULL,
+    condition TEXT,
+    description TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ability_id) REFERENCES ability(id)
+);
+
+-- 道具效果表
+DROP TABLE IF EXISTS item_effect;
+CREATE TABLE item_effect (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL,
+    effect_type TEXT NOT NULL,
+    effect_value TEXT,
+    target TEXT NOT NULL,
+    condition TEXT,
+    description TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id) REFERENCES item(id)
+);
+
 -- ==========================================
 -- 四、宝可梦核心表
 -- ==========================================
