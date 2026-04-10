@@ -3,8 +3,8 @@ spring:
     # 用户模块本身不再维护独立数据库连接，统一复用 common 暴露的数据库配置。
     import: optional:classpath:application-common.yml
   application:
-    # user-module 当前作为 battleFactory 的依赖模块存在，这里保留模块名配置，
-    # 后续如果独立启动或抽成单独服务，可以直接复用这份资源目录结构。
+    # user-module 既可以作为 battleFactory 的依赖模块被装配，
+    # 也可以通过自己的启动类独立运行，这里继续保留统一模块名。
     name: user-module
 
 user:
