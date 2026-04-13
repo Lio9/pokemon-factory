@@ -1,6 +1,5 @@
 package com.lio9.battle.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.mapper.FactoryRunMapper;
 import com.lio9.battle.mapper.PlayerMapper;
 import org.springframework.stereotype.Service;
@@ -24,14 +23,12 @@ public class FactoryRunService {
     private final PlayerMapper playerMapper;
     private final BattleService battleService;
     private final AIService aiService;
-    private final ObjectMapper objectMapper;
 
-    public FactoryRunService(FactoryRunMapper runMapper, PlayerMapper playerMapper, BattleService battleService, AIService aiService, ObjectMapper objectMapper) {
+    public FactoryRunService(FactoryRunMapper runMapper, PlayerMapper playerMapper, BattleService battleService, AIService aiService) {
         this.runMapper = runMapper;
         this.playerMapper = playerMapper;
         this.battleService = battleService;
         this.aiService = aiService;
-        this.objectMapper = objectMapper;
     }
 
     /**

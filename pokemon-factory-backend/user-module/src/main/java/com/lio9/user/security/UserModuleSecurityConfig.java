@@ -39,6 +39,7 @@ public class UserModuleSecurityConfig {
         http.csrf(csrf -> csrf.disable());
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         http.authorizeHttpRequests(authorize -> authorize
+            .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                 .requestMatchers("/api/user/login", "/api/user/register").permitAll()
                 .requestMatchers("/api/user/me").authenticated()
                 .anyRequest().permitAll()

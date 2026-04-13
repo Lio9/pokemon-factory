@@ -38,10 +38,26 @@ public class ResultResponse {
      * @return ResponseEntity对象
      */
     public static Map<String, Object> buildCustomErrorResponse(int code, String message, String error) {
+        return buildCustomErrorResponse(code, message, error, null);
+    }
+
+    /**
+     * 构建自定义失败响应，并在需要时附带结构化上下文数据。
+     * 
+     * @param code 状态码
+     * @param message 消息
+     * @param error 错误信息
+     * @param data 额外上下文数据
+     * @return ResponseEntity对象
+     */
+    public static Map<String, Object> buildCustomErrorResponse(int code, String message, String error, Object data) {
         Map<String, Object> result = new HashMap<>();
         result.put("code", code);
         result.put("message", message);
         result.put("error", error);
+        if (data != null) {
+            result.put("data", data);
+        }
         return result;
     }
     

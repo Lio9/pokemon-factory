@@ -1,14 +1,13 @@
 package com.lio9.pokedex.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.lio9.common.model.Move;
-import com.lio9.common.service.MoveService;
-import com.lio9.common.vo.MoveQueryVO;
+import com.lio9.pokedex.model.Move;
+import com.lio9.pokedex.service.MoveService;
+import com.lio9.pokedex.vo.MoveQueryVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import java.util.HashMap;
 import java.util.Map;
 import com.lio9.common.response.ResultResponse;
 import com.lio9.common.response.ResponseCode;
@@ -34,8 +33,7 @@ public class MoveController {
     public Map<String, Object> getMoveList(MoveQueryVO queryVO) {
         long startTime = System.currentTimeMillis();
         logger.info("获取招式列表 - 参数: current={}, size={}", queryVO.getCurrent(), queryVO.getSize());
-        
-        Map<String, Object> result = new HashMap<>();
+
         Page<Move> page = new Page<>(queryVO.getCurrent(), queryVO.getSize());
         Page<Move> movePage = moveService.page(page);
 
@@ -52,8 +50,7 @@ public class MoveController {
     public Map<String, Object> getMoveDetail(@PathVariable Long id) {
         long startTime = System.currentTimeMillis();
         logger.info("获取招式详情 - ID: {}", id);
-        
-        Map<String, Object> result = new HashMap<>();
+
         Move move = moveService.getById(id);
 
         long endTime = System.currentTimeMillis();
@@ -77,7 +74,6 @@ public class MoveController {
         long startTime = System.currentTimeMillis();
         logger.info("搜索招式 - 关键词: {}, current={}, size={}", keyword, current, size);
 
-        Map<String, Object> result = new HashMap<>();
         Page<Move> page = new Page<>(current, size);
         Page<Move> movePage = moveService.page(page);
 
@@ -87,3 +83,4 @@ public class MoveController {
         return ResultResponse.buildSuccessResponse(ResponseCode.SUCCESS, "success", movePage);
     }
 }
+

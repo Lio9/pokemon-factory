@@ -33,10 +33,31 @@ async function request(url, options = {}) {
 
   if (!response.ok) {
     // 后端错误结构并不完全统一，这里按 message/error/HTTP 状态码 兜底，保证页面能拿到可展示的错误信息。
-    throw new Error(payload?.message || payload?.error || `HTTP error! status: ${response.status}`)
+    const error = new Error(payload?.message || payload?.error || `HTTP error! status: ${response.status}`)
+    error.status = response.status
+    if (payload && typeof payload === 'object') {
+      error.code = payload.code
+      error.error = payload.error
+      error.data = payload.data
+    }
+    throw error
   }
 
   return payload
+}
+
+function isStandardResponse(payload) {
+  return Boolean(
+    payload
+    && typeof payload === 'object'
+    && typeof payload.code === 'number'
+    && ('data' in payload || 'error' in payload)
+  )
+}
+
+async function requestData(url, options = {}) {
+  const payload = await request(url, options)
+  return isStandardResponse(payload) ? payload.data : payload
 }
 
 async function parseResponseBody(response) {
@@ -147,32 +168,32 @@ export const damageApi = {
 
 // 用户认证接口集中收口到这里，供 useAuth 统一调用。
 export const userApi = {
-  login: (body) => request(`${API_ROOT}/user/login`, { method: 'POST', body: JSON.stringify(body) }),
-  register: (body) => request(`${API_ROOT}/user/register`, { method: 'POST', body: JSON.stringify(body) }),
-  me: () => request(`${API_ROOT}/user/me`)
+  login: (body) => requestData(`${API_ROOT}/user/login`, { method: 'POST', body: JSON.stringify(body) }),
+  register: (body) => requestData(`${API_ROOT}/user/register`, { method: 'POST', body: JSON.stringify(body) }),
+  me: () => requestData(`${API_ROOT}/user/me`)
 }
 
 // 对战工厂接口单独分组，便于 Battle.vue 直接按业务语义调用。
 export const battleApi = {
-  start: (body) => request(`${API_ROOT}/battle/start`, { method: 'POST', body: JSON.stringify(body) }),
-  startAsync: (body) => request(`${API_ROOT}/battle/start-async`, { method: 'POST', body: JSON.stringify(body) }),
-  status: (battleId) => request(`${API_ROOT}/battle/status/${battleId}`),
-  pool: (rank) => request(`${API_ROOT}/battle/pool?rank=${rank || ''}`),
-  preview: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/preview`, { method: 'POST', body: JSON.stringify(body) }),
-  replacement: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/replacement`, { method: 'POST', body: JSON.stringify(body) }),
-  exchange: (body) => request(`${API_ROOT}/battle/exchange`, { method: 'POST', body: JSON.stringify(body) }),
-  move: (battleId, body) => request(`${API_ROOT}/battle/${battleId}/move`, { method: 'POST', body: JSON.stringify(body) }),
-  forfeit: (battleId) => request(`${API_ROOT}/battle/${battleId}/forfeit`, { method: 'POST' }),
+  start: (body) => requestData(`${API_ROOT}/battle/start`, { method: 'POST', body: JSON.stringify(body) }),
+  startAsync: (body) => requestData(`${API_ROOT}/battle/start-async`, { method: 'POST', body: JSON.stringify(body) }),
+  status: (battleId) => requestData(`${API_ROOT}/battle/status/${battleId}`),
+  pool: (rank) => requestData(`${API_ROOT}/battle/pool?rank=${rank || ''}`),
+  preview: (battleId, body) => requestData(`${API_ROOT}/battle/${battleId}/preview`, { method: 'POST', body: JSON.stringify(body) }),
+  replacement: (battleId, body) => requestData(`${API_ROOT}/battle/${battleId}/replacement`, { method: 'POST', body: JSON.stringify(body) }),
+  exchange: (body) => requestData(`${API_ROOT}/battle/exchange`, { method: 'POST', body: JSON.stringify(body) }),
+  move: (battleId, body) => requestData(`${API_ROOT}/battle/${battleId}/move`, { method: 'POST', body: JSON.stringify(body) }),
+  forfeit: (battleId) => requestData(`${API_ROOT}/battle/${battleId}/forfeit`, { method: 'POST' }),
 
   // 工厂挑战（9 轮连续对战）
-  factoryStart: () => request(`${API_ROOT}/battle/factory/start`, { method: 'POST' }),
-  factoryNext: (runId) => request(`${API_ROOT}/battle/factory/${runId}/next`, { method: 'POST' }),
-  factoryAbandon: () => request(`${API_ROOT}/battle/factory/abandon`, { method: 'POST' }),
-  factoryStatus: () => request(`${API_ROOT}/battle/factory/status`),
+  factoryStart: () => requestData(`${API_ROOT}/battle/factory/start`, { method: 'POST' }),
+  factoryNext: (runId) => requestData(`${API_ROOT}/battle/factory/${runId}/next`, { method: 'POST' }),
+  factoryAbandon: () => requestData(`${API_ROOT}/battle/factory/abandon`, { method: 'POST' }),
+  factoryStatus: () => requestData(`${API_ROOT}/battle/factory/status`),
 
   // 玩家信息
-  profile: () => request(`${API_ROOT}/battle/profile`),
-  leaderboard: (limit = 50) => request(`${API_ROOT}/battle/leaderboard?limit=${limit}`)
+  profile: () => requestData(`${API_ROOT}/battle/profile`),
+  leaderboard: (limit = 50) => requestData(`${API_ROOT}/battle/leaderboard?limit=${limit}`)
 }
 
 // 精灵图资源地址也统一从这里生成，避免各页面自己拼接静态资源路径。

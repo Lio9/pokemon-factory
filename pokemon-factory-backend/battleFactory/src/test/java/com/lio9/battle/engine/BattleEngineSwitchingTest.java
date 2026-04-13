@@ -3,8 +3,8 @@ package com.lio9.battle.engine;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.mapper.SkillMapper;
 import com.lio9.battle.service.SkillService;
-import com.lio9.common.mapper.TypeEfficacyMapper;
-import com.lio9.common.util.DamageCalculatorUtil;
+import com.lio9.pokedex.mapper.TypeEfficacyMapper;
+import com.lio9.pokedex.util.DamageCalculatorUtil;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -2070,7 +2070,7 @@ class BattleEngineSwitchingTest {
         setMoves(baseline, true, 1, List.of(move("Grass Strike", "grass-strike", 40, 100, 0, 1, DamageCalculatorUtil.TYPE_GRASS, 10)));
         setMoves(baseline, false, 0, List.of(move("Strike", "strike", 40, 100, 0, 1, 1, 10)));
         setMoves(baseline, false, 1, List.of(protectMove()));
-        Map<String, Object> baselineRound = engine.playRound(baseline, Map.of(
+        engine.playRound(baseline, Map.of(
                 "slot-0", "protect",
                 "slot-1", "grass-strike",
                 "target-slot-1", "0"
@@ -2097,8 +2097,6 @@ class BattleEngineSwitchingTest {
                 "target-slot-1", "0"
         ));
 
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> baselineOpponent = (List<Map<String, Object>>) baselineRound.get("opponentTeam");
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> grassyOpponent = (List<Map<String, Object>>) grassyRound.get("opponentTeam");
         @SuppressWarnings("unchecked")

@@ -16,7 +16,6 @@ import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -91,7 +90,7 @@ public class BattleExecutorSubmitTest {
 
         BattleEngine engine = new BattleEngine(new com.lio9.battle.service.SkillService(new com.lio9.battle.mapper.SkillMapper() {
                 public java.util.List<java.util.Map<String,Object>> findAll() { return java.util.List.of(); }
-            }), new com.lio9.common.mapper.TypeEfficacyMapper() {
+            }), new com.lio9.pokedex.mapper.TypeEfficacyMapper() {
                 public java.util.List<java.util.Map<String, Object>> selectAllTypeEfficacy() { return java.util.List.of(); }
                 public java.util.List<java.util.Map<String, Object>> selectByDamageTypeId(Integer damageTypeId) { return java.util.List.of(); }
                 public Integer selectDamageFactor(Integer damageTypeId, Integer targetTypeId) { return 100; }
@@ -138,13 +137,6 @@ public class BattleExecutorSubmitTest {
             public int updateTeamWithVersion(Integer id, String teamJson, Integer expectedVersion) { jdbc.update("UPDATE team SET team_json = ?, version = version + 1 WHERE id = ? AND COALESCE(version,0) = ?", teamJson, id, expectedVersion); return jdbc.queryForObject("SELECT changes()", Integer.class); }
         };
 
-        com.lio9.battle.mapper.PokemonMapper pokemonMapper = new com.lio9.battle.mapper.PokemonMapper() {
-            public java.util.List<java.util.Map<String,Object>> sampleLimit(int limit) { return jdbc.queryForList("SELECT id, name, base_experience FROM pokemon ORDER BY RANDOM() LIMIT ?", limit); }
-            public java.util.List<java.util.Map<String,Object>> sampleByBaseExperience(int minBaseExperience, int maxBaseExperience, int limit) {
-                return jdbc.queryForList("SELECT id, name, base_experience FROM pokemon WHERE base_experience BETWEEN ? AND ? ORDER BY RANDOM() LIMIT ?", minBaseExperience, maxBaseExperience, limit);
-            }
-        };
-
         com.lio9.battle.mapper.OpponentPoolMapper opMapper = new com.lio9.battle.mapper.OpponentPoolMapper() {
             public void addTeam(Integer teamId, Integer rank) { jdbc.update("INSERT INTO opponent_pool(team_id, rank, created_at) VALUES (?, ?, datetime('now'))", teamId, rank); }
             public java.util.List<java.util.Map<String,Object>> sample(int low, int high, int limit, int targetRank) { return jdbc.queryForList("SELECT op.id, op.team_id AS team_id, t.team_json, op.rank FROM opponent_pool op JOIN team t ON op.team_id = t.id WHERE op.rank BETWEEN ? AND ? ORDER BY ABS(op.rank - ?) ASC, RANDOM() LIMIT ?", low, high, targetRank, limit); }
@@ -182,7 +174,7 @@ public class BattleExecutorSubmitTest {
             }
         };
 
-        executorUnderTest = new com.lio9.battle.service.BattleExecutor(battleMapper, opMapper, teamMapper, pokemonMapper, roundMapper, jobMapper, engine, poolService, aiService, objectMapper);
+        executorUnderTest = new com.lio9.battle.service.BattleExecutor(battleMapper, teamMapper, roundMapper, jobMapper, engine, poolService, aiService, objectMapper);
         executorUnderTest.init();
 
         Integer id = executorUnderTest.submitAsyncBattle(playerId, "[]", null);

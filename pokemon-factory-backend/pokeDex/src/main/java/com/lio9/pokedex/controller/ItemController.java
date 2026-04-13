@@ -1,11 +1,11 @@
 package com.lio9.pokedex.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.lio9.common.model.Item;
+import com.lio9.pokedex.model.Item;
 import com.lio9.common.response.ResultResponse;
 import com.lio9.common.response.ResponseCode;
-import com.lio9.common.service.ItemService;
-import com.lio9.common.vo.ItemQueryVO;
+import com.lio9.pokedex.service.ItemService;
+import com.lio9.pokedex.vo.ItemQueryVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

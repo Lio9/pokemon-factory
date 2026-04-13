@@ -5,13 +5,26 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.lio9.common.model.*;
-import com.lio9.common.service.*;
+import com.lio9.pokedex.service.AbilityService;
+import com.lio9.pokedex.service.EggGroupService;
+import com.lio9.pokedex.service.EvolutionChainService;
+import com.lio9.pokedex.service.GrowthRateService;
+import com.lio9.pokedex.service.ItemService;
+import com.lio9.pokedex.service.MoveService;
+import com.lio9.pokedex.service.PokemonEggGroupService;
+import com.lio9.pokedex.service.PokemonEvService;
+import com.lio9.pokedex.service.PokemonFormAbilityService;
+import com.lio9.pokedex.service.PokemonFormService;
+import com.lio9.pokedex.service.PokemonFormTypeService;
+import com.lio9.pokedex.service.PokemonIvService;
+import com.lio9.pokedex.service.PokemonMoveService;
+import com.lio9.pokedex.service.PokemonService;
+import com.lio9.pokedex.service.PokemonStatsService;
+import com.lio9.pokedex.service.TypeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +45,6 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
     private static final long NETWORK_CHECK_INTERVAL = 30000; // 30秒检查一次
     
     // HTTP 客户端配置
-    private static final int MAX_CONNECTIONS = 200;
     private static final int CONNECT_TIMEOUT = 30;
     private static final int READ_TIMEOUT = 60;
     private static final int MAX_RETRIES = 8;
@@ -100,9 +112,6 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
     private PokemonEvService pokemonEvService;
     
     private static final String POKEAPI_BASE_URL = "https://pokeapi.co/api/v2/";
-    private static final String CHINESE_LANGUAGE = "zh";
-    private static final String JAPANESE_LANGUAGE = "ja";
-    
     /**
      * 导入单个宝可梦数据
      */
@@ -211,6 +220,9 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
             result.put("itemCount", 1000);
             result.put("eggGroupCount", 15);
             result.put("growthRateCount", 5);
+            result.put("failedAbilityCount", failedAbilities.size());
+            result.put("failedMoveCount", failedMoves.size());
+            result.put("failedItemCount", failedItems.size());
             result.put("successRate", (double) successCountArray[0] / totalImported * 100);
             result.put("totalTime", totalTime / 1000);
 
@@ -325,6 +337,9 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
                 result.put("itemCount", 1000);
                 result.put("eggGroupCount", 15);
                 result.put("growthRateCount", 5);
+                result.put("failedAbilityCount", failedAbilities.size());
+                result.put("failedMoveCount", failedMoves.size());
+                result.put("failedItemCount", failedItems.size());
                 result.put("successRate", (double) successCountArray[0] / totalImported * 100);
                 result.put("totalTime", totalTime / 1000);
 
@@ -807,7 +822,6 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
                 
                 // 先尝试不使用代理的客户端
                 java.net.http.HttpClient client = clientWithoutProxy;
-                boolean usingProxy = false;
                 
                 java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
                     .uri(uri)

@@ -5,7 +5,8 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
-import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.ObjectSchema;
+import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
@@ -25,6 +26,12 @@ public class SwaggerConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
+        var errorResponseSchema = new ObjectSchema()
+                .description("错误响应")
+                .addProperty("code", new StringSchema().description("错误码"))
+                .addProperty("message", new StringSchema().description("错误消息"))
+                .addProperty("data", new ObjectSchema().description("错误详情"));
+
         return new OpenAPI()
                 .info(new Info()
                         .title("宝可梦图鉴 API")
@@ -54,13 +61,7 @@ public class SwaggerConfig {
                         new Server().url("http://localhost:8080").description("生产环境")
                 ))
                 .components(new Components()
-                        .addSchemas("ErrorResponse", new Schema<>()
-                                .type("object")
-                                .description("错误响应")
-                                .addProperties("code", new Schema<>().type("string").description("错误码"))
-                                .addProperties("message", new Schema<>().type("string").description("错误消息"))
-                                .addProperties("data", new Schema<>().type("object").description("错误详情"))
-                        ));
+                        .addSchemas("ErrorResponse", errorResponseSchema));
     }
 
     /**

@@ -1,12 +1,12 @@
 package com.lio9.battle.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.engine.BattleEngine;
 import com.lio9.battle.mapper.BattleMapper;
 import com.lio9.battle.mapper.BattleExchangeMapper;
 import com.lio9.battle.mapper.BattleRoundMapper;
 import com.lio9.battle.mapper.PlayerMapper;
-import com.lio9.battle.mapper.PokemonMapper;
 import com.lio9.battle.mapper.TeamMapper;
 import com.lio9.battle.mapper.FactoryRunMapper;
 import org.springframework.stereotype.Service;
@@ -34,7 +34,6 @@ public class BattleService {
 
     private final PlayerMapper playerMapper;
     private final TeamMapper teamMapper;
-    private final PokemonMapper pokemonMapper;
     private final BattleMapper battleMapper;
     private final BattleRoundMapper roundMapper;
     private final BattleExchangeMapper exchangeMapper;
@@ -47,10 +46,9 @@ public class BattleService {
     /**
      * 组装手动对战主链依赖。
      */
-    public BattleService(PlayerMapper playerMapper, TeamMapper teamMapper, PokemonMapper pokemonMapper, BattleMapper battleMapper, BattleRoundMapper roundMapper, BattleExchangeMapper exchangeMapper, BattleEngine battleEngine, OpponentPoolService poolService, AIService aiService, FactoryRunMapper factoryRunMapper, ObjectMapper objectMapper) {
+    public BattleService(PlayerMapper playerMapper, TeamMapper teamMapper, BattleMapper battleMapper, BattleRoundMapper roundMapper, BattleExchangeMapper exchangeMapper, BattleEngine battleEngine, OpponentPoolService poolService, AIService aiService, FactoryRunMapper factoryRunMapper, ObjectMapper objectMapper) {
         this.playerMapper = playerMapper;
         this.teamMapper = teamMapper;
-        this.pokemonMapper = pokemonMapper;
         this.battleMapper = battleMapper;
         this.roundMapper = roundMapper;
         this.exchangeMapper = exchangeMapper;
@@ -64,7 +62,6 @@ public class BattleService {
     /**
      * 开始一场手动对战，并返回预览阶段状态。
      */
-    @SuppressWarnings("unchecked")
     public Map<String, Object> startMatch(Map<String, Object> req) {
         String username = String.valueOf(req.getOrDefault("username", "guest"));
         playerMapper.insertIgnore(username);
@@ -115,7 +112,6 @@ public class BattleService {
         }
     }
 
-    @SuppressWarnings("unchecked")
     /**
      * 查询对战状态，并在可能时把 summary_json 解析成结构化对象返回给前端。
      */
@@ -129,14 +125,14 @@ public class BattleService {
         response.put("battle", row);
         if (row.get("summary_json") instanceof String summaryJson && !summaryJson.isBlank()) {
             try {
-                response.put("summary", objectMapper.readValue(summaryJson, Map.class));
+                response.put("summary", objectMapper.readValue(summaryJson, new TypeReference<Map<String, Object>>() {
+                }));
             } catch (Exception ignored) {
             }
         }
         return response;
     }
 
-    @SuppressWarnings("unchecked")
     /**
      * 提交一回合玩家动作并推进战斗。
      */

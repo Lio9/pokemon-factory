@@ -5,8 +5,6 @@ import com.lio9.battle.engine.BattleEngine;
 import com.lio9.battle.mapper.BattleMapper;
 import com.lio9.battle.mapper.BattleRoundMapper;
 import com.lio9.battle.mapper.JobMapper;
-import com.lio9.battle.mapper.OpponentPoolMapper;
-import com.lio9.battle.mapper.PokemonMapper;
 import com.lio9.battle.mapper.TeamMapper;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
@@ -30,9 +28,7 @@ public class BattleExecutor {
     private static final int FACTORY_ROUND_LIMIT = 12;
 
     private final BattleMapper battleMapper;
-    private final OpponentPoolMapper opponentPoolMapper;
     private final TeamMapper teamMapper;
-    private final PokemonMapper pokemonMapper;
     private final BattleRoundMapper roundMapper;
     private final JobMapper jobMapper;
     private final BattleEngine engine;
@@ -44,11 +40,9 @@ public class BattleExecutor {
     /**
      * 组装异步对战执行链依赖。
      */
-    public BattleExecutor(BattleMapper battleMapper, OpponentPoolMapper opponentPoolMapper, TeamMapper teamMapper, PokemonMapper pokemonMapper, BattleRoundMapper roundMapper, JobMapper jobMapper, BattleEngine engine, OpponentPoolService poolService, AIService aiService, ObjectMapper mapper) {
+    public BattleExecutor(BattleMapper battleMapper, TeamMapper teamMapper, BattleRoundMapper roundMapper, JobMapper jobMapper, BattleEngine engine, OpponentPoolService poolService, AIService aiService, ObjectMapper mapper) {
         this.battleMapper = battleMapper;
-        this.opponentPoolMapper = opponentPoolMapper;
         this.teamMapper = teamMapper;
-        this.pokemonMapper = pokemonMapper;
         this.roundMapper = roundMapper;
         this.jobMapper = jobMapper;
         this.engine = engine;

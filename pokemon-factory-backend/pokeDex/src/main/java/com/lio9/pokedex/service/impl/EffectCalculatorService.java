@@ -2,7 +2,6 @@ package com.lio9.pokedex.service.impl;
 
 import com.lio9.pokedex.util.AbilityEffects;
 import com.lio9.pokedex.util.AbilityEffects.AbilityEffect;
-import com.lio9.pokedex.util.AbilityEffects.EffectType;
 import com.lio9.pokedex.util.ItemEffects;
 import com.lio9.pokedex.util.ItemEffects.ItemEffect;
 import org.springframework.stereotype.Service;

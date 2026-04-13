@@ -1,10 +1,12 @@
 package com.lio9.battle.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lio9.battle.config.BattleApiResponseSupport;
 import com.lio9.battle.service.BattleExecutor;
 import com.lio9.battle.service.BattleService;
 import com.lio9.battle.service.FactoryRunService;
 import com.lio9.battle.mapper.PlayerMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,7 +46,7 @@ public class BattleController {
     @PostMapping("/start")
     public ResponseEntity<?> startBattle(@RequestBody Map<String, Object> req) {
         req.put("username", authenticatedUsername());
-        return ResponseEntity.ok(battleService.startMatch(req));
+        return BattleApiResponseSupport.fromPayload(battleService.startMatch(req));
     }
 
     /**
@@ -58,7 +60,10 @@ public class BattleController {
         String teamJson = req.get("teamJson") instanceof String ? req.get("teamJson").toString() : null;
         String moveJson = toMoveJson(req.get("playerMoveMap"));
         Integer battleId = battleExecutor.submitAsyncBattle(playerId, teamJson, moveJson);
-        return ResponseEntity.ok(Map.of("battleId", battleId));
+        if (battleId == null) {
+            return BattleApiResponseSupport.error(HttpStatus.INTERNAL_SERVER_ERROR, "submit_failed", "异步对战提交失败。");
+        }
+        return BattleApiResponseSupport.success(Map.of("battleId", battleId));
     }
 
     /**
@@ -66,7 +71,7 @@ public class BattleController {
      */
     @GetMapping("/status/{battleId}")
     public ResponseEntity<?> status(@PathVariable Long battleId) {
-        return ResponseEntity.ok(battleService.getBattleStatus(battleId));
+        return BattleApiResponseSupport.fromPayload(battleService.getBattleStatus(battleId));
     }
 
     /**
@@ -74,7 +79,7 @@ public class BattleController {
      */
     @GetMapping("/pool")
     public ResponseEntity<?> pool(@RequestParam(required = false) Integer rank) {
-        return ResponseEntity.ok(battleService.samplePool(rank));
+        return BattleApiResponseSupport.success(battleService.samplePool(rank));
     }
 
     /**
@@ -82,7 +87,7 @@ public class BattleController {
      */
     @PostMapping("/{battleId}/preview")
     public ResponseEntity<?> confirmPreview(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
-        return ResponseEntity.ok(battleService.confirmTeamPreview(battleId, req));
+        return BattleApiResponseSupport.fromPayload(battleService.confirmTeamPreview(battleId, req));
     }
 
     /**
@@ -90,7 +95,7 @@ public class BattleController {
      */
     @PostMapping("/{battleId}/replacement")
     public ResponseEntity<?> confirmReplacement(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
-        return ResponseEntity.ok(battleService.confirmReplacement(battleId, req));
+        return BattleApiResponseSupport.fromPayload(battleService.confirmReplacement(battleId, req));
     }
 
     /**
@@ -98,7 +103,7 @@ public class BattleController {
      */
     @PostMapping("/{battleId}/move")
     public ResponseEntity<?> move(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
-        return ResponseEntity.ok(battleService.applyMove(battleId, normalizeMoveMap(req)));
+        return BattleApiResponseSupport.fromPayload(battleService.applyMove(battleId, normalizeMoveMap(req)));
     }
 
     /**
@@ -110,9 +115,9 @@ public class BattleController {
         Number replacedIndex = (Number) req.get("replacedIndex");
         String newPokemonJson = req.get("newPokemonJson") == null ? null : req.get("newPokemonJson").toString();
         if (battleId == null || replacedIndex == null || newPokemonJson == null || newPokemonJson.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "missing_fields"));
+            return BattleApiResponseSupport.error(HttpStatus.BAD_REQUEST, "missing_fields", "请求缺少必要字段。");
         }
-        return ResponseEntity.ok(battleService.updateBattleAfterExchange(battleId.longValue(), replacedIndex.intValue(), newPokemonJson));
+        return BattleApiResponseSupport.fromPayload(battleService.updateBattleAfterExchange(battleId.longValue(), replacedIndex.intValue(), newPokemonJson));
     }
 
     /**
@@ -120,7 +125,7 @@ public class BattleController {
      */
     @PostMapping("/{battleId}/forfeit")
     public ResponseEntity<?> forfeit(@PathVariable Long battleId) {
-        return ResponseEntity.ok(battleService.forfeitBattle(battleId, authenticatedUsername()));
+        return BattleApiResponseSupport.fromPayload(battleService.forfeitBattle(battleId, authenticatedUsername()));
     }
 
     // ========== 工厂挑战（9 轮连续对战）==========
@@ -130,7 +135,7 @@ public class BattleController {
      */
     @PostMapping("/factory/start")
     public ResponseEntity<?> startFactoryRun() {
-        return ResponseEntity.ok(factoryRunService.startRun(authenticatedUsername()));
+        return BattleApiResponseSupport.fromPayload(factoryRunService.startRun(authenticatedUsername()));
     }
 
     /**
@@ -138,7 +143,7 @@ public class BattleController {
      */
     @PostMapping("/factory/{runId}/next")
     public ResponseEntity<?> nextFactoryBattle(@PathVariable Integer runId) {
-        return ResponseEntity.ok(factoryRunService.startNextBattle(authenticatedUsername(), runId));
+        return BattleApiResponseSupport.fromPayload(factoryRunService.startNextBattle(authenticatedUsername(), runId));
     }
 
     /**
@@ -146,7 +151,7 @@ public class BattleController {
      */
     @PostMapping("/factory/abandon")
     public ResponseEntity<?> abandonFactoryRun() {
-        return ResponseEntity.ok(factoryRunService.abandonRun(authenticatedUsername()));
+        return BattleApiResponseSupport.fromPayload(factoryRunService.abandonRun(authenticatedUsername()));
     }
 
     /**
@@ -154,7 +159,7 @@ public class BattleController {
      */
     @GetMapping("/factory/status")
     public ResponseEntity<?> factoryRunStatus() {
-        return ResponseEntity.ok(factoryRunService.getRunStatus(authenticatedUsername()));
+        return BattleApiResponseSupport.fromPayload(factoryRunService.getRunStatus(authenticatedUsername()));
     }
 
     // ========== 玩家信息 ==========
@@ -164,7 +169,7 @@ public class BattleController {
      */
     @GetMapping("/profile")
     public ResponseEntity<?> profile() {
-        return ResponseEntity.ok(factoryRunService.getProfile(authenticatedUsername()));
+        return BattleApiResponseSupport.success(factoryRunService.getProfile(authenticatedUsername()));
     }
 
     /**
@@ -172,7 +177,7 @@ public class BattleController {
      */
     @GetMapping("/leaderboard")
     public ResponseEntity<?> leaderboard(@RequestParam(defaultValue = "50") int limit) {
-        return ResponseEntity.ok(factoryRunService.getLeaderboard(limit));
+        return BattleApiResponseSupport.success(factoryRunService.getLeaderboard(limit));
     }
 
     @SuppressWarnings("unchecked")

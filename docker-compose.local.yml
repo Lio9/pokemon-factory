@@ -1,0 +1,69 @@
+services:
+  common-init:
+    build:
+      context: ./pokemon-factory-backend
+      dockerfile: Dockerfile.module
+      args:
+        MODULE_PATH: common
+        JAR_PATTERN: common-*-exec.jar
+    environment:
+      SQLITE_DB_PATH: /workspace/data/pokemon-factory.db
+      POKEMON_FACTORY_DATABASE_INITIALIZE_ON_STARTUP: "true"
+      POKEMON_FACTORY_DATABASE_IMPORT_CSV_ON_STARTUP: "true"
+      CSV_DIR: /workspace/csv
+    volumes:
+      - backend-db:/workspace/data
+      - ./csv:/workspace/csv:ro
+    restart: "no"
+
+  pokedex:
+    build:
+      context: ./pokemon-factory-backend
+      dockerfile: Dockerfile.module
+      args:
+        MODULE_PATH: pokeDex
+        JAR_PATTERN: pokeDex-*.jar
+    depends_on:
+      common-init:
+        condition: service_completed_successfully
+    environment:
+      SQLITE_DB_PATH: /workspace/data/pokemon-factory.db
+    volumes:
+      - backend-db:/workspace/data
+    ports:
+      - "8081:8081"
+
+  battlefactory:
+    build:
+      context: ./pokemon-factory-backend
+      dockerfile: Dockerfile.module
+      args:
+        MODULE_PATH: battleFactory
+        JAR_PATTERN: battleFactory-*.jar
+    depends_on:
+      common-init:
+        condition: service_completed_successfully
+    environment:
+      SQLITE_DB_PATH: /workspace/data/pokemon-factory.db
+      JWT_SECRET: local-docker-jwt-secret
+    volumes:
+      - backend-db:/workspace/data
+    ports:
+      - "8090:8090"
+
+  frontend:
+    build:
+      context: ./pokemon-factory-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: http://localhost:8081/api/pokedex
+        VITE_DAMAGE_API_BASE: http://localhost:8090/api/damage
+        VITE_SPRITES_BASE: http://localhost:8081
+    depends_on:
+      - pokedex
+      - battlefactory
+    ports:
+      - "5173:80"
+
+volumes:
+  backend-db:

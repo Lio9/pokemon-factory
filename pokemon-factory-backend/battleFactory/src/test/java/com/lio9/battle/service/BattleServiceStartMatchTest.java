@@ -2,7 +2,6 @@ package com.lio9.battle.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.engine.BattleEngine;
-import com.lio9.battle.service.AIService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,6 +18,13 @@ import static org.junit.jupiter.api.Assertions.*;
 public class BattleServiceStartMatchTest {
 
     private File dbFile;
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> summary(Map<String, Object> response) {
+        Object value = response.get("summary");
+        assertInstanceOf(Map.class, value);
+        return (Map<String, Object>) value;
+    }
 
     private DataSource createDataSource() throws Exception {
         dbFile = File.createTempFile("test-db-", ".db");
@@ -57,7 +63,7 @@ public class BattleServiceStartMatchTest {
         // simple engine that always makes player win
         BattleEngine engine = new BattleEngine(new com.lio9.battle.service.SkillService(new com.lio9.battle.mapper.SkillMapper() {
                 public java.util.List<java.util.Map<String,Object>> findAll() { return java.util.List.of(); }
-            }), new com.lio9.common.mapper.TypeEfficacyMapper() {
+            }), new com.lio9.pokedex.mapper.TypeEfficacyMapper() {
                 public java.util.List<java.util.Map<String, Object>> selectAllTypeEfficacy() { return java.util.List.of(); }
                 public java.util.List<java.util.Map<String, Object>> selectByDamageTypeId(Integer damageTypeId) { return java.util.List.of(); }
                 public Integer selectDamageFactor(Integer damageTypeId, Integer targetTypeId) { return 100; }
@@ -106,13 +112,6 @@ public class BattleServiceStartMatchTest {
             public java.util.Map<String,Object> findLatestByPlayer(Integer playerId) { java.util.List<java.util.Map<String,Object>> rows = jdbc.queryForList("SELECT id, team_json, COALESCE(version,0) AS version FROM team WHERE player_id = ? ORDER BY created_at DESC LIMIT 1", playerId); return rows.isEmpty() ? null : rows.get(0); }
             public String findTeamJsonById(Integer id) { return jdbc.queryForObject("SELECT team_json FROM team WHERE id = ?", String.class, id); }
             public int updateTeamWithVersion(Integer id, String teamJson, Integer expectedVersion) { jdbc.update("UPDATE team SET team_json = ?, version = version + 1 WHERE id = ? AND COALESCE(version,0) = ?", teamJson, id, expectedVersion); return jdbc.queryForObject("SELECT changes()", Integer.class); }
-        };
-
-        com.lio9.battle.mapper.PokemonMapper pokemonMapper = new com.lio9.battle.mapper.PokemonMapper() {
-            public java.util.List<java.util.Map<String,Object>> sampleLimit(int limit) { return jdbc.queryForList("SELECT id, name, base_experience FROM pokemon LIMIT ?", limit); }
-            public java.util.List<java.util.Map<String,Object>> sampleByBaseExperience(int minBaseExperience, int maxBaseExperience, int limit) {
-                return jdbc.queryForList("SELECT id, name, base_experience FROM pokemon WHERE base_experience BETWEEN ? AND ? LIMIT ?", minBaseExperience, maxBaseExperience, limit);
-            }
         };
 
         com.lio9.battle.mapper.BattleMapper battleMapper = new com.lio9.battle.mapper.BattleMapper() {
@@ -168,7 +167,7 @@ public class BattleServiceStartMatchTest {
             }
         };
 
-        BattleService service = new BattleService(playerMapper, teamMapper, pokemonMapper, battleMapper, roundMapper, exchangeMapper, engine, poolService, aiService, factoryRunMapper, objectMapper);
+        BattleService service = new BattleService(playerMapper, teamMapper, battleMapper, roundMapper, exchangeMapper, engine, poolService, aiService, factoryRunMapper, objectMapper);
 
         Map<String, Object> req = new HashMap<>();
         req.put("username", "tester");
@@ -178,8 +177,9 @@ public class BattleServiceStartMatchTest {
         assertNotNull(res);
         assertTrue(res.containsKey("battleId"));
         assertTrue(res.containsKey("summary"));
-        assertEquals("preview", ((Map<String, Object>) res.get("summary")).get("status"));
-        assertEquals("team-preview", ((Map<String, Object>) res.get("summary")).get("phase"));
+        Map<String, Object> summary = summary(res);
+        assertEquals("preview", summary.get("status"));
+        assertEquals("team-preview", summary.get("phase"));
 
         Integer battleId = (Integer) res.get("battleId");
         assertNotNull(battleId);

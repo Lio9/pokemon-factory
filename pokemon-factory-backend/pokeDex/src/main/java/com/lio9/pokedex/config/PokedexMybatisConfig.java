@@ -21,7 +21,7 @@ public class PokedexMybatisConfig {
     public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
         MybatisSqlSessionFactoryBean factoryBean = new MybatisSqlSessionFactoryBean();
         factoryBean.setDataSource(dataSource);
-        factoryBean.setTypeAliasesPackage("com.lio9.common.model");
+        factoryBean.setTypeAliasesPackage("com.lio9.pokedex.model");
         factoryBean.setMapperLocations(
                 new PathMatchingResourcePatternResolver().getResources("classpath*:mapper/*.xml")
         );

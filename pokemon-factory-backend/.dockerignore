@@ -1,0 +1,7 @@
+.git
+.idea
+.vscode
+**/target
+**/.mvn
+**/*.iml
+pokemon-factory.db

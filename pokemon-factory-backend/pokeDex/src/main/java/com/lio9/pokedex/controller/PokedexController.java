@@ -2,9 +2,13 @@ package com.lio9.pokedex.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lio9.common.response.ResultResponse;
-import com.lio9.common.response.ResponseCode;
-import com.lio9.common.service.PokedexService;
-import com.lio9.common.vo.*;
+import com.lio9.pokedex.service.PokedexService;
+import com.lio9.pokedex.vo.AbilityVO;
+import com.lio9.pokedex.vo.ItemVO;
+import com.lio9.pokedex.vo.MoveVO;
+import com.lio9.pokedex.vo.PokemonDetailVO;
+import com.lio9.pokedex.vo.PokemonListVO;
+import com.lio9.pokedex.vo.TypeVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

@@ -2,10 +2,10 @@ package com.lio9.pokedex.controller;
 
 import com.lio9.common.response.ResultResponse;
 import com.lio9.common.response.ResponseCode;
-import com.lio9.common.service.DamageCalculatorService;
-import com.lio9.common.vo.DamageCalculationRequest;
-import com.lio9.common.vo.DamageResultVO;
-import com.lio9.common.vo.TypeEfficacyVO;
+import com.lio9.pokedex.service.DamageCalculatorService;
+import com.lio9.pokedex.vo.DamageCalculationRequest;
+import com.lio9.pokedex.vo.DamageResultVO;
+import com.lio9.pokedex.vo.TypeEfficacyVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

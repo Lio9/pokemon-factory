@@ -40,6 +40,8 @@ pokemon-factory:
       - classpath:db/init/003_user_schema.sql
 
 logging:
+  pattern:
+    console: "ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level app=${spring.application.name:-unknown} thread=%thread logger=%logger{36} trace=%X{traceId:-} span=%X{spanId:-} msg=%msg%n%wEx"
   level:
     org.apache.ibatis: info
     org.mybatis: info
@@ -48,3 +50,19 @@ logging:
     java.sql.Statement: warn
     java.sql.PreparedStatement: warn
     java.sql.ResultSet: warn
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+info:
+  app:
+    database-mode: embedded-sqlite
+    android-migration-ready: true

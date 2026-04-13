@@ -1,5 +1,6 @@
 import { computed, reactive, readonly } from 'vue'
 import api from '../services/api'
+import { normalizeAuthSession } from '../services/contracts/authContract'
 
 // 统一维护前端登录态使用的 localStorage key，避免不同页面各自读写造成状态分裂。
 const TOKEN_KEY = 'jwt_token'
@@ -77,10 +78,7 @@ async function restoreSession() {
   restorePromise = (async () => {
     try {
       const response = await api.user.me()
-      setSession({
-        token: state.token,
-        user: response.user
-      })
+      setSession(normalizeAuthSession({ token: state.token, ...response }))
       return state.user
     } catch {
       // token 失效时直接清掉本地会话，避免页面继续展示过期用户信息。
@@ -98,15 +96,17 @@ async function restoreSession() {
 // 登录成功后直接刷新统一会话状态，页面其他位置只读 useAuth 暴露的只读状态即可。
 async function login(credentials) {
   const response = await api.user.login(credentials)
-  setSession(response)
-  return response.user
+  const session = normalizeAuthSession(response)
+  setSession(session)
+  return session.user
 }
 
 // 注册成功后立即建立会话，和后端“注册即登录”的返回语义保持一致。
 async function register(credentials) {
   const response = await api.user.register(credentials)
-  setSession(response)
-  return response.user
+  const session = normalizeAuthSession(response)
+  setSession(session)
+  return session.user
 }
 
 const isAuthenticated = computed(() => Boolean(state.token && state.user))

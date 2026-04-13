@@ -20,8 +20,8 @@ import org.springframework.context.annotation.ComponentScan;
 // pokeDex 仍需要扫描 common 中沉淀下来的图鉴公共 Service/配置，
 // 因为图鉴业务本身大量复用了 common 里的公共查询能力。
 @ComponentScan(basePackages = {"com.lio9.pokedex", "com.lio9.common"})
-// 图鉴查询当前直接依赖 common 中的公共 Mapper，因此这里继续扫描 common.mapper。
-@MapperScan("com.lio9.common.mapper")
+// 图鉴查询 mapper 已全部收口到 pokeDex 包下，common 仅保留公共配置与模型。
+@MapperScan("com.lio9.pokedex.mapper")
 public class PokeDexApplication {
 
     /**

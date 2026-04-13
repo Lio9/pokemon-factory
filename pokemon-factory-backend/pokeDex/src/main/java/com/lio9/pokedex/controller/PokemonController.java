@@ -1,13 +1,11 @@
 package com.lio9.pokedex.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.lio9.common.model.Pokemon;
-import com.lio9.common.model.Move;
-import com.lio9.common.service.PokemonService;
-import com.lio9.common.vo.PokemonDetailVO;
+import com.lio9.pokedex.model.Pokemon;
+import com.lio9.pokedex.model.Move;
 import com.lio9.common.response.ResultResponse;
-import com.lio9.common.response.ResponseCode;
+import com.lio9.pokedex.service.PokemonService;
+import com.lio9.pokedex.vo.PokemonDetailVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

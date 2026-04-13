@@ -1,5 +1,7 @@
 package com.lio9.user.controller;
 
+import com.lio9.common.response.ResponseCode;
+import com.lio9.common.response.ResultResponse;
 import com.lio9.user.dto.AuthRequest;
 import com.lio9.user.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -39,7 +41,8 @@ public class UserController {
      */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.register(request));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResultResponse.buildSuccessResponse(ResponseCode.CREATED, "注册成功", userService.register(request)));
     }
 
     /**
@@ -47,7 +50,7 @@ public class UserController {
      */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
-        return ResponseEntity.ok(userService.login(request));
+        return ResponseEntity.ok(ResultResponse.buildSuccess("登录成功", userService.login(request)));
     }
 
     /**
@@ -60,8 +63,9 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<?> currentUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "未登录"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ResultResponse.buildCustomErrorResponse(HttpStatus.UNAUTHORIZED.value(), "未登录", "unauthorized"));
         }
-        return ResponseEntity.ok(Map.of("user", userService.getCurrentUser(authentication.getName())));
+        return ResponseEntity.ok(ResultResponse.buildSuccess("获取成功", Map.of("user", userService.getCurrentUser(authentication.getName()))));
     }
 }
