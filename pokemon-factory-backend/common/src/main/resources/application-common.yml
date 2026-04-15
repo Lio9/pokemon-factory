@@ -34,6 +34,8 @@ pokemon-factory:
     initialize-on-startup: false
     import-csv-on-startup: false
     csv-directory: ${CSV_DIR:}
+    remote-csv-base-url: ${REMOTE_CSV_BASE_URL:https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv}
+    csv-cache-directory: ${CSV_CACHE_DIR:}
     bootstrap-scripts:
       - classpath:db/init/001_core_schema.sql
       - classpath:db/init/002_battle_schema.sql

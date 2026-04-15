@@ -37,6 +37,9 @@ dist/
 *.tsbuildinfo
 npm-debug.log*
 .npm-cache/
+.eslintcache
+coverage/
+.cache/
 
 # ========================
 # 数据库
@@ -80,3 +83,9 @@ csv/
 *.tmp
 *.bak
 *.swp
+
+# ========================
+# 环境变量样例外的本地配置
+# ========================
+.env.local
+.env.*.local

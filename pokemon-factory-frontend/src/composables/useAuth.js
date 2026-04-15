@@ -1,51 +1,16 @@
 import { computed, reactive, readonly } from 'vue'
 import api from '../services/api'
 import { normalizeAuthSession } from '../services/contracts/authContract'
+import { getToken, getStoredUser, persistSession } from '../services/sessionStorage'
 
-// 统一维护前端登录态使用的 localStorage key，避免不同页面各自读写造成状态分裂。
-const TOKEN_KEY = 'jwt_token'
-const USER_KEY = 'auth_user'
-const LEGACY_USERNAME_KEY = 'username'
-const initialToken = localStorage.getItem(TOKEN_KEY) || ''
+const initialToken = getToken()
 
 const state = reactive({
   token: initialToken,
-  user: readStoredUser(),
+  user: getStoredUser(),
   restoring: false,
   initialized: !initialToken
 })
-
-// 启动时尽可能恢复上次保存的用户资料；如果 JSON 损坏，则清理掉脏数据避免页面报错。
-function readStoredUser() {
-  const raw = localStorage.getItem(USER_KEY)
-  if (!raw) {
-    return null
-  }
-
-  try {
-    return JSON.parse(raw)
-  } catch {
-    localStorage.removeItem(USER_KEY)
-    return null
-  }
-}
-
-// 把 token 与用户资料同步写入本地存储，保持刷新页面后仍可恢复会话。
-function persistSession(token, user) {
-  if (token) {
-    localStorage.setItem(TOKEN_KEY, token)
-  } else {
-    localStorage.removeItem(TOKEN_KEY)
-  }
-
-  if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user))
-    localStorage.setItem(LEGACY_USERNAME_KEY, user.username)
-  } else {
-    localStorage.removeItem(USER_KEY)
-    localStorage.removeItem(LEGACY_USERNAME_KEY)
-  }
-}
 
 // 用统一入口更新内存状态和本地缓存，避免 login/register/restoreSession 各自维护不同逻辑。
 function setSession(session) {

@@ -25,6 +25,14 @@ http:
     keep-alive: true
     follow-redirects: true
 
+app:
+  cors:
+    allowed-origins: http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173
+
+pokemon-factory:
+  assets:
+    image-base-url: https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites
+
 logging:
   level:
     com.lio9.common: debug

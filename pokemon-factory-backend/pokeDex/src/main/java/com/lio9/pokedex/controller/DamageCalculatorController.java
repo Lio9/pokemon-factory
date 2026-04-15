@@ -8,7 +8,6 @@ import com.lio9.pokedex.vo.DamageResultVO;
 import com.lio9.pokedex.vo.TypeEfficacyVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,13 +18,14 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/damage")
-@CrossOrigin(origins = "*")
 public class DamageCalculatorController {
 
     private static final Logger logger = LoggerFactory.getLogger(DamageCalculatorController.class);
+    private final DamageCalculatorService damageCalculatorService;
 
-    @Autowired
-    private DamageCalculatorService damageCalculatorService;
+    public DamageCalculatorController(DamageCalculatorService damageCalculatorService) {
+        this.damageCalculatorService = damageCalculatorService;
+    }
 
     /**
      * 计算伤害

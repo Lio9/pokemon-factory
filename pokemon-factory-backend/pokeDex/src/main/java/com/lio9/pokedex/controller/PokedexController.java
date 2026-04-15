@@ -9,7 +9,6 @@ import com.lio9.pokedex.vo.MoveVO;
 import com.lio9.pokedex.vo.PokemonDetailVO;
 import com.lio9.pokedex.vo.PokemonListVO;
 import com.lio9.pokedex.vo.TypeVO;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,11 +19,12 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/pokedex")
-@CrossOrigin(origins = "*")
 public class PokedexController {
+    private final PokedexService pokedexService;
 
-    @Autowired
-    private PokedexService pokedexService;
+    public PokedexController(PokedexService pokedexService) {
+        this.pokedexService = pokedexService;
+    }
 
     /**
      * 获取宝可梦列表

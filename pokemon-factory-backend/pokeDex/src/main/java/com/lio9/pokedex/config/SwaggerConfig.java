@@ -47,7 +47,7 @@ public class SwaggerConfig {
                                 - 伤害计算器（考虑属性克制、特性、道具等）
                                 - 数据导入和管理
                                 
-                                **技术栈**: Spring Boot 3.x + MyBatis-Plus + SQLite + Caffeine Cache
+                                **技术栈**: Spring Boot 4.x + MyBatis-Plus + SQLite + Caffeine Cache
                                 """)
                         .contact(new Contact()
                                 .name("Lio9")
@@ -58,7 +58,7 @@ public class SwaggerConfig {
                                 .url("https://opensource.org/licenses/MIT")))
                 .servers(List.of(
                         new Server().url("http://localhost:8081").description("本地开发环境"),
-                        new Server().url("http://localhost:8080").description("生产环境")
+                        new Server().url("https://your-production-domain.com").description("生产环境")
                 ))
                 .components(new Components()
                         .addSchemas("ErrorResponse", errorResponseSchema));

@@ -42,6 +42,22 @@ public class CommonDatabaseProperties {
      */
     private String csvDirectory;
 
+    /**
+     * 远程 CSV 根地址。
+     * <p>
+     * 当本地 csv/ 不存在时，可从该地址按需下载 `*.csv` 到本地缓存目录。
+     * 例如：
+     * https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv
+     * </p>
+     */
+    private String remoteCsvBaseUrl;
+
+    /**
+     * 远程 CSV 下载缓存目录。
+     * 默认允许为空，运行时会回退到系统临时目录下的 pokemon-factory/csv-cache。
+     */
+    private String csvCacheDirectory;
+
     public boolean isInitializeOnStartup() {
         return initializeOnStartup;
     }
@@ -72,5 +88,21 @@ public class CommonDatabaseProperties {
 
     public void setCsvDirectory(String csvDirectory) {
         this.csvDirectory = csvDirectory;
+    }
+
+    public String getRemoteCsvBaseUrl() {
+        return remoteCsvBaseUrl;
+    }
+
+    public void setRemoteCsvBaseUrl(String remoteCsvBaseUrl) {
+        this.remoteCsvBaseUrl = remoteCsvBaseUrl;
+    }
+
+    public String getCsvCacheDirectory() {
+        return csvCacheDirectory;
+    }
+
+    public void setCsvCacheDirectory(String csvCacheDirectory) {
+        this.csvCacheDirectory = csvCacheDirectory;
     }
 }

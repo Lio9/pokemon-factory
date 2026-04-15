@@ -8,7 +8,6 @@ import com.lio9.pokedex.service.ItemService;
 import com.lio9.pokedex.vo.ItemQueryVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,13 +19,14 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/items")
-@CrossOrigin(origins = "*")
 public class ItemController {
     
     private static final Logger logger = LoggerFactory.getLogger(ItemController.class);
-    
-    @Autowired
-    private ItemService itemService;
+    private final ItemService itemService;
+
+    public ItemController(ItemService itemService) {
+        this.itemService = itemService;
+    }
     
     /**
      * 分页获取物品列表

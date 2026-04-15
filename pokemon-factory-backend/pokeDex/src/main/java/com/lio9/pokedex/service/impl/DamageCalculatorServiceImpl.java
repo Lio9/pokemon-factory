@@ -8,7 +8,6 @@ import com.lio9.pokedex.util.DamageCalculatorUtil;
 import com.lio9.pokedex.vo.DamageCalculationRequest;
 import com.lio9.pokedex.vo.DamageResultVO;
 import com.lio9.pokedex.vo.TypeEfficacyVO;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -20,27 +19,31 @@ import java.util.stream.Collectors;
  */
 @Service
 public class DamageCalculatorServiceImpl implements DamageCalculatorService {
+    private final TypeEfficacyMapper typeEfficacyMapper;
+    private final PokemonFormMapper pokemonFormMapper;
+    private final PokemonFormStatMapper pokemonFormStatMapper;
+    private final PokemonFormTypeMapper pokemonFormTypeMapper;
+    private final MoveMapper moveMapper;
+    private final AbilityMapper abilityMapper;
+    private final ItemMapper itemMapper;
 
-    @Autowired
-    private TypeEfficacyMapper typeEfficacyMapper;
-    
-    @Autowired
-    private PokemonFormMapper pokemonFormMapper;
-    
-    @Autowired
-    private PokemonFormStatMapper pokemonFormStatMapper;
-    
-    @Autowired
-    private PokemonFormTypeMapper pokemonFormTypeMapper;
-    
-    @Autowired
-    private MoveMapper moveMapper;
-    
-    @Autowired
-    private AbilityMapper abilityMapper;
-    
-    @Autowired
-    private ItemMapper itemMapper;
+    public DamageCalculatorServiceImpl(
+        TypeEfficacyMapper typeEfficacyMapper,
+        PokemonFormMapper pokemonFormMapper,
+        PokemonFormStatMapper pokemonFormStatMapper,
+        PokemonFormTypeMapper pokemonFormTypeMapper,
+        MoveMapper moveMapper,
+        AbilityMapper abilityMapper,
+        ItemMapper itemMapper
+    ) {
+        this.typeEfficacyMapper = typeEfficacyMapper;
+        this.pokemonFormMapper = pokemonFormMapper;
+        this.pokemonFormStatMapper = pokemonFormStatMapper;
+        this.pokemonFormTypeMapper = pokemonFormTypeMapper;
+        this.moveMapper = moveMapper;
+        this.abilityMapper = abilityMapper;
+        this.itemMapper = itemMapper;
+    }
 
     @Override
     public DamageResultVO calculateDamage(DamageCalculationRequest request) {

@@ -6,7 +6,6 @@ import com.lio9.pokedex.service.MoveService;
 import com.lio9.pokedex.vo.MoveQueryVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import com.lio9.common.response.ResultResponse;
@@ -18,13 +17,14 @@ import com.lio9.common.response.ResponseCode;
  */
 @RestController
 @RequestMapping("/api/moves")
-@CrossOrigin(origins = "*")
 public class MoveController {
 
     private static final Logger logger = LoggerFactory.getLogger(MoveController.class);
+    private final MoveService moveService;
 
-    @Autowired
-    private MoveService moveService;
+    public MoveController(MoveService moveService) {
+        this.moveService = moveService;
+    }
 
     /**
      * 分页获取招式列表

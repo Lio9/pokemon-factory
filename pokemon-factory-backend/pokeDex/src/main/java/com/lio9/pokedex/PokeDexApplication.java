@@ -3,6 +3,7 @@ package com.lio9.pokedex;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.ComponentScan;
 
 /**
@@ -20,6 +21,7 @@ import org.springframework.context.annotation.ComponentScan;
 // pokeDex 仍需要扫描 common 中沉淀下来的图鉴公共 Service/配置，
 // 因为图鉴业务本身大量复用了 common 里的公共查询能力。
 @ComponentScan(basePackages = {"com.lio9.pokedex", "com.lio9.common"})
+@ConfigurationPropertiesScan(basePackages = {"com.lio9.pokedex.config", "com.lio9.common.config"})
 // 图鉴查询 mapper 已全部收口到 pokeDex 包下，common 仅保留公共配置与模型。
 @MapperScan("com.lio9.pokedex.mapper")
 public class PokeDexApplication {

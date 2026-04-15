@@ -7,7 +7,6 @@ import com.lio9.common.response.ResultResponse;
 import com.lio9.pokedex.vo.AbilityQueryVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -22,13 +21,14 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/abilities")
-@CrossOrigin(origins = "*")
 public class AbilityController {
     
     private static final Logger logger = LoggerFactory.getLogger(AbilityController.class);
-    
-    @Autowired
-    private AbilityService abilityService;
+    private final AbilityService abilityService;
+
+    public AbilityController(AbilityService abilityService) {
+        this.abilityService = abilityService;
+    }
     
     /**
      * 分页获取特性列表

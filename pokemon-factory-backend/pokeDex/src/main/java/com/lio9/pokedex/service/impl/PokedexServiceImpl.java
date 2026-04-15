@@ -3,6 +3,7 @@ package com.lio9.pokedex.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.lio9.pokedex.config.PokeDexAssetProperties;
 import com.lio9.pokedex.model.*;
 import com.lio9.pokedex.mapper.*;
 import com.lio9.pokedex.service.PokedexService;
@@ -14,8 +15,6 @@ import com.lio9.pokedex.vo.PokemonFormDetailVO;
 import com.lio9.pokedex.vo.PokemonListVO;
 import com.lio9.pokedex.vo.StatVO;
 import com.lio9.pokedex.vo.TypeVO;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -26,36 +25,44 @@ import java.util.stream.Collectors;
  */
 @Service
 public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> implements PokedexService {
+    private final PokemonFormMapper pokemonFormMapper;
+    private final PokemonFormTypeMapper pokemonFormTypeMapper;
+    private final PokemonFormAbilityMapper pokemonFormAbilityMapper;
+    private final PokemonFormStatMapper pokemonFormStatMapper;
+    private final TypeMapper typeMapper;
+    private final AbilityMapper abilityMapper;
+    private final PokemonEggGroupMapper pokemonEggGroupMapper;
+    private final EggGroupMapper eggGroupMapper;
+    private final GrowthRateMapper growthRateMapper;
+    private final PokeDexAssetProperties assetProperties;
 
-    @Value("${image.base-url:http://127.0.0.1:8080}")
-    private String imageBaseUrl;
+    public PokedexServiceImpl(
+        PokemonFormMapper pokemonFormMapper,
+        PokemonFormTypeMapper pokemonFormTypeMapper,
+        PokemonFormAbilityMapper pokemonFormAbilityMapper,
+        PokemonFormStatMapper pokemonFormStatMapper,
+        TypeMapper typeMapper,
+        AbilityMapper abilityMapper,
+        PokemonEggGroupMapper pokemonEggGroupMapper,
+        EggGroupMapper eggGroupMapper,
+        GrowthRateMapper growthRateMapper,
+        PokeDexAssetProperties assetProperties
+    ) {
+        this.pokemonFormMapper = pokemonFormMapper;
+        this.pokemonFormTypeMapper = pokemonFormTypeMapper;
+        this.pokemonFormAbilityMapper = pokemonFormAbilityMapper;
+        this.pokemonFormStatMapper = pokemonFormStatMapper;
+        this.typeMapper = typeMapper;
+        this.abilityMapper = abilityMapper;
+        this.pokemonEggGroupMapper = pokemonEggGroupMapper;
+        this.eggGroupMapper = eggGroupMapper;
+        this.growthRateMapper = growthRateMapper;
+        this.assetProperties = assetProperties;
+    }
 
-    @Autowired
-    private PokemonFormMapper pokemonFormMapper;
-
-    @Autowired
-    private PokemonFormTypeMapper pokemonFormTypeMapper;
-
-    @Autowired
-    private PokemonFormAbilityMapper pokemonFormAbilityMapper;
-
-    @Autowired
-    private PokemonFormStatMapper pokemonFormStatMapper;
-
-    @Autowired
-    private TypeMapper typeMapper;
-
-    @Autowired
-    private AbilityMapper abilityMapper;
-
-    @Autowired
-    private PokemonEggGroupMapper pokemonEggGroupMapper;
-
-    @Autowired
-    private EggGroupMapper eggGroupMapper;
-
-    @Autowired
-    private GrowthRateMapper growthRateMapper;
+    private String imageBaseUrl() {
+        return assetProperties.imageBaseUrl();
+    }
 
     @Override
     public Page<PokemonListVO> getPokemonList(int current, int size, Integer typeId, Integer generationId, String keyword) {
@@ -160,8 +167,8 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
 
                     // 动态拼接图片URL
                     Integer pokemonId = pokemon.getId();
-                    vo.setSpriteUrl(imageBaseUrl + "/pokemon/" + pokemonId + ".png");
-                    vo.setOfficialArtworkUrl(imageBaseUrl + "/pokemon/official-artwork/" + pokemonId + ".png");
+                    vo.setSpriteUrl(imageBaseUrl() + "/pokemon/" + pokemonId + ".png");
+                    vo.setOfficialArtworkUrl(imageBaseUrl() + "/pokemon/other/official-artwork/" + pokemonId + ".png");
 
                     // 设置属性
                     Integer formId = (Integer) defaultForm.get("id");
@@ -327,10 +334,10 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
 
                 // 动态拼接图片URL
                 Integer pokemonId = pokemon.getId();
-                formVO.setSpriteUrl(imageBaseUrl + "/pokemon/" + pokemonId + ".png");
-                formVO.setSpriteBackUrl(imageBaseUrl + "/pokemon/back/" + pokemonId + ".png");
-                formVO.setSpriteShinyUrl(imageBaseUrl + "/pokemon/shiny/" + pokemonId + ".png");
-                formVO.setOfficialArtworkUrl(imageBaseUrl + "/pokemon/official-artwork/" + pokemonId + ".png");
+                formVO.setSpriteUrl(imageBaseUrl() + "/pokemon/" + pokemonId + ".png");
+                formVO.setSpriteBackUrl(imageBaseUrl() + "/pokemon/back/" + pokemonId + ".png");
+                formVO.setSpriteShinyUrl(imageBaseUrl() + "/pokemon/shiny/" + pokemonId + ".png");
+                formVO.setOfficialArtworkUrl(imageBaseUrl() + "/pokemon/other/official-artwork/" + pokemonId + ".png");
 
                 // 设置属性
                 formVO.setTypes(formTypesMap.getOrDefault(form.getId(), new ArrayList<>()));

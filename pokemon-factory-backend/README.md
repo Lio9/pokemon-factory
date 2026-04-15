@@ -1,135 +1,78 @@
 # Pokemon Factory Backend
 
-## 📁 项目结构
+当前后端是一个 **Maven 多模块项目**，围绕本地 SQLite、共享基础设施和分模块业务能力组织。
 
-### 模块划分
+## 当前模块
 
-```
+```text
 pokemon-factory-backend/
-├── common/                    # 公共模块（数据层）
-│   ├── mapper/               # 数据访问层
-│   ├── model/                # 实体模型
-│   ├── vo/                   # 值对象
-│   └── response/             # 通用响应
-└── pokeDex/                   # 图鉴模块（业务层）
-    ├── service/              # 服务层（按业务领域组织）
-    │   ├── pokemon/          # 宝可梦域
-    │   │   ├── PokemonService.java          # 接口
-    │   │   └── PokemonServiceImpl.java      # 实现
-    │   ├── move/             # 技能域
-    │   │   ├── MoveService.java
-    │   │   └── MoveServiceImpl.java
-    │   ├── ability/          # 特性域
-    │   │   ├── AbilityService.java
-    │   │   └── AbilityServiceImpl.java
-    │   ├── item/             # 物品域
-    │   │   ├── ItemService.java
-    │   │   └── ItemServiceImpl.java
-    │   ├── type/             # 属性域
-    │   │   ├── TypeService.java
-    │   │   └── TypeServiceImpl.java
-    │   └── calculator/       # 伤害计算域
-    │       ├── DamageCalculatorService.java
-    │       ├── EffectCalculatorService.java
-    │       └── DamageCalculatorServiceImpl.java
-    ├── controller/           # 控制器层（按业务领域组织）
-    │   ├── pokemon/
-    │   │   └── PokemonController.java
-    │   ├── move/
-    │   │   └── MoveController.java
-    │   ├── ability/
-    │   │   └── AbilityController.java
-    │   ├── item/
-    │   │   └── ItemController.java
-    │   └── calculator/
-    │       └── DamageCalculatorController.java
-    ├── util/                 # 工具类
-    │   ├── BattleEffects.java     # 战斗效果
-    │   ├── TypeCalculator.java    # 属性计算
-    │   └── DamageCalculator.java  # 伤害计算公式
-    └── config/               # 配置类
+├── common/         # 共享数据源、数据库初始化、公共配置与通用能力
+├── pokeDex/        # 图鉴查询、导入、伤害计算等公开查询接口
+├── user-module/    # 注册、登录、当前用户信息、JWT 相关能力
+└── battleFactory/  # 对战工厂业务与受保护接口
 ```
 
-### 架构原则
+## 模块职责
 
-1. **common 模块** - 纯数据层
-   - 只包含数据访问和模型定义
-   - 不包含业务逻辑
-   - 不包含服务接口
+### common
+- 统一 SQLite 数据源配置
+- 提供数据库初始化入口
+- 下沉公共配置与公共测试支撑
 
-2. **pokeDex 模块** - 业务层
-   - 按业务领域组织服务
-   - 每个领域包含接口和实现
-   - 接口和实现在同一包中
+### pokeDex
+- 图鉴查询接口
+- 技能 / 道具 / 特性查询
+- 伤害计算接口
+- 导入任务相关接口
 
-3. **控制器层** - API 层
-   - 按业务领域分组
-   - 与服务层一一对应
+### user-module
+- 用户注册、登录
+- 当前用户信息查询
+- JWT 认证基础能力
 
-### 服务层组织
+### battleFactory
+- 对战工厂主流程
+- 依赖 JWT 的受保护接口
+- 当前测试覆盖最集中的业务模块
 
-每个业务领域包包含：
-- `{Domain}Service.java` - 服务接口
-- `{Domain}ServiceImpl.java` - 服务实现
+## 当前技术栈
 
-#### 当前业务领域
-1. **pokemon** - 宝可梦相关
-2. **move** - 技能相关
-3. **ability** - 特性相关
-4. **item** - 物品相关
-5. **type** - 属性相关
-6. **calculator** - 伤害计算相关
+- Spring Boot 4.0.5
+- Java 17
+- SQLite
+- MyBatis / MyBatis-Plus
+- JWT
 
-### 控制器层组织
+## 当前推荐启动方式
 
-每个业务领域包包含：
-- `{Domain}Controller.java` - 控制器
+### 1. 初始化数据库
 
-## 📝 API 文档
-
-### 宝可梦 API
-- `GET /api/pokemon/list` - 获取宝可梦列表
-- `GET /api/pokemon/{id}` - 获取宝可梦详情
-- `GET /api/pokemon/{id}/moves` - 获取宝可梦技能
-- `GET /api/pokemon/{id}/evolution` - 获取进化链
-
-### 技能 API
-- `GET /api/moves/list` - 获取技能列表
-- `GET /api/moves/{id}` - 获取技能详情
-
-### 伤害计算 API
-- `POST /api/damage/calculate` - 计算伤害
-- `GET /api/damage/type-efficacy` - 获取属性相性矩阵
-
-## 🚀 运行项目
+在仓库根目录执行：
 
 ```bash
-# 启动后端服务
+python scripts/init_db.py
+```
+
+### 2. 启动图鉴模块
+
+```bash
 cd pokemon-factory-backend/pokeDex
 mvn spring-boot:run
 ```
 
-服务将在 http://localhost:8081 启动
+默认端口：`8081`
 
-## 📚 技术栈
+### 3. 启动对战模块
 
-- Spring Boot 3.3.5
-- MyBatis-Plus 3.5.5
-- Java 17
-- MySQL
+```bash
+cd pokemon-factory-backend/battleFactory
+mvn spring-boot:run
+```
 
-## 🔄 重构状态
+默认端口：`8090`
 
-### 已完成
-- ✅ 创建正确的包结构
-- ✅ 定义业务领域
-- ✅ 创建服务接口
+## 说明
 
-### 进行中
-- 🔄 实现服务类
-- 🔄 迁移业务逻辑
-
-### 待完成
-- ⏳ 重组控制器层
-- ⏳ 重组工具类
-- ⏳ 清理旧代码
+- 当前项目**不以 Docker 作为主开发方式**。
+- 仓库中的 Docker 文件暂时仅保留为历史草案/备用参考。
+- 后续优化重点放在：模块边界、配置统一、接口契约、测试与文档同步。

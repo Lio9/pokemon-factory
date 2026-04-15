@@ -32,7 +32,6 @@ import com.lio9.pokedex.vo.PokemonDetailVO;
 import com.lio9.pokedex.vo.PokemonFormDetailVO;
 import com.lio9.pokedex.vo.StatVO;
 import com.lio9.pokedex.vo.TypeVO;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -47,39 +46,43 @@ import java.util.stream.Collectors;
  */
 @Service
 public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> implements PokemonService {
+    private final PokemonFormMapper pokemonFormMapper;
+    private final PokemonFormTypeMapper pokemonFormTypeMapper;
+    private final PokemonFormAbilityMapper pokemonFormAbilityMapper;
+    private final PokemonFormStatMapper pokemonFormStatMapper;
+    private final PokemonEggGroupMapper pokemonEggGroupMapper;
+    private final EggGroupMapper eggGroupMapper;
+    private final GrowthRateMapper growthRateMapper;
+    private final AbilityMapper abilityMapper;
+    private final EvolutionChainMapper evolutionChainMapper;
+    private final PokemonMoveMapper pokemonMoveMapper;
+    private final MoveMapper moveMapper;
 
-    @Autowired
-    private PokemonFormMapper pokemonFormMapper;
-    
-    @Autowired
-    private PokemonFormTypeMapper pokemonFormTypeMapper;
-    
-    @Autowired
-    private PokemonFormAbilityMapper pokemonFormAbilityMapper;
-    
-    @Autowired
-    private PokemonFormStatMapper pokemonFormStatMapper;
-    
-    @Autowired
-    private PokemonEggGroupMapper pokemonEggGroupMapper;
-    
-    @Autowired
-    private EggGroupMapper eggGroupMapper;
-    
-    @Autowired
-    private GrowthRateMapper growthRateMapper;
-    
-    @Autowired
-    private AbilityMapper abilityMapper;
-    
-    @Autowired
-    private EvolutionChainMapper evolutionChainMapper;
-    
-    @Autowired
-    private PokemonMoveMapper pokemonMoveMapper;
-    
-    @Autowired
-    private MoveMapper moveMapper;
+    public PokemonServiceImpl(
+        PokemonFormMapper pokemonFormMapper,
+        PokemonFormTypeMapper pokemonFormTypeMapper,
+        PokemonFormAbilityMapper pokemonFormAbilityMapper,
+        PokemonFormStatMapper pokemonFormStatMapper,
+        PokemonEggGroupMapper pokemonEggGroupMapper,
+        EggGroupMapper eggGroupMapper,
+        GrowthRateMapper growthRateMapper,
+        AbilityMapper abilityMapper,
+        EvolutionChainMapper evolutionChainMapper,
+        PokemonMoveMapper pokemonMoveMapper,
+        MoveMapper moveMapper
+    ) {
+        this.pokemonFormMapper = pokemonFormMapper;
+        this.pokemonFormTypeMapper = pokemonFormTypeMapper;
+        this.pokemonFormAbilityMapper = pokemonFormAbilityMapper;
+        this.pokemonFormStatMapper = pokemonFormStatMapper;
+        this.pokemonEggGroupMapper = pokemonEggGroupMapper;
+        this.eggGroupMapper = eggGroupMapper;
+        this.growthRateMapper = growthRateMapper;
+        this.abilityMapper = abilityMapper;
+        this.evolutionChainMapper = evolutionChainMapper;
+        this.pokemonMoveMapper = pokemonMoveMapper;
+        this.moveMapper = moveMapper;
+    }
 
     @Override
     public long count() {

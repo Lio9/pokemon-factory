@@ -7,6 +7,10 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.io.PushbackReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,6 +19,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -27,6 +32,12 @@ import java.util.Optional;
 public class CommonCsvDataImporter {
     private static final Logger log = LoggerFactory.getLogger(CommonCsvDataImporter.class);
     private static final int BATCH_SIZE = 2000;
+    private static final Duration CSV_CONNECT_TIMEOUT = Duration.ofSeconds(15);
+    private static final Duration CSV_DOWNLOAD_TIMEOUT = Duration.ofSeconds(90);
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(CSV_CONNECT_TIMEOUT)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
 
     private static final Map<Integer, String> LANGUAGE_MAP = Map.ofEntries(
             Map.entry(1, "ja"),
@@ -678,18 +689,18 @@ public class CommonCsvDataImporter {
         Path current = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
         for (Path cursor = current; cursor != null; cursor = cursor.getParent()) {
             candidates.add(cursor.resolve("csv"));
-            candidates.add(cursor.resolve("..") .normalize().resolve("csv"));
+            candidates.add(cursor.resolve("..").normalize().resolve("csv"));
         }
         return candidates.stream()
                 .map(Path::normalize)
                 .filter(Files::isDirectory)
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("未找到 CSV 数据目录，请设置 CSV_DIR 或 pokemon-factory.database.csv-directory"));
+                .orElseGet(this::resolveRemoteCsvCacheDirectory);
     }
 
     private List<CSVRecord> records(Path csvFile) throws IOException {
         if (!Files.exists(csvFile)) {
-            throw new IllegalStateException("缺少 CSV 文件: " + csvFile.toAbsolutePath().normalize());
+            csvFile = ensureRemoteCsvFile(csvFile);
         }
         List<List<String>> rows = parseCsvRows(csvFile);
         if (rows.isEmpty()) {
@@ -707,6 +718,62 @@ public class CommonCsvDataImporter {
             records.add(new CSVRecord(values));
         }
         return records;
+    }
+
+    private Path resolveRemoteCsvCacheDirectory() {
+        if (StringUtils.hasText(properties.getCsvCacheDirectory())) {
+            Path configured = Paths.get(properties.getCsvCacheDirectory());
+            if (!configured.isAbsolute()) {
+                configured = Paths.get(System.getProperty("user.dir")).resolve(configured).normalize();
+            }
+            ensureDirectory(configured);
+            return configured;
+        }
+
+        Path fallback = Paths.get(System.getProperty("java.io.tmpdir"), "pokemon-factory", "csv-cache")
+                .toAbsolutePath()
+                .normalize();
+        ensureDirectory(fallback);
+        return fallback;
+    }
+
+    private Path ensureRemoteCsvFile(Path csvFile) throws IOException {
+        if (!StringUtils.hasText(properties.getRemoteCsvBaseUrl())) {
+            throw new IllegalStateException("缺少 CSV 文件: " + csvFile.toAbsolutePath().normalize());
+        }
+
+        ensureDirectory(csvFile.getParent());
+        String fileName = csvFile.getFileName().toString();
+        String baseUrl = properties.getRemoteCsvBaseUrl().replaceAll("/+$", "");
+        URI uri = URI.create(baseUrl + "/" + fileName);
+        HttpRequest request = HttpRequest.newBuilder(uri)
+                .timeout(CSV_DOWNLOAD_TIMEOUT)
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<Path> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(csvFile));
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                log.info("已从远程 CSV 源下载 {} -> {}", uri, csvFile.toAbsolutePath().normalize());
+                return csvFile;
+            }
+            Files.deleteIfExists(csvFile);
+            throw new IllegalStateException("下载远程 CSV 失败: " + uri + "，HTTP 状态码=" + response.statusCode());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("下载远程 CSV 被中断: " + uri, exception);
+        }
+    }
+
+    private void ensureDirectory(Path directory) {
+        if (directory == null) {
+            return;
+        }
+        try {
+            Files.createDirectories(directory);
+        } catch (IOException exception) {
+            throw new IllegalStateException("创建 CSV 缓存目录失败: " + directory.toAbsolutePath().normalize(), exception);
+        }
     }
 
     private List<List<String>> parseCsvRows(Path csvFile) throws IOException {

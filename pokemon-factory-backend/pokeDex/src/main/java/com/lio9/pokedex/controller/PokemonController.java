@@ -8,7 +8,6 @@ import com.lio9.pokedex.service.PokemonService;
 import com.lio9.pokedex.vo.PokemonDetailVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,13 +18,14 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/pokemon")
-@CrossOrigin(origins = "*")
 public class PokemonController {
 
     private static final Logger logger = LoggerFactory.getLogger(PokemonController.class);
+    private final PokemonService pokemonService;
 
-    @Autowired
-    private PokemonService pokemonService;
+    public PokemonController(PokemonService pokemonService) {
+        this.pokemonService = pokemonService;
+    }
     
     /**
      * 分页获取宝可梦列表

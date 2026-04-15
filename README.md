@@ -162,7 +162,7 @@ python scripts/start-backend.py
 java -jar pokemon-factory-backend/common/target/common-0.0.1-SNAPSHOT-exec.jar
 ```
 
-common 启动完成后，如果本地存在 csv/ 目录，会自动导入核心图鉴与对战数据；也可以手动运行校验脚本：
+common 启动完成后，如果配置了本地 `csv/` 目录会优先使用本地 CSV；若未配置，则会按需从 `REMOTE_CSV_BASE_URL`（默认指向 PokeAPI CSV 源）下载到临时缓存目录后再导入。当前也可以手动运行校验脚本：
 
 ```bash
 python scripts/verify_sqlite.py
@@ -192,7 +192,13 @@ npm install
 npm run dev
 ```
 
-开发时请设置 VITE_API_BASE_URL 指向后端接口地址。
+开发时请确认前端环境变量：
+
+- `VITE_API_BASE=/api/pokedex`
+- `VITE_DAMAGE_API_BASE=/api/damage`
+- `VITE_SPRITES_BASE=https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites`（默认直接走线上 sprites 资源）
+- `REMOTE_CSV_BASE_URL=https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv`（common 初始化时按需拉取 CSV）
+- `CSV_CACHE_DIR=/tmp/pokemon-factory/csv-cache`（可选，自定义远程 CSV 缓存目录）
 
 ### 6. 健康检查
 
@@ -200,26 +206,15 @@ npm run dev
 - battleFactory：[http://localhost:8090/actuator/health](http://localhost:8090/actuator/health)
 - battleFactory 也会公开：[http://localhost:8090/actuator/info](http://localhost:8090/actuator/info)
 
-### 7. 本地 Docker 草案
+### 7. 当前推荐的本地开发方式
 
-仓库现在提供了最小容器化草案：
+当前仓库**不把 Docker 作为主开发路径**。推荐流程仍然是：
 
-- 后端通用镜像构建文件：pokemon-factory-backend/Dockerfile.module
-- 前端镜像文件：pokemon-factory-frontend/Dockerfile
-- 本地编排文件：docker-compose.local.yml
+1. 用 `python scripts/init_db.py` 初始化本地 SQLite 数据库
+2. 分别启动 `common`、`pokeDex`、`battleFactory`
+3. 启动前端 `npm run dev`
 
-使用方式：
-
-```bash
-docker compose -f docker-compose.local.yml up --build
-```
-
-说明：
-
-- common-init 会先初始化嵌入式 SQLite 数据库，并把数据库文件落到共享 volume
-- pokeDex 与 battleFactory 复用同一个嵌入式数据库 volume
-- 前端镜像会在构建时写入本地开发默认地址 8081 和 8090
-- 这是本地联调用草案，不是生产部署编排
+仓库里虽然保留了容器相关文件，但它们当前仅作为历史草案/备用参考，**不作为主要维护对象**。
 
 ## 数据初始化与导入脚本说明
 
