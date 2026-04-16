@@ -49,19 +49,11 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
     private static final int READ_TIMEOUT = 60;
     private static final int MAX_RETRIES = 8;
     
-    // 性能监控
-    private long totalRequests = 0;
-    private long successfulRequests = 0;
-    private long failedRequests = 0;
-    private long totalProcessingTime = 0;
-    private final Object statsLock = new Object();
-    
-    // 缓存机制
-    private final Map<Integer, JsonNode> pokemonDataCache = new java.util.concurrent.ConcurrentHashMap<>();
-    private final Map<Integer, JsonNode> speciesDataCache = new java.util.concurrent.ConcurrentHashMap<>();
+    // 性能监控与缓存机制
     private static final int CACHE_SIZE_LIMIT = 1000;
     private static final long CACHE_EXPIRY_MS = 3600000; // 1小时
-    private final Map<Integer, Long> cacheTimestamps = new java.util.concurrent.ConcurrentHashMap<>();
+    private final PokeapiImportMonitor importMonitor =
+        new PokeapiImportMonitor(CACHE_SIZE_LIMIT, CACHE_EXPIRY_MS, System::currentTimeMillis);
     
     @Autowired
     private PokemonService pokemonService;
@@ -574,7 +566,7 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
         long startTime = System.currentTimeMillis();
         
         // 检查缓存
-        JsonNode cached = getCachedData(pokemonDataCache, cacheTimestamps, id);
+        JsonNode cached = importMonitor.getCachedPokemon(id);
         if (cached != null) {
             return cached;
         }
@@ -589,15 +581,14 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
         try {
             JsonNode data = fetchWithRetry(url);
             if (data != null) {
-                // 缓存数据
-                cacheData(pokemonDataCache, cacheTimestamps, id, data);
-                updateStats(true, System.currentTimeMillis() - startTime);
+                importMonitor.cachePokemon(id, data);
+                importMonitor.recordRequest(true, System.currentTimeMillis() - startTime);
                 logger.debug("成功获取宝可梦数据: ID {}", id);
                 return data;
             }
         } catch (Exception e) {
             logger.error("获取宝可梦 {} 数据失败: {}", id, e.getMessage());
-            updateStats(false, System.currentTimeMillis() - startTime);
+            importMonitor.recordRequest(false, System.currentTimeMillis() - startTime);
         }
         
         return null;
@@ -607,7 +598,7 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
         long startTime = System.currentTimeMillis();
         
         // 检查缓存
-        JsonNode cached = getCachedData(speciesDataCache, cacheTimestamps, id);
+        JsonNode cached = importMonitor.getCachedSpecies(id);
         if (cached != null) {
             return cached;
         }
@@ -621,12 +612,11 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
         JsonNode result = fetchWithRetry(url);
         
         if (result != null) {
-            // 缓存数据
-            cacheData(speciesDataCache, cacheTimestamps, id, result);
-            updateStats(true, System.currentTimeMillis() - startTime);
+            importMonitor.cacheSpecies(id, result);
+            importMonitor.recordRequest(true, System.currentTimeMillis() - startTime);
             logger.debug("成功获取宝可梦物种数据: ID {}", id);
         } else {
-            updateStats(false, System.currentTimeMillis() - startTime);
+            importMonitor.recordRequest(false, System.currentTimeMillis() - startTime);
             logger.error("获取宝可梦物种数据失败: ID {}", id);
         }
         
@@ -677,74 +667,11 @@ public class PokeapiDataServiceImpl implements PokeapiDataService {
     }
     
     /**
-     * 获取缓存的数据
-     */
-    private JsonNode getCachedData(Map<Integer, JsonNode> cache, Map<Integer, Long> timestamps, int id) {
-        long now = System.currentTimeMillis();
-        Long timestamp = timestamps.get(id);
-        
-        if (timestamp != null && (now - timestamp) < CACHE_EXPIRY_MS) {
-            JsonNode data = cache.get(id);
-            if (data != null) {
-                logger.debug("从缓存获取数据: ID {}", id);
-                return data;
-            }
-        }
-        
-        return null;
-    }
-    
-    /**
-     * 缓存数据
-     */
-    private void cacheData(Map<Integer, JsonNode> cache, Map<Integer, Long> timestamps, int id, JsonNode data) {
-        if (cache.size() >= CACHE_SIZE_LIMIT) {
-            // 移除最旧的缓存项
-            int oldestId = timestamps.entrySet().stream()
-                .min(java.util.Map.Entry.comparingByValue())
-                .map(java.util.Map.Entry::getKey)
-                .orElse(-1);
-            
-            if (oldestId != -1) {
-                cache.remove(oldestId);
-                timestamps.remove(oldestId);
-                logger.debug("移除缓存项: ID {}", oldestId);
-            }
-        }
-        
-        cache.put(id, data);
-        timestamps.put(id, System.currentTimeMillis());
-    }
-    
-    /**
-     * 更新性能统计
-     */
-    private void updateStats(boolean success, long processingTime) {
-        synchronized (statsLock) {
-            totalRequests++;
-            totalProcessingTime += processingTime;
-            if (success) {
-                successfulRequests++;
-            } else {
-                failedRequests++;
-            }
-        }
-    }
-    
-    /**
      * 获取性能统计
      */
+    @Override
     public Map<String, Object> getPerformanceStats() {
-        Map<String, Object> stats = new java.util.HashMap<>();
-        synchronized (statsLock) {
-            stats.put("totalRequests", totalRequests);
-            stats.put("successfulRequests", successfulRequests);
-            stats.put("failedRequests", failedRequests);
-            stats.put("successRate", totalRequests > 0 ? (double) successfulRequests / totalRequests * 100 : 0);
-            stats.put("averageProcessingTime", totalRequests > 0 ? (double) totalProcessingTime / totalRequests : 0);
-            stats.put("cacheSize", pokemonDataCache.size());
-        }
-        return stats;
+        return importMonitor.snapshotStats();
     }
     
     /**

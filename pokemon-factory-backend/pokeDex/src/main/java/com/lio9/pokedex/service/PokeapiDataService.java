@@ -45,4 +45,12 @@ public interface PokeapiDataService {
      * @return 进度状态信息
      */
     Map<String, Object> getImportProgressStatus();
+
+    /**
+     * 获取导入相关性能统计
+     * 用于控制器和前端展示请求成功率、平均耗时与缓存规模。
+     *
+     * @return 性能统计信息
+     */
+    Map<String, Object> getPerformanceStats();
 }

@@ -141,16 +141,8 @@ public class OptimizedImportController {
     @GetMapping("/performance-stats")
     public ResponseEntity<Map<String, Object>> getPerformanceStats() {
         try {
-            // 获取 PokeapiDataService 的性能统计
-            if (pokeapiDataService instanceof com.lio9.pokedex.service.impl.PokeapiDataServiceImpl) {
-                com.lio9.pokedex.service.impl.PokeapiDataServiceImpl impl =
-                        (com.lio9.pokedex.service.impl.PokeapiDataServiceImpl) pokeapiDataService;
-                Map<String, Object> stats = impl.getPerformanceStats();
-                return ResponseEntity.ok(ResultResponse.buildSuccess("获取性能统计成功", stats));
-            } else {
-                return ResponseEntity.ok(ResultResponse.buildCustomErrorResponse(
-                        ResponseCode.BAD_REQUEST, "性能统计不可用", null));
-            }
+            Map<String, Object> stats = pokeapiDataService.getPerformanceStats();
+            return ResponseEntity.ok(ResultResponse.buildSuccess("获取性能统计成功", stats));
         } catch (Exception e) {
             logger.error("获取性能统计失败: {}", e.getMessage());
             return ResponseEntity.ok(ResultResponse.buildError("获取性能统计失败", e.getMessage()));
