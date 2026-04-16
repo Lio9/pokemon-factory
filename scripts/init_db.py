@@ -18,6 +18,7 @@ import time
 import sqlite3
 import shutil
 import subprocess
+from collections import deque
 from datetime import datetime
 from shutil import which
 
@@ -177,6 +178,29 @@ def run_verify(py: str, root: Path):
     return True
 
 
+def tail_text_file(path: Path, max_lines: int = 80):
+    """读取日志文件尾部，便于初始化失败时快速定位根因。"""
+    if not path.exists():
+        return []
+    lines = deque(maxlen=max_lines)
+    with path.open('r', encoding='utf-8', errors='replace') as handle:
+        for line in handle:
+            lines.append(line.rstrip())
+    return list(lines)
+
+
+def dump_common_log_tail(log_path: Path, title: str):
+    tail_lines = tail_text_file(log_path)
+    if not tail_lines:
+        log(f"{title}: 未捕获到 common 日志")
+        return
+    log(title)
+    print('-' * 80)
+    for line in tail_lines:
+        print(line)
+    print('-' * 80)
+
+
 def main():
     """串起完整的本地初始化流程：建库、导入、校验、清理进程。"""
     jar = find_jar()
@@ -199,14 +223,20 @@ def main():
     # 启动 common Jar，统一初始化数据库
     env = os.environ.copy()
     env['SQLITE_DB_PATH'] = str(db)
-    log('启动 common Jar 以初始化数据库...')
-    proc = subprocess.Popen(['java', '-jar', str(jar)], cwd=str(ROOT), env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    common_log_path = ROOT.joinpath('pokemon-factory-backend', 'common-init.log')
+    common_log_path.parent.mkdir(parents=True, exist_ok=True)
+    if common_log_path.exists():
+        common_log_path.unlink()
+    log(f'启动 common Jar 以初始化数据库，日志输出到: {common_log_path}')
+    log_handle = common_log_path.open('w', encoding='utf-8')
+    proc = subprocess.Popen(['java', '-jar', str(jar)], cwd=str(ROOT), env=env, stdout=log_handle, stderr=subprocess.STDOUT)
     log(f'common 进程 PID={proc.pid}')
 
     try:
         ok = wait_for_initialization(db, timeout=timeout)
         if not ok:
             log('错误: common 数据库初始化或 CSV 导入未在超时时间内完成')
+            dump_common_log_tail(common_log_path, '超时前的 common 日志尾部如下')
             # 尝试输出简单提示并退出非零
             proc.terminate()
             proc.wait(timeout=10)
@@ -217,6 +247,7 @@ def main():
         success = run_verify(py, ROOT)
         if not success:
             log('错误: 数据校验失败')
+            dump_common_log_tail(common_log_path, '校验失败时的 common 日志尾部如下')
             proc.terminate()
             proc.wait(timeout=10)
             sys.exit(4)
@@ -235,6 +266,8 @@ def main():
                 log('已强制杀死后端进程')
             except Exception:
                 log('无法终止后端进程，请手动检查')
+        finally:
+            log_handle.close()
 
     log('初始化流程完成')
 

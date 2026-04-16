@@ -51,7 +51,7 @@ class CommonCsvDataImporterTest {
             assertEquals(1, count(connection, "move_meta"));
             assertEquals(1, count(connection, "move_flag_map"));
             assertEquals(1, count(connection, "pokemon_species_egg_group"));
-            assertEquals(18, count(connection, "type"));
+            assertTrue(count(connection, "type") >= 18);
             assertEquals(0, foreignKeyViolations(connection));
 
             Path cacheDir = tempDir.resolve("csv-cache");
@@ -110,6 +110,123 @@ class CommonCsvDataImporterTest {
             IllegalStateException exception = assertThrows(IllegalStateException.class, () -> importer.importIfNeeded(connection));
 
             assertTrue(exception.getMessage().contains("abilities.csv"));
+        }
+    }
+
+    @Test
+    void importIfNeeded_importsMoveTargetsAndEvolutionTriggersFromRemoteSource() throws Exception {
+        Map<String, String> dataset = createValidDataset();
+        dataset.put("move_targets.csv", csv(
+                "id,identifier",
+                "1,specific-move",
+                "16,fainting-pokemon"
+        ));
+        dataset.put("move_target_prose.csv", csv(
+                "move_target_id,local_language_id,name,description",
+                "1,12,单体,指定单目标",
+                "1,9,Specific move,One specific move.",
+                "16,12,濒死宝可梦,对濒死的宝可梦使用",
+                "16,9,Fainting Pokémon,Targets a fainting Pokémon."
+        ));
+        dataset.put("moves.csv", csv(
+                "id,identifier,type_id,damage_class_id,target_id,power,pp,accuracy,priority,effect_chance,generation_id",
+                "1,pound,1,2,16,40,35,100,0,,1"
+        ));
+        dataset.put("evolution_triggers.csv", csv(
+                "id,identifier",
+                "1,level-up",
+                "16,gimmighoul-coins"
+        ));
+        dataset.put("evolution_trigger_prose.csv", csv(
+                "evolution_trigger_id,local_language_id,name",
+                "1,12,升级",
+                "1,9,Level up",
+                "16,12,索财灵的硬币",
+                "16,9,Gimmighoul coins"
+        ));
+        dataset.put("pokemon_evolution.csv", csv(
+                "evolved_species_id,evolution_trigger_id,minimum_level,minimum_happiness,minimum_affection,time_of_day,held_item_id,trigger_item_id,known_move_id,known_move_type_id,location_id,party_species_id,party_type_id,trade_species_id,needs_overworld_rain,turn_upside_down,relative_physical_stats,gender_id",
+                "1,16,,,,,,,,,,,,,0,0,,"
+        ));
+
+        try (RemoteCsvServer server = new RemoteCsvServer(dataset);
+             Connection connection = openInitializedConnection(tempDir.resolve("remote-dictionaries.db"))) {
+            CommonCsvDataImporter importer = createImporter(server.baseUrl());
+
+            importer.importIfNeeded(connection);
+
+            assertEquals("fainting-pokemon", queryString(connection, "SELECT name_en FROM move_target WHERE id = 16"));
+            assertEquals("濒死宝可梦", queryString(connection, "SELECT name FROM move_target WHERE id = 16"));
+            assertEquals("对濒死的宝可梦使用", queryString(connection, "SELECT description FROM move_target WHERE id = 16"));
+            assertEquals("单体", queryString(connection, "SELECT name FROM move_target WHERE id = 1"));
+            assertEquals("selected-pokemon", queryString(connection, "SELECT name_en FROM move_target WHERE id = 1"));
+            assertEquals("指定单目标", queryString(connection, "SELECT description FROM move_target WHERE id = 1"));
+            assertEquals("gimmighoul-coins", queryString(connection, "SELECT name_en FROM evolution_trigger WHERE id = 16"));
+            assertEquals("索财灵的硬币", queryString(connection, "SELECT name FROM evolution_trigger WHERE id = 16"));
+            assertEquals("升级", queryString(connection, "SELECT name FROM evolution_trigger WHERE id = 1"));
+            assertEquals(0, foreignKeyViolations(connection));
+        }
+    }
+
+    @Test
+    void importIfNeeded_importsExtendedTypeIdsFromRemoteSource() throws Exception {
+        Map<String, String> dataset = createValidDataset();
+        dataset.put("type_names.csv", csv(
+                "type_id,local_language_id,name",
+                "1,9,type-1",
+                "2,9,type-2",
+                "3,9,type-3",
+                "4,9,type-4",
+                "5,9,type-5",
+                "6,9,type-6",
+                "7,9,type-7",
+                "8,9,type-8",
+                "9,9,type-9",
+                "10,9,type-10",
+                "11,9,type-11",
+                "12,9,type-12",
+                "13,9,type-13",
+                "14,9,type-14",
+                "15,9,type-15",
+                "16,9,type-16",
+                "17,9,type-17",
+                "18,9,type-18",
+                "10002,9,Shadow",
+                "10002,12,暗",
+                "10002,11,ダーク"
+        ));
+        dataset.put("moves.csv", csv(
+                "id,identifier,type_id,damage_class_id,target_id,power,pp,accuracy,priority,effect_chance,generation_id",
+                "1,shadow-rush,10002,2,1,40,35,100,0,,1"
+        ));
+
+        try (RemoteCsvServer server = new RemoteCsvServer(dataset);
+             Connection connection = openInitializedConnection(tempDir.resolve("extended-type.db"))) {
+            CommonCsvDataImporter importer = createImporter(server.baseUrl());
+
+            importer.importIfNeeded(connection);
+
+            assertEquals("Shadow", queryString(connection, "SELECT name_en FROM type WHERE id = 10002"));
+            assertEquals(0, foreignKeyViolations(connection));
+        }
+    }
+
+    @Test
+    void importIfNeeded_prefersSupportedLanguageIdFlavorTextInsteadOfLatestForeignText() throws Exception {
+        Map<String, String> dataset = createValidDataset();
+        dataset.put("move_flavor_text.csv", csv(
+                "move_id,version_group_id,language_id,flavor_text",
+                "1,1,12,招式描述-中文",
+                "1,2,5,description-fr"
+        ));
+
+        try (RemoteCsvServer server = new RemoteCsvServer(dataset);
+             Connection connection = openInitializedConnection(tempDir.resolve("language-id.db"))) {
+            CommonCsvDataImporter importer = createImporter(server.baseUrl());
+
+            importer.importIfNeeded(connection);
+
+            assertEquals("招式描述-中文", queryString(connection, "SELECT description FROM move WHERE id = 1"));
         }
     }
 
@@ -176,6 +293,10 @@ class CommonCsvDataImporterTest {
         files.put("natures.csv", csv("id,identifier,increased_stat_id,decreased_stat_id,likes_flavor_id,hates_flavor_id", "1,hardy,,,,"));
         files.put("pokemon_move_method_prose.csv", csv("pokemon_move_method_id,local_language_id,name,description", "1,9,level-up,learn by level"));
         files.put("pokemon_move_methods.csv", csv("id,identifier", "1,level-up"));
+        files.put("evolution_triggers.csv", csv("id,identifier", "1,level-up"));
+        files.put("evolution_trigger_prose.csv", csv("evolution_trigger_id,local_language_id,name", "1,12,升级", "1,9,Level up"));
+        files.put("move_targets.csv", csv("id,identifier", "1,specific-move"));
+        files.put("move_target_prose.csv", csv("move_target_id,local_language_id,name,description", "1,12,单体,指定单目标", "1,9,Specific move,One specific move."));
         files.put("type_names.csv", typeNamesCsv());
         files.put("type_efficacy.csv", csv("damage_type_id,target_type_id,damage_factor", "1,2,100"));
         files.put("ability_names.csv", abilityNamesCsv());

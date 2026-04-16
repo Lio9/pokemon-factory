@@ -81,6 +81,8 @@ public class CommonCsvDataImporter {
             importEggGroups(connection, csvDirectory);
             importNatures(connection, csvDirectory);
             importMoveLearnMethods(connection, csvDirectory);
+            importEvolutionTriggers(connection, csvDirectory);
+            importMoveTargets(connection, csvDirectory);
 
             importTypes(connection, csvDirectory);
             importTypeEfficacy(connection, csvDirectory);
@@ -249,19 +251,91 @@ public class CommonCsvDataImporter {
         }
     }
 
-    private void importTypes(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("type_names.csv")), "type_id");
-        try (PreparedStatement statement = connection.prepareStatement("UPDATE type SET name = ?, name_jp = ? WHERE id = ?")) {
+    private void importEvolutionTriggers(Connection connection, Path csvDirectory) throws Exception {
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("evolution_trigger_prose.csv")), "evolution_trigger_id");
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT OR IGNORE INTO evolution_trigger (id, name, name_en) VALUES (?, ?, ?)")) {
             int count = 0;
-            for (int typeId = 1; typeId <= 18; typeId++) {
-                List<CSVRecord> names = namesById.getOrDefault(typeId, List.of());
-                statement.setString(1, localizedName(names, List.of("zh-hans", "zh-hant", "en", "ja")));
-                statement.setString(2, localizedName(names, List.of("ja", "en")));
-                statement.setInt(3, typeId);
+            for (CSVRecord record : records(csvDirectory.resolve("evolution_triggers.csv"))) {
+                int id = requiredInt(record, "id");
+                String identifier = nullable(record, "identifier");
+                List<CSVRecord> proses = proseById.getOrDefault(id, List.of());
+                String fallback = Optional.ofNullable(identifier).orElse("evolution-trigger-" + id);
+                String displayName = Optional.ofNullable(localizedName(proses, List.of("zh-hans", "zh-hant", "en", "ja")))
+                        .orElse(fallback);
+                String englishName = Optional.ofNullable(identifier)
+                        .orElse(Optional.ofNullable(localizedName(proses, List.of("en", "ja", "zh-hans", "zh-hant"))).orElse(displayName));
+                statement.setInt(1, id);
+                statement.setString(2, displayName);
+                statement.setString(3, englishName);
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
             flushBatch(statement, count, true);
+            log.info("CSV 补充 evolution_trigger：{} 条", count);
+        }
+    }
+
+    private void importMoveTargets(Connection connection, Path csvDirectory) throws Exception {
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("move_target_prose.csv")), "move_target_id");
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT OR IGNORE INTO move_target (id, name, name_en, description) VALUES (?, ?, ?, ?)")) {
+            int count = 0;
+            for (CSVRecord record : records(csvDirectory.resolve("move_targets.csv"))) {
+                int id = requiredInt(record, "id");
+                String identifier = nullable(record, "identifier");
+                List<CSVRecord> proses = proseById.getOrDefault(id, List.of());
+                String fallback = Optional.ofNullable(identifier).orElse("move-target-" + id);
+                String displayName = Optional.ofNullable(localizedName(proses, List.of("zh-hans", "zh-hant", "en", "ja")))
+                        .orElse(fallback);
+                String englishName = Optional.ofNullable(identifier)
+                        .orElse(Optional.ofNullable(localizedName(proses, List.of("en", "ja", "zh-hans", "zh-hant"))).orElse(displayName));
+                statement.setInt(1, id);
+                statement.setString(2, displayName);
+                statement.setString(3, englishName);
+                statement.setString(4, localizedText(proses, List.of("zh-hans", "zh-hant", "en", "ja"), "description", "name"));
+                statement.addBatch();
+                count = flushBatch(statement, count + 1);
+            }
+            flushBatch(statement, count, true);
+            log.info("CSV 补充 move_target：{} 条", count);
+        }
+    }
+
+    private void importTypes(Connection connection, Path csvDirectory) throws Exception {
+        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("type_names.csv")), "type_id");
+        try (PreparedStatement updateStatement = connection.prepareStatement(
+                "UPDATE type SET name = ?, name_en = ?, name_jp = ? WHERE id = ?");
+             PreparedStatement insertStatement = connection.prepareStatement(
+                     "INSERT INTO type (id, name, name_en, name_jp, color, icon_url) VALUES (?, ?, ?, ?, ?, ?)")) {
+            int count = 0;
+            for (Integer typeId : namesById.keySet().stream().sorted().toList()) {
+                List<CSVRecord> names = namesById.getOrDefault(typeId, List.of());
+                String displayName = Optional.ofNullable(localizedName(names, List.of("zh-hans", "zh-hant", "en", "ja")))
+                        .orElse("type-" + typeId);
+                String englishName = Optional.ofNullable(localizedName(names, List.of("en", "ja", "zh-hans", "zh-hant")))
+                        .orElse(displayName);
+                String japaneseName = Optional.ofNullable(localizedName(names, List.of("ja", "en")))
+                        .orElse(englishName);
+
+                updateStatement.setString(1, displayName);
+                updateStatement.setString(2, englishName);
+                updateStatement.setString(3, japaneseName);
+                updateStatement.setInt(4, typeId);
+                int updated = updateStatement.executeUpdate();
+                if (updated == 0) {
+                    insertStatement.setInt(1, typeId);
+                    insertStatement.setString(2, displayName);
+                    insertStatement.setString(3, englishName);
+                    insertStatement.setString(4, japaneseName);
+                    insertStatement.setString(5, null);
+                    insertStatement.setString(6, null);
+                    insertStatement.addBatch();
+                    flushBatch(insertStatement, count + 1);
+                }
+                count++;
+            }
+            flushBatch(insertStatement, count, true);
             log.info("CSV 更新 type：{} 条", count);
         }
     }
@@ -922,11 +996,12 @@ public class CommonCsvDataImporter {
         assertMinimumCount(connection, "pokemon_species_egg_group", 1);
         assertMinimumCount(connection, "type_efficacy", 1);
 
-        if (count(connection, "type") != 18) {
-            throw new IllegalStateException("远程 CSV 导入后的属性数据不完整，期望 18 条，实际=" + count(connection, "type"));
+        if (count(connection, "type") < 18) {
+            throw new IllegalStateException("远程 CSV 导入后的属性数据不完整，期望至少 18 条，实际=" + count(connection, "type"));
         }
-        if (hasAnyRows(connection, "PRAGMA foreign_key_check")) {
-            throw new IllegalStateException("远程 CSV 导入后存在外键校验失败记录");
+        List<String> foreignKeyViolations = foreignKeyViolations(connection, 20);
+        if (!foreignKeyViolations.isEmpty()) {
+            throw new IllegalStateException("远程 CSV 导入后存在外键校验失败记录: " + String.join("; ", foreignKeyViolations));
         }
     }
 
@@ -937,11 +1012,18 @@ public class CommonCsvDataImporter {
         }
     }
 
-    private boolean hasAnyRows(Connection connection, String sql) throws Exception {
+    private List<String> foreignKeyViolations(Connection connection, int limit) throws Exception {
+        List<String> violations = new ArrayList<>();
         try (Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(sql)) {
-            return resultSet.next();
+             ResultSet resultSet = statement.executeQuery("PRAGMA foreign_key_check")) {
+            while (resultSet.next() && violations.size() < limit) {
+                violations.add(resultSet.getString("table")
+                        + " rowid=" + resultSet.getString("rowid")
+                        + " parent=" + resultSet.getString("parent")
+                        + " fk=" + resultSet.getString("fkid"));
+            }
         }
+        return violations;
     }
 
     private List<List<String>> parseCsvRows(Path csvFile) throws IOException {
@@ -1106,6 +1188,9 @@ public class CommonCsvDataImporter {
 
     private String resolveLanguage(CSVRecord record) {
         Integer id = nullableInt(record, "local_language_id");
+        if (id == null) {
+            id = nullableInt(record, "language_id");
+        }
         return id == null ? null : LANGUAGE_MAP.get(id);
     }
 
@@ -1210,6 +1295,10 @@ public class CommonCsvDataImporter {
         headers.put("natures.csv", List.of("id", "identifier"));
         headers.put("pokemon_move_method_prose.csv", List.of("pokemon_move_method_id", "local_language_id", "name", "description"));
         headers.put("pokemon_move_methods.csv", List.of("id", "identifier"));
+        headers.put("evolution_triggers.csv", List.of("id", "identifier"));
+        headers.put("evolution_trigger_prose.csv", List.of("evolution_trigger_id", "local_language_id", "name"));
+        headers.put("move_targets.csv", List.of("id", "identifier"));
+        headers.put("move_target_prose.csv", List.of("move_target_id", "local_language_id", "name", "description"));
         headers.put("type_names.csv", List.of("type_id", "local_language_id", "name"));
         headers.put("type_efficacy.csv", List.of("damage_type_id", "target_type_id", "damage_factor"));
         headers.put("ability_names.csv", List.of("ability_id", "local_language_id", "name"));

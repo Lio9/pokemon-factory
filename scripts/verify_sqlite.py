@@ -32,6 +32,8 @@ def verify_data():
     key_tables = {
         'type': '属性',
         'move': '技能',
+        'move_target': '技能目标类型',
+        'evolution_trigger': '进化触发条件',
         'ability': '特性',
         'item': '物品',
         'pokemon_species': '宝可梦物种',
@@ -62,8 +64,8 @@ def verify_data():
     print()
 
     ensure('type' in counts, '缺少 type 表')
-    ensure(counts['type'] == 18, f"type 表期望 18 条，实际 {counts['type']}")
-    for table_name in ('move', 'ability', 'item', 'pokemon_species', 'pokemon_form', 'pokemon_form_type',
+    ensure(counts['type'] >= 18, f"type 表期望至少 18 条，实际 {counts['type']}")
+    for table_name in ('move', 'move_target', 'evolution_trigger', 'ability', 'item', 'pokemon_species', 'pokemon_form', 'pokemon_form_type',
                        'pokemon_form_ability', 'pokemon_form_stat', 'pokemon_form_move', 'move_meta',
                        'move_flag_map', 'type_efficacy', 'pokemon_evolution', 'evolution_chain'):
         ensure(counts.get(table_name, 0) > 0, f"关键表 {table_name} 没有数据")
