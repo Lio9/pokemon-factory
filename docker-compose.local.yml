@@ -10,10 +10,11 @@ services:
       SQLITE_DB_PATH: /workspace/data/pokemon-factory.db
       POKEMON_FACTORY_DATABASE_INITIALIZE_ON_STARTUP: "true"
       POKEMON_FACTORY_DATABASE_IMPORT_CSV_ON_STARTUP: "true"
-      CSV_DIR: /workspace/csv
+      REMOTE_CSV_BASE_URL: https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv
+      CSV_CACHE_DIR: /workspace/csv-cache
     volumes:
       - backend-db:/workspace/data
-      - ./csv:/workspace/csv:ro
+      - csv-cache:/workspace/csv-cache
     restart: "no"
 
   pokedex:
@@ -67,3 +68,4 @@ services:
 
 volumes:
   backend-db:
+  csv-cache:

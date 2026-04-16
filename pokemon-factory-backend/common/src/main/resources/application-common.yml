@@ -33,6 +33,7 @@ pokemon-factory:
     # 默认情况下业务模块不会主动做数据库初始化，避免每次启动都重复跑脚本。
     initialize-on-startup: false
     import-csv-on-startup: false
+    # 兼容旧环境保留该配置；当前版本统一走远程 CSV 源，配置后也只会被忽略并打印警告。
     csv-directory: ${CSV_DIR:}
     remote-csv-base-url: ${REMOTE_CSV_BASE_URL:https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv}
     csv-cache-directory: ${CSV_CACHE_DIR:}

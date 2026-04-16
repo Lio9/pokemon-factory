@@ -15,10 +15,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +40,7 @@ public class CommonCsvDataImporter {
             .connectTimeout(CSV_CONNECT_TIMEOUT)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
+    private static final Map<String, List<String>> REQUIRED_REMOTE_CSV_HEADERS = createRequiredRemoteCsvHeaders();
 
     private static final Map<Integer, String> LANGUAGE_MAP = Map.ofEntries(
             Map.entry(1, "ja"),
@@ -68,7 +71,7 @@ public class CommonCsvDataImporter {
         }
 
         Path csvDirectory = resolveCsvDirectory();
-        log.info("开始执行 CSV 数据导入，目录：{}", csvDirectory.toAbsolutePath().normalize());
+        log.info("开始执行远程 CSV 数据导入，缓存目录：{}", csvDirectory.toAbsolutePath().normalize());
 
         boolean originalAutoCommit = connection.getAutoCommit();
         connection.setAutoCommit(false);
@@ -86,6 +89,10 @@ public class CommonCsvDataImporter {
             importMoveMeta(connection, csvDirectory);
             importMoveFlags(connection, csvDirectory);
             importMoveStatChanges(connection, csvDirectory);
+            importVersionGroups(connection, csvDirectory);
+            importItemPockets(connection, csvDirectory);
+            importItemCategories(connection, csvDirectory);
+            importItemFlingEffects(connection, csvDirectory);
             importItems(connection, csvDirectory);
             syncEffectSeeds(connection);
 
@@ -98,6 +105,7 @@ public class CommonCsvDataImporter {
             importPokemonEggGroups(connection, csvDirectory);
             importPokemonMoves(connection, csvDirectory);
             importPokemonEvolution(connection, csvDirectory, evolvesFromMap);
+            verifyImportedDataset(connection);
 
             connection.commit();
             log.info("CSV 数据导入完成。pokemon_species={}, move={}, item={}",
@@ -138,7 +146,7 @@ public class CommonCsvDataImporter {
             int count = 0;
             for (CSVRecord record : records(csvDirectory.resolve("genders.csv"))) {
                 statement.setInt(1, requiredInt(record, "id"));
-                statement.setString(2, record.get("identifier"));
+                statement.setString(2, Optional.ofNullable(nullable(record, "identifier")).orElse("gender-" + requiredInt(record, "id")));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -148,39 +156,48 @@ public class CommonCsvDataImporter {
     }
 
     private void importGrowthRates(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, CSVRecord> proseById = firstByIntKey(records(csvDirectory.resolve("growth_rate_prose.csv")), "growth_rate_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("growth_rate_prose.csv")), "growth_rate_id");
         try (PreparedStatement statement = connection.prepareStatement(
-                "UPDATE growth_rate SET formula = ?, description = ? WHERE id = ?")) {
+                "INSERT OR REPLACE INTO growth_rate (id, name, name_en, formula, description) VALUES (?, ?, ?, ?, ?)")) {
             int count = 0;
             for (CSVRecord record : records(csvDirectory.resolve("growth_rates.csv"))) {
                 int id = requiredInt(record, "id");
-                CSVRecord prose = proseById.get(id);
-                statement.setString(1, nullable(record, "formula"));
-                statement.setString(2, prose == null ? null : nullable(prose, "description"));
-                statement.setInt(3, id);
+                String identifier = nullable(record, "identifier");
+                List<CSVRecord> proses = proseById.getOrDefault(id, List.of());
+                statement.setInt(1, id);
+                statement.setString(2, Optional.ofNullable(localizedName(proses, List.of("zh-hans", "zh-hant", "en", "ja")))
+                        .orElse(Optional.ofNullable(identifier).orElse("growth-rate-" + id)));
+                statement.setString(3, Optional.ofNullable(identifier).orElse("growth-rate-" + id));
+                statement.setString(4, nullable(record, "formula"));
+                statement.setString(5, localizedText(proses, List.of("zh-hans", "zh-hant", "en", "ja"), "description", "name"));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
             flushBatch(statement, count, true);
-            log.info("CSV 更新 growth_rate：{} 条", count);
+            log.info("CSV 导入 growth_rate：{} 条", count);
         }
     }
 
     private void importEggGroups(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, CSVRecord> proseById = firstByIntKey(records(csvDirectory.resolve("egg_group_prose.csv")), "egg_group_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("egg_group_prose.csv")), "egg_group_id");
         try (PreparedStatement statement = connection.prepareStatement(
-                "UPDATE egg_group SET name = ? WHERE id = ?")) {
+                "INSERT OR REPLACE INTO egg_group (id, name, name_en, name_jp) VALUES (?, ?, ?, ?)")) {
             int count = 0;
             for (CSVRecord record : records(csvDirectory.resolve("egg_groups.csv"))) {
                 int id = requiredInt(record, "id");
-                CSVRecord prose = proseById.get(id);
-                statement.setString(1, prose == null ? null : nullable(prose, "name"));
-                statement.setInt(2, id);
+                String identifier = nullable(record, "identifier");
+                List<CSVRecord> proses = proseById.getOrDefault(id, List.of());
+                String localizedName = localizedName(proses, List.of("zh-hans", "zh-hant", "en", "ja"));
+                String fallbackName = Optional.ofNullable(localizedName).orElse(identifier);
+                statement.setInt(1, id);
+                statement.setString(2, Optional.ofNullable(fallbackName).orElse("egg-group-" + id));
+                statement.setString(3, Optional.ofNullable(identifier).orElse(Optional.ofNullable(fallbackName).orElse("egg-group-" + id)));
+                statement.setString(4, localizedName(proses, List.of("ja", "en")));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
             flushBatch(statement, count, true);
-            log.info("CSV 更新 egg_group：{} 条", count);
+            log.info("CSV 导入 egg_group：{} 条", count);
         }
     }
 
@@ -290,7 +307,7 @@ public class CommonCsvDataImporter {
 
     private void importMoves(Connection connection, Path csvDirectory) throws Exception {
         Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("move_names.csv")), "move_id");
-        Map<Integer, CSVRecord> latestProseById = latestByKey(records(csvDirectory.resolve("move_flavor_text.csv")), "move_id", "version_group_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("move_flavor_text.csv")), "move_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO move (id, name, name_en, name_jp, type_id, damage_class_id, target_id, power, pp, accuracy, priority, effect_chance, generation_id, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
             int count = 0;
@@ -309,8 +326,7 @@ public class CommonCsvDataImporter {
                 statement.setInt(11, nullableInt(record, "priority") == null ? 0 : Objects.requireNonNull(nullableInt(record, "priority")));
                 bindNullableInt(statement, 12, nullableInt(record, "effect_chance"));
                 bindNullableInt(statement, 13, nullableInt(record, "generation_id"));
-                CSVRecord prose = latestProseById.get(id);
-                statement.setString(14, prose == null ? null : nullable(prose, "flavor_text"));
+                statement.setString(14, latestLocalizedText(proseById.getOrDefault(id, List.of()), "version_group_id", List.of("zh-hans", "zh-hant", "en", "ja"), "flavor_text"));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -386,9 +402,84 @@ public class CommonCsvDataImporter {
         }
     }
 
+    private void importVersionGroups(Connection connection, Path csvDirectory) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT OR REPLACE INTO version_group (id, name, name_en, generation_id, \"order\") VALUES (?, ?, ?, ?, ?)")) {
+            int count = 0;
+            for (CSVRecord record : records(csvDirectory.resolve("version_groups.csv"))) {
+                int id = requiredInt(record, "id");
+                String identifier = nullable(record, "identifier");
+                statement.setInt(1, id);
+                statement.setString(2, Optional.ofNullable(identifier).orElse("version-group-" + id));
+                statement.setString(3, Optional.ofNullable(identifier).orElse("version-group-" + id));
+                bindNullableInt(statement, 4, nullableInt(record, "generation_id"));
+                bindNullableInt(statement, 5, nullableInt(record, "order"));
+                statement.addBatch();
+                count = flushBatch(statement, count + 1);
+            }
+            flushBatch(statement, count, true);
+            log.info("CSV 导入 version_group：{} 条", count);
+        }
+    }
+
+    private void importItemPockets(Connection connection, Path csvDirectory) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT OR REPLACE INTO item_pocket (id, name, name_en) VALUES (?, ?, ?)")) {
+            int count = 0;
+            for (CSVRecord record : records(csvDirectory.resolve("item_pockets.csv"))) {
+                int id = requiredInt(record, "id");
+                String identifier = nullable(record, "identifier");
+                statement.setInt(1, id);
+                statement.setString(2, Optional.ofNullable(identifier).orElse("item-pocket-" + id));
+                statement.setString(3, Optional.ofNullable(identifier).orElse("item-pocket-" + id));
+                statement.addBatch();
+                count = flushBatch(statement, count + 1);
+            }
+            flushBatch(statement, count, true);
+            log.info("CSV 导入 item_pocket：{} 条", count);
+        }
+    }
+
+    private void importItemCategories(Connection connection, Path csvDirectory) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT OR REPLACE INTO item_category (id, name, name_en, pocket_id) VALUES (?, ?, ?, ?)")) {
+            int count = 0;
+            for (CSVRecord record : records(csvDirectory.resolve("item_categories.csv"))) {
+                int id = requiredInt(record, "id");
+                String identifier = nullable(record, "identifier");
+                statement.setInt(1, id);
+                statement.setString(2, Optional.ofNullable(identifier).orElse("item-category-" + id));
+                statement.setString(3, Optional.ofNullable(identifier).orElse("item-category-" + id));
+                bindNullableInt(statement, 4, nullableInt(record, "pocket_id"));
+                statement.addBatch();
+                count = flushBatch(statement, count + 1);
+            }
+            flushBatch(statement, count, true);
+            log.info("CSV 导入 item_category：{} 条", count);
+        }
+    }
+
+    private void importItemFlingEffects(Connection connection, Path csvDirectory) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT OR REPLACE INTO item_fling_effect (id, name, name_en) VALUES (?, ?, ?)")) {
+            int count = 0;
+            for (CSVRecord record : records(csvDirectory.resolve("item_fling_effects.csv"))) {
+                int id = requiredInt(record, "id");
+                String identifier = nullable(record, "identifier");
+                statement.setInt(1, id);
+                statement.setString(2, Optional.ofNullable(identifier).orElse("item-fling-effect-" + id));
+                statement.setString(3, Optional.ofNullable(identifier).orElse("item-fling-effect-" + id));
+                statement.addBatch();
+                count = flushBatch(statement, count + 1);
+            }
+            flushBatch(statement, count, true);
+            log.info("CSV 导入 item_fling_effect：{} 条", count);
+        }
+    }
+
     private void importItems(Connection connection, Path csvDirectory) throws Exception {
         Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("item_names.csv")), "item_id");
-        Map<Integer, CSVRecord> latestProseById = latestByKey(records(csvDirectory.resolve("item_flavor_text.csv")), "item_id", "version_group_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("item_flavor_text.csv")), "item_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO item (id, name, name_en, name_jp, category_id, cost, fling_power, fling_effect_id, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
             int count = 0;
@@ -403,8 +494,7 @@ public class CommonCsvDataImporter {
                 statement.setInt(6, nullableInt(record, "cost") == null ? 0 : Objects.requireNonNull(nullableInt(record, "cost")));
                 bindNullableInt(statement, 7, nullableInt(record, "fling_power"));
                 bindNullableInt(statement, 8, nullableInt(record, "fling_effect_id"));
-                CSVRecord prose = latestProseById.get(id);
-                statement.setString(9, prose == null ? null : nullable(prose, "flavor_text"));
+                statement.setString(9, latestLocalizedText(proseById.getOrDefault(id, List.of()), "version_group_id", List.of("zh-hans", "zh-hant", "en", "ja"), "flavor_text"));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -498,7 +588,7 @@ public class CommonCsvDataImporter {
 
     private Map<Integer, Integer> importPokemonSpecies(Connection connection, Path csvDirectory) throws Exception {
         Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("pokemon_species_names.csv")), "pokemon_species_id");
-        Map<Integer, CSVRecord> latestProseById = latestByKey(records(csvDirectory.resolve("pokemon_species_flavor_text.csv")), "species_id", "version_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("pokemon_species_flavor_text.csv")), "species_id");
         Map<Integer, Integer> evolvesFromMap = new HashMap<>();
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO pokemon_species (id, name, name_en, name_jp, genus, generation_id, evolution_chain_id, evolves_from_species_id, gender_rate, capture_rate, base_happiness, hatch_counter, is_baby, is_legendary, is_mythical, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
@@ -506,7 +596,6 @@ public class CommonCsvDataImporter {
             for (CSVRecord record : records(csvDirectory.resolve("pokemon_species.csv"))) {
                 int id = requiredInt(record, "id");
                 List<CSVRecord> names = namesById.getOrDefault(id, List.of());
-                CSVRecord prose = latestProseById.get(id);
                 Integer evolvesFrom = nullableInt(record, "evolves_from_species_id");
                 if (evolvesFrom != null) {
                     evolvesFromMap.put(id, evolvesFrom);
@@ -526,7 +615,7 @@ public class CommonCsvDataImporter {
                 statement.setInt(13, boolInt(record, "is_baby"));
                 statement.setInt(14, boolInt(record, "is_legendary"));
                 statement.setInt(15, boolInt(record, "is_mythical"));
-                statement.setString(16, prose == null ? null : nullable(prose, "flavor_text"));
+                statement.setString(16, latestLocalizedText(proseById.getOrDefault(id, List.of()), "version_id", List.of("zh-hans", "zh-hant", "en", "ja"), "flavor_text"));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -676,37 +765,20 @@ public class CommonCsvDataImporter {
 
     private Path resolveCsvDirectory() {
         if (StringUtils.hasText(properties.getCsvDirectory())) {
-            Path configured = Paths.get(properties.getCsvDirectory());
-            if (!configured.isAbsolute()) {
-                configured = Paths.get(System.getProperty("user.dir")).resolve(configured).normalize();
-            }
-            if (Files.isDirectory(configured)) {
-                return configured;
-            }
+            log.warn("检测到已配置本地 CSV 目录 {}，当前版本将忽略本地目录，统一改为使用远程 CSV 源。",
+                    Paths.get(properties.getCsvDirectory()).normalize());
         }
-
-        List<Path> candidates = new ArrayList<>();
-        Path current = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
-        for (Path cursor = current; cursor != null; cursor = cursor.getParent()) {
-            candidates.add(cursor.resolve("csv"));
-            candidates.add(cursor.resolve("..").normalize().resolve("csv"));
-        }
-        return candidates.stream()
-                .map(Path::normalize)
-                .filter(Files::isDirectory)
-                .findFirst()
-                .orElseGet(this::resolveRemoteCsvCacheDirectory);
+        return resolveRemoteCsvCacheDirectory();
     }
 
     private List<CSVRecord> records(Path csvFile) throws IOException {
-        if (!Files.exists(csvFile)) {
-            csvFile = ensureRemoteCsvFile(csvFile);
-        }
+        csvFile = ensureRemoteCsvFile(csvFile);
         List<List<String>> rows = parseCsvRows(csvFile);
         if (rows.isEmpty()) {
-            return List.of();
+            throw new IllegalStateException("远程 CSV 文件为空: " + csvFile.getFileName());
         }
         List<String> headers = rows.get(0);
+        validateRequiredHeaders(csvFile, headers);
         List<CSVRecord> records = new ArrayList<>();
         for (int rowIndex = 1; rowIndex < rows.size(); rowIndex++) {
             List<String> row = rows.get(rowIndex);
@@ -716,6 +788,9 @@ public class CommonCsvDataImporter {
                 values.put(headers.get(columnIndex), value);
             }
             records.add(new CSVRecord(values));
+        }
+        if (records.isEmpty()) {
+            throw new IllegalStateException("远程 CSV 文件缺少数据行: " + csvFile.getFileName());
         }
         return records;
     }
@@ -739,29 +814,70 @@ public class CommonCsvDataImporter {
 
     private Path ensureRemoteCsvFile(Path csvFile) throws IOException {
         if (!StringUtils.hasText(properties.getRemoteCsvBaseUrl())) {
-            throw new IllegalStateException("缺少 CSV 文件: " + csvFile.toAbsolutePath().normalize());
+            throw new IllegalStateException("未配置远程 CSV 源，无法获取文件: " + csvFile.getFileName());
         }
 
         ensureDirectory(csvFile.getParent());
+        if (isUsableCachedCsv(csvFile)) {
+            log.info("复用已缓存的远程 CSV 文件：{}", csvFile.toAbsolutePath().normalize());
+            return csvFile;
+        }
         String fileName = csvFile.getFileName().toString();
         String baseUrl = properties.getRemoteCsvBaseUrl().replaceAll("/+$", "");
         URI uri = URI.create(baseUrl + "/" + fileName);
+        Path tempFile = csvFile.resolveSibling(fileName + ".download");
+        Files.deleteIfExists(tempFile);
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(CSV_DOWNLOAD_TIMEOUT)
                 .GET()
                 .build();
 
         try {
-            HttpResponse<Path> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(csvFile));
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                log.info("已从远程 CSV 源下载 {} -> {}", uri, csvFile.toAbsolutePath().normalize());
-                return csvFile;
+            HttpResponse<Path> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(tempFile));
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                Files.deleteIfExists(tempFile);
+                throw new IllegalStateException("下载远程 CSV 失败: " + fileName + " <- " + uri + "，HTTP 状态码=" + response.statusCode());
             }
-            Files.deleteIfExists(csvFile);
-            throw new IllegalStateException("下载远程 CSV 失败: " + uri + "，HTTP 状态码=" + response.statusCode());
+            if (!Files.exists(tempFile) || Files.size(tempFile) == 0L) {
+                Files.deleteIfExists(tempFile);
+                throw new IllegalStateException("下载到空的远程 CSV 文件: " + fileName + " <- " + uri);
+            }
+            Files.move(tempFile, csvFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            log.info("已从远程 CSV 源下载 {} -> {}", uri, csvFile.toAbsolutePath().normalize());
+            return csvFile;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("下载远程 CSV 被中断: " + uri, exception);
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
+    private boolean isUsableCachedCsv(Path csvFile) {
+        if (!Files.exists(csvFile)) {
+            return false;
+        }
+        try {
+            if (Files.size(csvFile) == 0L) {
+                Files.deleteIfExists(csvFile);
+                return false;
+            }
+            List<List<String>> rows = parseCsvRows(csvFile);
+            if (rows.size() <= 1) {
+                Files.deleteIfExists(csvFile);
+                return false;
+            }
+            validateRequiredHeaders(csvFile, rows.get(0));
+            return true;
+        } catch (Exception exception) {
+            try {
+                Files.deleteIfExists(csvFile);
+            } catch (IOException ignored) {
+                // ignore cleanup failure, caller will attempt re-download
+            }
+            log.warn("检测到损坏的缓存 CSV 文件，准备重新下载：{}，原因：{}",
+                    csvFile.toAbsolutePath().normalize(), exception.getMessage());
+            return false;
         }
     }
 
@@ -773,6 +889,58 @@ public class CommonCsvDataImporter {
             Files.createDirectories(directory);
         } catch (IOException exception) {
             throw new IllegalStateException("创建 CSV 缓存目录失败: " + directory.toAbsolutePath().normalize(), exception);
+        }
+    }
+
+    private void validateRequiredHeaders(Path csvFile, List<String> headers) {
+        List<String> requiredHeaders = REQUIRED_REMOTE_CSV_HEADERS.get(csvFile.getFileName().toString());
+        if (requiredHeaders == null || requiredHeaders.isEmpty()) {
+            return;
+        }
+        List<String> missingHeaders = requiredHeaders.stream()
+                .filter(required -> !headers.contains(required))
+                .toList();
+        if (!missingHeaders.isEmpty()) {
+            throw new IllegalStateException("远程 CSV 缺少必需表头: " + csvFile.getFileName() + " -> " + missingHeaders);
+        }
+    }
+
+    private void verifyImportedDataset(Connection connection) throws Exception {
+        assertMinimumCount(connection, "pokemon_species", 1);
+        assertMinimumCount(connection, "pokemon_form", 1);
+        assertMinimumCount(connection, "move", 1);
+        assertMinimumCount(connection, "item", 1);
+        assertMinimumCount(connection, "ability", 1);
+        assertMinimumCount(connection, "item_category", 1);
+        assertMinimumCount(connection, "item_pocket", 1);
+        assertMinimumCount(connection, "item_fling_effect", 1);
+        assertMinimumCount(connection, "version_group", 1);
+        assertMinimumCount(connection, "move_meta", 1);
+        assertMinimumCount(connection, "move_flag_map", 1);
+        assertMinimumCount(connection, "pokemon_form_move", 1);
+        assertMinimumCount(connection, "pokemon_evolution", 1);
+        assertMinimumCount(connection, "pokemon_species_egg_group", 1);
+        assertMinimumCount(connection, "type_efficacy", 1);
+
+        if (count(connection, "type") != 18) {
+            throw new IllegalStateException("远程 CSV 导入后的属性数据不完整，期望 18 条，实际=" + count(connection, "type"));
+        }
+        if (hasAnyRows(connection, "PRAGMA foreign_key_check")) {
+            throw new IllegalStateException("远程 CSV 导入后存在外键校验失败记录");
+        }
+    }
+
+    private void assertMinimumCount(Connection connection, String tableName, int minimum) throws Exception {
+        int actual = count(connection, tableName);
+        if (actual < minimum) {
+            throw new IllegalStateException("远程 CSV 导入后的表数据不足: " + tableName + "，期望至少=" + minimum + "，实际=" + actual);
+        }
+    }
+
+    private boolean hasAnyRows(Connection connection, String sql) throws Exception {
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            return resultSet.next();
         }
     }
 
@@ -906,6 +1074,36 @@ public class CommonCsvDataImporter {
         return null;
     }
 
+    private String latestLocalizedText(List<CSVRecord> records, String orderField, List<String> preferredLanguages, String... candidateFields) {
+        if (records.isEmpty()) {
+            return null;
+        }
+        CSVRecord latestRecord = null;
+        Integer latestOrder = null;
+        for (CSVRecord record : records) {
+            Integer currentOrder = nullableInt(record, orderField);
+            int normalizedOrder = currentOrder == null ? 0 : currentOrder;
+            if (latestRecord == null || latestOrder == null || normalizedOrder > latestOrder) {
+                latestRecord = record;
+                latestOrder = normalizedOrder;
+            }
+        }
+        String localized = localizedText(records, preferredLanguages, candidateFields);
+        if (StringUtils.hasText(localized)) {
+            return localized;
+        }
+        if (latestRecord == null) {
+            return null;
+        }
+        for (String field : candidateFields) {
+            String value = nullable(latestRecord, field);
+            if (StringUtils.hasText(value)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
     private String resolveLanguage(CSVRecord record) {
         Integer id = nullableInt(record, "local_language_id");
         return id == null ? null : LANGUAGE_MAP.get(id);
@@ -999,6 +1197,50 @@ public class CommonCsvDataImporter {
              ResultSet resultSet = statement.executeQuery()) {
             return resultSet.next() ? resultSet.getInt(1) : 0;
         }
+    }
+
+    private static Map<String, List<String>> createRequiredRemoteCsvHeaders() {
+        Map<String, List<String>> headers = new LinkedHashMap<>();
+        headers.put("genders.csv", List.of("id", "identifier"));
+        headers.put("growth_rate_prose.csv", List.of("growth_rate_id", "local_language_id", "name"));
+        headers.put("growth_rates.csv", List.of("id", "identifier", "formula"));
+        headers.put("egg_group_prose.csv", List.of("egg_group_id", "local_language_id", "name"));
+        headers.put("egg_groups.csv", List.of("id"));
+        headers.put("nature_names.csv", List.of("nature_id", "local_language_id", "name"));
+        headers.put("natures.csv", List.of("id", "identifier"));
+        headers.put("pokemon_move_method_prose.csv", List.of("pokemon_move_method_id", "local_language_id", "name", "description"));
+        headers.put("pokemon_move_methods.csv", List.of("id", "identifier"));
+        headers.put("type_names.csv", List.of("type_id", "local_language_id", "name"));
+        headers.put("type_efficacy.csv", List.of("damage_type_id", "target_type_id", "damage_factor"));
+        headers.put("ability_names.csv", List.of("ability_id", "local_language_id", "name"));
+        headers.put("ability_prose.csv", List.of("ability_id", "local_language_id", "short_effect", "effect"));
+        headers.put("abilities.csv", List.of("id", "identifier", "generation_id", "is_main_series"));
+        headers.put("move_names.csv", List.of("move_id", "local_language_id", "name"));
+        headers.put("move_flavor_text.csv", List.of("move_id", "version_group_id", "language_id", "flavor_text"));
+        headers.put("moves.csv", List.of("id", "identifier", "type_id", "damage_class_id", "target_id", "power", "pp", "accuracy", "priority", "effect_chance", "generation_id"));
+        headers.put("move_meta.csv", List.of("move_id", "min_hits", "max_hits", "min_turns", "max_turns", "drain", "healing", "crit_rate", "ailment_chance", "flinch_chance", "stat_chance"));
+        headers.put("move_flags.csv", List.of("id", "identifier"));
+        headers.put("move_flag_map.csv", List.of("move_id", "move_flag_id"));
+        headers.put("move_meta_stat_changes.csv", List.of("move_id", "stat_id", "change"));
+        headers.put("version_groups.csv", List.of("id", "identifier", "generation_id", "order"));
+        headers.put("item_pockets.csv", List.of("id", "identifier"));
+        headers.put("item_categories.csv", List.of("id", "pocket_id", "identifier"));
+        headers.put("item_fling_effects.csv", List.of("id", "identifier"));
+        headers.put("item_names.csv", List.of("item_id", "local_language_id", "name"));
+        headers.put("item_flavor_text.csv", List.of("item_id", "version_group_id", "language_id", "flavor_text"));
+        headers.put("items.csv", List.of("id", "identifier", "category_id", "cost", "fling_power", "fling_effect_id"));
+        headers.put("evolution_chains.csv", List.of("id", "baby_trigger_item_id"));
+        headers.put("pokemon_species_names.csv", List.of("pokemon_species_id", "local_language_id", "name", "genus"));
+        headers.put("pokemon_species_flavor_text.csv", List.of("species_id", "version_id", "language_id", "flavor_text"));
+        headers.put("pokemon_species.csv", List.of("id", "identifier", "generation_id", "evolution_chain_id", "evolves_from_species_id", "gender_rate", "capture_rate", "base_happiness", "hatch_counter", "is_baby", "is_legendary", "is_mythical"));
+        headers.put("pokemon.csv", List.of("id", "species_id", "identifier", "is_default", "height", "weight", "base_experience", "order"));
+        headers.put("pokemon_types.csv", List.of("pokemon_id", "type_id", "slot"));
+        headers.put("pokemon_abilities.csv", List.of("pokemon_id", "ability_id", "is_hidden", "slot"));
+        headers.put("pokemon_stats.csv", List.of("pokemon_id", "stat_id", "base_stat", "effort"));
+        headers.put("pokemon_egg_groups.csv", List.of("species_id", "egg_group_id"));
+        headers.put("pokemon_moves.csv", List.of("pokemon_id", "move_id", "pokemon_move_method_id", "level", "version_group_id"));
+        headers.put("pokemon_evolution.csv", List.of("evolved_species_id", "evolution_trigger_id", "minimum_level", "minimum_happiness", "minimum_affection", "time_of_day", "held_item_id", "trigger_item_id", "known_move_id", "known_move_type_id", "location_id", "party_species_id", "party_type_id", "trade_species_id", "needs_overworld_rain", "turn_upside_down", "relative_physical_stats", "gender_id"));
+        return Map.copyOf(headers);
     }
 
     private static final class CSVRecord {

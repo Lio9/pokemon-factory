@@ -38,14 +38,18 @@ public class CommonDatabaseProperties {
     private boolean importCsvOnStartup;
 
     /**
-     * CSV 数据目录，默认自动探测仓库根目录下的 csv/。
+     * 已废弃的本地 CSV 目录配置。
+     * <p>
+     * 当前版本统一从远程 CSV 源下载并导入数据；保留该配置仅用于兼容旧环境，
+     * 运行时会打印警告并忽略其值。
+     * </p>
      */
     private String csvDirectory;
 
     /**
      * 远程 CSV 根地址。
      * <p>
-     * 当本地 csv/ 不存在时，可从该地址按需下载 `*.csv` 到本地缓存目录。
+     * 当前版本会从该地址按需下载 `*.csv` 到本地缓存目录后再导入。
      * 例如：
      * https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv
      * </p>

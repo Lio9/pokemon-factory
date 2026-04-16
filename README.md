@@ -162,7 +162,7 @@ python scripts/start-backend.py
 java -jar pokemon-factory-backend/common/target/common-0.0.1-SNAPSHOT-exec.jar
 ```
 
-common 启动完成后，如果配置了本地 `csv/` 目录会优先使用本地 CSV；若未配置，则会按需从 `REMOTE_CSV_BASE_URL`（默认指向 PokeAPI CSV 源）下载到临时缓存目录后再导入。当前也可以手动运行校验脚本：
+common 启动完成后，会统一从 `REMOTE_CSV_BASE_URL`（默认指向 PokeAPI CSV 源）按需下载 CSV 到本地缓存目录后再导入，并在导入过程中校验关键文件表头与核心数据完整性。旧的本地 `csv/` 目录配置已废弃，即使保留也只会被忽略并打印警告。当前也可以手动运行校验脚本：
 
 ```bash
 python scripts/verify_sqlite.py

@@ -3,7 +3,7 @@
 使用环境变量：
   SQLITE_DB_PATH - sqlite 文件路径（可选）
   JAR_PATH - 后端 jar 路径（可选）
-  MIGRATION_TIMEOUT - 等待数据库初始化完成的超时时间（秒，默认 120）
+  MIGRATION_TIMEOUT - 等待数据库初始化完成的超时时间（秒，默认 600）
 
 运行示例：
     python scripts/init_db.py
@@ -181,7 +181,7 @@ def main():
     """串起完整的本地初始化流程：建库、导入、校验、清理进程。"""
     jar = find_jar()
     db = find_db()
-    timeout = int(os.getenv('MIGRATION_TIMEOUT', '120'))
+    timeout = int(os.getenv('MIGRATION_TIMEOUT', '600'))
 
     log(f"项目根目录: {ROOT}")
     log(f"使用 JAR: {jar}")
