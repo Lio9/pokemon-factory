@@ -105,7 +105,7 @@ Pokemon Factory 当前由以下几部分组成：
 
 1. 先启动 common：负责初始化 SQLite 数据库结构。
 1. 再启动业务模块：pokeDex / battleFactory 复用 common 的共享数据库配置。
-1. 前端最后启动：通过 VITE_API_BASE_URL 指向后端接口。
+1. 前端最后启动：通过 `VITE_API_BASE` / `VITE_DAMAGE_API_BASE` 指向后端接口；旧变量名 `VITE_API_BASE_URL` 仍兼容但不再作为主文档口径。
 
 说明：
 
@@ -263,10 +263,19 @@ python scripts/verify_sqlite.py
 
 | 接口 | 方法 | 说明 |
 | --- | --- | --- |
-| /api/pokemon | GET | 获取宝可梦列表 |
-| /api/pokemon/{id} | GET | 获取宝可梦详情 |
-| /api/types | GET | 获取类型列表 |
-| /api/moves | GET | 获取技能列表 |
+| /api/pokedex/pokemon/list | GET | 获取宝可梦列表 |
+| /api/pokedex/pokemon/{id} | GET | 获取宝可梦详情 |
+| /api/pokedex/types | GET | 获取类型列表 |
+| /api/pokedex/moves/list | GET | 获取技能列表 |
+| /api/pokedex/abilities/list | GET | 获取特性列表 |
+| /api/pokedex/items/list | GET | 获取物品列表 |
+| /api/import-optimized/all-fast | POST | 启动全量导入任务 |
+| /api/import-optimized/import-status/{taskId} | GET | 查询导入任务状态 |
+
+说明：
+
+- `pokeDex` 模块中仍保留部分旧路径（如 `/api/pokemon/**`）用于兼容，但前端与文档默认口径统一使用 `/api/pokedex/**`。
+- 前端“导入管理”页当前只负责**启动导入任务与查看任务状态**，不会执行删库或清空后端数据。
 
 ### 对战接口
 
@@ -311,7 +320,7 @@ python scripts/verify_sqlite.py
 1. 前端无法访问接口
 
    - 确认 pokeDex / battleFactory 已正常启动
-   - 检查 VITE_API_BASE_URL 是否配置正确
+   - 检查 `VITE_API_BASE` / `VITE_DAMAGE_API_BASE` 是否配置正确
    - 检查端口是否与 README 中说明一致
 
 ### 日志查看

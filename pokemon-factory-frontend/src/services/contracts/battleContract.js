@@ -6,7 +6,7 @@ export function normalizeFactoryRun(raw) {
   }
 
   return {
-    id: raw.id,
+    id: raw.id ?? raw.runId ?? null,
     current_battle: raw.current_battle ?? raw.currentBattle ?? 0,
     max_battles: raw.max_battles ?? raw.maxBattles ?? 9,
     current_battle_id: raw.current_battle_id ?? raw.currentBattleId ?? null,
@@ -101,6 +101,7 @@ export function buildMoveSubmission({
   playerActiveMons,
   selectedActions,
   selectedMoves,
+  selectedSpecialSystems,
   selectedSwitchTargets,
   selectedTargets,
   selectedMoveObject
@@ -114,7 +115,14 @@ export function buildMoveSubmission({
       continue
     }
 
-    playerMoveMap[`slot-${mon.fieldSlot}`] = selectedMoves[`slot-${mon.fieldSlot}`]
+      playerMoveMap[`slot-${mon.fieldSlot}`] = selectedMoves[`slot-${mon.fieldSlot}`]
+    const specialSystem = selectedSpecialSystems?.[`special-slot-${mon.fieldSlot}`]
+    if (specialSystem) {
+      playerMoveMap[`special-slot-${mon.fieldSlot}`] = String(specialSystem)
+      if (specialSystem === 'tera') {
+        playerMoveMap[`tera-slot-${mon.fieldSlot}`] = 'true'
+      }
+    }
     if (moveNeedsOpponentTarget(selectedMoveObject(mon))) {
       playerMoveMap[`target-slot-${mon.fieldSlot}`] = String(selectedTargets[`target-slot-${mon.fieldSlot}`])
     }

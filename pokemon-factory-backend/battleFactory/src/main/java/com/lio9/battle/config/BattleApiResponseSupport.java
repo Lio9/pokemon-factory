@@ -103,6 +103,9 @@ public final class BattleApiResponseSupport {
             case "replacement_count_mismatch" -> "替补数量与当前要求不一致。";
             case "invalid_replacement_choice" -> "替补选择无效。";
             case "submit_failed" -> "异步对战提交失败。";
+            case "invalid_move_map_json" -> "出招数据格式无效。";
+            case "invalid_move_map" -> "无法序列化当前出招数据。";
+            case "serialize_failed" -> "服务器序列化对战数据失败。";
             case "internal_error" -> "服务器内部错误，请稍后重试。";
             default -> errorCode.replace('_', ' ');
         };

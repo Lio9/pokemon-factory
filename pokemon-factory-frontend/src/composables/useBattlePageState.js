@@ -19,6 +19,7 @@ export function useBattlePageState() {
   const summary = ref(null)
   const selectedActions = ref({})
   const selectedMoves = ref({})
+  const selectedSpecialSystems = ref({})
   const selectedTargets = ref({})
   const selectedSwitchTargets = ref({})
   const selectedRosterIndexes = ref([])
@@ -46,8 +47,12 @@ export function useBattlePageState() {
     actionHeadline,
     availableActionCount,
     availableActionDescription,
+    availableSpecialSystems,
+    activeSpecialSystemLabel,
     canConfirmPreview,
     canConfirmReplacement,
+    canUseSpecialSystem,
+    canTerastallize,
     canSubmitMove,
     currentUser,
     exchangeCandidates,
@@ -71,10 +76,12 @@ export function useBattlePageState() {
     showContinueFactoryButton,
     showMobileActionDock,
     showResetBattleButton,
+    specialSystemLabel,
     statusText,
     statusTone,
     tierBgClass,
     tierDisplayName,
+    teraTypeLabel,
     tierTextClass
   } = useBattleDerivedState({
     busyAction,
@@ -107,6 +114,7 @@ export function useBattlePageState() {
   function resetLocalSelections() {
     selectedActions.value = {}
     selectedMoves.value = {}
+    selectedSpecialSystems.value = {}
     selectedTargets.value = {}
     selectedSwitchTargets.value = {}
     selectedRosterIndexes.value = []
@@ -116,6 +124,10 @@ export function useBattlePageState() {
 
   function markUpdated() {
     lastUpdatedAt.value = Date.now()
+  }
+
+  function setRequestErrorMessage(message) {
+    requestError.value = message || ''
   }
 
   function resetBattleState(options = {}) {
@@ -135,6 +147,36 @@ export function useBattlePageState() {
     }
     resetLocalSelections()
     markUpdated()
+  }
+
+  function updateSelectionState(targetRef, key, value) {
+    const next = { ...targetRef.value }
+    if (value === undefined || value === null || value === '') {
+      delete next[key]
+    } else {
+      next[key] = value
+    }
+    targetRef.value = next
+  }
+
+  function setSelectedAction(fieldSlot, value) {
+    updateSelectionState(selectedActions, `action-slot-${fieldSlot}`, value)
+  }
+
+  function setSelectedMove(fieldSlot, value) {
+    updateSelectionState(selectedMoves, `slot-${fieldSlot}`, value)
+  }
+
+  function setSelectedSpecialSystem(fieldSlot, value) {
+    updateSelectionState(selectedSpecialSystems, `special-slot-${fieldSlot}`, value)
+  }
+
+  function setSelectedTarget(fieldSlot, value) {
+    updateSelectionState(selectedTargets, `target-slot-${fieldSlot}`, value)
+  }
+
+  function setSelectedSwitchTarget(fieldSlot, value) {
+    updateSelectionState(selectedSwitchTargets, `switch-slot-${fieldSlot}`, value)
   }
 
   function prepareNextFactoryStage() {
@@ -228,17 +270,22 @@ export function useBattlePageState() {
   function ensureMoveSelections() {
     const actionNext = { ...selectedActions.value }
     const moveNext = { ...selectedMoves.value }
+    const specialNext = { ...selectedSpecialSystems.value }
     const targetNext = { ...selectedTargets.value }
     const switchNext = { ...selectedSwitchTargets.value }
 
     for (const mon of playerActiveMons.value) {
       const actionKey = `action-slot-${mon.fieldSlot}`
       const moveKey = `slot-${mon.fieldSlot}`
+      const specialKey = `special-slot-${mon.fieldSlot}`
       const targetKey = `target-slot-${mon.fieldSlot}`
       const switchKey = `switch-slot-${mon.fieldSlot}`
 
       if (!['move', 'switch'].includes(actionNext[actionKey])) {
         actionNext[actionKey] = 'move'
+      }
+      if (actionNext[actionKey] === 'switch' || !availableSpecialSystems(mon).includes(specialNext[specialKey])) {
+        delete specialNext[specialKey]
       }
 
       const moveNames = (mon.moves || []).map((move) => move.name_en || move.name)
@@ -267,6 +314,7 @@ export function useBattlePageState() {
 
     selectedActions.value = actionNext
     selectedMoves.value = moveNext
+    selectedSpecialSystems.value = specialNext
     selectedTargets.value = targetNext
     selectedSwitchTargets.value = switchNext
   }
@@ -393,6 +441,7 @@ export function useBattlePageState() {
         playerActiveMons: playerActiveMons.value,
         selectedActions: selectedActions.value,
         selectedMoves: selectedMoves.value,
+        selectedSpecialSystems: selectedSpecialSystems.value,
         selectedSwitchTargets: selectedSwitchTargets.value,
         selectedTargets: selectedTargets.value,
         selectedMoveObject
@@ -522,7 +571,10 @@ export function useBattlePageState() {
     try {
       const res = await api.battle.profile()
       playerProfile.value = res?.profile || res
-    } catch {
+      return playerProfile.value
+    } catch (error) {
+      setRequestErrorMessage(error?.message || '加载玩家资料失败')
+      throw error
     }
   }
 
@@ -535,8 +587,11 @@ export function useBattlePageState() {
       } else {
         factoryRun.value = null
       }
-    } catch {
+      return factoryRun.value
+    } catch (error) {
       factoryRun.value = null
+      setRequestErrorMessage(error?.message || '加载工厂挑战状态失败')
+      throw error
     }
   }
 
@@ -544,8 +599,11 @@ export function useBattlePageState() {
     try {
       leaderboardLoading.value = true
       leaderboardData.value = await api.battle.leaderboard() || []
-    } catch {
+      return leaderboardData.value
+    } catch (error) {
       leaderboardData.value = []
+      setRequestErrorMessage(error?.message || '加载排行榜失败')
+      throw error
     } finally {
       leaderboardLoading.value = false
     }
@@ -553,7 +611,7 @@ export function useBattlePageState() {
 
   async function openLeaderboard() {
     showLeaderboard.value = true
-    await runBusy('open-leaderboard', loadLeaderboard).catch(() => {})
+    await runBusy('open-leaderboard', loadLeaderboard)
   }
 
   async function startFactoryChallenge() {
@@ -561,13 +619,34 @@ export function useBattlePageState() {
       stopPolling()
       resultText.value = '正在开始工厂挑战...'
       const res = await api.battle.factoryStart()
-      factoryRun.value = normalizeFactoryRun(res.run || res)
+      const nextRun = normalizeFactoryRun(res.run || res)
+      factoryRun.value = nextRun
+
       if (res.battleId || res.battle?.id) {
         currentBattleId.value = res.battleId || res.battle?.id
-        applyBattlePayload(res)
+        if (normalizeBattlePayload(res).summary) {
+          applyBattlePayload(res)
+        } else {
+          await refreshStatus(true)
+        }
+      } else if (nextRun?.id) {
+        const nextBattleRes = await api.battle.factoryNext(nextRun.id)
+        factoryRun.value = normalizeFactoryRun(nextBattleRes.run || nextBattleRes) || nextRun
+        if (nextBattleRes.battleId || nextBattleRes.battle?.id) {
+          currentBattleId.value = nextBattleRes.battleId || nextBattleRes.battle?.id
+          if (normalizeBattlePayload(nextBattleRes).summary) {
+            applyBattlePayload(nextBattleRes)
+          } else {
+            await refreshStatus(true)
+          }
+        }
+        resultText.value = JSON.stringify(nextBattleRes, null, 2)
+        await loadProfile().catch(() => null)
+        return
       }
+
       resultText.value = JSON.stringify(res, null, 2)
-      await loadProfile()
+      await loadProfile().catch(() => null)
     }).catch((error) => {
       resultText.value = `开始挑战失败: ${error.message || error}`
     })
@@ -579,10 +658,14 @@ export function useBattlePageState() {
       stopPolling()
       resultText.value = '正在进入下一轮...'
       const res = await api.battle.factoryNext(factoryRun.value.id)
-      if (res.run) factoryRun.value = normalizeFactoryRun(res.run)
+      factoryRun.value = normalizeFactoryRun(res.run || res) || factoryRun.value
       if (res.battleId || res.battle?.id) {
         currentBattleId.value = res.battleId || res.battle?.id
-        applyBattlePayload(res)
+        if (normalizeBattlePayload(res).summary) {
+          applyBattlePayload(res)
+        } else {
+          await refreshStatus(true)
+        }
       }
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
@@ -595,7 +678,7 @@ export function useBattlePageState() {
       await api.battle.factoryAbandon()
       resetBattleState({ keepFactoryRun: false, keepResultText: true })
       resultText.value = '已放弃本次工厂挑战'
-      await loadProfile()
+      await loadProfile().catch(() => null)
     }).catch((error) => {
       resultText.value = `放弃失败: ${error.message || error}`
     })
@@ -618,17 +701,17 @@ export function useBattlePageState() {
     if (wasRunFinished || !factoryRun.value) {
       resetBattleState({ keepFactoryRun: false, keepResultText: true })
       resultText.value = '等待开始对战'
-      loadProfile()
+      loadProfile().catch(() => null)
     } else if (summary.value?.status === 'completed') {
       resultText.value = '本轮已完成，可以查看战场详情或继续下一轮。'
     }
   }
 
   onMounted(async () => {
-    await Promise.all([loadProfile(), loadFactoryStatus()])
+    await Promise.allSettled([loadProfile(), loadFactoryStatus()])
     if (factoryRun.value?.current_battle_id) {
       currentBattleId.value = factoryRun.value.current_battle_id
-      await refreshStatus()
+      await refreshStatus(true)
     }
   })
 
@@ -695,12 +778,20 @@ export function useBattlePageState() {
     requestError,
     resultText,
     selectedActions,
+    setSelectedAction,
+    availableSpecialSystems,
+    activeSpecialSystemLabel,
     selectedMoveObject,
     selectedMoves,
+    setSelectedMove,
+    selectedSpecialSystems,
+    setSelectedSpecialSystem,
     selectedReplacementIndexes,
     selectedRosterIndexes,
     selectedSwitchTargets,
+    setSelectedSwitchTarget,
     selectedTargets,
+    setSelectedTarget,
     settlement,
     showContinueFactoryButton,
     showDebugPanel,
@@ -708,6 +799,7 @@ export function useBattlePageState() {
     showLeaderboard,
     showMobileActionDock,
     showResetBattleButton,
+    specialSystemLabel,
     resetBattleState,
     setShowDebugPanel,
     startAsyncBattle,
@@ -719,6 +811,8 @@ export function useBattlePageState() {
     summary,
     tierBgClass,
     tierDisplayName,
+    canUseSpecialSystem,
+    teraTypeLabel,
     tierTextClass,
     toggleLead,
     toggleReplacement,

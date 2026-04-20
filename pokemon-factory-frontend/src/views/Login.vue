@@ -13,16 +13,28 @@
         </p>
         <div class="mt-6 grid gap-3 sm:grid-cols-3">
           <div class="rounded-2xl bg-white/85 px-4 py-4 shadow-sm backdrop-blur">
-            <div class="text-xs uppercase tracking-[0.16em] text-slate-400">工厂挑战</div>
-            <div class="mt-2 text-sm font-semibold text-slate-900">9 连战流程</div>
+            <div class="text-xs uppercase tracking-[0.16em] text-slate-400">
+              工厂挑战
+            </div>
+            <div class="mt-2 text-sm font-semibold text-slate-900">
+              9 连战流程
+            </div>
           </div>
           <div class="rounded-2xl bg-white/85 px-4 py-4 shadow-sm backdrop-blur">
-            <div class="text-xs uppercase tracking-[0.16em] text-slate-400">会话恢复</div>
-            <div class="mt-2 text-sm font-semibold text-slate-900">刷新后自动恢复</div>
+            <div class="text-xs uppercase tracking-[0.16em] text-slate-400">
+              会话恢复
+            </div>
+            <div class="mt-2 text-sm font-semibold text-slate-900">
+              刷新后自动恢复
+            </div>
           </div>
           <div class="rounded-2xl bg-white/85 px-4 py-4 shadow-sm backdrop-blur">
-            <div class="text-xs uppercase tracking-[0.16em] text-slate-400">对战模式</div>
-            <div class="mt-2 text-sm font-semibold text-slate-900">手动与异步模拟</div>
+            <div class="text-xs uppercase tracking-[0.16em] text-slate-400">
+              对战模式
+            </div>
+            <div class="mt-2 text-sm font-semibold text-slate-900">
+              手动与异步模拟
+            </div>
           </div>
         </div>
       </section>

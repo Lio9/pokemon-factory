@@ -20,6 +20,8 @@ final class BattleTurnCleanupSupport {
         applyEndTurnHealing(engine.team(state, true), events);
         applyEndTurnHealing(engine.team(state, false), events);
         applyEndTurnFieldEffects(state, events);
+        decrementDynamax(engine.team(state, true), events);
+        decrementDynamax(engine.team(state, false), events);
         decrementTauntEffects(engine.team(state, true), events);
         decrementTauntEffects(engine.team(state, false), events);
         fieldEffectSupport.decrementFieldEffects(state, fieldSnapshot, events);
@@ -135,6 +137,20 @@ final class BattleTurnCleanupSupport {
     private void clearFlinch(List<Map<String, Object>> team) {
         for (Map<String, Object> mon : team) {
             mon.put("flinched", false);
+        }
+    }
+
+    private void decrementDynamax(List<Map<String, Object>> team, List<String> events) {
+        for (Map<String, Object> mon : team) {
+            int remaining = engine.toInt(mon.get("dynamaxTurnsRemaining"), 0);
+            if (!Boolean.TRUE.equals(mon.get("dynamaxed")) || remaining <= 0) {
+                continue;
+            }
+            remaining -= 1;
+            mon.put("dynamaxTurnsRemaining", remaining);
+            if (remaining == 0) {
+                engine.endDynamax(mon, events);
+            }
         }
     }
 

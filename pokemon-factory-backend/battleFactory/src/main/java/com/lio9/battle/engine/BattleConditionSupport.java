@@ -139,6 +139,13 @@ final class BattleConditionSupport {
             return false;
         }
         String ability = engine.abilityName(target);
+        if ("levitate".equalsIgnoreCase(ability) && moveTypeId == DamageCalculatorUtil.TYPE_GROUND) {
+            actionLog.put("result", "ability-immune");
+            actionLog.put("damage", 0);
+            actionLog.put("ability", "levitate");
+            events.add(target.get("name") + " 的漂浮让地面属性招式失效了");
+            return true;
+        }
         if (("flash-fire".equalsIgnoreCase(ability) || "flash fire".equalsIgnoreCase(ability))
                 && moveTypeId == DamageCalculatorUtil.TYPE_FIRE) {
             target.put("flashFireBoost", true);
@@ -215,6 +222,33 @@ final class BattleConditionSupport {
         return false;
     }
 
+    boolean isStatusMoveBlockedByAbility(Map<String, Object> actor, Map<String, Object> target, Map<String, Object> move,
+                                         Map<String, Object> actionLog, List<String> events) {
+        if (!isStatusMove(move) || actor == target || !hasAbility(target, "good-as-gold", "good as gold")) {
+            return false;
+        }
+        actionLog.put("result", "ability-immune");
+        actionLog.put("damage", 0);
+        actionLog.put("ability", "good-as-gold");
+        events.add(target.get("name") + " 的黄金之躯挡住了 " + move.get("name"));
+        return true;
+    }
+
+    boolean blocksSecondaryEffects(Map<String, Object> target, String effectName, Map<String, Object> actionLog, List<String> events) {
+        if ("covert-cloak".equals(engine.heldItem(target))) {
+            actionLog.put("secondaryEffectBlocked", effectName);
+            events.add(target.get("name") + " 的密探斗篷挡住了追加效果");
+            return true;
+        }
+        if (hasAbility(target, "shield-dust", "shield dust")) {
+            actionLog.put("secondaryEffectBlocked", effectName);
+            actionLog.put("ability", engine.abilityName(target));
+            events.add(target.get("name") + " 的特性挡住了追加效果");
+            return true;
+        }
+        return false;
+    }
+
     void applyReactiveContactEffects(Map<String, Object> attacker, Map<String, Object> target,
                                      Map<String, Object> move, Map<String, Object> actionLog, List<String> events) {
         if (!isContactMove(move)
@@ -236,6 +270,9 @@ final class BattleConditionSupport {
     void applySwitchOutEffects(Map<String, Object> mon, List<String> events) {
         if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
             return;
+        }
+        if (Boolean.TRUE.equals(mon.get("dynamaxed"))) {
+            engine.endDynamax(mon, events);
         }
         if ("regenerator".equalsIgnoreCase(engine.abilityName(mon))) {
             int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
@@ -311,6 +348,14 @@ final class BattleConditionSupport {
                 events.add(target.get("name") + " 的清净护符挡住了威吓");
                 continue;
             }
+            if (hasAbility(target, "clear-body", "clear body", "white-smoke", "white smoke", "full-metal-body", "full metal body")) {
+                events.add(target.get("name") + " 的特性挡住了威吓");
+                continue;
+            }
+            if (hasAbility(target, "inner-focus", "inner focus", "scrappy", "own-tempo", "own tempo", "oblivious")) {
+                events.add(target.get("name") + " 的特性不受威吓影响");
+                continue;
+            }
             int previousStage = damageSupport.statStage(target, "attack");
             int nextStage = Math.max(-6, previousStage - 1);
             damageSupport.statStages(target).put("attack", nextStage);
@@ -327,9 +372,7 @@ final class BattleConditionSupport {
 
     void applySpeedDrop(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
                         List<String> events) {
-        if ("clear-amulet".equals(engine.heldItem(target))) {
-            actionLog.put("speedDropBlocked", true);
-            events.add(target.get("name") + " 的清净护符挡住了降速");
+        if (isStatDropBlocked(target, actionLog, events, "speedDropBlocked", "降速")) {
             return;
         }
         int previousStage = damageSupport.statStage(target, "speed");
@@ -340,6 +383,69 @@ final class BattleConditionSupport {
             triggerStatDropAbilities(target, events);
             events.add(source.get("name") + " 使 " + target.get("name") + " 的速度下降了");
         }
+    }
+
+    boolean applySpecialAttackDrop(Map<String, Object> source, Map<String, Object> target, int stages,
+                                   Map<String, Object> actionLog, List<String> events) {
+        if (isStatDropBlocked(target, actionLog, events, "specialAttackDropBlocked", "特攻下降")) {
+            return false;
+        }
+        int previousStage = damageSupport.statStage(target, "specialAttack");
+        int nextStage = Math.max(-6, previousStage - Math.max(1, stages));
+        damageSupport.statStages(target).put("specialAttack", nextStage);
+        if (nextStage != previousStage) {
+            actionLog.put("specialAttackStageChange", nextStage - previousStage);
+            triggerStatDropAbilities(target, events);
+            events.add(source.get("name") + " 使 " + target.get("name") + " 的特攻下降了");
+            return true;
+        }
+        return false;
+    }
+
+    boolean applySpecialDefenseDrop(Map<String, Object> source, Map<String, Object> target, int stages,
+                                    Map<String, Object> actionLog, List<String> events) {
+        if (isStatDropBlocked(target, actionLog, events, "specialDefenseDropBlocked", "特防下降")) {
+            return false;
+        }
+        int previousStage = damageSupport.statStage(target, "specialDefense");
+        int nextStage = Math.max(-6, previousStage - Math.max(1, stages));
+        damageSupport.statStages(target).put("specialDefense", nextStage);
+        if (nextStage != previousStage) {
+            actionLog.put("specialDefenseStageChange", nextStage - previousStage);
+            triggerStatDropAbilities(target, events);
+            events.add(source.get("name") + " 使 " + target.get("name") + " 的特防大幅下降了");
+            return true;
+        }
+        return false;
+    }
+
+    boolean applyAttackAndSpecialAttackDrop(Map<String, Object> source, Map<String, Object> target,
+                                            Map<String, Object> actionLog, List<String> events) {
+        if (isStatDropBlocked(target, actionLog, events, "partingShotBlocked", "攻击与特攻下降")) {
+            return false;
+        }
+        boolean attackDropped = false;
+        int previousAttack = damageSupport.statStage(target, "attack");
+        int nextAttack = Math.max(-6, previousAttack - 1);
+        damageSupport.statStages(target).put("attack", nextAttack);
+        if (nextAttack != previousAttack) {
+            attackDropped = true;
+            actionLog.put("attackStageChange", nextAttack - previousAttack);
+        }
+        boolean specialAttackDropped = false;
+        int previousSpecialAttack = damageSupport.statStage(target, "specialAttack");
+        int nextSpecialAttack = Math.max(-6, previousSpecialAttack - 1);
+        damageSupport.statStages(target).put("specialAttack", nextSpecialAttack);
+        if (nextSpecialAttack != previousSpecialAttack) {
+            specialAttackDropped = true;
+            actionLog.put("specialAttackStageChange", nextSpecialAttack - previousSpecialAttack);
+        }
+        if (attackDropped || specialAttackDropped) {
+            triggerStatDropAbilities(target, events);
+            events.add(source.get("name") + " 使 " + target.get("name") + " 的攻击和特攻下降了");
+            return true;
+        }
+        return false;
     }
 
     void triggerStatDropAbilities(Map<String, Object> target, List<String> events) {
@@ -365,9 +471,13 @@ final class BattleConditionSupport {
 
     void resetBattleStages(Map<String, Object> mon) {
         damageSupport.statStages(mon).put("attack", 0);
+        damageSupport.statStages(mon).put("defense", 0);
         damageSupport.statStages(mon).put("specialAttack", 0);
+        damageSupport.statStages(mon).put("specialDefense", 0);
         damageSupport.statStages(mon).put("speed", 0);
         mon.put("tauntTurns", 0);
+        mon.put("protectionStreak", 0);
+        mon.put("lastProtectionRound", 0);
     }
 
     boolean isBlockedByPsychicTerrain(Map<String, Object> state, String actingSide, Map<String, Object> target,
@@ -384,6 +494,32 @@ final class BattleConditionSupport {
 
     private boolean isStatusMove(Map<String, Object> move) {
         return engine.toInt(move.get("damage_class_id"), 0) == DamageCalculatorUtil.DAMAGE_CLASS_STATUS;
+    }
+
+    private boolean isStatDropBlocked(Map<String, Object> target, Map<String, Object> actionLog, List<String> events,
+                                      String logKey, String effectName) {
+        if ("clear-amulet".equals(engine.heldItem(target))) {
+            actionLog.put(logKey, true);
+            events.add(target.get("name") + " 的清净护符挡住了" + effectName);
+            return true;
+        }
+        if (hasAbility(target, "clear-body", "clear body", "white-smoke", "white smoke", "full-metal-body", "full metal body")) {
+            actionLog.put(logKey, true);
+            actionLog.put("ability", engine.abilityName(target));
+            events.add(target.get("name") + " 的特性挡住了" + effectName);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean hasAbility(Map<String, Object> target, String... names) {
+        String ability = engine.abilityName(target);
+        for (String name : names) {
+            if (name.equalsIgnoreCase(ability)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isContactMove(Map<String, Object> move) {
@@ -438,7 +574,7 @@ final class BattleConditionSupport {
         if (moveTypeId <= 0) {
             return false;
         }
-        for (Map<String, Object> type : engine.castList(target.get("types"))) {
+        for (Map<String, Object> type : engine.activeTypes(target)) {
             if (engine.typeFactor(moveTypeId, engine.toInt(type.get("type_id"), 0)) == 0) {
                 return true;
             }

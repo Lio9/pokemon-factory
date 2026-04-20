@@ -10,7 +10,7 @@ function normalizeBaseUrl(value, fallback) {
 }
 
 export const appEnv = Object.freeze({
-  apiBase: normalizeBaseUrl(import.meta.env.VITE_API_BASE, DEFAULT_ENV.apiBase),
+  apiBase: normalizeBaseUrl(import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL, DEFAULT_ENV.apiBase),
   damageApiBase: normalizeBaseUrl(import.meta.env.VITE_DAMAGE_API_BASE, DEFAULT_ENV.damageApiBase),
   spritesBase: normalizeBaseUrl(import.meta.env.VITE_SPRITES_BASE, DEFAULT_ENV.spritesBase)
 })

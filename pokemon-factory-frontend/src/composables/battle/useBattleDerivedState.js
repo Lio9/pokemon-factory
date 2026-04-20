@@ -169,6 +169,61 @@ export function useBattleDerivedState(state) {
     return (mon?.moves || []).find((move) => (move.name_en || move.name) === moveName) || null
   }
 
+  function canUseSpecialSystem(mon, system) {
+    if (!mon || summary.value?.playerSpecialUsed) {
+      return false
+    }
+    switch (system) {
+      case 'tera':
+        return !mon.terastallized && Number(mon.teraTypeId || mon?.teraType?.type_id || 0) > 0
+      case 'mega':
+        return Boolean(mon.megaEligible) && !mon.megaEvolved
+      case 'z-move':
+        return Boolean(mon.zMoveEligible) && !mon.zMoveUsed
+      case 'dynamax':
+        return Boolean(mon.dynamaxEligible) && !mon.dynamaxed
+      default:
+        return false
+    }
+  }
+
+  function availableSpecialSystems(mon) {
+    const systems = Array.isArray(mon?.specialSystems) ? mon.specialSystems : []
+    return systems.filter((system) => canUseSpecialSystem(mon, system))
+  }
+
+  function canTerastallize(mon) {
+    return canUseSpecialSystem(mon, 'tera')
+  }
+
+  function teraTypeLabel(mon) {
+    const teraType = mon?.teraType || {}
+    return teraType.name || teraType.name_en || `属性${teraType.type_id || mon?.teraTypeId || ''}`
+  }
+
+  function specialSystemLabel(system) {
+    switch (system) {
+      case 'tera':
+        return '太晶化'
+      case 'mega':
+        return 'Mega 进化'
+      case 'z-move':
+        return 'Z 招式'
+      case 'dynamax':
+        return '极巨化'
+      default:
+        return system || '特殊系统'
+    }
+  }
+
+  function activeSpecialSystemLabel(mon) {
+    const system = mon?.specialSystemActivated
+      || (mon?.terastallized ? 'tera' : null)
+      || (mon?.megaEvolved ? 'mega' : null)
+      || (mon?.dynamaxed ? 'dynamax' : null)
+    return system ? specialSystemLabel(system) : ''
+  }
+
   const canSubmitMove = computed(() => {
     if (!currentBattleId.value || summary.value?.status !== 'running' || !playerActiveMons.value.length || isReplacementPhase.value) {
       return false
@@ -318,6 +373,10 @@ export function useBattleDerivedState(state) {
     availableActionDescription,
     canConfirmPreview,
     canConfirmReplacement,
+    availableSpecialSystems,
+    activeSpecialSystemLabel,
+    canUseSpecialSystem,
+    canTerastallize,
     canSubmitMove,
     currentUser,
     exchangeCandidates,
@@ -341,10 +400,12 @@ export function useBattleDerivedState(state) {
     showContinueFactoryButton,
     showMobileActionDock,
     showResetBattleButton,
+    specialSystemLabel,
     statusText,
     statusTone,
     tierBgClass,
     tierDisplayName,
+    teraTypeLabel,
     tierTextClass
   }
 }

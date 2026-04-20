@@ -22,6 +22,8 @@ final class BattleFieldEffectSupport {
         effects.put("opponentReflectTurns", 0);
         effects.put("playerLightScreenTurns", 0);
         effects.put("opponentLightScreenTurns", 0);
+        effects.put("playerAuroraVeilTurns", 0);
+        effects.put("opponentAuroraVeilTurns", 0);
         return effects;
     }
 
@@ -90,6 +92,10 @@ final class BattleFieldEffectSupport {
 
     int lightScreenTurns(Map<String, Object> state, boolean playerSide) {
         return toInt(fieldEffects(state).get(playerSide ? "playerLightScreenTurns" : "opponentLightScreenTurns"), 0);
+    }
+
+    int auroraVeilTurns(Map<String, Object> state, boolean playerSide) {
+        return toInt(fieldEffects(state).get(playerSide ? "playerAuroraVeilTurns" : "opponentAuroraVeilTurns"), 0);
     }
 
     void activateTailwind(Map<String, Object> state, boolean playerSide, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
@@ -191,13 +197,20 @@ final class BattleFieldEffectSupport {
 
     void activateScreen(Map<String, Object> state, String screen, boolean playerSide, Map<String, Object> actor,
                         Map<String, Object> actionLog, List<String> events) {
+        int duration = screenDuration(actor);
         if ("reflect".equals(screen)) {
-            fieldEffects(state).put(playerSide ? "playerReflectTurns" : "opponentReflectTurns", 5);
+            fieldEffects(state).put(playerSide ? "playerReflectTurns" : "opponentReflectTurns", duration);
             actionLog.put("result", "reflect");
             events.add(actor.get("name") + " 展开了反射壁");
             return;
         }
-        fieldEffects(state).put(playerSide ? "playerLightScreenTurns" : "opponentLightScreenTurns", 5);
+        if ("aurora-veil".equals(screen)) {
+            fieldEffects(state).put(playerSide ? "playerAuroraVeilTurns" : "opponentAuroraVeilTurns", duration);
+            actionLog.put("result", "aurora-veil");
+            events.add(actor.get("name") + " 展开了极光幕");
+            return;
+        }
+        fieldEffects(state).put(playerSide ? "playerLightScreenTurns" : "opponentLightScreenTurns", duration);
         actionLog.put("result", "light-screen");
         events.add(actor.get("name") + " 展开了光墙");
     }
@@ -218,6 +231,8 @@ final class BattleFieldEffectSupport {
         decrementFieldEffect(state, fieldSnapshot, "opponentReflectTurns", "对手反射壁消失了", events);
         decrementFieldEffect(state, fieldSnapshot, "playerLightScreenTurns", "我方光墙消失了", events);
         decrementFieldEffect(state, fieldSnapshot, "opponentLightScreenTurns", "对手光墙消失了", events);
+        decrementFieldEffect(state, fieldSnapshot, "playerAuroraVeilTurns", "我方极光幕消失了", events);
+        decrementFieldEffect(state, fieldSnapshot, "opponentAuroraVeilTurns", "对手极光幕消失了", events);
     }
 
     private void decrementFieldEffect(Map<String, Object> state, Map<String, Object> fieldSnapshot, String key, String endMessage, List<String> events) {
@@ -245,6 +260,10 @@ final class BattleFieldEffectSupport {
 
     private int terrainDuration(Map<String, Object> actor) {
         return "terrain-extender".equals(heldItem(actor)) ? 8 : 5;
+    }
+
+    private int screenDuration(Map<String, Object> actor) {
+        return "light-clay".equals(heldItem(actor)) ? 8 : 5;
     }
 
     private String heldItem(Map<String, Object> actor) {

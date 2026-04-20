@@ -52,12 +52,20 @@
           </div>
           <div class="mt-3 grid grid-cols-2 gap-2 rounded-2xl bg-slate-50 p-3 text-xs text-slate-500">
             <div>
-              <div class="text-[11px] uppercase tracking-[0.16em] text-slate-400">持有物</div>
-              <div class="mt-1 font-semibold text-slate-700">{{ p.heldItem || '无' }}</div>
+              <div class="text-[11px] uppercase tracking-[0.16em] text-slate-400">
+                持有物
+              </div>
+              <div class="mt-1 font-semibold text-slate-700">
+                {{ p.heldItem || '无' }}
+              </div>
             </div>
             <div>
-              <div class="text-[11px] uppercase tracking-[0.16em] text-slate-400">基础面板</div>
-              <div class="mt-1 font-semibold text-slate-700">HP {{ p?.stats?.hp || '-' }} / 速度 {{ p?.stats?.speed || '-' }}</div>
+              <div class="text-[11px] uppercase tracking-[0.16em] text-slate-400">
+                基础面板
+              </div>
+              <div class="mt-1 font-semibold text-slate-700">
+                HP {{ p?.stats?.hp || '-' }} / 速度 {{ p?.stats?.speed || '-' }}
+              </div>
             </div>
           </div>
           <div class="mt-3 flex flex-wrap gap-2">

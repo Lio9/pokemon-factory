@@ -34,7 +34,8 @@ class BattleTargetSupportTest {
                 "player", 0, 0, 0, 0,
                 move("Strike", "strike", 80, 100, 0, DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL,
                         DamageCalculatorUtil.TYPE_NORMAL, 10),
-                100
+                100,
+                false
         );
         Map<String, BattleEngine.RedirectionEffect> redirectionTargets = Map.of(
                 "opponent", new BattleEngine.RedirectionEffect(1, true)
@@ -61,7 +62,8 @@ class BattleTargetSupportTest {
                 "player", 0, 0, -1, 0,
                 move("Helping Hand", "helping-hand", 0, 100, 5, DamageCalculatorUtil.DAMAGE_CLASS_STATUS,
                         DamageCalculatorUtil.TYPE_NORMAL, 3),
-                100
+                100,
+                false
         );
         Map<String, Object> actionLog = new LinkedHashMap<>();
         List<String> events = new java.util.ArrayList<>();
@@ -89,7 +91,8 @@ class BattleTargetSupportTest {
             "player", 0, 0, -1, 0,
             move("Helping Hand", "helping-hand", 0, 100, 5, DamageCalculatorUtil.DAMAGE_CLASS_STATUS,
                 DamageCalculatorUtil.TYPE_NORMAL, 3),
-            100
+            100,
+            false
         );
         Map<String, Object> actionLog = new LinkedHashMap<>();
         List<String> events = new java.util.ArrayList<>();

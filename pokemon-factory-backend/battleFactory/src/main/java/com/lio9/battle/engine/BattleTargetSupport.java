@@ -65,6 +65,31 @@ final class BattleTargetSupport {
         events.add(actor.get("name") + " 使用了 " + move.get("name") + "，帮助了 " + target.get("name"));
     }
 
+    boolean applyAllySwitch(Map<String, Object> state, BattleEngine.Action action, Map<String, Object> actor,
+                            Map<String, Object> actionLog, List<String> events) {
+        boolean playerSide = "player".equals(action.side());
+        List<Integer> active = new ArrayList<>(engine.activeSlots(state, playerSide));
+        if (active.size() < 2 || action.actorFieldSlot() < 0 || action.actorFieldSlot() >= active.size()) {
+            actionLog.put("result", "failed");
+            events.add(actor.get("name") + " 使用了 Ally Switch，但失败了");
+            return false;
+        }
+        int otherFieldSlot = action.actorFieldSlot() == 0 ? 1 : 0;
+        if (otherFieldSlot >= active.size()) {
+            actionLog.put("result", "failed");
+            events.add(actor.get("name") + " 使用了 Ally Switch，但失败了");
+            return false;
+        }
+        Integer current = active.get(action.actorFieldSlot());
+        Integer other = active.get(otherFieldSlot);
+        active.set(action.actorFieldSlot(), other);
+        active.set(otherFieldSlot, current);
+        state.put(playerSide ? "playerActiveSlots" : "opponentActiveSlots", active);
+        actionLog.put("result", "ally-switch");
+        events.add(actor.get("name") + " 与队友交换了位置");
+        return true;
+    }
+
     private int fieldSlotForTeamIndex(Map<String, Object> state, boolean playerSide, int teamIndex) {
         List<Integer> active = engine.activeSlots(state, playerSide);
         for (int fieldSlot = 0; fieldSlot < active.size(); fieldSlot++) {

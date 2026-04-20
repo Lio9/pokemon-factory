@@ -112,6 +112,8 @@ public class BattleEngine {
         Map<String, Object> fieldSnapshot = cloneMap(fieldEffects(state));
 
         Map<String, Boolean> protectedTargets = new HashMap<>();
+        Map<String, Boolean> wideGuardSides = new HashMap<>();
+        Map<String, Boolean> quickGuardSides = new HashMap<>();
         Map<String, RedirectionEffect> redirectionTargets = new HashMap<>();
         Map<Map<String, Object>, Boolean> helpingHandBoosts = new IdentityHashMap<>();
         List<Action> actions = new ArrayList<>();
@@ -125,7 +127,7 @@ public class BattleEngine {
         List<Map<String, Object>> actionLogs = new ArrayList<>();
 
         for (Action action : actions) {
-            roundSupport.processAction(state, action, round, random, protectedTargets, redirectionTargets,
+            roundSupport.processAction(state, action, round, random, protectedTargets, wideGuardSides, quickGuardSides, redirectionTargets,
                     helpingHandBoosts, actionLogs, events);
         }
 
@@ -240,7 +242,10 @@ public class BattleEngine {
     }
 
     void applyCooldown(Map<String, Object> mon, Map<String, Object> move) {
-        int cooldown = skillService.getCooldown(String.valueOf(move.get("name_en")), isProtect(move) ? 2 : 0);
+        if (isProtectionMove(move)) {
+            return;
+        }
+        int cooldown = skillService.getCooldown(String.valueOf(move.get("name_en")), 0);
         if (cooldown > 0) {
             cooldowns(mon).put(String.valueOf(move.get("name_en")), cooldown + 1);
         }
@@ -250,9 +255,31 @@ public class BattleEngine {
         return "protect".equalsIgnoreCase(String.valueOf(move.get("name_en")));
     }
 
+    boolean isDetect(Map<String, Object> move) {
+        return "detect".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    boolean isWideGuard(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "wide-guard".equalsIgnoreCase(nameEn) || "wide guard".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isQuickGuard(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "quick-guard".equalsIgnoreCase(nameEn) || "quick guard".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isProtectionMove(Map<String, Object> move) {
+        return isProtect(move) || isDetect(move) || isWideGuard(move) || isQuickGuard(move);
+    }
+
     private boolean isFakeOut(Map<String, Object> move) {
         return "fake-out".equalsIgnoreCase(String.valueOf(move.get("name_en")))
                 || "fake out".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    boolean isFeint(Map<String, Object> move) {
+        return "feint".equalsIgnoreCase(String.valueOf(move.get("name_en")));
     }
 
     boolean isTaunt(Map<String, Object> move) {
@@ -273,6 +300,11 @@ public class BattleEngine {
     boolean isLightScreen(Map<String, Object> move) {
         String nameEn = String.valueOf(move.get("name_en"));
         return "light-screen".equalsIgnoreCase(nameEn) || "light screen".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isAuroraVeil(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "aurora-veil".equalsIgnoreCase(nameEn) || "aurora veil".equalsIgnoreCase(nameEn);
     }
 
     boolean canUseMove(Map<String, Object> mon, Map<String, Object> move, int currentRound) {
@@ -310,6 +342,11 @@ public class BattleEngine {
     boolean isHelpingHand(Map<String, Object> move) {
         return "helping-hand".equalsIgnoreCase(String.valueOf(move.get("name_en")))
                 || "helping hand".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    boolean isAllySwitch(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "ally-switch".equalsIgnoreCase(nameEn) || "ally switch".equalsIgnoreCase(nameEn);
     }
 
     int targetIndex(Map<String, Object> state, boolean playerTarget, int targetFieldSlot) {
@@ -382,6 +419,24 @@ public class BattleEngine {
     boolean isWillOWisp(Map<String, Object> move) {
         String nameEn = String.valueOf(move.get("name_en"));
         return "will-o-wisp".equalsIgnoreCase(nameEn) || "will o wisp".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isElectroweb(Map<String, Object> move) {
+        return "electroweb".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    boolean isSnarl(Map<String, Object> move) {
+        return "snarl".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    boolean isFakeTears(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "fake-tears".equalsIgnoreCase(nameEn) || "fake tears".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isPartingShot(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "parting-shot".equalsIgnoreCase(nameEn) || "parting shot".equalsIgnoreCase(nameEn);
     }
 
     boolean isSpreadMove(Map<String, Object> move) {
@@ -600,7 +655,7 @@ public class BattleEngine {
     }
 
     boolean targetHasType(Map<String, Object> target, int typeId) {
-        for (Map<String, Object> type : castList(target.get("types"))) {
+        for (Map<String, Object> type : activeTypes(target)) {
             if (toInt(type.get("type_id"), 0) == typeId) {
                 return true;
             }
@@ -617,6 +672,163 @@ public class BattleEngine {
     boolean isGrounded(Map<String, Object> mon) {
         return !targetHasType(mon, DamageCalculatorUtil.TYPE_FLYING)
                 && !"levitate".equalsIgnoreCase(abilityName(mon));
+    }
+
+    List<Map<String, Object>> activeTypes(Map<String, Object> mon) {
+        if (Boolean.TRUE.equals(mon.get("terastallized"))) {
+            Map<String, Object> teraType = castMap(mon.get("teraType"));
+            if (toInt(teraType.get("type_id"), 0) > 0) {
+                return List.of(teraType);
+            }
+        }
+        if (Boolean.TRUE.equals(mon.get("megaEvolved"))) {
+            List<Map<String, Object>> megaTypes = castList(mon.get("megaTypes"));
+            if (!megaTypes.isEmpty()) {
+                return megaTypes;
+            }
+        }
+        return castList(mon.get("types"));
+    }
+
+    boolean canTerastallize(Map<String, Object> state, boolean playerSide, Map<String, Object> mon) {
+        return canUseSpecialSystem(state, playerSide, mon, "tera", null);
+    }
+
+    void activateTerastallization(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
+                                  Map<String, Object> actionLog, List<String> events) {
+        if (!canUseSpecialSystem(state, playerSide, mon, "tera", null)) {
+            return;
+        }
+        mon.put("terastallized", true);
+        mon.put("specialSystemActivated", "tera");
+        markSpecialSystemUsed(state, playerSide, "tera");
+        Map<String, Object> teraType = castMap(mon.get("teraType"));
+        actionLog.put("terastallized", true);
+        actionLog.put("teraTypeId", toInt(teraType.get("type_id"), 0));
+        String teraName = String.valueOf(teraType.getOrDefault("name", teraType.getOrDefault("name_en", "未知属性")));
+        events.add(mon.get("name") + " 太晶化为了 " + teraName + " 属性");
+    }
+
+    boolean canUseSpecialSystem(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
+                                String system, Map<String, Object> move) {
+        if (system == null || system.isBlank() || Boolean.TRUE.equals(state.get(playerSide ? "playerSpecialUsed" : "opponentSpecialUsed"))) {
+            return false;
+        }
+        return switch (system) {
+            case "tera" -> !Boolean.TRUE.equals(mon.get("terastallized")) && toInt(mon.get("teraTypeId"), 0) > 0;
+            case "mega" -> Boolean.TRUE.equals(mon.get("megaEligible")) && !Boolean.TRUE.equals(mon.get("megaEvolved"));
+            case "z-move" -> Boolean.TRUE.equals(mon.get("zMoveEligible"))
+                    && !Boolean.TRUE.equals(mon.get("zMoveUsed"))
+                    && move != null
+                    && !isStatusMove(move)
+                    && toInt(move.get("power"), 0) > 0;
+            case "dynamax" -> Boolean.TRUE.equals(mon.get("dynamaxEligible")) && !Boolean.TRUE.equals(mon.get("dynamaxed"));
+            default -> false;
+        };
+    }
+
+    void activateSpecialSystem(Map<String, Object> state, boolean playerSide, Map<String, Object> mon, Map<String, Object> move,
+                               String system, int round, Map<String, Object> actionLog, List<String> events) {
+        if (!canUseSpecialSystem(state, playerSide, mon, system, move)) {
+            return;
+        }
+        switch (system) {
+            case "tera" -> activateTerastallization(state, playerSide, mon, actionLog, events);
+            case "mega" -> activateMegaEvolution(state, playerSide, mon, actionLog, events);
+            case "z-move" -> activateZMove(state, playerSide, mon, move, round, actionLog, events);
+            case "dynamax" -> activateDynamax(state, playerSide, mon, actionLog, events);
+            default -> {
+            }
+        }
+    }
+
+    boolean isZMoveActive(Map<String, Object> mon, int round, Map<String, Object> move) {
+        return "z-move".equals(mon.get("specialSystemActivated"))
+                && toInt(mon.get("zMoveRound"), 0) == round
+                && move != null
+                && String.valueOf(move.get("name_en")).equalsIgnoreCase(String.valueOf(mon.get("zMoveBase")));
+    }
+
+    boolean isDynamaxed(Map<String, Object> mon) {
+        return Boolean.TRUE.equals(mon.get("dynamaxed"));
+    }
+
+    private void activateMegaEvolution(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
+                                       Map<String, Object> actionLog, List<String> events) {
+        mon.put("megaEvolved", true);
+        mon.put("specialSystemActivated", "mega");
+        applyMegaTemplate(mon);
+        markSpecialSystemUsed(state, playerSide, "mega");
+        actionLog.put("megaEvolved", true);
+        events.add(mon.get("name") + " 完成了 Mega 进化");
+    }
+
+    private void activateZMove(Map<String, Object> state, boolean playerSide, Map<String, Object> mon, Map<String, Object> move,
+                               int round, Map<String, Object> actionLog, List<String> events) {
+        mon.put("zMoveUsed", true);
+        mon.put("specialSystemActivated", "z-move");
+        mon.put("zMoveRound", round);
+        mon.put("zMoveBase", move == null ? "" : move.get("name_en"));
+        markSpecialSystemUsed(state, playerSide, "z-move");
+        actionLog.put("zMove", true);
+        events.add(mon.get("name") + " 释放了 Z 招式能量");
+    }
+
+    private void activateDynamax(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
+                                 Map<String, Object> actionLog, List<String> events) {
+        Map<String, Object> stats = castMap(mon.get("stats"));
+        int baseHp = toInt(mon.get("dynamaxBaseHp"), toInt(stats.get("hp"), 1));
+        int maxHp = toInt(stats.get("hp"), baseHp);
+        if (maxHp <= baseHp) {
+            stats.put("hp", baseHp * 2);
+            mon.put("currentHp", toInt(mon.get("currentHp"), baseHp) * 2);
+        }
+        mon.put("dynamaxed", true);
+        mon.put("dynamaxTurnsRemaining", 3);
+        mon.put("specialSystemActivated", "dynamax");
+        markSpecialSystemUsed(state, playerSide, "dynamax");
+        actionLog.put("dynamaxed", true);
+        events.add(mon.get("name") + " 进行了极巨化");
+    }
+
+    void endDynamax(Map<String, Object> mon, List<String> events) {
+        if (!Boolean.TRUE.equals(mon.get("dynamaxed"))) {
+            return;
+        }
+        Map<String, Object> stats = castMap(mon.get("stats"));
+        int baseHp = toInt(mon.get("dynamaxBaseHp"), toInt(stats.get("hp"), 1));
+        int currentMaxHp = Math.max(1, toInt(stats.get("hp"), baseHp));
+        int currentHp = toInt(mon.get("currentHp"), 0);
+        int restoredHp = Math.max(1, (int) Math.ceil((currentHp / (double) currentMaxHp) * baseHp));
+        stats.put("hp", baseHp);
+        mon.put("currentHp", Math.min(baseHp, restoredHp));
+        mon.put("dynamaxed", false);
+        mon.put("dynamaxTurnsRemaining", 0);
+        events.add(mon.get("name") + " 的极巨化结束了");
+    }
+
+    private void applyMegaTemplate(Map<String, Object> mon) {
+        Object statsValue = mon.get("megaStats");
+        if (statsValue instanceof Map<?, ?> megaStats) {
+            Map<String, Object> stats = castMap(mon.get("stats"));
+            for (Map.Entry<?, ?> entry : megaStats.entrySet()) {
+                stats.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+        }
+        Object abilityValue = mon.get("megaAbility");
+        if (abilityValue instanceof Map<?, ?> megaAbility) {
+            mon.put("ability", new LinkedHashMap<>(castMap(megaAbility)));
+        } else if (abilityValue != null) {
+            mon.put("ability", abilityValue);
+        }
+    }
+
+    private void markSpecialSystemUsed(Map<String, Object> state, boolean playerSide, String system) {
+        state.put(playerSide ? "playerSpecialUsed" : "opponentSpecialUsed", true);
+        state.put(playerSide ? "playerSpecialType" : "opponentSpecialType", system);
+        if ("tera".equals(system)) {
+            state.put(playerSide ? "playerTeraUsed" : "opponentTeraUsed", true);
+        }
     }
 
     boolean isOnSide(Map<String, Object> state, Map<String, Object> mon, boolean playerSide) {
@@ -657,7 +869,7 @@ public class BattleEngine {
         return fieldEffectSupport.sandTurns(state);
     }
 
-    private int snowTurns(Map<String, Object> state) {
+    int snowTurns(Map<String, Object> state) {
         return fieldEffectSupport.snowTurns(state);
     }
 
@@ -691,6 +903,10 @@ public class BattleEngine {
 
     private int lightScreenTurns(Map<String, Object> state, boolean playerSide) {
         return fieldEffectSupport.lightScreenTurns(state, playerSide);
+    }
+
+    int auroraVeilTurns(Map<String, Object> state, boolean playerSide) {
+        return fieldEffectSupport.auroraVeilTurns(state, playerSide);
     }
 
     void activateTailwind(Map<String, Object> state, boolean playerSide, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
@@ -780,13 +996,21 @@ public class BattleEngine {
         return fallback;
     }
 
-    record Action(String side, String actionType, int actorIndex, int actorFieldSlot, int targetTeamIndex, int targetFieldSlot, int switchToTeamIndex, Map<String, Object> move, int speed) {
-        static Action moveAction(String side, int actorIndex, int actorFieldSlot, int targetTeamIndex, int targetFieldSlot, Map<String, Object> move, int speed) {
-            return new Action(side, "move", actorIndex, actorFieldSlot, targetTeamIndex, targetFieldSlot, -1, move, speed);
+    record Action(String side, String actionType, int actorIndex, int actorFieldSlot, int targetTeamIndex, int targetFieldSlot,
+                  int switchToTeamIndex, Map<String, Object> move, int speed, String specialSystemRequested) {
+        static Action moveAction(String side, int actorIndex, int actorFieldSlot, int targetTeamIndex, int targetFieldSlot,
+                                 Map<String, Object> move, int speed, boolean terastallizeRequested) {
+            return new Action(side, "move", actorIndex, actorFieldSlot, targetTeamIndex, targetFieldSlot, -1, move, speed,
+                    terastallizeRequested ? "tera" : null);
+        }
+
+        static Action moveAction(String side, int actorIndex, int actorFieldSlot, int targetTeamIndex, int targetFieldSlot,
+                                 Map<String, Object> move, int speed, String specialSystemRequested) {
+            return new Action(side, "move", actorIndex, actorFieldSlot, targetTeamIndex, targetFieldSlot, -1, move, speed, specialSystemRequested);
         }
 
         static Action switchAction(String side, int actorIndex, int actorFieldSlot, int switchToTeamIndex, int speed) {
-            return new Action(side, "switch", actorIndex, actorFieldSlot, -1, -1, switchToTeamIndex, null, speed);
+            return new Action(side, "switch", actorIndex, actorFieldSlot, -1, -1, switchToTeamIndex, null, speed, null);
         }
 
         int priority() {
@@ -798,6 +1022,10 @@ public class BattleEngine {
 
         boolean isSwitch() {
             return "switch".equals(actionType);
+        }
+
+        boolean terastallizeRequested() {
+            return "tera".equals(specialSystemRequested);
         }
     }
 

@@ -65,7 +65,14 @@ public interface BattleDexMapper {
             "FROM pokemon_form_move pfm " +
             "JOIN move m ON m.id = pfm.move_id " +
             "WHERE pfm.form_id = #{formId} " +
-            "AND (m.name_en = 'protect' OR (m.damage_class_id IN (1, 2) AND COALESCE(m.power, 0) > 0)) " +
+            "AND (" +
+            "m.name_en IN (" +
+            "'protect','detect','wide-guard','quick-guard','tailwind','trick-room','rain-dance','sunny-day','sandstorm','snowscape'," +
+            "'electric-terrain','psychic-terrain','grassy-terrain','misty-terrain','reflect','light-screen','aurora-veil','taunt','spore'," +
+            "'helping-hand','follow-me','rage-powder','will-o-wisp','thunder-wave','icy-wind','electroweb','snarl','fake-tears'," +
+            "'parting-shot','ally-switch','feint'" +
+            ") OR (m.damage_class_id IN (1, 2) AND COALESCE(m.power, 0) > 0)" +
+            ") " +
             "GROUP BY m.id, m.name, m.name_en, m.type_id, m.damage_class_id, m.target_id, m.power, m.accuracy, m.priority, m.effect_short " +
             "ORDER BY CASE WHEN m.name_en = 'protect' THEN 0 ELSE 1 END, COALESCE(m.power, 0) DESC, COALESCE(m.accuracy, 100) DESC " +
             "LIMIT #{limit}")

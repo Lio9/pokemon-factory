@@ -6,6 +6,7 @@ import com.lio9.battle.service.BattleExecutor;
 import com.lio9.battle.service.BattleService;
 import com.lio9.battle.service.FactoryRunService;
 import com.lio9.battle.mapper.PlayerMapper;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,8 +45,8 @@ public class BattleController {
      * </p>
      */
     @PostMapping("/start")
-    public ResponseEntity<?> startBattle(@RequestBody Map<String, Object> req) {
-        req.put("username", authenticatedUsername());
+    public ResponseEntity<?> startBattle(@RequestBody Map<String, Object> req, Authentication authentication) {
+        req.put("username", authenticatedUsername(authentication));
         return BattleApiResponseSupport.fromPayload(battleService.startMatch(req));
     }
 
@@ -53,8 +54,8 @@ public class BattleController {
      * 提交一场异步自动模拟任务。
      */
     @PostMapping("/start-async")
-    public ResponseEntity<?> startAsync(@RequestBody Map<String, Object> req) {
-        String username = authenticatedUsername();
+    public ResponseEntity<?> startAsync(@RequestBody Map<String, Object> req, Authentication authentication) {
+        String username = authenticatedUsername(authentication);
         playerMapper.insertIgnore(username);
         Integer playerId = playerMapper.findIdByUsername(username);
         String teamJson = req.get("teamJson") instanceof String ? req.get("teamJson").toString() : null;
@@ -124,8 +125,8 @@ public class BattleController {
      * 认输：主动放弃当前对战。
      */
     @PostMapping("/{battleId}/forfeit")
-    public ResponseEntity<?> forfeit(@PathVariable Long battleId) {
-        return BattleApiResponseSupport.fromPayload(battleService.forfeitBattle(battleId, authenticatedUsername()));
+    public ResponseEntity<?> forfeit(@PathVariable Long battleId, Authentication authentication) {
+        return BattleApiResponseSupport.fromPayload(battleService.forfeitBattle(battleId, authenticatedUsername(authentication)));
     }
 
     // ========== 工厂挑战（9 轮连续对战）==========
@@ -134,32 +135,32 @@ public class BattleController {
      * 开始一次工厂挑战（9 轮连续对战）。
      */
     @PostMapping("/factory/start")
-    public ResponseEntity<?> startFactoryRun() {
-        return BattleApiResponseSupport.fromPayload(factoryRunService.startRun(authenticatedUsername()));
+    public ResponseEntity<?> startFactoryRun(Authentication authentication) {
+        return BattleApiResponseSupport.fromPayload(factoryRunService.startRun(authenticatedUsername(authentication)));
     }
 
     /**
      * 在工厂挑战中开始下一场对战。
      */
     @PostMapping("/factory/{runId}/next")
-    public ResponseEntity<?> nextFactoryBattle(@PathVariable Integer runId) {
-        return BattleApiResponseSupport.fromPayload(factoryRunService.startNextBattle(authenticatedUsername(), runId));
+    public ResponseEntity<?> nextFactoryBattle(@PathVariable Integer runId, Authentication authentication) {
+        return BattleApiResponseSupport.fromPayload(factoryRunService.startNextBattle(authenticatedUsername(authentication), runId));
     }
 
     /**
      * 放弃当前工厂挑战并结算。
      */
     @PostMapping("/factory/abandon")
-    public ResponseEntity<?> abandonFactoryRun() {
-        return BattleApiResponseSupport.fromPayload(factoryRunService.abandonRun(authenticatedUsername()));
+    public ResponseEntity<?> abandonFactoryRun(Authentication authentication) {
+        return BattleApiResponseSupport.fromPayload(factoryRunService.abandonRun(authenticatedUsername(authentication)));
     }
 
     /**
      * 获取当前工厂挑战状态。
      */
     @GetMapping("/factory/status")
-    public ResponseEntity<?> factoryRunStatus() {
-        return BattleApiResponseSupport.fromPayload(factoryRunService.getRunStatus(authenticatedUsername()));
+    public ResponseEntity<?> factoryRunStatus(Authentication authentication) {
+        return BattleApiResponseSupport.fromPayload(factoryRunService.getRunStatus(authenticatedUsername(authentication)));
     }
 
     // ========== 玩家信息 ==========
@@ -168,8 +169,8 @@ public class BattleController {
      * 获取玩家完整信息（段位、积分、历史战绩）。
      */
     @GetMapping("/profile")
-    public ResponseEntity<?> profile() {
-        return BattleApiResponseSupport.success(factoryRunService.getProfile(authenticatedUsername()));
+    public ResponseEntity<?> profile(Authentication authentication) {
+        return BattleApiResponseSupport.success(factoryRunService.getProfile(authenticatedUsername(authentication)));
     }
 
     /**
@@ -196,7 +197,8 @@ public class BattleController {
         if (req.get("playerMoveMap") instanceof String rawJson && !rawJson.isBlank()) {
             try {
                 return objectMapper.readValue(rawJson, Map.class);
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                throw new IllegalArgumentException("invalid_move_map_json", e);
             }
         }
         if (req.get("move") != null) {
@@ -212,14 +214,17 @@ public class BattleController {
         try {
             return rawMoveMap == null ? null : objectMapper.writeValueAsString(rawMoveMap);
         } catch (Exception e) {
-            return null;
+            throw new IllegalArgumentException("invalid_move_map", e);
         }
     }
 
     /**
      * 从安全上下文中提取当前认证用户名。
      */
-    private String authenticatedUsername() {
-        return String.valueOf(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal());
+    private String authenticatedUsername(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal() == null) {
+            throw new IllegalStateException("authenticated user missing");
+        }
+        return authentication.getName();
     }
 }

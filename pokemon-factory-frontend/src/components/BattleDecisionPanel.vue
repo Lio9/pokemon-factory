@@ -152,8 +152,9 @@
         </div>
 
         <select
-          v-model="selectedActions[`action-slot-${mon.fieldSlot}`]"
+          :value="selectedActions[`action-slot-${mon.fieldSlot}`] || 'move'"
           class="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+          @change="setSelectedAction(mon.fieldSlot, $event.target.value)"
         >
           <option value="move">
             使用招式
@@ -168,8 +169,9 @@
 
         <template v-if="selectedActions[`action-slot-${mon.fieldSlot}`] === 'switch'">
           <select
-            v-model="selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`]"
+            :value="selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`]"
             class="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            @change="setSelectedSwitchTarget(mon.fieldSlot, Number($event.target.value))"
           >
             <option
               v-for="target in playerBenchOptions"
@@ -181,9 +183,45 @@
           </select>
         </template>
         <template v-else>
+          <div
+            v-if="activeSpecialSystemLabel(mon) || availableSpecialSystems(mon).length"
+            class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+          >
+            <div
+              v-if="activeSpecialSystemLabel(mon)"
+              class="font-semibold"
+            >
+              已发动：{{ activeSpecialSystemLabel(mon) }}<span v-if="mon.terastallized"> · {{ teraTypeLabel(mon) }}</span>
+            </div>
+            <template v-if="availableSpecialSystems(mon).length">
+              <div class="font-semibold">
+                本回合可发动特殊系统
+              </div>
+              <select
+                :value="selectedSpecialSystems[`special-slot-${mon.fieldSlot}`] || ''"
+                class="mt-2 w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-slate-700"
+                @change="setSelectedSpecialSystem(mon.fieldSlot, $event.target.value || undefined)"
+              >
+                <option value="">
+                  不发动
+                </option>
+                <option
+                  v-for="system in availableSpecialSystems(mon)"
+                  :key="`special-${mon.fieldSlot}-${system}`"
+                  :value="system"
+                >
+                  {{ specialSystemLabel(system) }}<template v-if="system === 'tera'">
+                    · {{ teraTypeLabel(mon) }}
+                  </template>
+                </option>
+              </select>
+            </template>
+          </div>
+
           <select
-            v-model="selectedMoves[`slot-${mon.fieldSlot}`]"
+            :value="selectedMoves[`slot-${mon.fieldSlot}`]"
             class="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            @change="setSelectedMove(mon.fieldSlot, $event.target.value)"
           >
             <option
               v-for="move in mon.moves"
@@ -196,8 +234,9 @@
 
           <select
             v-if="moveNeedsOpponentTarget(selectedMoveObject(mon))"
-            v-model="selectedTargets[`target-slot-${mon.fieldSlot}`]"
+            :value="selectedTargets[`target-slot-${mon.fieldSlot}`]"
             class="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            @change="setSelectedTarget(mon.fieldSlot, Number($event.target.value))"
           >
             <option
               v-for="target in opponentActiveOptions"
@@ -226,7 +265,11 @@
     </div>
   </section>
 
-  <details class="rounded-2xl border border-slate-200 bg-slate-50 p-4" :open="showDebugPanel" @toggle="emit('toggle-debug-panel', $event.target.open)">
+  <details
+    class="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+    :open="showDebugPanel"
+    @toggle="emit('toggle-debug-panel', $event.target.open)"
+  >
     <summary class="cursor-pointer list-none text-sm font-semibold text-slate-800">
       调试响应
     </summary>
@@ -242,8 +285,12 @@ const emit = defineEmits(['toggle-debug-panel'])
 
 defineProps({
   busyAction: { type: String, default: '' },
+  availableSpecialSystems: { type: Function, required: true },
+  activeSpecialSystemLabel: { type: Function, required: true },
   canConfirmPreview: { type: Boolean, default: false },
   canConfirmReplacement: { type: Boolean, default: false },
+  canUseSpecialSystem: { type: Function, required: true },
+  canTerastallize: { type: Function, required: true },
   canSubmitMove: { type: Boolean, default: false },
   confirmPreview: { type: Function, required: true },
   confirmReplacement: { type: Function, required: true },
@@ -266,14 +313,22 @@ defineProps({
   replacementBenchOptions: { type: Array, default: () => [] },
   resultText: { type: String, default: '' },
   selectedActions: { type: Object, default: () => ({}) },
+  setSelectedAction: { type: Function, required: true },
   selectedMoveObject: { type: Function, required: true },
   selectedMoves: { type: Object, default: () => ({}) },
+  setSelectedMove: { type: Function, required: true },
+  selectedSpecialSystems: { type: Object, default: () => ({}) },
+  setSelectedSpecialSystem: { type: Function, required: true },
   selectedReplacementIndexes: { type: Array, default: () => [] },
   selectedRosterIndexes: { type: Array, default: () => [] },
   selectedSwitchTargets: { type: Object, default: () => ({}) },
+  setSelectedSwitchTarget: { type: Function, required: true },
   selectedTargets: { type: Object, default: () => ({}) },
+  setSelectedTarget: { type: Function, required: true },
   showDebugPanel: { type: Boolean, default: false },
+  specialSystemLabel: { type: Function, required: true },
   submitMove: { type: Function, required: true },
+  teraTypeLabel: { type: Function, required: true },
   toggleLead: { type: Function, required: true },
   toggleReplacement: { type: Function, required: true },
   toggleRoster: { type: Function, required: true }

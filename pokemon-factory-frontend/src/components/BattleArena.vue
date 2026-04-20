@@ -29,11 +29,17 @@
             {{ summary.currentRound || 0 }} / {{ summary.roundLimit || '-' }}
           </div>
         </div>
-        <div class="rounded-2xl px-4 py-3 shadow-sm" :class="statusChipClass">
+        <div
+          class="rounded-2xl px-4 py-3 shadow-sm"
+          :class="statusChipClass"
+        >
           <div class="text-slate-500">
             状态
           </div>
-          <div class="font-semibold" :class="statusTextClass">
+          <div
+            class="font-semibold"
+            :class="statusTextClass"
+          >
             {{ statusText || '未开始' }}
           </div>
         </div>
@@ -153,7 +159,9 @@
                 </div>
                 <div class="text-right text-xs text-slate-500">
                   <div>{{ formatTypes(pokemon.types) }}</div>
-                  <div class="mt-1 font-semibold text-slate-700">{{ pokemon.hpPercent }}%</div>
+                  <div class="mt-1 font-semibold text-slate-700">
+                    {{ pokemon.hpPercent }}%
+                  </div>
                 </div>
               </div>
               <div
@@ -217,7 +225,9 @@
                 </div>
                 <div class="text-right text-xs text-slate-500">
                   <div>{{ formatTypes(pokemon.types) }}</div>
-                  <div class="mt-1 font-semibold text-slate-700">{{ pokemon.hpPercent }}%</div>
+                  <div class="mt-1 font-semibold text-slate-700">
+                    {{ pokemon.hpPercent }}%
+                  </div>
                 </div>
               </div>
               <div

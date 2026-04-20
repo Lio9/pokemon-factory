@@ -59,6 +59,10 @@
           :busy-action="busyAction"
           :can-confirm-preview="canConfirmPreview"
           :can-confirm-replacement="canConfirmReplacement"
+          :available-special-systems="availableSpecialSystems"
+          :active-special-system-label="activeSpecialSystemLabel"
+          :can-use-special-system="canUseSpecialSystem"
+          :can-terastallize="canTerastallize"
           :can-submit-move="canSubmitMove"
           :confirm-preview="confirmPreview"
           :confirm-replacement="confirmReplacement"
@@ -81,14 +85,22 @@
           :replacement-bench-options="replacementBenchOptions"
           :result-text="resultText"
           :selected-actions="selectedActions"
+          :set-selected-action="setSelectedAction"
           :selected-move-object="selectedMoveObject"
           :selected-moves="selectedMoves"
+          :set-selected-move="setSelectedMove"
+          :selected-special-systems="selectedSpecialSystems"
+          :set-selected-special-system="setSelectedSpecialSystem"
           :selected-replacement-indexes="selectedReplacementIndexes"
           :selected-roster-indexes="selectedRosterIndexes"
           :selected-switch-targets="selectedSwitchTargets"
+          :set-selected-switch-target="setSelectedSwitchTarget"
           :selected-targets="selectedTargets"
+          :set-selected-target="setSelectedTarget"
           :show-debug-panel="showDebugPanel"
+          :special-system-label="specialSystemLabel"
           :submit-move="submitMove"
+          :tera-type-label="teraTypeLabel"
           :toggle-lead="toggleLead"
           :toggle-replacement="toggleReplacement"
           :toggle-roster="toggleRoster"
@@ -105,7 +117,10 @@
         <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
           快捷操作
         </div>
-        <div class="grid gap-2" :class="mobileActionButtons.length > 1 ? 'grid-cols-2' : 'grid-cols-1'">
+        <div
+          class="grid gap-2"
+          :class="mobileActionButtons.length > 1 ? 'grid-cols-2' : 'grid-cols-1'"
+        >
           <button
             v-for="action in mobileActionButtons"
             :key="action.key"
@@ -166,6 +181,10 @@ const {
   busyAction,
   canConfirmPreview,
   canConfirmReplacement,
+  availableSpecialSystems,
+  activeSpecialSystemLabel,
+  canUseSpecialSystem,
+  canTerastallize,
   canSubmitMove,
   confirmPreview,
   confirmReplacement,
@@ -213,12 +232,18 @@ const {
   refreshStatus,
   resultText,
   selectedActions,
+  setSelectedAction,
   selectedMoveObject,
   selectedMoves,
+  setSelectedMove,
+  selectedSpecialSystems,
+  setSelectedSpecialSystem,
   selectedReplacementIndexes,
   selectedRosterIndexes,
   selectedSwitchTargets,
+  setSelectedSwitchTarget,
   selectedTargets,
+  setSelectedTarget,
   settlement,
   setShowDebugPanel,
   showContinueFactoryButton,
@@ -227,6 +252,7 @@ const {
   showLeaderboard,
   showMobileActionDock,
   showResetBattleButton,
+  specialSystemLabel,
   startAsyncBattle,
   startBattle,
   startFactoryChallenge,
@@ -236,6 +262,7 @@ const {
   summary,
   tierBgClass,
   tierDisplayName,
+  teraTypeLabel,
   tierTextClass,
   prepareNextFactoryStage,
   toggleLead,

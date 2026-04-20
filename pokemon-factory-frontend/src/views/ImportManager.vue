@@ -5,6 +5,10 @@
         数据导入管理
       </h1>
 
+      <div class="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
+        这里用于启动后端已有的全量导入任务并查看任务状态；当前系统没有提供“清空数据库”的管理接口，因此页面只支持清空本地任务历史记录。
+      </div>
+
       <!-- 导入控制区 -->
       <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">
@@ -24,7 +28,7 @@
             class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             @click="clearAllData"
           >
-            清空所有数据
+            清空本地任务历史
           </button>
 
           <button
@@ -284,11 +288,11 @@ export default {
       }
     }
 
-    // 清空数据
+    // 清空本地任务历史
     const clearAllData = async () => {
       try {
         await ElMessageBox.confirm(
-          '当前后端没有提供清空所有数据的接口，这个按钮先改为清空本地任务历史。是否继续？',
+          '这会删除当前浏览器保存的导入任务历史，不会影响后端数据库。是否继续？',
           '提示',
           {
             confirmButtonText: '确定',

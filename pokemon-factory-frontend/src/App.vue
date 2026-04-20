@@ -126,7 +126,10 @@
       
       <el-main class="mx-auto w-full max-w-7xl px-3 py-4 !pb-0 sm:px-6 sm:py-8 lg:px-8">
         <div class="content min-h-[calc(100vh-156px)] rounded-[24px] border border-white/60 bg-white/72 p-3 shadow-[0_30px_120px_-80px_rgba(15,23,42,0.65)] backdrop-blur-xl sm:min-h-[calc(100vh-180px)] sm:rounded-[32px] sm:p-6">
-          <div v-if="showHero" class="hero card-glass mb-5 flex flex-col justify-between gap-4 rounded-[22px] border border-white/65 p-4 sm:mb-6 sm:flex-row sm:items-center sm:rounded-[28px] sm:p-6">
+          <div
+            v-if="showHero"
+            class="hero card-glass mb-5 flex flex-col justify-between gap-4 rounded-[22px] border border-white/65 p-4 sm:mb-6 sm:flex-row sm:items-center sm:rounded-[28px] sm:p-6"
+          >
             <div>
               <h2 class="text-[clamp(1.4rem,4vw,2rem)] font-black tracking-tight text-slate-950">
                 探索图鉴，进入战斗实验室

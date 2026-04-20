@@ -1,6 +1,8 @@
 package com.lio9.battle.service;
 
 import com.lio9.battle.mapper.SkillMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -16,12 +18,17 @@ import java.util.Map;
  */
 @Service
 public class SkillService {
+    private static final Logger log = LoggerFactory.getLogger(SkillService.class);
     private final SkillMapper skillMapper;
     private final Map<String,Integer> defaults = new HashMap<>();
 
     public SkillService(SkillMapper skillMapper) {
         this.skillMapper = skillMapper;
-        try { load(); } catch (Exception ignored) {}
+        try {
+            load();
+        } catch (Exception e) {
+            log.warn("初始化技能默认配置失败，将使用调用方回退值。", e);
+        }
     }
 
     /**
@@ -36,8 +43,15 @@ public class SkillService {
                 Object d = r.get("default_cooldown");
                 if (n != null) {
                     int cd = 0;
-                    if (d instanceof Number) cd = ((Number)d).intValue();
-                    else try { cd = Integer.parseInt(String.valueOf(d)); } catch (Exception ignore) {}
+                    if (d instanceof Number) {
+                        cd = ((Number) d).intValue();
+                    } else if (d != null) {
+                        try {
+                            cd = Integer.parseInt(String.valueOf(d));
+                        } catch (NumberFormatException exception) {
+                            log.warn("解析技能默认冷却失败, skillName={}, rawCooldown={}", n, d);
+                        }
+                    }
                     defaults.put(n.toString().toLowerCase(), cd);
                 }
             }

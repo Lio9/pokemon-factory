@@ -236,7 +236,7 @@
     </div>
 
     <!-- 统计信息 -->
-  <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+    <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
       <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-4 text-white">
         <div class="text-2xl font-bold">
           {{ total }}

@@ -76,14 +76,26 @@
             {{ currentUser }}
           </div>
         </div>
-        <div class="rounded-xl px-4 py-3" :class="tierBgClass">
-          <div class="text-xs" :class="tierTextClass">
+        <div
+          class="rounded-xl px-4 py-3"
+          :class="tierBgClass"
+        >
+          <div
+            class="text-xs"
+            :class="tierTextClass"
+          >
             段位
           </div>
-          <div class="mt-1 font-semibold" :class="tierTextClass">
+          <div
+            class="mt-1 font-semibold"
+            :class="tierTextClass"
+          >
             {{ tierDisplayName }}
           </div>
-          <div class="mt-0.5 text-xs" :class="tierTextClass">
+          <div
+            class="mt-0.5 text-xs"
+            :class="tierTextClass"
+          >
             {{ playerProfile?.tierPoints ?? 0 }} / 2000 分
           </div>
         </div>

@@ -56,6 +56,12 @@ final class BattleSetupSupport {
         state.put("opponentActiveSlots", new ArrayList<>());
         state.put("playerPendingReplacementCount", 0);
         state.put("playerPendingReplacementOptions", new ArrayList<>());
+        state.put("playerSpecialUsed", false);
+        state.put("opponentSpecialUsed", false);
+        state.put("playerSpecialType", null);
+        state.put("opponentSpecialType", null);
+        state.put("playerTeraUsed", false);
+        state.put("opponentTeraUsed", false);
         state.put("fieldEffects", fieldEffectSupport.defaultFieldEffects());
         state.put("rounds", new ArrayList<>());
         flowSupport.refreshDerivedState(state);
@@ -93,6 +99,12 @@ final class BattleSetupSupport {
         state.put("currentRound", 0);
         state.put("roundsCount", 0);
         state.put("winner", null);
+        state.put("playerSpecialUsed", false);
+        state.put("opponentSpecialUsed", false);
+        state.put("playerSpecialType", null);
+        state.put("opponentSpecialType", null);
+        state.put("playerTeraUsed", false);
+        state.put("opponentTeraUsed", false);
         state.put("rounds", new ArrayList<>());
         flowSupport.clearReplacementState(state);
 

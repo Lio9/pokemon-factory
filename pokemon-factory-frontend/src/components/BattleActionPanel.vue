@@ -14,12 +14,20 @@
       </div>
       <div class="grid w-full gap-2 text-sm sm:min-w-[220px] sm:w-auto">
         <div class="rounded-xl bg-white px-4 py-3 shadow-sm">
-          <div class="text-xs text-slate-400">当前战斗</div>
-          <div class="mt-1 font-semibold text-slate-900">{{ currentBattleId ? `#${currentBattleId}` : '未创建' }}</div>
+          <div class="text-xs text-slate-400">
+            当前战斗
+          </div>
+          <div class="mt-1 font-semibold text-slate-900">
+            {{ currentBattleId ? `#${currentBattleId}` : '未创建' }}
+          </div>
         </div>
         <div class="rounded-xl bg-white px-4 py-3 shadow-sm">
-          <div class="text-xs text-slate-400">推荐模式</div>
-          <div class="mt-1 font-semibold text-slate-900">{{ recommendedMode }}</div>
+          <div class="text-xs text-slate-400">
+            推荐模式
+          </div>
+          <div class="mt-1 font-semibold text-slate-900">
+            {{ recommendedMode }}
+          </div>
         </div>
       </div>
     </div>
@@ -109,19 +117,37 @@
 
   <section class="grid gap-3 md:grid-cols-3">
     <div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-      <div class="text-xs uppercase tracking-[0.18em] text-slate-400">当前模式</div>
-      <div class="mt-2 text-base font-bold text-slate-900">{{ modeSummary }}</div>
-      <div class="mt-1 text-sm text-slate-500">{{ modeDescription }}</div>
+      <div class="text-xs uppercase tracking-[0.18em] text-slate-400">
+        当前模式
+      </div>
+      <div class="mt-2 text-base font-bold text-slate-900">
+        {{ modeSummary }}
+      </div>
+      <div class="mt-1 text-sm text-slate-500">
+        {{ modeDescription }}
+      </div>
     </div>
     <div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-      <div class="text-xs uppercase tracking-[0.18em] text-slate-400">回合推进</div>
-      <div class="mt-2 text-base font-bold text-slate-900">{{ summary?.currentRound || 0 }} / {{ summary?.roundLimit || '-' }}</div>
-      <div class="mt-1 text-sm text-slate-500">{{ pollingActive ? '异步模式会自动刷新状态。' : '手动模式需要提交本回合动作。' }}</div>
+      <div class="text-xs uppercase tracking-[0.18em] text-slate-400">
+        回合推进
+      </div>
+      <div class="mt-2 text-base font-bold text-slate-900">
+        {{ summary?.currentRound || 0 }} / {{ summary?.roundLimit || '-' }}
+      </div>
+      <div class="mt-1 text-sm text-slate-500">
+        {{ pollingActive ? '异步模式会自动刷新状态。' : '手动模式需要提交本回合动作。' }}
+      </div>
     </div>
     <div class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-      <div class="text-xs uppercase tracking-[0.18em] text-slate-400">可执行操作</div>
-      <div class="mt-2 text-base font-bold text-slate-900">{{ availableActionCount }}</div>
-      <div class="mt-1 text-sm text-slate-500">{{ availableActionDescription }}</div>
+      <div class="text-xs uppercase tracking-[0.18em] text-slate-400">
+        可执行操作
+      </div>
+      <div class="mt-2 text-base font-bold text-slate-900">
+        {{ availableActionCount }}
+      </div>
+      <div class="mt-1 text-sm text-slate-500">
+        {{ availableActionDescription }}
+      </div>
     </div>
   </section>
 </template>

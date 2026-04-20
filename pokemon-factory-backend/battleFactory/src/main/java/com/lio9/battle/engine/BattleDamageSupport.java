@@ -40,15 +40,17 @@ final class BattleDamageSupport {
         int baseDamage = DamageCalculatorUtil.calculateBaseDamage(level, power, attackStat, defenseStat);
 
         double modifier = 1.0d;
-        List<Map<String, Object>> attackerTypes = engine.castList(attacker.get("types"));
-        if (attackerTypes.stream().anyMatch(type -> engine.toInt(type.get("type_id"), 0) == engine.toInt(move.get("type_id"), -1))) {
-            modifier *= DamageCalculatorUtil.STAB_MULTIPLIER;
-        }
-
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
+        modifier *= stabModifier(attacker, moveTypeId);
         modifier *= typeModifier(defender, moveTypeId);
         modifier *= itemDamageModifier(attacker, moveTypeId);
         if (Boolean.TRUE.equals(helpingHandBoosts.get(attacker))) {
+            modifier *= 1.5d;
+        }
+        if (engine.isDynamaxed(attacker)) {
+            modifier *= 1.3d;
+        }
+        if (engine.isZMoveActive(attacker, engine.toInt(state.get("currentRound"), 0), move)) {
             modifier *= 1.5d;
         }
         modifier *= weatherDamageModifier(state, moveTypeId);
@@ -66,7 +68,7 @@ final class BattleDamageSupport {
 
     double typeModifier(Map<String, Object> defender, int moveTypeId) {
         double modifier = 1.0d;
-        for (Map<String, Object> defenderType : engine.castList(defender.get("types"))) {
+        for (Map<String, Object> defenderType : engine.activeTypes(defender)) {
             int factor = typeFactor(moveTypeId, engine.toInt(defenderType.get("type_id"), 0));
             modifier *= factor / 100.0d;
         }
@@ -97,6 +99,11 @@ final class BattleDamageSupport {
     }
 
     int modifiedDefenseStat(Map<String, Object> mon, int baseStat, int damageClassId, Map<String, Object> state) {
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
+            baseStat = applyStageModifier(baseStat, statStage(mon, "defense"));
+        } else if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
+            baseStat = applyStageModifier(baseStat, statStage(mon, "specialDefense"));
+        }
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL && "assault-vest".equals(heldItem(mon))) {
             baseStat = (int) Math.floor(baseStat * 1.5d);
         }
@@ -198,6 +205,9 @@ final class BattleDamageSupport {
 
     double screenDamageModifier(Map<String, Object> state, Map<String, Object> defender, int damageClassId) {
         boolean playerSide = isOnSide(state, defender, true);
+        if (fieldEffectSupport.auroraVeilTurns(state, playerSide) > 0) {
+            return 2.0d / 3.0d;
+        }
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL && fieldEffectSupport.reflectTurns(state, playerSide) > 0) {
             return 2.0d / 3.0d;
         }
@@ -221,13 +231,17 @@ final class BattleDamageSupport {
         if (value instanceof Map) {
             Map<String, Object> existing = (Map<String, Object>) value;
             existing.putIfAbsent("attack", 0);
+            existing.putIfAbsent("defense", 0);
             existing.putIfAbsent("specialAttack", 0);
+            existing.putIfAbsent("specialDefense", 0);
             existing.putIfAbsent("speed", 0);
             return existing;
         }
         Map<String, Object> created = new LinkedHashMap<>();
         created.put("attack", 0);
+        created.put("defense", 0);
         created.put("specialAttack", 0);
+        created.put("specialDefense", 0);
         created.put("speed", 0);
         mon.put("statStages", created);
         return created;
@@ -252,7 +266,7 @@ final class BattleDamageSupport {
     }
 
     private boolean targetHasType(Map<String, Object> target, int typeId) {
-        for (Map<String, Object> type : engine.castList(target.get("types"))) {
+        for (Map<String, Object> type : engine.activeTypes(target)) {
             if (engine.toInt(type.get("type_id"), 0) == typeId) {
                 return true;
             }
@@ -261,8 +275,25 @@ final class BattleDamageSupport {
     }
 
     private boolean isGrounded(Map<String, Object> mon) {
-        return !targetHasType(mon, DamageCalculatorUtil.TYPE_FLYING)
-                && !"levitate".equalsIgnoreCase(abilityName(mon));
+        return engine.isGrounded(mon);
+    }
+
+    private double stabModifier(Map<String, Object> attacker, int moveTypeId) {
+        if (moveTypeId <= 0) {
+            return 1.0d;
+        }
+        boolean originalTypeMatch = engine.castList(attacker.get("types")).stream()
+                .anyMatch(type -> engine.toInt(type.get("type_id"), 0) == moveTypeId);
+        int teraTypeId = engine.toInt(attacker.get("teraTypeId"), 0);
+        boolean teraMatch = Boolean.TRUE.equals(attacker.get("terastallized")) && teraTypeId > 0 && teraTypeId == moveTypeId;
+        boolean adaptability = "adaptability".equalsIgnoreCase(abilityName(attacker));
+        if (teraMatch && originalTypeMatch) {
+            return adaptability ? DamageCalculatorUtil.ADAPTABILITY_STAB_MULTIPLIER * 1.125d : 2.0d;
+        }
+        if (teraMatch || originalTypeMatch) {
+            return adaptability ? DamageCalculatorUtil.ADAPTABILITY_STAB_MULTIPLIER : DamageCalculatorUtil.STAB_MULTIPLIER;
+        }
+        return 1.0d;
     }
 
     private boolean isOnSide(Map<String, Object> state, Map<String, Object> mon, boolean playerSide) {

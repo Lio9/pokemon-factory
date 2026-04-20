@@ -32,8 +32,13 @@ public class AIService {
             "choice-band",
             "choice-specs",
             "clear-amulet",
+            "covert-cloak",
+            "mental-herb",
             "safety-goggles",
             "leftovers",
+            "rocky-helmet",
+            "light-clay",
+            "terrain-extender",
             "mystic-water",
             "charcoal",
             "miracle-seed"
@@ -168,9 +173,13 @@ public class AIService {
         pokemon.put("moves", selectedMoves);
         pokemon.put("ability", abilities.isEmpty() ? null : abilities.get(0));
         pokemon.put("heldItem", pickUniqueItem(itemPool, random, selectedMoves));
+        Map<String, Object> teraType = pickTeraType(types, selectedMoves, random);
+        pokemon.put("teraType", teraType);
+        pokemon.put("teraTypeId", toInt(teraType.get("type_id"), 0));
         pokemon.put("nature", "physical".equals(build) ? "adamant" : "modest");
         pokemon.put("evSpread", "physical".equals(build) ? Map.of("hp", 4, "atk", 252, "def", 0, "spa", 0, "spd", 0, "spe", 252) : Map.of("hp", 4, "atk", 0, "def", 0, "spa", 252, "spd", 0, "spe", 252));
         pokemon.put("stats", buildBattleStats(statMap, "physical".equals(build)));
+        assignSpecialSystemProfile(pokemon, random);
         pokemon.put("battleScore", toInt(candidate.get("base_experience"), 50) + totalPower(selectedMoves) + toInt(candidate.get("base_experience"), 50));
         return pokemon;
     }
@@ -199,10 +208,16 @@ public class AIService {
             if ("tailwind".equalsIgnoreCase(nameEn)
                     || "trick-room".equalsIgnoreCase(nameEn)
                     || "trick room".equalsIgnoreCase(nameEn)
+                    || "wide-guard".equalsIgnoreCase(nameEn)
+                    || "wide guard".equalsIgnoreCase(nameEn)
+                    || "quick-guard".equalsIgnoreCase(nameEn)
+                    || "quick guard".equalsIgnoreCase(nameEn)
                     || "rain-dance".equalsIgnoreCase(nameEn)
                     || "rain dance".equalsIgnoreCase(nameEn)
                     || "sunny-day".equalsIgnoreCase(nameEn)
                     || "sunny day".equalsIgnoreCase(nameEn)
+                    || "aurora-veil".equalsIgnoreCase(nameEn)
+                    || "aurora veil".equalsIgnoreCase(nameEn)
                     || "electric-terrain".equalsIgnoreCase(nameEn)
                     || "electric terrain".equalsIgnoreCase(nameEn)
                     || "psychic-terrain".equalsIgnoreCase(nameEn)
@@ -214,6 +229,12 @@ public class AIService {
                     || "spore".equalsIgnoreCase(nameEn)
                     || "helping-hand".equalsIgnoreCase(nameEn)
                     || "helping hand".equalsIgnoreCase(nameEn)
+                    || "ally-switch".equalsIgnoreCase(nameEn)
+                    || "ally switch".equalsIgnoreCase(nameEn)
+                    || "fake-tears".equalsIgnoreCase(nameEn)
+                    || "fake tears".equalsIgnoreCase(nameEn)
+                    || "parting-shot".equalsIgnoreCase(nameEn)
+                    || "parting shot".equalsIgnoreCase(nameEn)
                     || "follow-me".equalsIgnoreCase(nameEn)
                     || "follow me".equalsIgnoreCase(nameEn)
                     || "rage-powder".equalsIgnoreCase(nameEn)
@@ -275,6 +296,34 @@ public class AIService {
         }
 
         return selected;
+    }
+
+    private Map<String, Object> pickTeraType(List<Map<String, Object>> types, List<Map<String, Object>> moves, Random random) {
+        Map<Integer, Integer> attackWeights = new LinkedHashMap<>();
+        for (Map<String, Object> move : moves) {
+            if (toInt(move.get("power"), 0) <= 0) {
+                continue;
+            }
+            int typeId = toInt(move.get("type_id"), 0);
+            if (typeId <= 0) {
+                continue;
+            }
+            attackWeights.put(typeId, attackWeights.getOrDefault(typeId, 0) + Math.max(1, toInt(move.get("power"), 0)));
+        }
+        Map<String, Object> preferred = null;
+        int bestWeight = Integer.MIN_VALUE;
+        for (Map<String, Object> type : types) {
+            int typeId = toInt(type.get("type_id"), 0);
+            int weight = attackWeights.getOrDefault(typeId, 0);
+            if (weight > bestWeight) {
+                bestWeight = weight;
+                preferred = type;
+            }
+        }
+        if (preferred != null) {
+            return new LinkedHashMap<>(preferred);
+        }
+        return new LinkedHashMap<>(types.get(random.nextInt(types.size())));
     }
 
     private Map<String, Object> preferredUtility(List<Map<String, Object>> utilities, int baseSpeed) {
@@ -373,6 +422,32 @@ public class AIService {
             total += toInt(move.get("power"), 0);
         }
         return total;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assignSpecialSystemProfile(Map<String, Object> pokemon, Random random) {
+        int roll = random.nextInt(100);
+        if (roll < 18) {
+            Map<String, Object> stats = (Map<String, Object>) pokemon.get("stats");
+            pokemon.put("megaEligible", true);
+            pokemon.put("megaStats", Map.of(
+                    "hp", stats.get("hp"),
+                    "attack", (int) Math.floor(toInt(stats.get("attack"), 80) * 1.18d),
+                    "defense", (int) Math.floor(toInt(stats.get("defense"), 80) * 1.12d),
+                    "specialAttack", (int) Math.floor(toInt(stats.get("specialAttack"), 80) * 1.18d),
+                    "specialDefense", (int) Math.floor(toInt(stats.get("specialDefense"), 80) * 1.12d),
+                    "speed", (int) Math.floor(toInt(stats.get("speed"), 80) * 1.1d)
+            ));
+            return;
+        }
+        if (roll < 34) {
+            pokemon.put("zMoveEligible", true);
+            pokemon.put("heldItem", "normalium-z");
+            return;
+        }
+        if (roll < 50) {
+            pokemon.put("dynamaxEligible", true);
+        }
     }
 
     private String pickUniqueItem(List<String> itemPool, Random random, List<Map<String, Object>> selectedMoves) {

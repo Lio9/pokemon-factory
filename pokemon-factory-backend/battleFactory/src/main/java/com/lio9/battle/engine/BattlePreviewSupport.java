@@ -108,6 +108,15 @@ final class BattlePreviewSupport {
             mon.put("sleepTurns", 0);
             mon.put("sleepAppliedRound", 0);
             mon.put("tauntTurns", 0);
+            mon.put("protectionStreak", 0);
+            mon.put("lastProtectionRound", 0);
+            mon.put("specialSystemActivated", null);
+            mon.put("terastallized", false);
+            mon.put("megaEvolved", false);
+            mon.put("dynamaxed", false);
+            mon.put("dynamaxTurnsRemaining", 0);
+            mon.put("dynamaxBaseHp", toInt(stateSupport.castMap(mon.get("stats")).get("hp"), 1));
+            mon.put("zMoveUsed", false);
             mon.putIfAbsent("itemConsumed", false);
             mon.putIfAbsent("choiceLockedMove", null);
             selected.add(mon);
@@ -156,15 +165,37 @@ final class BattlePreviewSupport {
         normalized.put("stats", stateSupport.castMap(normalized.get("stats")));
         normalized.put("types", stateSupport.castList(normalized.get("types")));
         normalized.put("moves", normalizeMoves(stateSupport.castList(normalized.get("moves"))));
+        Map<String, Object> teraType = normalizeTeraType(normalized);
+        normalized.put("teraType", teraType);
+        normalized.put("teraTypeId", toInt(teraType.get("type_id"), 0));
         normalized.putIfAbsent("currentHp", toInt(stateSupport.castMap(normalized.get("stats")).get("hp"), 1));
         normalized.putIfAbsent("cooldowns", new LinkedHashMap<>());
-        normalized.putIfAbsent("statStages", new LinkedHashMap<>(Map.of("attack", 0, "specialAttack", 0, "speed", 0)));
+        normalized.putIfAbsent("statStages", new LinkedHashMap<>(Map.of(
+                "attack", 0,
+                "defense", 0,
+                "specialAttack", 0,
+                "specialDefense", 0,
+                "speed", 0
+        )));
         normalized.putIfAbsent("condition", null);
         normalized.putIfAbsent("entryRound", 1);
         normalized.putIfAbsent("flinched", false);
         normalized.putIfAbsent("sleepTurns", 0);
         normalized.putIfAbsent("sleepAppliedRound", 0);
         normalized.putIfAbsent("tauntTurns", 0);
+        normalized.putIfAbsent("protectionStreak", 0);
+        normalized.putIfAbsent("lastProtectionRound", 0);
+        normalized.putIfAbsent("specialSystemActivated", null);
+        normalized.putIfAbsent("terastallized", false);
+        normalized.putIfAbsent("megaEvolved", false);
+        normalized.putIfAbsent("dynamaxed", false);
+        normalized.putIfAbsent("dynamaxTurnsRemaining", 0);
+        normalized.putIfAbsent("dynamaxBaseHp", toInt(stateSupport.castMap(normalized.get("stats")).get("hp"), 1));
+        normalized.putIfAbsent("zMoveUsed", false);
+        normalized.put("megaEligible", inferMegaEligibility(normalized));
+        normalized.put("zMoveEligible", inferZMoveEligibility(normalized));
+        normalized.put("dynamaxEligible", inferDynamaxEligibility(normalized));
+        normalized.put("specialSystems", inferSpecialSystems(normalized));
         normalized.putIfAbsent("itemConsumed", false);
         normalized.putIfAbsent("choiceLockedMove", null);
         return normalized;
@@ -213,5 +244,74 @@ final class BattlePreviewSupport {
             }
         }
         return fallback;
+    }
+
+    private Map<String, Object> normalizeTeraType(Map<String, Object> pokemon) {
+        Object raw = pokemon.get("teraType");
+        if (!(raw instanceof Map<?, ?>)) {
+            raw = pokemon.get("tera_type");
+        }
+        if (raw instanceof Map<?, ?> teraMap) {
+            Map<String, Object> normalized = new LinkedHashMap<>();
+            Object typeId = teraMap.get("type_id");
+            if (typeId == null) {
+                typeId = teraMap.get("id");
+            }
+            normalized.put("type_id", toInt(typeId, 0));
+            Object name = teraMap.get("name");
+            Object nameEn = teraMap.get("name_en");
+            normalized.put("name", name == null ? "" : name);
+            normalized.put("name_en", nameEn == null ? "" : nameEn);
+            if (toInt(normalized.get("type_id"), 0) > 0) {
+                return normalized;
+            }
+        }
+        int teraTypeId = toInt(pokemon.get("teraTypeId"), toInt(pokemon.get("tera_type_id"), 0));
+        for (Map<String, Object> type : stateSupport.castList(pokemon.get("types"))) {
+            if (teraTypeId <= 0 || toInt(type.get("type_id"), 0) == teraTypeId) {
+                Map<String, Object> normalized = new LinkedHashMap<>();
+                normalized.put("type_id", teraTypeId > 0 ? teraTypeId : toInt(type.get("type_id"), 0));
+                normalized.put("name", type.getOrDefault("name", ""));
+                normalized.put("name_en", type.getOrDefault("name_en", ""));
+                return normalized;
+            }
+        }
+        return new LinkedHashMap<>(Map.of("type_id", teraTypeId));
+    }
+
+    private List<String> inferSpecialSystems(Map<String, Object> pokemon) {
+        List<String> systems = new ArrayList<>();
+        if (toInt(pokemon.get("teraTypeId"), 0) > 0) {
+            systems.add("tera");
+        }
+        if (Boolean.TRUE.equals(pokemon.get("megaEligible"))) {
+            systems.add("mega");
+        }
+        if (Boolean.TRUE.equals(pokemon.get("zMoveEligible"))) {
+            systems.add("z-move");
+        }
+        if (Boolean.TRUE.equals(pokemon.get("dynamaxEligible"))) {
+            systems.add("dynamax");
+        }
+        return systems;
+    }
+
+    private boolean inferMegaEligibility(Map<String, Object> pokemon) {
+        if (Boolean.TRUE.equals(pokemon.get("megaEligible"))) {
+            return true;
+        }
+        return pokemon.containsKey("megaStats") || pokemon.containsKey("megaAbility") || pokemon.containsKey("megaTypes");
+    }
+
+    private boolean inferZMoveEligibility(Map<String, Object> pokemon) {
+        if (Boolean.TRUE.equals(pokemon.get("zMoveEligible"))) {
+            return true;
+        }
+        String heldItem = String.valueOf(pokemon.getOrDefault("heldItem", ""));
+        return heldItem.endsWith("-z");
+    }
+
+    private boolean inferDynamaxEligibility(Map<String, Object> pokemon) {
+        return Boolean.TRUE.equals(pokemon.get("dynamaxEligible")) || Boolean.TRUE.equals(pokemon.get("gigantamaxEligible"));
     }
 }

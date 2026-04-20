@@ -7,6 +7,8 @@ import com.lio9.battle.mapper.BattleRoundMapper;
 import com.lio9.battle.mapper.JobMapper;
 import com.lio9.battle.mapper.TeamMapper;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -25,6 +27,7 @@ import java.util.concurrent.Executors;
  */
 @Component
 public class BattleExecutor {
+    private static final Logger log = LoggerFactory.getLogger(BattleExecutor.class);
     private static final int FACTORY_ROUND_LIMIT = 12;
 
     private final BattleMapper battleMapper;
@@ -77,6 +80,7 @@ public class BattleExecutor {
             executor.submit(() -> runBattle(battleId, playerId, finalPlayerTeamJson));
             return battleId;
         } catch (Exception e) {
+            log.error("提交异步对战失败, playerId={}", playerId, e);
             return null;
         }
     }
@@ -117,10 +121,12 @@ public class BattleExecutor {
 
             markJobDone(battleId, "DONE");
         } catch (Exception e) {
+            log.error("执行异步对战失败, battleId={}, playerId={}", battleId, playerId, e);
             try {
                 battleMapper.updateBattle(battleId, null, "{\"status\":\"completed\",\"phase\":\"completed\",\"winner\":\"opponent\",\"error\":\"executor_failed\"}", 0, null, "completed");
                 markJobDone(battleId, "FAILED");
-            } catch (Exception ignored) {
+            } catch (Exception nested) {
+                log.error("异步对战失败后的兜底落库也失败, battleId={}", battleId, nested);
             }
         }
     }
@@ -142,15 +148,18 @@ public class BattleExecutor {
                 try {
                     Map<String, Object> battle = battleMapper.findBattleWithOpponent(battleId.longValue());
                     if (battle == null || battle.isEmpty()) {
+                        log.warn("恢复异步任务时未找到 battle 记录, battleId={}", battleId);
                         continue;
                     }
                     Integer playerId = battle.get("player_id") == null ? null : ((Number) battle.get("player_id")).intValue();
                     String playerTeamJson = String.valueOf(battle.getOrDefault("player_team_json", "[]"));
                     executor.submit(() -> runBattle(battleId, playerId, playerTeamJson));
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    log.warn("恢复异步任务失败, battleId={}", battleId, e);
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.error("扫描待恢复异步任务失败", e);
         }
     }
 
@@ -200,7 +209,8 @@ public class BattleExecutor {
             if (rawMoveMap instanceof String rawString && !rawString.isBlank()) {
                 return mapper.readValue(rawString, Map.class);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.warn("解析异步对战预设动作失败, battleId={}", battleId, e);
         }
         return Map.of();
     }
@@ -221,7 +231,8 @@ public class BattleExecutor {
         for (Map<String, Object> round : rounds(state)) {
             try {
                 roundMapper.insertRound(battleId, ((Number) round.getOrDefault("round", 0)).intValue(), mapper.writeValueAsString(round));
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                throw new IllegalStateException("battle_round_persist_failed", e);
             }
         }
     }
@@ -232,7 +243,8 @@ public class BattleExecutor {
     private void markJobDone(Integer battleId, String status) {
         try {
             jobMapper.updateJobStatusByBattleId(battleId, status);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.error("更新异步任务状态失败, battleId={}, status={}", battleId, status, e);
         }
     }
 }

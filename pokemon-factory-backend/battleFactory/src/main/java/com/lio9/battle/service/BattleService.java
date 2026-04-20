@@ -9,6 +9,8 @@ import com.lio9.battle.mapper.BattleRoundMapper;
 import com.lio9.battle.mapper.PlayerMapper;
 import com.lio9.battle.mapper.TeamMapper;
 import com.lio9.battle.mapper.FactoryRunMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -29,6 +31,7 @@ import java.util.Set;
  */
 @Service
 public class BattleService {
+    private static final Logger log = LoggerFactory.getLogger(BattleService.class);
     private static final int FACTORY_TEAM_SIZE = 6;
     private static final int FACTORY_ROUND_LIMIT = 12;
 
@@ -108,6 +111,7 @@ public class BattleService {
             response.put("message", "对战工厂匹配完成，请先完成队伍预览和首发选择。");
             return response;
         } catch (Exception e) {
+            log.error("创建对战失败, username={}, factoryRunId={}", username, factoryRunId, e);
             return Map.of("error", "persist_failed", "detail", e.getMessage());
         }
     }
@@ -127,7 +131,8 @@ public class BattleService {
             try {
                 response.put("summary", objectMapper.readValue(summaryJson, new TypeReference<Map<String, Object>>() {
                 }));
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                log.warn("解析对战摘要失败, battleId={}", battleId, e);
             }
         }
         return response;
@@ -193,6 +198,7 @@ public class BattleService {
             response.put("newRounds", roundsCount(updatedState) - previousRounds);
             return response;
         } catch (Exception e) {
+            log.error("推进对战失败, battleId={}", battleId, e);
             return Map.of("error", "apply_failed", "detail", e.getMessage());
         }
     }
@@ -230,8 +236,10 @@ public class BattleService {
                     "message", "替补上场已确认。"
             );
         } catch (IllegalArgumentException e) {
+            log.warn("替补选择无效, battleId={}", battleId, e);
             return Map.of("error", e.getMessage(), "message", "替补选择无效。");
         } catch (Exception e) {
+            log.error("确认替补失败, battleId={}", battleId, e);
             return Map.of("error", "replacement_confirm_failed", "detail", e.getMessage());
         }
     }
@@ -276,6 +284,7 @@ public class BattleService {
             response.put("message", "你选择了认输。");
             return response;
         } catch (Exception e) {
+            log.error("认输失败, battleId={}, username={}", battleId, username, e);
             return Map.of("error", "forfeit_failed", "detail", e.getMessage());
         }
     }
@@ -313,6 +322,7 @@ public class BattleService {
                     "message", "队伍预览已确认，对战开始。"
             );
         } catch (Exception e) {
+            log.error("确认队伍预览失败, battleId={}", battleId, e);
             return Map.of("error", "preview_confirm_failed", "detail", e.getMessage());
         }
     }
@@ -352,8 +362,8 @@ public class BattleService {
             // 持久化交换记录
             try {
                 exchangeMapper.insertExchange(battleId, playerTeamId, null, replacedIndex, toJson(replaced), newPokemonJson);
-            } catch (Exception ignored) {
-                // 交换记录仅作参考，不影响主流程
+            } catch (Exception e) {
+                log.warn("写入交换记录失败, battleId={}, playerTeamId={}", battleId, playerTeamId, e);
             }
 
             if (teamMapper.updateTeamWithVersion(playerTeamId, updatedTeamJson, version) == 0) {
@@ -369,6 +379,7 @@ public class BattleService {
             response.put("replacedPokemon", replaced);
             return response;
         } catch (Exception e) {
+            log.error("交换奖励处理失败, battleId={}, replacedIndex={}", battleId, replacedIndex, e);
             return Map.of("error", "exchange_failed", "detail", e.getMessage());
         }
     }
@@ -416,10 +427,6 @@ public class BattleService {
         // 工厂挑战模式下，积分由 FactoryRunService 统一结算
         Integer factoryRunId = factory.get("factoryRunId") instanceof Number n ? n.intValue() : null;
         if (factoryRunId != null) {
-            // 通知工厂挑战服务单场结束
-            try {
-                factoryRunMapper.findById(factoryRunId); // 验证 run 存在
-            } catch (Exception ignored) {}
             factory.put("progressApplied", true);
             factory.put("playerTier", tier);
             factory.put("playerTierName", TierService.tierName(tier));
@@ -464,7 +471,8 @@ public class BattleService {
             Map<String, Object> round = newRounds.get(index);
             try {
                 roundMapper.insertRound(battleId, toInt(round.get("round"), index + 1), toJson(round));
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                throw new IllegalStateException("battle_round_persist_failed", e);
             }
         }
     }
@@ -561,7 +569,8 @@ public class BattleService {
         if (rawValue instanceof String rawString && !rawString.isBlank()) {
             try {
                 return objectMapper.readValue(rawString, Map.class);
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                throw new IllegalArgumentException("invalid_move_map_json", e);
             }
         }
         return Map.of();
@@ -588,7 +597,7 @@ public class BattleService {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (Exception e) {
-            return "{}";
+            throw new IllegalStateException("serialize_failed", e);
         }
     }
 }

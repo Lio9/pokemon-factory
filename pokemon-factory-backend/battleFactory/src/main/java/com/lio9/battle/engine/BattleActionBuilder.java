@@ -36,8 +36,9 @@ final class BattleActionBuilder {
             Map<String, Object> move = engine.selectPlayerMove(mon, playerMoveMap, fieldSlot, currentRound);
             int targetFieldSlot = selectTargetFieldSlot(playerMoveMap, fieldSlot);
             int targetTeamIndex = engine.targetIndex(state, false, targetFieldSlot);
+            String specialSystemRequested = selectedSpecialSystem(playerMoveMap, fieldSlot);
             actions.add(BattleEngine.Action.moveAction("player", monIndex, fieldSlot, targetTeamIndex,
-                    targetFieldSlot, move, engine.speedValue(mon, state, true)));
+                    targetFieldSlot, move, engine.speedValue(mon, state, true), specialSystemRequested));
         }
         return actions;
     }
@@ -62,8 +63,9 @@ final class BattleActionBuilder {
             Map<String, Object> move = engine.selectAIMove(mon, random, state, false, currentRound);
             int targetFieldSlot = random.nextBoolean() ? fieldSlot : (fieldSlot == 0 ? 1 : 0);
             int targetTeamIndex = engine.targetIndex(state, true, targetFieldSlot);
+            String specialSystemRequested = shouldAIUseSpecialSystem(state, mon, move, currentRound);
             actions.add(BattleEngine.Action.moveAction("opponent", monIndex, fieldSlot, targetTeamIndex,
-                    targetFieldSlot, move, engine.speedValue(mon, state, false)));
+                    targetFieldSlot, move, engine.speedValue(mon, state, false), specialSystemRequested));
         }
         return actions;
     }
@@ -87,5 +89,54 @@ final class BattleActionBuilder {
         }
         int target = engine.toInt(playerMoveMap.get("target-slot-" + fieldSlot), fieldSlot);
         return Math.max(0, Math.min(1, target));
+    }
+
+    private String selectedSpecialSystem(Map<String, String> playerMoveMap, int fieldSlot) {
+        if (playerMoveMap == null) {
+            return null;
+        }
+        String requested = playerMoveMap.get("special-slot-" + fieldSlot);
+        if (requested != null && !requested.isBlank()) {
+            return requested;
+        }
+        return Boolean.parseBoolean(String.valueOf(playerMoveMap.getOrDefault("tera-slot-" + fieldSlot, "false"))) ? "tera" : null;
+    }
+
+    private String shouldAIUseSpecialSystem(Map<String, Object> state, Map<String, Object> mon, Map<String, Object> move, int currentRound) {
+        if (engine.isStatusMove(move) || engine.toInt(move.get("power"), 0) <= 0 || currentRound > 3) {
+            return null;
+        }
+        if (engine.canUseSpecialSystem(state, false, mon, "z-move", move) && hasAdvantageousTarget(state, move, "z-move")) {
+            return "z-move";
+        }
+        if (engine.canUseSpecialSystem(state, false, mon, "mega", move) && currentRound <= 2) {
+            return "mega";
+        }
+        if (engine.canUseSpecialSystem(state, false, mon, "dynamax", move) && currentRound <= 2) {
+            return "dynamax";
+        }
+        if (engine.canUseSpecialSystem(state, false, mon, "tera", move) && hasAdvantageousTarget(state, move, "tera")) {
+            return "tera";
+        }
+        return null;
+    }
+
+    private boolean hasAdvantageousTarget(Map<String, Object> state, Map<String, Object> move, String system) {
+        int moveTypeId = engine.toInt(move.get("type_id"), 0);
+        if (moveTypeId <= 0) {
+            return false;
+        }
+        for (Integer slot : engine.activeSlots(state, true)) {
+            List<Map<String, Object>> playerTeam = engine.team(state, true);
+            if (!engine.isAvailableMon(playerTeam, slot)) {
+                continue;
+            }
+            for (Map<String, Object> type : engine.activeTypes(playerTeam.get(slot))) {
+                if (engine.typeFactor(moveTypeId, engine.toInt(type.get("type_id"), 0)) > 100) {
+                    return true;
+                }
+            }
+        }
+        return "mega".equals(system) || "dynamax".equals(system);
     }
 }

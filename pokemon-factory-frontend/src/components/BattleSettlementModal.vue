@@ -33,10 +33,16 @@
           class="flex items-center justify-between rounded-xl px-4 py-3"
           :class="settlement.tierChange === 'promoted' ? 'bg-amber-50' : 'bg-rose-50'"
         >
-          <span class="text-sm" :class="settlement.tierChange === 'promoted' ? 'text-amber-700' : 'text-rose-600'">
+          <span
+            class="text-sm"
+            :class="settlement.tierChange === 'promoted' ? 'text-amber-700' : 'text-rose-600'"
+          >
             {{ settlement.tierChange === 'promoted' ? '段位晋升！' : '段位下降' }}
           </span>
-          <span class="font-semibold" :class="settlement.tierChange === 'promoted' ? 'text-amber-700' : 'text-rose-600'">
+          <span
+            class="font-semibold"
+            :class="settlement.tierChange === 'promoted' ? 'text-amber-700' : 'text-rose-600'"
+          >
             {{ settlement.newTierName }}
           </span>
         </div>
