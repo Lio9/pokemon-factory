@@ -101,19 +101,35 @@ final class BattleTurnCleanupSupport {
 
     private void applyEndTurnStatusEffects(List<Map<String, Object>> team, List<String> events) {
         for (Map<String, Object> mon : team) {
-            if (engine.toInt(mon.get("currentHp"), 0) <= 0 || !"burn".equals(mon.get("condition"))) {
+            if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
                 continue;
             }
             int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
-            int damage = Math.max(1, maxHp / 16);
+            String condition = String.valueOf(mon.get("condition"));
+            int damage;
+            String eventPrefix;
+            if ("burn".equals(condition)) {
+                damage = Math.max(1, maxHp / 16);
+                eventPrefix = "灼伤";
+            } else if ("poison".equals(condition)) {
+                damage = Math.max(1, maxHp / 8);
+                eventPrefix = "中毒";
+            } else if ("toxic".equals(condition)) {
+                int toxicCounter = Math.max(1, engine.toInt(mon.get("toxicCounter"), 1));
+                damage = Math.max(1, (maxHp * toxicCounter) / 16);
+                mon.put("toxicCounter", Math.min(15, toxicCounter + 1));
+                eventPrefix = "剧毒";
+            } else {
+                continue;
+            }
             int currentHp = engine.toInt(mon.get("currentHp"), 0);
             int remainingHp = Math.max(0, currentHp - damage);
             mon.put("currentHp", remainingHp);
             if (remainingHp == 0) {
                 mon.put("status", "fainted");
-                events.add(mon.get("name") + " 因灼伤倒下了");
+                events.add(mon.get("name") + " 因" + eventPrefix + "倒下了");
             } else {
-                events.add(mon.get("name") + " 受到灼伤影响，损失了 " + damage + " 点 HP");
+                events.add(mon.get("name") + " 受到" + eventPrefix + "影响，损失了 " + damage + " 点 HP");
             }
         }
     }

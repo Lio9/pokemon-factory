@@ -31,6 +31,18 @@ final class BattleRoundSupport {
         }
 
         Map<String, Object> actor = actingTeam.get(action.actorIndex());
+        if (engine.toInt(actor.get("rechargeTurns"), 0) > 0) {
+            Map<String, Object> rechargeLog = new LinkedHashMap<>();
+            rechargeLog.put("side", action.side());
+            rechargeLog.put("actor", actor.get("name"));
+            rechargeLog.put("actionType", "recharge");
+            rechargeLog.put("result", "recharge");
+            actionLogs.add(rechargeLog);
+            actor.put("rechargeTurns", Math.max(0, engine.toInt(actor.get("rechargeTurns"), 0) - 1));
+            events.add(actor.get("name") + " 正在回复，无法行动");
+            return;
+        }
+        Map<String, Object> forcedChargeMove = chargingMove(actor);
         if (Boolean.TRUE.equals(actor.get("flinched"))) {
             Map<String, Object> flinchLog = new LinkedHashMap<>();
             flinchLog.put("side", action.side());
@@ -40,6 +52,9 @@ final class BattleRoundSupport {
             actionLogs.add(flinchLog);
             events.add(actor.get("name") + " 畏缩了，无法行动");
             actor.put("flinched", false);
+            return;
+        }
+        if (conditionSupport.handleFrozenBeforeAction(actor, action.side(), actionLogs, events, random)) {
             return;
         }
         if ("paralysis".equals(actor.get("condition")) && random.nextInt(4) == 0) {
@@ -68,20 +83,27 @@ final class BattleRoundSupport {
             actor.put("sleepAppliedRound", 0);
             events.add(actor.get("name") + " 醒来了");
         }
+        if (conditionSupport.handleConfusionBeforeAction(actor, action.side(), actionLogs, events, random)) {
+            return;
+        }
 
         Map<String, Object> actionLog = new LinkedHashMap<>();
         actionLog.put("side", action.side());
         actionLog.put("actor", actor.get("name"));
 
-        if (action.isSwitch()) {
+        if (forcedChargeMove == null && action.isSwitch()) {
             handleSwitch(state, action, actingTeam, actor, playerSide, actionLogs, events, actionLog);
             return;
         }
 
-        Map<String, Object> move = action.move();
+        Map<String, Object> move = forcedChargeMove != null ? forcedChargeMove : action.move();
         actionLog.put("move", move.get("name"));
-        if (action.specialSystemRequested() != null) {
+        if (forcedChargeMove == null && action.specialSystemRequested() != null) {
             engine.activateSpecialSystem(state, playerSide, actor, move, action.specialSystemRequested(), round, actionLog, events);
+        }
+        if (forcedChargeMove == null && shouldStartCharging(actor, move, state)) {
+            startCharging(actor, move, actionLog, actionLogs, events);
+            return;
         }
         if (engine.tauntTurns(actor) > 0 && engine.isStatusMove(move)) {
             actionLog.put("result", "taunted");
@@ -132,6 +154,10 @@ final class BattleRoundSupport {
                 events.add(target.get("name") + " 受到精神场地保护，挡住了先制招式");
                 continue;
             }
+            if (conditionSupport.isBlockedByPriorityBlockingAbility(state, action.side(), target, move, targetLog, events)) {
+                actionLogs.add(targetLog);
+                continue;
+            }
             if (engine.isSpreadMove(move) && wideGuardSides.getOrDefault(targetRef.side(), false)) {
                 targetLog.put("result", "wide-guard-blocked");
                 targetLog.put("damage", 0);
@@ -164,11 +190,25 @@ final class BattleRoundSupport {
                 continue;
             }
 
-            if (engine.isStatusMove(move) && conditionSupport.isStatusMoveBlockedByAbility(actor, target, move, targetLog, events)) {
+            Map<String, Object> statusSource = actor;
+            Map<String, Object> statusTarget = target;
+            String statusActingSide = action.side();
+            if (engine.isStatusMove(move)
+                    && conditionSupport.shouldMagicBounceStatusMove(state, action.side(), actor, target, move, targetLog, events)) {
+                statusSource = target;
+                statusTarget = actor;
+                statusActingSide = engine.isOnSide(state, statusSource, true) ? "player" : "opponent";
+                targetLog.put("target", statusTarget.get("name"));
+                targetLog.put("targetFieldSlot", action.actorFieldSlot());
+            }
+
+            if (engine.isStatusMove(move)
+                    && conditionSupport.isStatusMoveBlockedByAbility(state, statusActingSide, statusSource, statusTarget, move, targetLog, events)) {
                 actionLogs.add(targetLog);
                 continue;
             }
-            if (engine.isStatusMove(move) && handleStatusMove(state, action, actor, target, move, targetLog, events, random, round, actionLogs)) {
+            if (engine.isStatusMove(move)
+                    && handleStatusMove(state, action, statusSource, statusTarget, move, targetLog, events, random, round, actionLogs)) {
                 continue;
             }
 
@@ -177,28 +217,56 @@ final class BattleRoundSupport {
                 continue;
             }
 
-            int damage = engine.calculateDamage(actor, target, move, random, helpingHandBoosts, state);
-            if (targets.size() > 1 && engine.isSpreadMove(move)) {
-                damage = Math.max(1, (int) Math.floor(damage * 0.75d));
-            }
-            int remainingHp = engine.applyIncomingDamage(target, damage, targetLog, events);
-            int actualDamage = engine.toInt(targetLog.get("damage"), damage);
-            target.put("currentHp", remainingHp);
-            if (remainingHp == 0) {
-                target.put("status", "fainted");
+            int hitCount = resolveHitCount(actor, move, random);
+            int totalActualDamage = 0;
+            int criticalHits = 0;
+            int remainingHp = engine.toInt(target.get("currentHp"), 0);
+            List<Integer> hitDamages = new ArrayList<>();
+            for (int hitIndex = 0; hitIndex < hitCount && remainingHp > 0; hitIndex++) {
+                boolean criticalHit = resolveCriticalHit(actor, move, random);
+                Map<String, Object> resolvedMove = move;
+                if (criticalHit) {
+                    resolvedMove = new LinkedHashMap<>(move);
+                    resolvedMove.put("criticalHit", true);
+                    criticalHits += 1;
+                }
+                int damage = engine.calculateDamage(actor, target, resolvedMove, random, helpingHandBoosts, state);
+                if (targets.size() > 1 && engine.isSpreadMove(move)) {
+                    damage = Math.max(1, (int) Math.floor(damage * 0.75d));
+                }
+                remainingHp = engine.applyIncomingDamage(target, damage, targetLog, events);
+                int actualDamage = engine.toInt(targetLog.get("damage"), damage);
+                target.put("currentHp", remainingHp);
+                conditionSupport.thawFromFireHit(target, move, targetLog, events);
+                hitDamages.add(actualDamage);
+                totalActualDamage += actualDamage;
+                engine.applyDefenderItemEffects(target, move, actualDamage, targetLog, events);
+                conditionSupport.applyReactiveContactEffects(actor, target, move, targetLog, events);
+                if (remainingHp == 0) {
+                    target.put("status", "fainted");
+                }
             }
 
             targetLog.put("result", "hit");
-            targetLog.put("damage", actualDamage);
+            targetLog.put("damage", totalActualDamage);
+            targetLog.put("hitCount", hitDamages.size());
+            targetLog.put("hitDamages", hitDamages);
+            targetLog.put("critical", criticalHits > 0);
+            targetLog.put("criticalHits", criticalHits);
             targetLog.put("targetHpAfter", remainingHp);
             actionLogs.add(targetLog);
             events.add(engine.sideName(action.side()) + " 的 " + actor.get("name") + " 使用 " + move.get("name")
-                    + " 对 " + target.get("name") + " 造成了 " + actualDamage + " 点伤害");
+                    + " 对 " + target.get("name") + " 造成了 " + totalActualDamage + " 点伤害");
+            if (hitDamages.size() > 1) {
+                events.add(move.get("name") + " 连续命中了 " + hitDamages.size() + " 次");
+            }
+            if (criticalHits > 0) {
+                events.add(criticalHits == 1 ? "击中了要害" : "其中 " + criticalHits + " 次击中了要害");
+            }
 
-            engine.applyDefenderItemEffects(target, move, actualDamage, targetLog, events);
-            conditionSupport.applyReactiveContactEffects(actor, target, move, targetLog, events);
-            totalDamage += actualDamage;
-            anyHit = true;
+            conditionSupport.applyDrainHealing(actor, move, totalActualDamage, targetLog, events);
+            totalDamage += totalActualDamage;
+            anyHit = anyHit || totalActualDamage > 0;
             if (isFakeOut(move) && remainingHp > 0) {
                 if ("inner-focus".equalsIgnoreCase(engine.abilityName(target)) || "inner focus".equalsIgnoreCase(engine.abilityName(target))) {
                     targetLog.put("flinchBlocked", true);
@@ -220,6 +288,9 @@ final class BattleRoundSupport {
                     conditionSupport.applySpecialAttackDrop(actor, target, 1, targetLog, events);
                 }
             }
+            if (remainingHp > 0) {
+                conditionSupport.applyDamagingSecondaryEffects(state, actor, target, move, targetLog, events, random);
+            }
             if (remainingHp == 0) {
                 events.add(target.get("name") + " 倒下了");
             }
@@ -228,6 +299,14 @@ final class BattleRoundSupport {
         if (anyHit) {
             engine.applyAttackerItemEffects(actor, totalDamage, actionLog, events);
         }
+        if (anyHit && engine.isRechargeMove(move)) {
+            actor.put("rechargeTurns", 1);
+            actionLog.put("rechargeNextTurn", true);
+            events.add(actor.get("name") + " 下回合需要回复，无法行动");
+        }
+        if (forcedChargeMove != null) {
+            clearCharging(actor);
+        }
         actor.remove("zMoveRound");
         actor.remove("zMoveBase");
         if ("z-move".equals(actor.get("specialSystemActivated"))) {
@@ -235,6 +314,110 @@ final class BattleRoundSupport {
         }
         engine.rememberChoiceMove(actor, move);
         engine.applyCooldown(actor, move);
+    }
+
+    private int resolveHitCount(Map<String, Object> actor, Map<String, Object> move, Random random) {
+        int minHits = Math.max(1, engine.toInt(move.get("min_hits"), 0));
+        int maxHits = Math.max(minHits, engine.toInt(move.get("max_hits"), 0));
+        if (engine.toInt(move.get("max_hits"), 0) <= 0) {
+            maxHits = minHits;
+        }
+        if (maxHits <= 1) {
+            return 1;
+        }
+        String ability = engine.abilityName(actor);
+        if ("skill-link".equalsIgnoreCase(ability) || "skill link".equalsIgnoreCase(ability)) {
+            return maxHits;
+        }
+        String heldItem = engine.heldItem(actor);
+        if (("loaded-dice".equalsIgnoreCase(heldItem) || "loaded dice".equalsIgnoreCase(heldItem))
+                && minHits == 2 && maxHits == 5) {
+            return random.nextBoolean() ? 4 : 5;
+        }
+        if (minHits == 2 && maxHits == 5) {
+            int roll = random.nextInt(100);
+            if (roll < 35) {
+                return 2;
+            }
+            if (roll < 70) {
+                return 3;
+            }
+            if (roll < 85) {
+                return 4;
+            }
+            return 5;
+        }
+        return minHits + random.nextInt(maxHits - minHits + 1);
+    }
+
+    private Map<String, Object> chargingMove(Map<String, Object> actor) {
+        String chargingMoveName = String.valueOf(actor.getOrDefault("chargingMove", ""));
+        if (chargingMoveName.isBlank()) {
+            return null;
+        }
+        for (Map<String, Object> move : engine.moves(actor)) {
+            if (chargingMoveName.equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+                return move;
+            }
+        }
+        actor.put("chargingMove", null);
+        actor.put("chargingTurns", 0);
+        return null;
+    }
+
+    private boolean shouldStartCharging(Map<String, Object> actor, Map<String, Object> move, Map<String, Object> state) {
+        if (!engine.isChargeMove(move)) {
+            return false;
+        }
+        String heldItem = engine.heldItem(actor);
+        if ("power-herb".equalsIgnoreCase(heldItem) || "power herb".equalsIgnoreCase(heldItem)) {
+            engine.consumeItem(actor);
+            return false;
+        }
+        String nameEn = String.valueOf(move.get("name_en"));
+        if (matches(nameEn, "solar-beam", "solar beam", "solar-blade", "solar blade")
+                && engine.toInt(engine.castMap(state.get("fieldEffects")).get("sunTurns"), 0) > 0) {
+            return false;
+        }
+        return true;
+    }
+
+    private void startCharging(Map<String, Object> actor, Map<String, Object> move, Map<String, Object> actionLog,
+                               List<Map<String, Object>> actionLogs, List<String> events) {
+        actor.put("chargingMove", move.get("name_en"));
+        actor.put("chargingTurns", 1);
+        actionLog.put("result", "charge");
+        actionLog.put("charging", true);
+        actionLogs.add(actionLog);
+        events.add(actor.get("name") + " 正在蓄力");
+    }
+
+    private void clearCharging(Map<String, Object> actor) {
+        actor.put("chargingMove", null);
+        actor.put("chargingTurns", 0);
+    }
+
+    private boolean resolveCriticalHit(Map<String, Object> actor, Map<String, Object> move, Random random) {
+        int critStage = Math.max(0, engine.toInt(move.get("crit_rate"), 0));
+        String ability = engine.abilityName(actor);
+        if ("super-luck".equalsIgnoreCase(ability) || "super luck".equalsIgnoreCase(ability)) {
+            critStage += 1;
+        }
+        String heldItem = engine.heldItem(actor);
+        if ("scope-lens".equalsIgnoreCase(heldItem) || "scope lens".equalsIgnoreCase(heldItem)
+                || "razor-claw".equalsIgnoreCase(heldItem) || "razor claw".equalsIgnoreCase(heldItem)) {
+            critStage += 1;
+        }
+        return critStage >= 3;
+    }
+
+    private boolean matches(String value, String... names) {
+        for (String name : names) {
+            if (name.equalsIgnoreCase(value)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void handleSwitch(Map<String, Object> state, BattleEngine.Action action, List<Map<String, Object>> actingTeam,
@@ -341,6 +524,9 @@ final class BattleRoundSupport {
             targetSupport.applyAllySwitch(state, action, actor, actionLog, events);
             return finishNonDamagingMove(actor, move, actionLog, actionLogs);
         }
+        if (conditionSupport.applyMoveHealing(actor, move, actionLog, events)) {
+            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+        }
         return false;
     }
 
@@ -357,6 +543,16 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
+        if (engine.isToxic(move)) {
+            conditionSupport.applyPoison(state, actor, target, move, targetLog, events, true);
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isPoisonPowder(move)) {
+            conditionSupport.applyPoison(state, actor, target, move, targetLog, events, false);
+            actionLogs.add(targetLog);
+            return true;
+        }
         if (engine.isTaunt(move)) {
             conditionSupport.applyTaunt(actor, target, targetLog, events);
             actionLogs.add(targetLog);
@@ -369,6 +565,11 @@ final class BattleRoundSupport {
         }
         if (engine.isFakeTears(move)) {
             targetLog.put("result", conditionSupport.applySpecialDefenseDrop(actor, target, 2, targetLog, events) ? "fake-tears" : "failed");
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isConfuseRay(move)) {
+            conditionSupport.applyConfusion(actor, target, targetLog, events, random);
             actionLogs.add(targetLog);
             return true;
         }

@@ -105,9 +105,15 @@ final class BattlePreviewSupport {
             mon.put("cooldowns", new LinkedHashMap<>());
             mon.put("entryRound", 1);
             mon.put("flinched", false);
+            mon.put("confused", false);
+            mon.put("confusionTurns", 0);
             mon.put("sleepTurns", 0);
             mon.put("sleepAppliedRound", 0);
+            mon.put("toxicCounter", 0);
             mon.put("tauntTurns", 0);
+            mon.put("rechargeTurns", 0);
+            mon.put("chargingMove", null);
+            mon.put("chargingTurns", 0);
             mon.put("protectionStreak", 0);
             mon.put("lastProtectionRound", 0);
             mon.put("specialSystemActivated", null);
@@ -180,8 +186,11 @@ final class BattlePreviewSupport {
         normalized.putIfAbsent("condition", null);
         normalized.putIfAbsent("entryRound", 1);
         normalized.putIfAbsent("flinched", false);
+        normalized.putIfAbsent("confused", false);
+        normalized.putIfAbsent("confusionTurns", 0);
         normalized.putIfAbsent("sleepTurns", 0);
         normalized.putIfAbsent("sleepAppliedRound", 0);
+        normalized.putIfAbsent("toxicCounter", 0);
         normalized.putIfAbsent("tauntTurns", 0);
         normalized.putIfAbsent("protectionStreak", 0);
         normalized.putIfAbsent("lastProtectionRound", 0);
@@ -211,7 +220,78 @@ final class BattlePreviewSupport {
             copied.put("damage_class_id", toInt(copied.get("damage_class_id"), 0));
             copied.put("type_id", toInt(copied.get("type_id"), 0));
             copied.put("target_id", toInt(copied.get("target_id"), 0));
+            copied.put("min_hits", toInt(copied.get("min_hits"), 0));
+            copied.put("max_hits", toInt(copied.get("max_hits"), 0));
+            copied.put("crit_rate", toInt(copied.get("crit_rate"), 0));
+            copied.put("effect_chance", toInt(copied.get("effect_chance"), 0));
+            copied.put("ailment_chance", toInt(copied.get("ailment_chance"), 0));
+            copied.put("flinch_chance", toInt(copied.get("flinch_chance"), 0));
+            copied.put("stat_chance", toInt(copied.get("stat_chance"), 0));
+            copied.put("drain", toInt(copied.get("drain"), 0));
+            copied.put("healing", toInt(copied.get("healing"), 0));
+            copied.put("ailment_name_en", copied.getOrDefault("ailment_name_en", ""));
+            copied.put("category_name_en", copied.getOrDefault("category_name_en", ""));
+            copied.put("effect_short", copied.getOrDefault("effect_short", ""));
+            copied.put("flags", normalizeFlags(copied.get("flags")));
+            copied.put("metaStatChanges", normalizeStatChanges(copied.get("metaStatChanges"), copied.get("stat_changes")));
             normalized.add(copied);
+        }
+        return normalized;
+    }
+
+    private List<String> normalizeFlags(Object raw) {
+        List<String> flags = new ArrayList<>();
+        if (raw instanceof List<?> list) {
+            for (Object item : list) {
+                if (item != null) {
+                    flags.add(item.toString());
+                }
+            }
+            return flags;
+        }
+        if (raw == null) {
+            return flags;
+        }
+        String text = raw.toString().trim();
+        if (text.isBlank()) {
+            return flags;
+        }
+        for (String part : text.split(",")) {
+            String value = part.trim();
+            if (!value.isBlank()) {
+                flags.add(value);
+            }
+        }
+        return flags;
+    }
+
+    private List<Map<String, Object>> normalizeStatChanges(Object rawList, Object rawString) {
+        List<Map<String, Object>> normalized = new ArrayList<>();
+        for (Map<String, Object> statChange : stateSupport.castList(rawList)) {
+            normalized.add(Map.of(
+                    "stat_id", toInt(statChange.get("stat_id"), 0),
+                    "change", toInt(statChange.get("change"), 0)
+            ));
+        }
+        if (!normalized.isEmpty()) {
+            return normalized;
+        }
+        if (rawString == null) {
+            return normalized;
+        }
+        String text = rawString.toString().trim();
+        if (text.isBlank()) {
+            return normalized;
+        }
+        for (String part : text.split(",")) {
+            String[] pair = part.trim().split(":");
+            if (pair.length != 2) {
+                continue;
+            }
+            normalized.add(Map.of(
+                    "stat_id", toInt(pair[0], 0),
+                    "change", toInt(pair[1], 0)
+            ));
         }
         return normalized;
     }

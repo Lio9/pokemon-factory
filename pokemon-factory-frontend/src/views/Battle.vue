@@ -73,6 +73,7 @@
           :is-preview-phase="isPreviewPhase"
           :is-replacement-phase="isReplacementPhase"
           :lead-roster-indexes="leadRosterIndexes"
+          :move-effectiveness-hints="moveEffectivenessHints"
           :move-needs-opponent-target="moveNeedsOpponentTarget"
           :move-target-text="moveTargetText"
           :opponent-active-options="opponentActiveOptions"
@@ -208,6 +209,7 @@ const {
   mobileActionButtons,
   modeDescription,
   modeSummary,
+  moveEffectivenessHints,
   moveNeedsOpponentTarget,
   moveTargetText,
   nextFactoryBattle,

@@ -61,19 +61,36 @@ public interface BattleDexMapper {
      */
     @Select("SELECT m.id, m.name, m.name_en, m.type_id, m.damage_class_id, m.target_id, " +
             "COALESCE(m.power, 0) AS power, COALESCE(m.accuracy, 100) AS accuracy, COALESCE(m.priority, 0) AS priority, " +
+            "COALESCE(mm.min_hits, 0) AS min_hits, COALESCE(mm.max_hits, 0) AS max_hits, COALESCE(mm.crit_rate, 0) AS crit_rate, " +
+            "COALESCE(m.effect_chance, 0) AS effect_chance, COALESCE(mm.ailment_chance, 0) AS ailment_chance, COALESCE(mm.flinch_chance, 0) AS flinch_chance, " +
+            "COALESCE(mm.stat_chance, 0) AS stat_chance, COALESCE(mm.drain, 0) AS drain, COALESCE(mm.healing, 0) AS healing, " +
+            "COALESCE(ma.name_en, '') AS ailment_name_en, COALESCE(mc.name_en, '') AS category_name_en, " +
+            "COALESCE(msc.stat_changes, '') AS stat_changes, COALESCE(mf.flags, '') AS flags, " +
             "COALESCE(m.effect_short, '') AS effect_short " +
             "FROM pokemon_form_move pfm " +
             "JOIN move m ON m.id = pfm.move_id " +
+            "LEFT JOIN move_meta mm ON mm.move_id = m.id " +
+            "LEFT JOIN move_meta_ailment ma ON ma.id = mm.ailment_id " +
+            "LEFT JOIN move_meta_category mc ON mc.id = mm.category_id " +
+            "LEFT JOIN (" +
+            "SELECT move_id, GROUP_CONCAT(stat_id || ':' || \"change\", ',') AS stat_changes " +
+            "FROM move_meta_stat_change GROUP BY move_id" +
+            ") msc ON msc.move_id = m.id " +
+            "LEFT JOIN (" +
+            "SELECT mfm.move_id, GROUP_CONCAT(mf.identifier, ',') AS flags " +
+            "FROM move_flag_map mfm JOIN move_flags mf ON mf.id = mfm.flag_id GROUP BY mfm.move_id" +
+            ") mf ON mf.move_id = m.id " +
             "WHERE pfm.form_id = #{formId} " +
             "AND (" +
             "m.name_en IN (" +
             "'protect','detect','wide-guard','quick-guard','tailwind','trick-room','rain-dance','sunny-day','sandstorm','snowscape'," +
             "'electric-terrain','psychic-terrain','grassy-terrain','misty-terrain','reflect','light-screen','aurora-veil','taunt','spore'," +
             "'helping-hand','follow-me','rage-powder','will-o-wisp','thunder-wave','icy-wind','electroweb','snarl','fake-tears'," +
-            "'parting-shot','ally-switch','feint'" +
+            "'parting-shot','ally-switch','feint','recover','roost','slack-off','soft-boiled','moonlight','synthesis','morning-sun'" +
             ") OR (m.damage_class_id IN (1, 2) AND COALESCE(m.power, 0) > 0)" +
             ") " +
-            "GROUP BY m.id, m.name, m.name_en, m.type_id, m.damage_class_id, m.target_id, m.power, m.accuracy, m.priority, m.effect_short " +
+            "GROUP BY m.id, m.name, m.name_en, m.type_id, m.damage_class_id, m.target_id, m.power, m.accuracy, m.priority, " +
+            "mm.min_hits, mm.max_hits, mm.crit_rate, m.effect_chance, mm.ailment_chance, mm.flinch_chance, mm.stat_chance, mm.drain, mm.healing, ma.name_en, mc.name_en, msc.stat_changes, mf.flags, m.effect_short " +
             "ORDER BY CASE WHEN m.name_en = 'protect' THEN 0 ELSE 1 END, COALESCE(m.power, 0) DESC, COALESCE(m.accuracy, 100) DESC " +
             "LIMIT #{limit}")
     List<Map<String, Object>> selectCompetitiveMoves(@Param("formId") Integer formId, @Param("limit") int limit);

@@ -351,6 +351,7 @@ tail -f logs/pokemon-factory.log
 ## 致谢
 
 - [PokeAPI](https://pokeapi.co/)：宝可梦数据来源
+- [Pokemon Showdown](https://github.com/smogon/pokemon-showdown)：battle 规则完善过程中参考了其开源实现思路与机制研究沉淀，感谢 Smogon 社区的长期贡献
 
 ## 联系方式
 

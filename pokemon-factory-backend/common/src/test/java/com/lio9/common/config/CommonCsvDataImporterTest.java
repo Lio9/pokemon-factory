@@ -49,6 +49,8 @@ class CommonCsvDataImporterTest {
             assertEquals(1, count(connection, "pokemon_evolution"));
             assertEquals(1, count(connection, "type_efficacy"));
             assertEquals(1, count(connection, "move_meta"));
+            assertEquals(1, count(connection, "move_meta_ailment"));
+            assertEquals(1, count(connection, "move_meta_category"));
             assertEquals(1, count(connection, "move_flag_map"));
             assertEquals(1, count(connection, "pokemon_species_egg_group"));
             assertTrue(count(connection, "type") >= 18);
@@ -297,6 +299,8 @@ class CommonCsvDataImporterTest {
         files.put("evolution_trigger_prose.csv", csv("evolution_trigger_id,local_language_id,name", "1,12,升级", "1,9,Level up"));
         files.put("move_targets.csv", csv("id,identifier", "1,specific-move"));
         files.put("move_target_prose.csv", csv("move_target_id,local_language_id,name,description", "1,12,单体,指定单目标", "1,9,Specific move,One specific move."));
+        files.put("move_meta_ailments.csv", csv("id,identifier", "1,burn"));
+        files.put("move_meta_categories.csv", csv("id,identifier", "1,damage+ailment"));
         files.put("type_names.csv", typeNamesCsv());
         files.put("type_efficacy.csv", csv("damage_type_id,target_type_id,damage_factor", "1,2,100"));
         files.put("ability_names.csv", abilityNamesCsv());
@@ -305,7 +309,7 @@ class CommonCsvDataImporterTest {
         files.put("move_names.csv", csv("move_id,local_language_id,name", "1,9,pound"));
         files.put("move_flavor_text.csv", csv("move_id,version_group_id,language_id,flavor_text", "1,1,9,A physical attack delivered with a long tail."));
         files.put("moves.csv", csv("id,identifier,type_id,damage_class_id,target_id,power,pp,accuracy,priority,effect_chance,generation_id", "1,pound,1,2,1,40,35,100,0,,1"));
-        files.put("move_meta.csv", csv("move_id,min_hits,max_hits,min_turns,max_turns,drain,healing,crit_rate,ailment_chance,flinch_chance,stat_chance", "1,,,,,,,,,,"));
+        files.put("move_meta.csv", csv("move_id,min_hits,max_hits,min_turns,max_turns,drain,healing,crit_rate,ailment_id,category_id,ailment_chance,flinch_chance,stat_chance", "1,,,,,,,,1,1,,,")); 
         files.put("move_flags.csv", csv("id,identifier", "1,contact"));
         files.put("move_flag_map.csv", csv("move_id,move_flag_id", "1,1"));
         files.put("move_meta_stat_changes.csv", csv("move_id,stat_id,change", "1,1,1"));

@@ -277,11 +277,15 @@ CREATE TABLE move_meta (
     drain INTEGER,
     healing INTEGER,
     crit_rate INTEGER,
+    ailment_id INTEGER,
+    category_id INTEGER,
     ailment_chance INTEGER,
     flinch_chance INTEGER,
     stat_chance INTEGER,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (move_id) REFERENCES move(id) ON DELETE CASCADE,
+    FOREIGN KEY (ailment_id) REFERENCES move_meta_ailment(id),
+    FOREIGN KEY (category_id) REFERENCES move_meta_category(id),
     UNIQUE (move_id)
 );
 

@@ -25,16 +25,17 @@ final class BattleDamageSupport {
     int calculateDamage(Map<String, Object> attacker, Map<String, Object> defender, Map<String, Object> move, Random random,
                         Map<Map<String, Object>, Boolean> helpingHandBoosts, Map<String, Object> state) {
         int damageClassId = engine.toInt(move.get("damage_class_id"), DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL);
+        boolean criticalHit = Boolean.TRUE.equals(move.get("criticalHit"));
         Map<String, Object> attackerStats = engine.castMap(attacker.get("stats"));
         Map<String, Object> defenderStats = engine.castMap(defender.get("stats"));
 
         int attackStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
-                ? modifiedAttackStat(attacker, engine.toInt(attackerStats.get("attack"), 100), damageClassId)
-                : modifiedAttackStat(attacker, engine.toInt(attackerStats.get("specialAttack"), 100), damageClassId);
+                ? modifiedAttackStat(attacker, engine.toInt(attackerStats.get("attack"), 100), damageClassId, criticalHit)
+                : modifiedAttackStat(attacker, engine.toInt(attackerStats.get("specialAttack"), 100), damageClassId, criticalHit);
         int baseDefenseStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
                 ? engine.toInt(defenderStats.get("defense"), 100)
                 : engine.toInt(defenderStats.get("specialDefense"), 100);
-        int defenseStat = Math.max(1, modifiedDefenseStat(defender, baseDefenseStat, damageClassId, state));
+        int defenseStat = Math.max(1, modifiedDefenseStat(defender, baseDefenseStat, damageClassId, state, criticalHit));
 
         int power = Math.max(1, engine.toInt(move.get("power"), 1));
         int baseDamage = DamageCalculatorUtil.calculateBaseDamage(level, power, attackStat, defenseStat);
@@ -52,6 +53,11 @@ final class BattleDamageSupport {
         }
         if (engine.isZMoveActive(attacker, engine.toInt(state.get("currentRound"), 0), move)) {
             modifier *= 1.5d;
+        }
+        if (criticalHit) {
+            modifier *= "sniper".equalsIgnoreCase(engine.abilityName(attacker))
+                    ? DamageCalculatorUtil.CRITICAL_MULTIPLIER * 1.5d
+                    : DamageCalculatorUtil.CRITICAL_MULTIPLIER;
         }
         modifier *= weatherDamageModifier(state, moveTypeId);
         modifier *= terrainDamageModifier(state, attacker, defender, moveTypeId);
@@ -75,14 +81,22 @@ final class BattleDamageSupport {
         return modifier;
     }
 
-    int modifiedAttackStat(Map<String, Object> mon, int baseStat, int damageClassId) {
+    int modifiedAttackStat(Map<String, Object> mon, int baseStat, int damageClassId, boolean criticalHit) {
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            baseStat = applyStageModifier(baseStat, statStage(mon, "attack"));
+            int attackStage = statStage(mon, "attack");
+            if (criticalHit && attackStage < 0) {
+                attackStage = 0;
+            }
+            baseStat = applyStageModifier(baseStat, attackStage);
             if ("burn".equals(mon.get("condition"))) {
                 baseStat = Math.max(1, (int) Math.floor(baseStat * 0.5d));
             }
         } else if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            baseStat = applyStageModifier(baseStat, statStage(mon, "specialAttack"));
+            int specialAttackStage = statStage(mon, "specialAttack");
+            if (criticalHit && specialAttackStage < 0) {
+                specialAttackStage = 0;
+            }
+            baseStat = applyStageModifier(baseStat, specialAttackStage);
         }
 
         String item = heldItem(mon);
@@ -98,11 +112,19 @@ final class BattleDamageSupport {
         return baseStat;
     }
 
-    int modifiedDefenseStat(Map<String, Object> mon, int baseStat, int damageClassId, Map<String, Object> state) {
+    int modifiedDefenseStat(Map<String, Object> mon, int baseStat, int damageClassId, Map<String, Object> state, boolean criticalHit) {
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            baseStat = applyStageModifier(baseStat, statStage(mon, "defense"));
+            int defenseStage = statStage(mon, "defense");
+            if (criticalHit && defenseStage > 0) {
+                defenseStage = 0;
+            }
+            baseStat = applyStageModifier(baseStat, defenseStage);
         } else if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            baseStat = applyStageModifier(baseStat, statStage(mon, "specialDefense"));
+            int specialDefenseStage = statStage(mon, "specialDefense");
+            if (criticalHit && specialDefenseStage > 0) {
+                specialDefenseStage = 0;
+            }
+            baseStat = applyStageModifier(baseStat, specialDefenseStage);
         }
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL && "assault-vest".equals(heldItem(mon))) {
             baseStat = (int) Math.floor(baseStat * 1.5d);

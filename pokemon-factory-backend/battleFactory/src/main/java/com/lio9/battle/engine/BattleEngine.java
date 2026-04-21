@@ -292,6 +292,20 @@ public class BattleEngine {
         return "spore".equalsIgnoreCase(nameEn);
     }
 
+    boolean isToxic(Map<String, Object> move) {
+        return "toxic".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    boolean isPoisonPowder(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "poison-powder".equalsIgnoreCase(nameEn) || "poison powder".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isConfuseRay(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "confuse-ray".equalsIgnoreCase(nameEn) || "confuse ray".equalsIgnoreCase(nameEn);
+    }
+
     boolean isReflect(Map<String, Object> move) {
         String nameEn = String.valueOf(move.get("name_en"));
         return "reflect".equalsIgnoreCase(nameEn);
@@ -309,6 +323,9 @@ public class BattleEngine {
 
     boolean canUseMove(Map<String, Object> mon, Map<String, Object> move, int currentRound) {
         String item = heldItem(mon);
+        if (toInt(mon.get("rechargeTurns"), 0) > 0) {
+            return false;
+        }
         if ("assault-vest".equals(item) && isStatusMove(move)) {
             return false;
         }
@@ -319,6 +336,27 @@ public class BattleEngine {
             return false;
         }
         return true;
+    }
+
+    Map<String, Object> withEffectivePriority(Map<String, Object> mon, Map<String, Object> move) {
+        int effectivePriority = effectivePriority(mon, move);
+        int currentPriority = toInt(move.get("priority"), 0);
+        if (effectivePriority == currentPriority) {
+            return move;
+        }
+        Map<String, Object> copied = cloneMap(move);
+        copied.put("priority", effectivePriority);
+        copied.put("pranksterBoosted", effectivePriority > currentPriority);
+        return copied;
+    }
+
+    int effectivePriority(Map<String, Object> mon, Map<String, Object> move) {
+        int priority = toInt(move.get("priority"), 0);
+        if (priority >= 0 && isStatusMove(move)
+                && ("prankster".equalsIgnoreCase(abilityName(mon)))) {
+            return priority + 1;
+        }
+        return priority;
     }
 
     boolean isStatusMove(Map<String, Object> move) {
@@ -439,6 +477,31 @@ public class BattleEngine {
         return "parting-shot".equalsIgnoreCase(nameEn) || "parting shot".equalsIgnoreCase(nameEn);
     }
 
+    boolean isRechargeMove(Map<String, Object> move) {
+        String effectShort = String.valueOf(move.getOrDefault("effect_short", "")).toLowerCase();
+        if (effectShort.contains("recharge")) {
+            return true;
+        }
+        String nameEn = String.valueOf(move.get("name_en"));
+        return switch (nameEn.toLowerCase()) {
+            case "hyper-beam", "hyper beam", "giga-impact", "giga impact", "blast-burn", "blast burn",
+                    "hydro-cannon", "hydro cannon", "frenzy-plant", "frenzy plant", "rock-wrecker", "rock wrecker",
+                    "roar-of-time", "roar of time", "prismatic-laser", "prismatic laser", "meteor-assault", "meteor assault",
+                    "eternabeam" -> true;
+            default -> false;
+        };
+    }
+
+    boolean isChargeMove(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
+        return switch (nameEn) {
+            case "solar-beam", "solar beam", "solar-blade", "solar blade", "sky-attack", "sky attack",
+                    "meteor-beam", "meteor beam", "skull-bash", "skull bash", "razor-wind", "razor wind",
+                    "freeze-shock", "freeze shock", "ice-burn", "ice burn", "geomancy" -> true;
+            default -> false;
+        };
+    }
+
     boolean isSpreadMove(Map<String, Object> move) {
         return switch (targetId(move)) {
             case 9, 11, 12, 13, 14 -> true;
@@ -511,11 +574,11 @@ public class BattleEngine {
     }
 
     private int modifiedAttackStat(Map<String, Object> mon, int baseStat, int damageClassId) {
-        return damageSupport.modifiedAttackStat(mon, baseStat, damageClassId);
+        return damageSupport.modifiedAttackStat(mon, baseStat, damageClassId, false);
     }
 
     private int modifiedDefenseStat(Map<String, Object> mon, int baseStat, int damageClassId, Map<String, Object> state) {
-        return damageSupport.modifiedDefenseStat(mon, baseStat, damageClassId, state);
+        return damageSupport.modifiedDefenseStat(mon, baseStat, damageClassId, state, false);
     }
 
     private double itemDamageModifier(Map<String, Object> mon, int moveTypeId) {
@@ -911,6 +974,7 @@ public class BattleEngine {
 
     void activateTailwind(Map<String, Object> state, boolean playerSide, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
         fieldEffectSupport.activateTailwind(state, playerSide, actor, actionLog, events);
+        conditionSupport.applyTailwindWindRiderBoosts(state, actionLog, events);
     }
 
     void toggleTrickRoom(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {

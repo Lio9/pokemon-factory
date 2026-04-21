@@ -1,6 +1,57 @@
 import { computed } from 'vue'
 import { TIER_NAMES, formatPokemonTypes, moveNeedsOpponentTarget } from '../../services/contracts/battleContract'
 
+const TYPE_EFFECTIVENESS = {
+  1: { 6: 50, 8: 0, 9: 50 },
+  2: { 1: 200, 3: 50, 4: 50, 6: 200, 7: 50, 8: 0, 9: 200, 15: 200, 17: 200, 18: 50 },
+  3: { 2: 200, 6: 50, 7: 200, 9: 50, 12: 200, 13: 50 },
+  4: { 4: 50, 5: 50, 6: 50, 8: 50, 12: 200, 18: 200 },
+  5: { 3: 0, 4: 200, 6: 200, 9: 200, 10: 200, 12: 50, 13: 200 },
+  6: { 2: 50, 3: 200, 7: 200, 9: 50, 10: 200, 15: 200 },
+  7: { 2: 50, 3: 50, 4: 50, 8: 50, 9: 50, 10: 50, 12: 200, 14: 200, 17: 200, 18: 50 },
+  8: { 1: 0, 8: 200, 14: 200, 17: 50 },
+  9: { 6: 200, 9: 50, 10: 50, 11: 50, 18: 200 },
+  10: { 6: 50, 7: 200, 9: 200, 10: 50, 11: 50, 12: 200, 15: 200, 16: 50 },
+  11: { 5: 200, 6: 200, 10: 200, 11: 50, 12: 50, 16: 50 },
+  12: { 3: 50, 4: 50, 5: 200, 6: 200, 7: 50, 9: 50, 10: 50, 11: 200, 12: 50, 16: 50 },
+  13: { 3: 200, 5: 0, 11: 200, 12: 50, 13: 50, 16: 50 },
+  14: { 2: 200, 4: 200, 9: 50, 14: 50, 17: 0 },
+  15: { 3: 200, 5: 200, 9: 50, 10: 50, 11: 50, 12: 200, 15: 50, 16: 200 },
+  16: { 9: 50, 16: 200, 18: 0 },
+  17: { 2: 50, 8: 200, 14: 200, 17: 50, 18: 50 },
+  18: { 2: 200, 4: 50, 9: 50, 10: 50, 16: 200, 17: 200 }
+}
+
+function resolveTypeId(type) {
+  return Number(type?.type_id ?? type?.typeId ?? 0)
+}
+
+function typeMultiplier(moveTypeId, defendingTypes) {
+  return (defendingTypes || []).reduce((multiplier, type) => {
+    const factor = TYPE_EFFECTIVENESS[moveTypeId]?.[resolveTypeId(type)] ?? 100
+    return multiplier * (factor / 100)
+  }, 1)
+}
+
+function effectivenessDescriptor(multiplier) {
+  if (multiplier === 0) {
+    return { label: '无效', className: 'border-slate-300 bg-slate-100 text-slate-700' }
+  }
+  if (multiplier >= 4) {
+    return { label: '极其有效 · 4倍', className: 'border-rose-300 bg-rose-50 text-rose-700' }
+  }
+  if (multiplier >= 2) {
+    return { label: '有效 · 2倍', className: 'border-amber-300 bg-amber-50 text-amber-700' }
+  }
+  if (multiplier <= 0.25) {
+    return { label: '抵抗 · 0.25倍', className: 'border-sky-300 bg-sky-50 text-sky-700' }
+  }
+  if (multiplier < 1) {
+    return { label: '抵抗 · 0.5倍', className: 'border-cyan-300 bg-cyan-50 text-cyan-700' }
+  }
+  return { label: '等倍 · 1倍', className: 'border-emerald-300 bg-emerald-50 text-emerald-700' }
+}
+
 export function useBattleDerivedState(state) {
   const {
     busyAction,
@@ -137,6 +188,22 @@ export function useBattleDerivedState(state) {
     }))
   })
 
+  const opponentActiveMons = computed(() => {
+    const activeSlots = summary.value?.opponentActiveSlots || []
+    const opponentTeam = summary.value?.opponentTeam || []
+    return activeSlots
+      .map((teamIndex, fieldSlot) => {
+        const mon = opponentTeam?.[teamIndex]
+        if (!mon) return null
+        return {
+          ...mon,
+          teamIndex,
+          fieldSlot
+        }
+      })
+      .filter(Boolean)
+  })
+
   const playerBenchOptions = computed(() => {
     const activeSlots = summary.value?.playerActiveSlots || []
     return playerTeam.value
@@ -222,6 +289,42 @@ export function useBattleDerivedState(state) {
       || (mon?.megaEvolved ? 'mega' : null)
       || (mon?.dynamaxed ? 'dynamax' : null)
     return system ? specialSystemLabel(system) : ''
+  }
+
+  function moveEffectivenessHints(mon) {
+    const move = selectedMoveObject(mon)
+    if (!move || Number(move?.power || 0) <= 0) {
+      return []
+    }
+
+    const moveTypeId = Number(move?.type_id || 0)
+    if (moveTypeId <= 0) {
+      return []
+    }
+
+    const targetId = Number(move?.target_id || 10)
+    if (targetId === 7 || targetId === 13) {
+      return []
+    }
+
+    let targets = opponentActiveMons.value
+    if (moveNeedsOpponentTarget(move)) {
+      const selectedTargetSlot = selectedTargets.value[`target-slot-${mon.fieldSlot}`]
+      if (selectedTargetSlot !== undefined && selectedTargetSlot !== null) {
+        targets = opponentActiveMons.value.filter((target) => target.fieldSlot === Number(selectedTargetSlot))
+      }
+    }
+
+    return targets.map((target) => {
+      const multiplier = typeMultiplier(moveTypeId, target.types || [])
+      const descriptor = effectivenessDescriptor(multiplier)
+      return {
+        key: `${mon.fieldSlot}-${target.fieldSlot}`,
+        targetLabel: `对手槽位 ${target.fieldSlot + 1} · ${target.name || target.name_en || `目标 ${target.fieldSlot + 1}`}`,
+        label: descriptor.label,
+        className: descriptor.className
+      }
+    })
   }
 
   const canSubmitMove = computed(() => {
@@ -387,6 +490,7 @@ export function useBattleDerivedState(state) {
     mobileActionButtons,
     modeDescription,
     modeSummary,
+    moveEffectivenessHints,
     opponentActiveOptions,
     opponentRoster,
     playerActiveMons,

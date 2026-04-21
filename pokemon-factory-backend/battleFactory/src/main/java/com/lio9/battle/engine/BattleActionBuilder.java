@@ -33,7 +33,7 @@ final class BattleActionBuilder {
                 }
             }
             Map<String, Object> mon = playerTeam.get(monIndex);
-            Map<String, Object> move = engine.selectPlayerMove(mon, playerMoveMap, fieldSlot, currentRound);
+            Map<String, Object> move = engine.withEffectivePriority(mon, engine.selectPlayerMove(mon, playerMoveMap, fieldSlot, currentRound));
             int targetFieldSlot = selectTargetFieldSlot(playerMoveMap, fieldSlot);
             int targetTeamIndex = engine.targetIndex(state, false, targetFieldSlot);
             String specialSystemRequested = selectedSpecialSystem(playerMoveMap, fieldSlot);
@@ -60,7 +60,7 @@ final class BattleActionBuilder {
                 continue;
             }
             Map<String, Object> mon = opponentTeam.get(monIndex);
-            Map<String, Object> move = engine.selectAIMove(mon, random, state, false, currentRound);
+            Map<String, Object> move = engine.withEffectivePriority(mon, engine.selectAIMove(mon, random, state, false, currentRound));
             int targetFieldSlot = random.nextBoolean() ? fieldSlot : (fieldSlot == 0 ? 1 : 0);
             int targetTeamIndex = engine.targetIndex(state, true, targetFieldSlot);
             String specialSystemRequested = shouldAIUseSpecialSystem(state, mon, move, currentRound);

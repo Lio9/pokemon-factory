@@ -83,6 +83,8 @@ public class CommonCsvDataImporter {
             importMoveLearnMethods(connection, csvDirectory);
             importEvolutionTriggers(connection, csvDirectory);
             importMoveTargets(connection, csvDirectory);
+            importMoveMetaAilments(connection, csvDirectory);
+            importMoveMetaCategories(connection, csvDirectory);
 
             importTypes(connection, csvDirectory);
             importTypeEfficacy(connection, csvDirectory);
@@ -411,7 +413,7 @@ public class CommonCsvDataImporter {
 
     private void importMoveMeta(Connection connection, Path csvDirectory) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement(
-                "INSERT OR REPLACE INTO move_meta (move_id, min_hits, max_hits, min_turns, max_turns, drain, healing, crit_rate, ailment_chance, flinch_chance, stat_chance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+                "INSERT OR REPLACE INTO move_meta (move_id, min_hits, max_hits, min_turns, max_turns, drain, healing, crit_rate, ailment_id, category_id, ailment_chance, flinch_chance, stat_chance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
             int count = 0;
             for (CSVRecord record : records(csvDirectory.resolve("move_meta.csv"))) {
                 statement.setInt(1, requiredInt(record, "move_id"));
@@ -422,14 +424,52 @@ public class CommonCsvDataImporter {
                 bindNullableInt(statement, 6, nullableInt(record, "drain"));
                 bindNullableInt(statement, 7, nullableInt(record, "healing"));
                 bindNullableInt(statement, 8, nullableInt(record, "crit_rate"));
-                bindNullableInt(statement, 9, nullableInt(record, "ailment_chance"));
-                bindNullableInt(statement, 10, nullableInt(record, "flinch_chance"));
-                bindNullableInt(statement, 11, nullableInt(record, "stat_chance"));
+                bindNullableInt(statement, 9, nullableInt(record, "ailment_id"));
+                bindNullableInt(statement, 10, nullableInt(record, "category_id"));
+                bindNullableInt(statement, 11, nullableInt(record, "ailment_chance"));
+                bindNullableInt(statement, 12, nullableInt(record, "flinch_chance"));
+                bindNullableInt(statement, 13, nullableInt(record, "stat_chance"));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
             flushBatch(statement, count, true);
             log.info("CSV 导入 move_meta：{} 条", count);
+        }
+    }
+
+    private void importMoveMetaAilments(Connection connection, Path csvDirectory) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT OR REPLACE INTO move_meta_ailment (id, name, name_en) VALUES (?, ?, ?)")) {
+            int count = 0;
+            for (CSVRecord record : records(csvDirectory.resolve("move_meta_ailments.csv"))) {
+                int id = requiredInt(record, "id");
+                String identifier = Optional.ofNullable(nullable(record, "identifier")).orElse("ailment-" + id);
+                statement.setInt(1, id);
+                statement.setString(2, identifier);
+                statement.setString(3, identifier);
+                statement.addBatch();
+                count = flushBatch(statement, count + 1);
+            }
+            flushBatch(statement, count, true);
+            log.info("CSV 导入 move_meta_ailment：{} 条", count);
+        }
+    }
+
+    private void importMoveMetaCategories(Connection connection, Path csvDirectory) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT OR REPLACE INTO move_meta_category (id, name, name_en) VALUES (?, ?, ?)")) {
+            int count = 0;
+            for (CSVRecord record : records(csvDirectory.resolve("move_meta_categories.csv"))) {
+                int id = requiredInt(record, "id");
+                String identifier = Optional.ofNullable(nullable(record, "identifier")).orElse("category-" + id);
+                statement.setInt(1, id);
+                statement.setString(2, identifier);
+                statement.setString(3, identifier);
+                statement.addBatch();
+                count = flushBatch(statement, count + 1);
+            }
+            flushBatch(statement, count, true);
+            log.info("CSV 导入 move_meta_category：{} 条", count);
         }
     }
 
@@ -990,6 +1030,8 @@ public class CommonCsvDataImporter {
         assertMinimumCount(connection, "item_fling_effect", 1);
         assertMinimumCount(connection, "version_group", 1);
         assertMinimumCount(connection, "move_meta", 1);
+        assertMinimumCount(connection, "move_meta_ailment", 1);
+        assertMinimumCount(connection, "move_meta_category", 1);
         assertMinimumCount(connection, "move_flag_map", 1);
         assertMinimumCount(connection, "pokemon_form_move", 1);
         assertMinimumCount(connection, "pokemon_evolution", 1);
@@ -1299,6 +1341,8 @@ public class CommonCsvDataImporter {
         headers.put("evolution_trigger_prose.csv", List.of("evolution_trigger_id", "local_language_id", "name"));
         headers.put("move_targets.csv", List.of("id", "identifier"));
         headers.put("move_target_prose.csv", List.of("move_target_id", "local_language_id", "name", "description"));
+        headers.put("move_meta_ailments.csv", List.of("id", "identifier"));
+        headers.put("move_meta_categories.csv", List.of("id", "identifier"));
         headers.put("type_names.csv", List.of("type_id", "local_language_id", "name"));
         headers.put("type_efficacy.csv", List.of("damage_type_id", "target_type_id", "damage_factor"));
         headers.put("ability_names.csv", List.of("ability_id", "local_language_id", "name"));
@@ -1307,7 +1351,7 @@ public class CommonCsvDataImporter {
         headers.put("move_names.csv", List.of("move_id", "local_language_id", "name"));
         headers.put("move_flavor_text.csv", List.of("move_id", "version_group_id", "language_id", "flavor_text"));
         headers.put("moves.csv", List.of("id", "identifier", "type_id", "damage_class_id", "target_id", "power", "pp", "accuracy", "priority", "effect_chance", "generation_id"));
-        headers.put("move_meta.csv", List.of("move_id", "min_hits", "max_hits", "min_turns", "max_turns", "drain", "healing", "crit_rate", "ailment_chance", "flinch_chance", "stat_chance"));
+        headers.put("move_meta.csv", List.of("move_id", "min_hits", "max_hits", "min_turns", "max_turns", "drain", "healing", "crit_rate", "ailment_id", "category_id", "ailment_chance", "flinch_chance", "stat_chance"));
         headers.put("move_flags.csv", List.of("id", "identifier"));
         headers.put("move_flag_map.csv", List.of("move_id", "move_flag_id"));
         headers.put("move_meta_stat_changes.csv", List.of("move_id", "stat_id", "change"));

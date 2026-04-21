@@ -413,6 +413,20 @@ public class AIService {
         normalized.put("damage_class_id", toInt(move.get("damage_class_id"), 0));
         normalized.put("type_id", toInt(move.get("type_id"), 0));
         normalized.put("target_id", toInt(move.get("target_id"), 0));
+        normalized.put("min_hits", toInt(move.get("min_hits"), 0));
+        normalized.put("max_hits", toInt(move.get("max_hits"), 0));
+        normalized.put("crit_rate", toInt(move.get("crit_rate"), 0));
+        normalized.put("effect_chance", toInt(move.get("effect_chance"), 0));
+        normalized.put("ailment_chance", toInt(move.get("ailment_chance"), 0));
+        normalized.put("flinch_chance", toInt(move.get("flinch_chance"), 0));
+        normalized.put("stat_chance", toInt(move.get("stat_chance"), 0));
+        normalized.put("drain", toInt(move.get("drain"), 0));
+        normalized.put("healing", toInt(move.get("healing"), 0));
+        normalized.put("ailment_name_en", String.valueOf(move.getOrDefault("ailment_name_en", "")));
+        normalized.put("category_name_en", String.valueOf(move.getOrDefault("category_name_en", "")));
+        normalized.put("effect_short", String.valueOf(move.getOrDefault("effect_short", "")));
+        normalized.put("stat_changes", String.valueOf(move.getOrDefault("stat_changes", "")));
+        normalized.put("flags", String.valueOf(move.getOrDefault("flags", "")));
         return normalized;
     }
 
