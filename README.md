@@ -2,6 +2,76 @@
 
 一个基于 Spring Boot + Vue 3 + SQLite 的宝可梦工厂项目，支持图鉴数据导入、图鉴查询、用户认证和对战工厂。
 
+## English Overview
+
+Pokemon Factory is a Spring Boot + Vue 3 + SQLite project focused on three core product surfaces:
+
+- **Dex data**: import, browse, and inspect Pokemon / moves / abilities / items.
+- **Account flow**: register, sign in, restore session, and query the current user.
+- **Battle Factory**: VGC-style doubles battle flow, factory runs, ranking points, and battle simulation.
+
+### Current delivery state
+
+- Backend battle logic has already been expanded beyond a simple prototype and now includes a growing set of competitive battle mechanics such as status interactions, side conditions, special system exclusivity, and factory progression.
+- Frontend now includes a **lightweight locale layer** with Chinese / English switching for the app shell and core pages such as **Battle Factory**, **Login**, **Damage Calculator**, and **Import Manager**.
+- The battle system is still **not yet Pokemon Showdown-level complete**, but it is already much closer to a deliverable vertical slice than the original AI-generated prototype.
+
+### Repository structure
+
+| Module | Purpose |
+| --- | --- |
+| `common` | Shared datasource config, database initialization scripts, bootstrap entry |
+| `pokeDex` | Dex query and import business APIs |
+| `user-module` | Register, login, current user APIs |
+| `battleFactory` | Battle factory business logic, protected APIs, battle engine |
+| `pokemon-factory-frontend` | Vue 3 frontend |
+| `scripts` | Database init, CSV import, validation helpers |
+
+### Quick start
+
+1. Initialize the SQLite database through `common`:
+
+```powershell
+cd pokemon-factory-backend\common
+mvn -DskipTests package
+python ..\..\scripts\init_db.py
+```
+
+2. Start backend services in order:
+
+```powershell
+cd pokemon-factory-backend\common
+mvn spring-boot:run
+
+cd ..\pokeDex
+mvn spring-boot:run
+
+cd ..\battleFactory
+mvn spring-boot:run
+```
+
+3. Start the frontend:
+
+```powershell
+cd pokemon-factory-frontend
+npm install
+npm run dev
+```
+
+### Validation baseline
+
+- Frontend: `npm run lint && npm run build`
+- Backend: `mvn -q -pl common,user-module,pokeDex,battleFactory test`
+- Focused battle regression: `mvn --% -q -pl battleFactory -am -Dtest=BattleEngineSwitchingTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+### Internationalization note
+
+The current internationalization work is intentionally lightweight: locale switching is handled in the frontend without introducing a heavy i18n dependency, which keeps the existing Vue structure stable while making the main user-facing flows bilingual. Some backend-generated battle logs and legacy pages may still emit Chinese text and can be expanded later.
+
+### Acknowledgements
+
+- [Pokemon Showdown](https://github.com/smogon/pokemon-showdown): this repository has been an important reference while hardening battle rules, status-control behavior, and competitive system design. Thanks to the Smogon community for building and maintaining such a high-quality open source battle simulator.
+
 ## 项目简介
 
 Pokemon Factory 当前由以下几部分组成：
@@ -191,6 +261,8 @@ cd pokemon-factory-frontend
 npm install
 npm run dev
 ```
+
+当前临时开发端口统一使用 `http://localhost:7890`；`npm run serve` 的预览端口与 `docker-compose.local.yml` 里的前端暴露端口也已同步为 7890。
 
 开发时请确认前端环境变量：
 

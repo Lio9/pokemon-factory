@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     host: '0.0.0.0',
-    port: 3000,
+    port: 7890,
     historyApiFallback: true,
     proxy: {
       // battleFactory (8090): 对战、用户认证

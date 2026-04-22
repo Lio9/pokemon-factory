@@ -6,34 +6,34 @@
           Trainer Access
         </div>
         <h1 class="mt-4 text-[clamp(1.8rem,5vw,3rem)] font-black tracking-tight text-slate-950">
-          登录战斗工厂
+          {{ tr('登录战斗工厂', 'Sign in to Battle Factory') }}
         </h1>
         <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-          登录后可恢复会话、进入工厂挑战、查看排行榜和保留你的挑战进度。移动端和桌面端都会复用同一套会话状态。
+          {{ tr('登录后可恢复会话、进入工厂挑战、查看排行榜和保留你的挑战进度。移动端和桌面端都会复用同一套会话状态。', 'Sign in to restore your session, enter factory challenges, view the leaderboard, and preserve your run progress. Mobile and desktop share the same session state.') }}
         </p>
         <div class="mt-6 grid gap-3 sm:grid-cols-3">
           <div class="rounded-2xl bg-white/85 px-4 py-4 shadow-sm backdrop-blur">
             <div class="text-xs uppercase tracking-[0.16em] text-slate-400">
-              工厂挑战
+              {{ tr('工厂挑战', 'Factory challenge') }}
             </div>
             <div class="mt-2 text-sm font-semibold text-slate-900">
-              9 连战流程
+              {{ tr('9 连战流程', '9-battle flow') }}
             </div>
           </div>
           <div class="rounded-2xl bg-white/85 px-4 py-4 shadow-sm backdrop-blur">
             <div class="text-xs uppercase tracking-[0.16em] text-slate-400">
-              会话恢复
+              {{ tr('会话恢复', 'Session restore') }}
             </div>
             <div class="mt-2 text-sm font-semibold text-slate-900">
-              刷新后自动恢复
+              {{ tr('刷新后自动恢复', 'Auto-restore after refresh') }}
             </div>
           </div>
           <div class="rounded-2xl bg-white/85 px-4 py-4 shadow-sm backdrop-blur">
             <div class="text-xs uppercase tracking-[0.16em] text-slate-400">
-              对战模式
+              {{ tr('对战模式', 'Battle modes') }}
             </div>
             <div class="mt-2 text-sm font-semibold text-slate-900">
-              手动与异步模拟
+              {{ tr('手动与异步模拟', 'Manual and async simulation') }}
             </div>
           </div>
         </div>
@@ -41,26 +41,26 @@
 
       <section class="rounded-[28px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_20px_70px_-50px_rgba(15,23,42,0.45)] backdrop-blur sm:p-6">
         <h2 class="text-xl font-black tracking-tight text-slate-950">
-          账号登录
+          {{ tr('账号登录', 'Account access') }}
         </h2>
         <p class="mt-2 text-sm leading-6 text-slate-500">
-          没有账号也可以直接注册，注册成功后会自动登录并跳转到目标页面。
+          {{ tr('没有账号也可以直接注册，注册成功后会自动登录并跳转到目标页面。', 'You can register directly if you do not have an account yet. Successful registration signs you in and redirects to the target page.') }}
         </p>
         <div class="mt-5 space-y-3">
           <div>
-            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">用户名</label>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{{ tr('用户名', 'Username') }}</label>
             <input
               v-model="username"
-              placeholder="输入用户名"
+              :placeholder="tr('输入用户名', 'Enter username')"
               class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
               autocomplete="username"
             >
           </div>
           <div>
-            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">密码</label>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{{ tr('密码', 'Password') }}</label>
             <input
               v-model="password"
-              placeholder="输入密码"
+              :placeholder="tr('输入密码', 'Enter password')"
               type="password"
               class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-sky-400 focus:bg-white"
               autocomplete="current-password"
@@ -73,14 +73,14 @@
             :disabled="loading"
             @click="login"
           >
-            {{ loading ? '提交中...' : '登录' }}
+            {{ loading ? tr('提交中...', 'Submitting...') : tr('登录', 'Login') }}
           </button>
           <button
             class="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100"
             :disabled="loading"
             @click="register"
           >
-            {{ loading ? '提交中...' : '注册并登录' }}
+            {{ loading ? tr('提交中...', 'Submitting...') : tr('注册并登录', 'Register and sign in') }}
           </button>
         </div>
         <p
@@ -98,6 +98,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
+import { useLocale } from '../composables/useLocale'
 
 // 登录页只维护表单态和跳转逻辑，真正的会话建立统一交给 useAuth。
 const username = ref('')
@@ -107,6 +108,7 @@ const loading = ref(false)
 const router = useRouter()
 const route = useRoute()
 const auth = useAuth()
+const { translate: tr } = useLocale()
 const redirectTarget = computed(() => typeof route.query.redirect === 'string' ? route.query.redirect : '/battle')
 
 onMounted(async () => {
@@ -123,7 +125,7 @@ onMounted(async () => {
 // 统一构造登录/注册使用的入参，并在前端先做最基本的非空校验。
 function buildCredentials() {
   if (!username.value.trim() || !password.value) {
-    error.value = '请输入用户名和密码'
+    error.value = tr('请输入用户名和密码', 'Please enter both username and password')
     return null
   }
 
@@ -145,7 +147,7 @@ async function login() {
     await auth.login(credentials)
     router.replace(redirectTarget.value)
   } catch (e) {
-    error.value = e.message || '登录失败'
+    error.value = e.message || tr('登录失败', 'Login failed')
   } finally {
     loading.value = false
   }
@@ -164,7 +166,7 @@ async function register() {
     await auth.register(credentials)
     router.replace(redirectTarget.value)
   } catch (e) {
-    error.value = e.message || '注册失败'
+    error.value = e.message || tr('注册失败', 'Registration failed')
   } finally {
     loading.value = false
   }

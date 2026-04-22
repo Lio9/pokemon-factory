@@ -20,6 +20,9 @@ final class BattleConditionSupport {
 
     void applyParalysis(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
                         Map<String, Object> move, Map<String, Object> actionLog, List<String> events) {
+        if (blockedBySafeguard(state, source, target, move, actionLog, events)) {
+            return;
+        }
         if (mistyTerrainActiveFor(target, state)) {
             actionLog.put("result", "status-immune");
             events.add(target.get("name") + " 受到薄雾场地保护，无法陷入异常状态");
@@ -48,6 +51,9 @@ final class BattleConditionSupport {
 
     void applyBurn(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
                    Map<String, Object> move, Map<String, Object> actionLog, List<String> events) {
+        if (blockedBySafeguard(state, source, target, move, actionLog, events)) {
+            return;
+        }
         if (mistyTerrainActiveFor(target, state)) {
             actionLog.put("result", "status-immune");
             events.add(target.get("name") + " 受到薄雾场地保护，无法陷入异常状态");
@@ -77,6 +83,9 @@ final class BattleConditionSupport {
     void applySleep(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
                     Map<String, Object> move, Map<String, Object> actionLog, List<String> events,
                     Random random, int currentRound) {
+        if (blockedBySafeguard(state, source, target, move, actionLog, events)) {
+            return;
+        }
         if (electricTerrainActiveFor(target, state)) {
             actionLog.put("result", "status-immune");
             events.add(target.get("name") + " 受到电气场地保护，无法陷入睡眠");
@@ -115,6 +124,9 @@ final class BattleConditionSupport {
     void applyPoison(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
                      Map<String, Object> move, Map<String, Object> actionLog, List<String> events,
                      boolean badlyPoisoned) {
+        if (blockedBySafeguard(state, source, target, move, actionLog, events)) {
+            return;
+        }
         if (mistyTerrainActiveFor(target, state)) {
             actionLog.put("result", "status-immune");
             events.add(target.get("name") + " 受到薄雾场地保护，无法陷入异常状态");
@@ -171,6 +183,9 @@ final class BattleConditionSupport {
 
     void applyFreeze(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
                      Map<String, Object> move, Map<String, Object> actionLog, List<String> events) {
+        if (blockedBySafeguard(state, source, target, move, actionLog, events)) {
+            return;
+        }
         if (mistyTerrainActiveFor(target, state)) {
             actionLog.put("result", "status-immune");
             events.add(target.get("name") + " 受到薄雾场地保护，无法陷入异常状态");
@@ -244,10 +259,60 @@ final class BattleConditionSupport {
         applyMoveMetaStatDrops(actor, target, move, targetLog, events, random);
     }
 
+    void applyDamagingSelfStatChanges(Map<String, Object> actor, Map<String, Object> move,
+                                      Map<String, Object> actionLog, List<String> events, Random random) {
+        List<Map<String, Object>> statChanges = engine.castList(move.get("metaStatChanges"));
+        if (statChanges.isEmpty() || !moveAppliesOwnStatChanges(move)) {
+            return;
+        }
+        int chance = engine.toInt(move.get("stat_chance"), 0);
+        if (chance <= 0) {
+            chance = engine.toInt(move.get("effect_chance"), 0);
+        }
+        if (!rollSecondaryChance(random, chance)) {
+            return;
+        }
+        Map<String, Integer> loweredStages = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> statChange : statChanges) {
+            int delta = engine.toInt(statChange.get("change"), 0);
+            int statId = engine.toInt(statChange.get("stat_id"), 0);
+            if (delta == 0) {
+                continue;
+            }
+            String statKey = statFieldKey(statId);
+            if (statKey.isBlank()) {
+                continue;
+            }
+            int previousStage = damageSupport.statStage(actor, statKey);
+            int nextStage = Math.max(-6, Math.min(6, previousStage + delta));
+            if (nextStage == previousStage) {
+                continue;
+            }
+            damageSupport.statStages(actor).put(statKey, nextStage);
+            String logKey = stageChangeLogKey(statId);
+            if (!logKey.isBlank()) {
+                actionLog.put(logKey, nextStage - previousStage);
+            }
+            if (delta < 0) {
+                loweredStages.merge(statKey, previousStage - nextStage, Integer::sum);
+            }
+            events.add(actor.get("name") + " 的" + statDisplayName(statId)
+                    + (Math.abs(delta) >= 2 ? "大幅" : "") + (delta > 0 ? "上升了" : "下降了"));
+        }
+        if (!loweredStages.isEmpty()) {
+            restoreLoweredStatsWithWhiteHerb(actor, loweredStages, actionLog, events);
+        }
+    }
+
     void applyDrainHealing(Map<String, Object> actor, Map<String, Object> move, int actualDamage,
                            Map<String, Object> actionLog, List<String> events) {
         int drain = engine.toInt(move.get("drain"), 0);
         if (drain <= 0 || actualDamage <= 0 || engine.toInt(actor.get("currentHp"), 0) <= 0) {
+            return;
+        }
+        if (engine.healBlockTurns(actor) > 0) {
+            actionLog.put("drainBlocked", true);
+            events.add(actor.get("name") + " 受到回复封锁，无法通过吸取效果回复 HP");
             return;
         }
         int maxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), Math.max(1, engine.toInt(actor.get("currentHp"), 0)));
@@ -266,6 +331,11 @@ final class BattleConditionSupport {
         int healing = engine.toInt(move.get("healing"), 0);
         if (healing <= 0) {
             return false;
+        }
+        if (engine.healBlockTurns(actor) > 0) {
+            actionLog.put("result", "heal-blocked");
+            events.add(actor.get("name") + " 受到回复封锁，无法使用回复招式");
+            return true;
         }
         int maxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), Math.max(1, engine.toInt(actor.get("currentHp"), 0)));
         int currentHp = engine.toInt(actor.get("currentHp"), 0);
@@ -358,21 +428,178 @@ final class BattleConditionSupport {
             return;
         }
         target.put("tauntTurns", 3);
-        if ("mental-herb".equals(engine.heldItem(target)) && !engine.itemConsumed(target)) {
-            target.put("tauntTurns", 0);
-            engine.consumeItem(target);
-            actionLog.put("mentalHerb", true);
-            events.add(target.get("name") + " 的心灵香草解除了挑衅");
-            return;
-        }
         actionLog.put("result", "taunt");
         actionLog.put("tauntTurns", 3);
+        if ("mental-herb".equals(engine.heldItem(target)) && !engine.itemConsumed(target)) {
+            target.put("tauntTurns", 0);
+            actionLog.put("tauntTurns", 0);
+            consumeMentalHerb(target, actionLog, events, "挑衅");
+            return;
+        }
         events.add(source.get("name") + " 挑衅了 " + target.get("name"));
     }
 
-    boolean applyDefenderAbilityImmunity(Map<String, Object> target, Map<String, Object> move,
+    void applyEncore(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
+                     List<String> events) {
+        if (engine.toInt(target.get("encoreTurns"), 0) > 0) {
+            actionLog.put("result", "status-failed");
+            events.add(target.get("name") + " 已经处于再来一次状态");
+            return;
+        }
+        Object lastMoveUsed = target.get("lastMoveUsed");
+        if (lastMoveUsed == null || String.valueOf(lastMoveUsed).isBlank()) {
+            actionLog.put("result", "failed");
+            events.add(source.get("name") + " 的再来一次失败了");
+            return;
+        }
+        target.put("encoreTurns", 3);
+        target.put("encoreMove", String.valueOf(lastMoveUsed));
+        actionLog.put("result", "encore");
+        actionLog.put("encoreTurns", 3);
+        actionLog.put("encoreMove", lastMoveUsed);
+        if (consumeMentalHerb(target, actionLog, events, "再来一次")) {
+            target.put("encoreTurns", 0);
+            target.put("encoreMove", null);
+            actionLog.put("encoreTurns", 0);
+            actionLog.put("encoreMove", null);
+            return;
+        }
+        events.add(source.get("name") + " 让 " + target.get("name") + " 只能继续使用 "
+                + String.valueOf(lastMoveUsed));
+    }
+
+    void applyDisable(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
+                      Map<String, Object> actionLog, List<String> events) {
+        Object lastMoveUsed = target.get("lastMoveUsed");
+        if (lastMoveUsed == null || String.valueOf(lastMoveUsed).isBlank()) {
+            actionLog.put("result", "failed");
+            events.add(source.get("name") + " 的定身法失败了");
+            return;
+        }
+        applyDisableEffect(state, target, String.valueOf(lastMoveUsed), actionLog, events,
+                source.get("name") + " 的定身法失败了",
+                source.get("name") + " 用定身法封住了 " + target.get("name") + " 的 " + String.valueOf(lastMoveUsed));
+    }
+
+    void applyTorment(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
+                      List<String> events) {
+        if (engine.tormentTurns(target) > 0) {
+            actionLog.put("result", "status-failed");
+            events.add(target.get("name") + " 已经处于无理取闹状态");
+            return;
+        }
+        target.put("tormentTurns", 4);
+        actionLog.put("result", "torment");
+        actionLog.put("tormentTurns", 4);
+        if (consumeMentalHerb(target, actionLog, events, "无理取闹")) {
+            target.put("tormentTurns", 0);
+            actionLog.put("tormentTurns", 0);
+            return;
+        }
+        events.add(source.get("name") + " 让 " + target.get("name") + " 陷入了无理取闹");
+    }
+
+    void applyHealBlock(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
+                        List<String> events) {
+        if (engine.healBlockTurns(target) > 0) {
+            actionLog.put("result", "status-failed");
+            events.add(target.get("name") + " 已经处于回复封锁状态");
+            return;
+        }
+        target.put("healBlockTurns", 4);
+        actionLog.put("result", "heal-block");
+        actionLog.put("healBlockTurns", 4);
+        if (consumeMentalHerb(target, actionLog, events, "回复封锁")) {
+            target.put("healBlockTurns", 0);
+            actionLog.put("healBlockTurns", 0);
+            return;
+        }
+        events.add(source.get("name") + " 封锁了 " + target.get("name") + " 的回复");
+    }
+
+    boolean knockOffGetsBoost(Map<String, Object> target) {
+        return hasRemovableHeldItem(target) && !hasAbility(target, "sticky-hold", "sticky hold");
+    }
+
+    void applyKnockOff(Map<String, Object> target, Map<String, Object> actionLog, List<String> events) {
+        if (engine.toInt(target.get("currentHp"), 0) <= 0 || !hasRemovableHeldItem(target)) {
+            return;
+        }
+        if (hasAbility(target, "sticky-hold", "sticky hold")) {
+            actionLog.put("knockOffBlocked", true);
+            actionLog.put("ability", engine.abilityName(target));
+            events.add(target.get("name") + " 的黏着阻止了道具被拍落");
+            return;
+        }
+        String removedItem = engine.heldItem(target);
+        engine.removeHeldItem(target);
+        actionLog.put("knockedOffItem", removedItem);
+        events.add(target.get("name") + " 的道具 " + removedItem + " 被拍落了");
+    }
+
+    void applyYawn(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
+                   Map<String, Object> move, Map<String, Object> actionLog, List<String> events) {
+        if (blockedBySafeguard(state, source, target, move, actionLog, events)) {
+            return;
+        }
+        if (electricTerrainActiveFor(target, state)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 受到电气场地保护，没有变得困倦");
+            return;
+        }
+        if (mistyTerrainActiveFor(target, state)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 受到薄雾场地保护，没有变得困倦");
+            return;
+        }
+        if (engine.yawnTurns(target) > 0) {
+            actionLog.put("result", "status-failed");
+            events.add(target.get("name") + " 已经昏昏欲睡了");
+            return;
+        }
+        if (target.get("condition") != null && !String.valueOf(target.get("condition")).isBlank()) {
+            actionLog.put("result", "status-failed");
+            events.add(target.get("name") + " 已经处于异常状态");
+            return;
+        }
+        target.put("yawnTurns", 2);
+        actionLog.put("result", "yawn");
+        actionLog.put("yawnTurns", 2);
+        events.add(source.get("name") + " 让 " + target.get("name") + " 昏昏欲睡");
+    }
+
+    void resolveYawn(Map<String, Object> state, Map<String, Object> target, List<String> events, Random random, int currentRound) {
+        if (engine.toInt(target.get("currentHp"), 0) <= 0) {
+            target.put("yawnTurns", 0);
+            return;
+        }
+        if (target.get("condition") != null && !String.valueOf(target.get("condition")).isBlank()) {
+            target.put("yawnTurns", 0);
+            return;
+        }
+        if (electricTerrainActiveFor(target, state)) {
+            events.add(target.get("name") + " 受到电气场地保护，没有睡着");
+            return;
+        }
+        if (mistyTerrainActiveFor(target, state)) {
+            events.add(target.get("name") + " 受到薄雾场地保护，没有睡着");
+            return;
+        }
+        boolean targetOnPlayerSide = engine.isOnSide(state, target, true);
+        if (fieldEffectSupport.safeguardTurns(state, targetOnPlayerSide) > 0) {
+            events.add(target.get("name") + " 受到神秘守护保护，没有睡着");
+            return;
+        }
+        int turns = random.nextInt(3) + 1;
+        target.put("condition", "sleep");
+        target.put("sleepTurns", turns);
+        target.put("sleepAppliedRound", currentRound + 1);
+        events.add(target.get("name") + " 因哈欠陷入了睡眠");
+    }
+
+    boolean applyDefenderAbilityImmunity(Map<String, Object> attacker, Map<String, Object> target, Map<String, Object> move,
                                          Map<String, Object> actionLog, List<String> events) {
-        if (applySharedMoveBlockers(target, move, actionLog, events)) {
+        if (applySharedMoveBlockers(attacker, target, move, actionLog, events)) {
             return true;
         }
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
@@ -381,6 +608,9 @@ final class BattleConditionSupport {
         }
         String ability = engine.abilityName(target);
         if (isStatusMove(move)) {
+            return false;
+        }
+        if (ignoresTargetAbility(attacker)) {
             return false;
         }
         if ("levitate".equalsIgnoreCase(ability) && moveTypeId == DamageCalculatorUtil.TYPE_GROUND) {
@@ -411,6 +641,11 @@ final class BattleConditionSupport {
         }
         if (("water-absorb".equalsIgnoreCase(ability) || "water absorb".equalsIgnoreCase(ability))
                 && moveTypeId == DamageCalculatorUtil.TYPE_WATER) {
+            if (engine.healBlockTurns(target) > 0) {
+                blockMoveByAbility(actionLog, events, "water-absorb", target.get("name") + " 的储水吸收了水属性招式，但回复封锁阻止了回血");
+                actionLog.put("healBlocked", true);
+                return true;
+            }
             int heal = healFraction(target, 4);
             blockMoveByAbility(actionLog, events, "water-absorb", target.get("name") + " 的储水吸收了水属性招式，回复了 " + heal + " 点 HP");
             actionLog.put("heal", heal);
@@ -418,6 +653,11 @@ final class BattleConditionSupport {
         }
         if (("volt-absorb".equalsIgnoreCase(ability) || "volt absorb".equalsIgnoreCase(ability))
                 && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
+            if (engine.healBlockTurns(target) > 0) {
+                blockMoveByAbility(actionLog, events, "volt-absorb", target.get("name") + " 的蓄电吸收了电属性招式，但回复封锁阻止了回血");
+                actionLog.put("healBlocked", true);
+                return true;
+            }
             int heal = healFraction(target, 4);
             blockMoveByAbility(actionLog, events, "volt-absorb", target.get("name") + " 的蓄电吸收了电属性招式，回复了 " + heal + " 点 HP");
             actionLog.put("heal", heal);
@@ -442,10 +682,14 @@ final class BattleConditionSupport {
         return false;
     }
 
+    private boolean ignoresTargetAbility(Map<String, Object> attacker) {
+        return hasAbility(attacker, "mold-breaker", "mold breaker", "teravolt", "turboblaze");
+    }
+
     boolean isStatusMoveBlockedByAbility(Map<String, Object> state, String actingSide,
                                          Map<String, Object> actor, Map<String, Object> target, Map<String, Object> move,
                                          Map<String, Object> actionLog, List<String> events) {
-        if (applySharedMoveBlockers(target, move, actionLog, events)) {
+        if (applySharedMoveBlockers(actor, target, move, actionLog, events)) {
             return true;
         }
         if (isBlockedByAromaVeil(state, target, move, actionLog, events)) {
@@ -493,33 +737,287 @@ final class BattleConditionSupport {
         return false;
     }
 
-    void applyReactiveContactEffects(Map<String, Object> attacker, Map<String, Object> target,
-                                     Map<String, Object> move, Map<String, Object> actionLog, List<String> events) {
-        if (!isContactMove(move)
-                || !"rocky-helmet".equals(engine.heldItem(target))
-                || engine.toInt(attacker.get("currentHp"), 0) <= 0) {
+    void applyReactiveContactEffects(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> target,
+                                     Map<String, Object> move, Map<String, Object> actionLog, List<String> events,
+                                     Random random) {
+        if (engine.toInt(attacker.get("currentHp"), 0) <= 0) {
             return;
         }
+        if (engine.toInt(move.get("power"), 0) > 0
+                && hasAbility(target, "cursed-body", "cursed body")
+                && rollSecondaryChance(random, 30)
+                && applyDisableEffect(state, attacker, String.valueOf(move.get("name_en")), actionLog, events,
+                target.get("name") + " 的诅咒之躯发动失败了",
+                target.get("name") + " 的诅咒之躯封住了 " + attacker.get("name") + " 的 " + move.get("name"))) {
+            actionLog.put("cursedBody", true);
+        }
+        if (!isContactMove(move)) {
+            return;
+        }
+
         int maxHp = engine.toInt(engine.castMap(attacker.get("stats")).get("hp"), 1);
-        int recoil = Math.max(1, maxHp / 6);
-        int remainingHp = Math.max(0, engine.toInt(attacker.get("currentHp"), 0) - recoil);
+        if (hasAbility(target, "rough-skin", "rough skin")) {
+            applyContactPunishDamage(attacker, Math.max(1, maxHp / 8), actionLog, events,
+                    "roughSkin", target.get("name") + " 的粗糙皮肤反伤了 ");
+        }
+        if (hasAbility(target, "iron-barbs", "iron barbs")) {
+            applyContactPunishDamage(attacker, Math.max(1, maxHp / 8), actionLog, events,
+                    "ironBarbs", target.get("name") + " 的铁刺反伤了 ");
+        }
+        if ("rocky-helmet".equals(engine.heldItem(target))) {
+            applyContactPunishDamage(attacker, Math.max(1, maxHp / 6), actionLog, events,
+                    "rockyHelmet", target.get("name") + " 的凸凸头盔反伤了 ");
+        }
+        if (hasAbility(target, "gooey") || hasAbility(target, "tangling-hair", "tangling hair")) {
+            applySpeedDrop(target, attacker, actionLog, events);
+        }
+        if (engine.toInt(target.get("currentHp"), 0) <= 0 && hasAbility(target, "aftermath")) {
+            applyContactPunishDamage(attacker, Math.max(1, maxHp / 4), actionLog, events,
+                    "aftermath", target.get("name") + " 的引爆伤到了 ");
+        }
+        if (engine.toInt(attacker.get("currentHp"), 0) <= 0) {
+            return;
+        }
+        applyReactiveContactStatusAbility(state, attacker, target, actionLog, events, random);
+    }
+
+    void applyReactiveDamageAbilities(Map<String, Object> attacker, Map<String, Object> target, Map<String, Object> move,
+                                      int hpBeforeDamage, int hpAfterDamage, int actualDamage,
+                                      Map<String, Object> actionLog, List<String> events) {
+        if (actualDamage <= 0 || hpAfterDamage <= 0) {
+            return;
+        }
+        String ability = engine.abilityName(target);
+        int moveTypeId = engine.toInt(move.get("type_id"), 0);
+        int damageClassId = engine.toInt(move.get("damage_class_id"), 0);
+        if (hasAbility(target, "weak-armor", "weak armor") && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
+            applyAbilityStageChange(target, 3, -1, actionLog, events, "碎裂铠甲");
+            applyAbilityStageChange(target, 6, 2, actionLog, events, "碎裂铠甲");
+        }
+        if (hasAbility(target, "stamina")) {
+            applyAbilityStageChange(target, 3, 1, actionLog, events, "持久力");
+        }
+        if (hasAbility(target, "justified") && moveTypeId == DamageCalculatorUtil.TYPE_DARK) {
+            applyAbilityStageChange(target, 2, 1, actionLog, events, "正义之心");
+        }
+        if (hasAbility(target, "rattled") && (moveTypeId == DamageCalculatorUtil.TYPE_BUG
+                || moveTypeId == DamageCalculatorUtil.TYPE_GHOST
+                || moveTypeId == DamageCalculatorUtil.TYPE_DARK)) {
+            applyAbilityStageChange(target, 6, 1, actionLog, events, "胆怯");
+        }
+        if (hasAbility(target, "steam-engine", "steam engine")
+                && (moveTypeId == DamageCalculatorUtil.TYPE_FIRE || moveTypeId == DamageCalculatorUtil.TYPE_WATER)) {
+            applyAbilityStageChange(target, 6, 6, actionLog, events, "蒸汽机");
+        }
+        int maxHp = engine.toInt(engine.castMap(target.get("stats")).get("hp"), Math.max(1, hpBeforeDamage));
+        if (hasAbility(target, "berserk")
+                && hpBeforeDamage * 2 > maxHp
+                && hpAfterDamage * 2 <= maxHp) {
+            applyAbilityStageChange(target, 4, 1, actionLog, events, "怒火中烧");
+        }
+    }
+
+    private boolean applyDisableEffect(Map<String, Object> state, Map<String, Object> target, String disabledMoveName,
+                                       Map<String, Object> actionLog, List<String> events, String failMessage,
+                                       String successMessage) {
+        if (engine.toInt(target.get("disableTurns"), 0) > 0) {
+            actionLog.put("result", "status-failed");
+            events.add(target.get("name") + " 已经处于定身法状态");
+            return false;
+        }
+        if (disabledMoveName == null || disabledMoveName.isBlank()) {
+            actionLog.put("result", "failed");
+            events.add(failMessage);
+            return false;
+        }
+        if (state != null && isBlockedByAromaVeil(state, target, disableEffectMove(), actionLog, events)) {
+            return false;
+        }
+        target.put("disableTurns", 4);
+        target.put("disableMove", disabledMoveName);
+        actionLog.put("result", "disable");
+        actionLog.put("disableTurns", 4);
+        actionLog.put("disableMove", disabledMoveName);
+        if (consumeMentalHerb(target, actionLog, events, "定身法")) {
+            target.put("disableTurns", 0);
+            target.put("disableMove", null);
+            actionLog.put("disableTurns", 0);
+            actionLog.put("disableMove", null);
+            return true;
+        }
+        events.add(successMessage);
+        return true;
+    }
+
+    private void applyContactPunishDamage(Map<String, Object> attacker, int damage, Map<String, Object> actionLog,
+                                          List<String> events, String logKey, String messagePrefix) {
+        int currentHp = engine.toInt(attacker.get("currentHp"), 0);
+        if (currentHp <= 0 || damage <= 0) {
+            return;
+        }
+        int actualDamage = Math.min(currentHp, damage);
+        int remainingHp = currentHp - actualDamage;
         attacker.put("currentHp", remainingHp);
         if (remainingHp == 0) {
             attacker.put("status", "fainted");
         }
-        actionLog.put("rockyHelmet", recoil);
-        events.add(attacker.get("name") + " 因凸凸头盔损失了 " + recoil + " 点 HP");
+        actionLog.put(logKey, actualDamage);
+        events.add(messagePrefix + attacker.get("name") + "，损失了 " + actualDamage + " 点 HP");
+    }
+
+    private void applyAbilityStageChange(Map<String, Object> target, int statId, int delta,
+                                         Map<String, Object> actionLog, List<String> events, String trigger) {
+        String statKey = statFieldKey(statId);
+        if (statKey.isBlank() || delta == 0) {
+            return;
+        }
+        if (delta < 0 && isStatDropBlocked(target, actionLog, events, statKey + "DropBlocked", statDisplayName(statId) + "下降")) {
+            return;
+        }
+        int previousStage = damageSupport.statStage(target, statKey);
+        int nextStage = Math.max(-6, Math.min(6, previousStage + delta));
+        if (nextStage == previousStage) {
+            return;
+        }
+        damageSupport.statStages(target).put(statKey, nextStage);
+        String logKey = stageChangeLogKey(statId);
+        if (!logKey.isBlank()) {
+            actionLog.put(logKey, nextStage - previousStage);
+        }
+        if (delta < 0) {
+            triggerStatDropAbilities(target, events);
+            restoreLoweredStatsWithWhiteHerb(target, Map.of(statKey, previousStage - nextStage), actionLog, events);
+        }
+        events.add(target.get("name") + " 因" + trigger + "触发，" + statDisplayName(statId)
+                + (Math.abs(nextStage - previousStage) >= 2 ? "大幅" : "")
+                + ((nextStage - previousStage) > 0 ? "提升了" : "下降了"));
+    }
+
+    private void applyReactiveContactStatusAbility(Map<String, Object> state, Map<String, Object> attacker,
+                                                   Map<String, Object> target, Map<String, Object> actionLog,
+                                                   List<String> events, Random random) {
+        if (hasAbility(target, "static")) {
+            tryApplyContactParalysis(state, target, attacker, actionLog, events, random,
+                    contactAbilityMove("Static", "static", DamageCalculatorUtil.TYPE_ELECTRIC), "static");
+            return;
+        }
+        if (hasAbility(target, "flame-body", "flame body")) {
+            tryApplyContactBurn(state, target, attacker, actionLog, events, random,
+                    contactAbilityMove("Flame Body", "flame-body", DamageCalculatorUtil.TYPE_FIRE), "flameBody");
+            return;
+        }
+        if (hasAbility(target, "poison-point", "poison point")) {
+            tryApplyContactPoison(state, target, attacker, actionLog, events, random,
+                    contactAbilityMove("Poison Point", "poison-point", DamageCalculatorUtil.TYPE_POISON), "poisonPoint");
+            return;
+        }
+        if (hasAbility(target, "effect-spore", "effect spore")) {
+            tryApplyEffectSpore(state, target, attacker, actionLog, events, random,
+                    contactAbilityMove("Effect Spore", "effect-spore", DamageCalculatorUtil.TYPE_GRASS));
+        }
+    }
+
+    private void tryApplyContactParalysis(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
+                                          Map<String, Object> actionLog, List<String> events, Random random,
+                                          Map<String, Object> move, String logKey) {
+        if (!rollSecondaryChance(random, 30)) {
+            return;
+        }
+        applyParalysis(state, source, target, move, actionLog, events);
+        if ("paralysis".equals(target.get("condition"))) {
+            actionLog.put(logKey, true);
+        }
+    }
+
+    private void tryApplyContactBurn(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
+                                     Map<String, Object> actionLog, List<String> events, Random random,
+                                     Map<String, Object> move, String logKey) {
+        if (!rollSecondaryChance(random, 30)) {
+            return;
+        }
+        applyBurn(state, source, target, move, actionLog, events);
+        if ("burn".equals(target.get("condition"))) {
+            actionLog.put(logKey, true);
+        }
+    }
+
+    private void tryApplyContactPoison(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
+                                       Map<String, Object> actionLog, List<String> events, Random random,
+                                       Map<String, Object> move, String logKey) {
+        if (!rollSecondaryChance(random, 30)) {
+            return;
+        }
+        applyPoison(state, source, target, move, actionLog, events, false);
+        if ("poison".equals(target.get("condition"))) {
+            actionLog.put(logKey, true);
+        }
+    }
+
+    private void tryApplyEffectSpore(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
+                                     Map<String, Object> actionLog, List<String> events, Random random,
+                                     Map<String, Object> move) {
+        if (!rollSecondaryChance(random, 30)) {
+            return;
+        }
+        if (engine.isPowderImmune(target)) {
+            actionLog.put("effectSporeBlocked", true);
+            events.add(powderImmunityMessage(target, move));
+            return;
+        }
+        int roll = random.nextInt(3);
+        if (roll == 0) {
+            applySleep(state, source, target, move, actionLog, events, random, engine.toInt(state.get("currentRound"), 1));
+            if ("sleep".equals(target.get("condition"))) {
+                actionLog.put("effectSpore", "sleep");
+            }
+            return;
+        }
+        if (roll == 1) {
+            applyParalysis(state, source, target, move, actionLog, events);
+            if ("paralysis".equals(target.get("condition"))) {
+                actionLog.put("effectSpore", "paralysis");
+            }
+            return;
+        }
+        applyPoison(state, source, target, move, actionLog, events, false);
+        if ("poison".equals(target.get("condition"))) {
+            actionLog.put("effectSpore", "poison");
+        }
+    }
+
+    private Map<String, Object> contactAbilityMove(String name, String nameEn, int typeId) {
+        return new java.util.LinkedHashMap<>(Map.of(
+                "name", name,
+                "name_en", nameEn,
+                "type_id", typeId
+        ));
+    }
+
+    private Map<String, Object> disableEffectMove() {
+        return new java.util.LinkedHashMap<>(Map.of(
+                "name", "Disable",
+                "name_en", "disable",
+                "damage_class_id", DamageCalculatorUtil.DAMAGE_CLASS_STATUS
+        ));
     }
 
     void applySwitchOutEffects(Map<String, Object> mon, List<String> events) {
         if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
             return;
         }
+        boolean healBlocked = engine.healBlockTurns(mon) > 0;
         if (Boolean.TRUE.equals(mon.get("dynamaxed"))) {
             engine.endDynamax(mon, events);
         }
         mon.put("confused", false);
         mon.put("confusionTurns", 0);
+        mon.put("healBlockTurns", 0);
+        mon.put("yawnTurns", 0);
+        mon.put("tormentTurns", 0);
+        mon.put("disableTurns", 0);
+        mon.put("disableMove", null);
+        mon.put("encoreTurns", 0);
+        mon.put("encoreMove", null);
         if ("toxic".equals(mon.get("condition"))) {
             mon.put("toxicCounter", 0);
         }
@@ -527,6 +1025,10 @@ final class BattleConditionSupport {
             int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
             int currentHp = engine.toInt(mon.get("currentHp"), 0);
             if (currentHp >= maxHp) {
+                return;
+            }
+            if (healBlocked) {
+                events.add(mon.get("name") + " 受到回复封锁，再生力未能生效");
                 return;
             }
             int heal = Math.max(1, maxHp / 3);
@@ -615,6 +1117,7 @@ final class BattleConditionSupport {
             damageSupport.statStages(target).put("attack", nextStage);
             if (nextStage != previousStage) {
                 triggerStatDropAbilities(target, events);
+                restoreLoweredStatsWithWhiteHerb(target, Map.of("attack", previousStage - nextStage), null, events);
                 events.add(source.get("name") + " 的威吓使 " + target.get("name") + " 的攻击下降了");
                 activated = true;
             }
@@ -635,6 +1138,7 @@ final class BattleConditionSupport {
         if (nextStage != previousStage) {
             actionLog.put("speedStageChange", -1);
             triggerStatDropAbilities(target, events);
+            restoreLoweredStatsWithWhiteHerb(target, Map.of("speed", previousStage - nextStage), actionLog, events);
             events.add(source.get("name") + " 使 " + target.get("name") + " 的速度下降了");
         }
     }
@@ -650,6 +1154,7 @@ final class BattleConditionSupport {
         if (nextStage != previousStage) {
             actionLog.put("specialAttackStageChange", nextStage - previousStage);
             triggerStatDropAbilities(target, events);
+            restoreLoweredStatsWithWhiteHerb(target, Map.of("specialAttack", previousStage - nextStage), actionLog, events);
             events.add(source.get("name") + " 使 " + target.get("name") + " 的特攻下降了");
             return true;
         }
@@ -667,6 +1172,7 @@ final class BattleConditionSupport {
         if (nextStage != previousStage) {
             actionLog.put("specialDefenseStageChange", nextStage - previousStage);
             triggerStatDropAbilities(target, events);
+            restoreLoweredStatsWithWhiteHerb(target, Map.of("specialDefense", previousStage - nextStage), actionLog, events);
             events.add(source.get("name") + " 使 " + target.get("name") + " 的特防大幅下降了");
             return true;
         }
@@ -679,23 +1185,35 @@ final class BattleConditionSupport {
             return false;
         }
         boolean attackDropped = false;
+        int attackDropAmount = 0;
         int previousAttack = damageSupport.statStage(target, "attack");
         int nextAttack = Math.max(-6, previousAttack - 1);
         damageSupport.statStages(target).put("attack", nextAttack);
         if (nextAttack != previousAttack) {
             attackDropped = true;
+            attackDropAmount = previousAttack - nextAttack;
             actionLog.put("attackStageChange", nextAttack - previousAttack);
         }
         boolean specialAttackDropped = false;
+        int specialAttackDropAmount = 0;
         int previousSpecialAttack = damageSupport.statStage(target, "specialAttack");
         int nextSpecialAttack = Math.max(-6, previousSpecialAttack - 1);
         damageSupport.statStages(target).put("specialAttack", nextSpecialAttack);
         if (nextSpecialAttack != previousSpecialAttack) {
             specialAttackDropped = true;
+            specialAttackDropAmount = previousSpecialAttack - nextSpecialAttack;
             actionLog.put("specialAttackStageChange", nextSpecialAttack - previousSpecialAttack);
         }
         if (attackDropped || specialAttackDropped) {
+            Map<String, Integer> droppedStages = new java.util.LinkedHashMap<>();
+            if (attackDropped) {
+                droppedStages.put("attack", attackDropAmount);
+            }
+            if (specialAttackDropped) {
+                droppedStages.put("specialAttack", specialAttackDropAmount);
+            }
             triggerStatDropAbilities(target, events);
+            restoreLoweredStatsWithWhiteHerb(target, droppedStages, actionLog, events);
             events.add(source.get("name") + " 使 " + target.get("name") + " 的攻击和特攻下降了");
             return true;
         }
@@ -730,15 +1248,16 @@ final class BattleConditionSupport {
         damageSupport.statStages(mon).put("specialDefense", 0);
         damageSupport.statStages(mon).put("speed", 0);
         mon.put("tauntTurns", 0);
+        mon.put("tormentTurns", 0);
         mon.put("protectionStreak", 0);
         mon.put("lastProtectionRound", 0);
     }
 
     private int confusionSelfDamage(Map<String, Object> mon) {
         Map<String, Object> stats = engine.castMap(mon.get("stats"));
-        int attack = damageSupport.modifiedAttackStat(mon, engine.toInt(stats.get("attack"), 100),
+        int attack = damageSupport.modifiedAttackStat(mon, mon, engine.toInt(stats.get("attack"), 100),
                 DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL, false);
-        int defense = Math.max(1, damageSupport.modifiedDefenseStat(mon, engine.toInt(stats.get("defense"), 100),
+        int defense = Math.max(1, damageSupport.modifiedDefenseStat(mon, mon, engine.toInt(stats.get("defense"), 100),
                 DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL, new java.util.LinkedHashMap<>(), false));
         return Math.max(1, DamageCalculatorUtil.calculateBaseDamage(50, 40, attack, defense));
     }
@@ -842,13 +1361,23 @@ final class BattleConditionSupport {
             return;
         }
 
+        Map<String, Integer> droppedStages = new java.util.LinkedHashMap<>();
         for (Map<String, Object> statChange : statChanges) {
             int delta = engine.toInt(statChange.get("change"), 0);
             int statId = engine.toInt(statChange.get("stat_id"), 0);
             if (delta >= 0 || hasStageChangeLog(targetLog, statId)) {
                 continue;
             }
-            applyStageChange(source, target, statId, delta, targetLog, events);
+            int appliedDrop = applyStageChange(source, target, statId, delta, targetLog, events);
+            if (appliedDrop > 0) {
+                String statKey = statFieldKey(statId);
+                if (!statKey.isBlank()) {
+                    droppedStages.merge(statKey, appliedDrop, Integer::sum);
+                }
+            }
+        }
+        if (!droppedStages.isEmpty()) {
+            restoreLoweredStatsWithWhiteHerb(target, droppedStages, targetLog, events);
         }
     }
 
@@ -933,19 +1462,19 @@ final class BattleConditionSupport {
         return !key.isBlank() && actionLog.containsKey(key);
     }
 
-    private void applyStageChange(Map<String, Object> source, Map<String, Object> target, int statId, int delta,
-                                  Map<String, Object> actionLog, List<String> events) {
+    private int applyStageChange(Map<String, Object> source, Map<String, Object> target, int statId, int delta,
+                                 Map<String, Object> actionLog, List<String> events) {
         String statKey = statFieldKey(statId);
         if (statKey.isBlank() || delta == 0) {
-            return;
+            return 0;
         }
         if (delta < 0 && isStatDropBlocked(target, actionLog, events, statKey + "DropBlocked", statDisplayName(statId) + "下降")) {
-            return;
+            return 0;
         }
         int previousStage = damageSupport.statStage(target, statKey);
         int nextStage = Math.max(-6, Math.min(6, previousStage + delta));
         if (nextStage == previousStage) {
-            return;
+            return 0;
         }
         damageSupport.statStages(target).put(statKey, nextStage);
         String logKey = stageChangeLogKey(statId);
@@ -957,6 +1486,7 @@ final class BattleConditionSupport {
         }
         events.add(source.get("name") + " 使 " + target.get("name") + " 的" + statDisplayName(statId)
                 + (Math.abs(delta) >= 2 ? "大幅" : "") + (delta > 0 ? "上升了" : "下降了"));
+        return delta < 0 ? previousStage - nextStage : 0;
     }
 
     private String statFieldKey(int statId) {
@@ -1059,6 +1589,61 @@ final class BattleConditionSupport {
         return false;
     }
 
+    private boolean moveAppliesOwnStatChanges(Map<String, Object> move) {
+        String effectShort = String.valueOf(move.getOrDefault("effect_short", "")).toLowerCase();
+        if (effectShort.contains("user's")) {
+            return true;
+        }
+        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
+        return matches(nameEn,
+                "close-combat", "close combat",
+                "draco-meteor", "draco meteor",
+                "overheat",
+                "leaf-storm", "leaf storm",
+                "superpower",
+                "make-it-rain", "make it rain",
+                "v-create", "v create");
+    }
+
+    private boolean consumeMentalHerb(Map<String, Object> target, Map<String, Object> actionLog,
+                                      List<String> events, String effectName) {
+        if (!"mental-herb".equals(engine.heldItem(target)) || engine.itemConsumed(target)) {
+            return false;
+        }
+        engine.consumeItem(target);
+        actionLog.put("mentalHerb", true);
+        events.add(target.get("name") + " 的心灵香草解除了" + effectName);
+        return true;
+    }
+
+    private void restoreLoweredStatsWithWhiteHerb(Map<String, Object> target, Map<String, Integer> droppedStages,
+                                                  Map<String, Object> actionLog, List<String> events) {
+        if (!"white-herb".equals(engine.heldItem(target)) || engine.itemConsumed(target) || droppedStages.isEmpty()) {
+            return;
+        }
+        boolean restored = false;
+        for (Map.Entry<String, Integer> entry : droppedStages.entrySet()) {
+            int amount = Math.max(0, entry.getValue());
+            if (amount <= 0) {
+                continue;
+            }
+            int currentStage = damageSupport.statStage(target, entry.getKey());
+            int restoredStage = Math.min(6, currentStage + amount);
+            if (restoredStage != currentStage) {
+                damageSupport.statStages(target).put(entry.getKey(), restoredStage);
+                restored = true;
+            }
+        }
+        if (!restored) {
+            return;
+        }
+        engine.consumeItem(target);
+        if (actionLog != null) {
+            actionLog.put("whiteHerb", true);
+        }
+        events.add(target.get("name") + " 的白色香草恢复了下降的能力");
+    }
+
     private boolean isContactMove(Map<String, Object> move) {
         if (hasMoveFlag(move, "contact")) {
             return true;
@@ -1088,7 +1673,7 @@ final class BattleConditionSupport {
         return false;
     }
 
-    private boolean applySharedMoveBlockers(Map<String, Object> target, Map<String, Object> move,
+    private boolean applySharedMoveBlockers(Map<String, Object> attacker, Map<String, Object> target, Map<String, Object> move,
                                             Map<String, Object> actionLog, List<String> events) {
         if (hasMoveFlag(move, "powder") && engine.isPowderImmune(target)) {
             actionLog.put("result", "status-immune");
@@ -1101,11 +1686,15 @@ final class BattleConditionSupport {
             blockMoveByAbility(actionLog, events, "wind-rider", target.get("name") + " 的乘风挡住了风类招式");
             return true;
         }
-        if (hasAbility(target, "soundproof", "sound proof") && hasMoveFlag(move, "sound")) {
+        if (!ignoresTargetAbility(attacker)
+                && hasAbility(target, "soundproof", "sound proof")
+                && hasMoveFlag(move, "sound")) {
             blockMoveByAbility(actionLog, events, "soundproof", target.get("name") + " 的隔音挡住了声音招式");
             return true;
         }
-        if (hasAbility(target, "bulletproof", "bullet proof") && hasMoveFlag(move, "bullet")) {
+        if (!ignoresTargetAbility(attacker)
+                && hasAbility(target, "bulletproof", "bullet proof")
+                && hasMoveFlag(move, "bullet")) {
             blockMoveByAbility(actionLog, events, "bulletproof", target.get("name") + " 的防弹挡住了弹道招式");
             return true;
         }
@@ -1118,6 +1707,26 @@ final class BattleConditionSupport {
         actionLog.put("damage", 0);
         actionLog.put("ability", abilityName);
         events.add(message);
+    }
+
+    private boolean blockedBySafeguard(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
+                                       Map<String, Object> move, Map<String, Object> actionLog, List<String> events) {
+        if (state == null || source == null || target == null || source == target) {
+            return false;
+        }
+        boolean targetOnPlayerSide = engine.isOnSide(state, target, true);
+        if (engine.isOnSide(state, source, true) == targetOnPlayerSide
+                || fieldEffectSupport.safeguardTurns(state, targetOnPlayerSide) <= 0) {
+            return false;
+        }
+        actionLog.put("result", "safeguard");
+        actionLog.put("damage", 0);
+        events.add(target.get("name") + " 受到神秘守护保护，避免了异常状态");
+        return true;
+    }
+
+    private boolean hasRemovableHeldItem(Map<String, Object> target) {
+        return !engine.heldItem(target).isBlank() && !engine.itemConsumed(target);
     }
 
     private boolean isBlockedByAromaVeil(Map<String, Object> state, Map<String, Object> target, Map<String, Object> move,
@@ -1149,6 +1758,7 @@ final class BattleConditionSupport {
         return matches(nameEn,
                 "thunder-wave", "thunder wave",
                 "will-o-wisp", "will o wisp",
+                "yawn",
                 "toxic",
                 "poison-powder", "poison powder",
                 "spore",

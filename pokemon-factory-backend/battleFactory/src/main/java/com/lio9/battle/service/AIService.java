@@ -223,9 +223,16 @@ public class AIService {
                     || "psychic-terrain".equalsIgnoreCase(nameEn)
                     || "psychic terrain".equalsIgnoreCase(nameEn)
                     || "reflect".equalsIgnoreCase(nameEn)
+                    || "safeguard".equalsIgnoreCase(nameEn)
                     || "light-screen".equalsIgnoreCase(nameEn)
                     || "light screen".equalsIgnoreCase(nameEn)
                     || "taunt".equalsIgnoreCase(nameEn)
+                    || "disable".equalsIgnoreCase(nameEn)
+                    || "heal-block".equalsIgnoreCase(nameEn)
+                    || "heal block".equalsIgnoreCase(nameEn)
+                    || "torment".equalsIgnoreCase(nameEn)
+                    || "encore".equalsIgnoreCase(nameEn)
+                    || "yawn".equalsIgnoreCase(nameEn)
                     || "spore".equalsIgnoreCase(nameEn)
                     || "helping-hand".equalsIgnoreCase(nameEn)
                     || "helping hand".equalsIgnoreCase(nameEn)
@@ -358,6 +365,7 @@ public class AIService {
         for (Map<String, Object> move : utilities) {
             String nameEn = String.valueOf(move.get("name_en"));
             if ("reflect".equalsIgnoreCase(nameEn)
+                    || "safeguard".equalsIgnoreCase(nameEn)
                     || "light-screen".equalsIgnoreCase(nameEn)
                     || "light screen".equalsIgnoreCase(nameEn)) {
                 return move;
@@ -365,6 +373,32 @@ public class AIService {
         }
         for (Map<String, Object> move : utilities) {
             if ("taunt".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+                return move;
+            }
+        }
+        for (Map<String, Object> move : utilities) {
+            if ("disable".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+                return move;
+            }
+        }
+        for (Map<String, Object> move : utilities) {
+            String nameEn = String.valueOf(move.get("name_en"));
+            if ("heal-block".equalsIgnoreCase(nameEn) || "heal block".equalsIgnoreCase(nameEn)) {
+                return move;
+            }
+        }
+        for (Map<String, Object> move : utilities) {
+            if ("torment".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+                return move;
+            }
+        }
+        for (Map<String, Object> move : utilities) {
+            if ("encore".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+                return move;
+            }
+        }
+        for (Map<String, Object> move : utilities) {
+            if ("yawn".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
                 return move;
             }
         }

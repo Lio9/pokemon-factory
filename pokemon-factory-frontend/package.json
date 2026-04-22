@@ -8,7 +8,7 @@
     "preview": "vite preview",
     "lint": "eslint . --fix",
     "type-check": "vue-tsc --noEmit",
-    "serve": "vite preview --port 5173"
+    "serve": "vite preview --port 7890"
   },
   "dependencies": {
     "element-plus": "^2.2.0",

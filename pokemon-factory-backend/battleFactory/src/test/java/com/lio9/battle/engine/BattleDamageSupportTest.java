@@ -35,6 +35,7 @@ class BattleDamageSupportTest {
     @Test
     void applyIncomingDamage_usesFocusSashOnLethalHit() {
         BattleDamageSupport support = createSupport();
+        Map<String, Object> attacker = new LinkedHashMap<>();
         Map<String, Object> target = new LinkedHashMap<>();
         target.put("name", "Sash-Mon");
         target.put("heldItem", "focus-sash");
@@ -45,7 +46,7 @@ class BattleDamageSupportTest {
         Map<String, Object> actionLog = new LinkedHashMap<>();
         List<String> events = new ArrayList<>();
 
-        int remainingHp = support.applyIncomingDamage(target, 180, actionLog, events);
+        int remainingHp = support.applyIncomingDamage(attacker, target, 180, actionLog, events);
 
         assertEquals(1, remainingHp);
         assertEquals(99, actionLog.get("damage"));
@@ -53,6 +54,52 @@ class BattleDamageSupportTest {
         assertEquals(Boolean.TRUE, target.get("itemConsumed"));
         assertEquals("", target.get("heldItem"));
         assertTrue(events.stream().anyMatch(event -> event.contains("气势披带")));
+    }
+
+    @Test
+    void applyIncomingDamage_sturdySurvivesLethalHitAtOneHp() {
+        BattleDamageSupport support = createSupport();
+        Map<String, Object> attacker = new LinkedHashMap<>();
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put("name", "Sturdy-Mon");
+        target.put("ability", "sturdy");
+        target.put("heldItem", "");
+        target.put("itemConsumed", false);
+        target.put("currentHp", 100);
+        target.put("stats", new LinkedHashMap<>(Map.of("hp", 100)));
+
+        Map<String, Object> actionLog = new LinkedHashMap<>();
+        List<String> events = new ArrayList<>();
+
+        int remainingHp = support.applyIncomingDamage(attacker, target, 180, actionLog, events);
+
+        assertEquals(1, remainingHp);
+        assertEquals(99, actionLog.get("damage"));
+        assertEquals(Boolean.TRUE, actionLog.get("sturdy"));
+        assertTrue(events.stream().anyMatch(event -> event.contains("结实")));
+    }
+
+    @Test
+    void applyIncomingDamage_moldBreakerBypassesSturdy() {
+        BattleDamageSupport support = createSupport();
+        Map<String, Object> attacker = new LinkedHashMap<>(Map.of("ability", "mold-breaker"));
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put("name", "Sturdy-Mon");
+        target.put("ability", "sturdy");
+        target.put("heldItem", "");
+        target.put("itemConsumed", false);
+        target.put("currentHp", 100);
+        target.put("stats", new LinkedHashMap<>(Map.of("hp", 100)));
+
+        Map<String, Object> actionLog = new LinkedHashMap<>();
+        List<String> events = new ArrayList<>();
+
+        int remainingHp = support.applyIncomingDamage(attacker, target, 180, actionLog, events);
+
+        assertEquals(0, remainingHp);
+        assertEquals(180, actionLog.get("damage"));
+        assertEquals(null, actionLog.get("sturdy"));
+        assertTrue(events.isEmpty());
     }
 
     @Test
@@ -72,6 +119,85 @@ class BattleDamageSupportTest {
         int boostedDamage = support.calculateDamage(attacker, defender, move, new Random(42), Map.of(attacker, true), rainState);
 
         assertTrue(boostedDamage > baselineDamage);
+    }
+
+    @Test
+    void calculateDamage_multiscaleAndShadowShieldHalveDamageAtFullHp() {
+        BattleDamageSupport support = createSupport();
+        Map<String, Object> attacker = pokemon("Attacker", 120, 100, 110, 90, "", DamageCalculatorUtil.TYPE_WATER);
+        Map<String, Object> normalDefender = pokemon("Normal-Def", 120, 80, 90, 90, "", DamageCalculatorUtil.TYPE_NORMAL);
+        Map<String, Object> multiscaleDefender = pokemon("Multi-Def", 120, 80, 90, 90, "", DamageCalculatorUtil.TYPE_NORMAL);
+        multiscaleDefender.put("ability", "multiscale");
+        Map<String, Object> shadowShieldDefender = pokemon("Shield-Def", 120, 80, 90, 90, "", DamageCalculatorUtil.TYPE_NORMAL);
+        shadowShieldDefender.put("ability", "shadow-shield");
+        Map<String, Object> move = move("Surf", "surf", 90, 100, 0,
+                DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL, DamageCalculatorUtil.TYPE_WATER, 10);
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("fieldEffects", new LinkedHashMap<>());
+
+        int baselineDamage = support.calculateDamage(attacker, normalDefender, move, new Random(42), Map.of(), state);
+        int multiscaleDamage = support.calculateDamage(attacker, multiscaleDefender, move, new Random(42), Map.of(), state);
+        int shadowShieldDamage = support.calculateDamage(attacker, shadowShieldDefender, move, new Random(42), Map.of(), state);
+
+        assertTrue(multiscaleDamage < baselineDamage);
+        assertEquals(multiscaleDamage, shadowShieldDamage);
+
+        multiscaleDefender.put("currentHp", 100);
+        int chippedDamage = support.calculateDamage(attacker, multiscaleDefender, move, new Random(42), Map.of(), state);
+        assertEquals(baselineDamage, chippedDamage);
+    }
+
+    @Test
+    void calculateDamage_moldBreakerBypassesMultiscale() {
+        BattleDamageSupport support = createSupport();
+        Map<String, Object> attacker = pokemon("Breaker", 120, 100, 110, 90, "", DamageCalculatorUtil.TYPE_WATER);
+        attacker.put("ability", "mold-breaker");
+        Map<String, Object> normalDefender = pokemon("Normal-Def", 120, 80, 90, 90, "", DamageCalculatorUtil.TYPE_NORMAL);
+        Map<String, Object> multiscaleDefender = pokemon("Multi-Def", 120, 80, 90, 90, "", DamageCalculatorUtil.TYPE_NORMAL);
+        multiscaleDefender.put("ability", "multiscale");
+        Map<String, Object> move = move("Surf", "surf", 90, 100, 0,
+                DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL, DamageCalculatorUtil.TYPE_WATER, 10);
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("fieldEffects", new LinkedHashMap<>());
+
+        int baselineDamage = support.calculateDamage(attacker, normalDefender, move, new Random(42), Map.of(), state);
+        int ignoredDamage = support.calculateDamage(attacker, multiscaleDefender, move, new Random(42), Map.of(), state);
+
+        assertEquals(baselineDamage, ignoredDamage);
+    }
+
+    @Test
+    void calculateDamage_unawareIgnoresRelevantStatStages() {
+        BattleDamageSupport support = createSupport();
+        Map<String, Object> attacker = pokemon("Attacker", 120, 100, 110, 90, "", DamageCalculatorUtil.TYPE_WATER);
+        Map<String, Object> defender = pokemon("Defender", 120, 80, 90, 90, "", DamageCalculatorUtil.TYPE_NORMAL);
+        attacker.put("statStages", new LinkedHashMap<>(Map.of("attack", 4, "specialAttack", 0, "defense", 0, "specialDefense", 0, "speed", 0)));
+        defender.put("statStages", new LinkedHashMap<>(Map.of("attack", 0, "specialAttack", 0, "defense", 4, "specialDefense", 0, "speed", 0)));
+        Map<String, Object> move = move("Strike", "strike", 90, 100, 0,
+                DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL, DamageCalculatorUtil.TYPE_NORMAL, 10);
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("fieldEffects", new LinkedHashMap<>());
+
+        int boostedDamage = support.calculateDamage(attacker, defender, move, new Random(42), Map.of(), state);
+
+        attacker.put("ability", "unaware");
+        int attackerUnawareDamage = support.calculateDamage(attacker, defender, move, new Random(42), Map.of(), state);
+
+        attacker.put("ability", "");
+        defender.put("ability", "unaware");
+        int defenderUnawareDamage = support.calculateDamage(attacker, defender, move, new Random(42), Map.of(), state);
+
+        attacker.put("statStages", new LinkedHashMap<>(Map.of("attack", 0, "specialAttack", 0, "defense", 0, "specialDefense", 0, "speed", 0)));
+        defender.put("ability", "");
+        int defenderOnlyBoostedDamage = support.calculateDamage(attacker, defender, move, new Random(42), Map.of(), state);
+
+        defender.put("statStages", new LinkedHashMap<>(Map.of("attack", 0, "specialAttack", 0, "defense", 0, "specialDefense", 0, "speed", 0)));
+        defender.put("ability", "");
+        int neutralDamage = support.calculateDamage(attacker, defender, move, new Random(42), Map.of(), state);
+
+        assertTrue(boostedDamage < attackerUnawareDamage);
+        assertTrue(attackerUnawareDamage > neutralDamage);
+        assertEquals(defenderOnlyBoostedDamage, defenderUnawareDamage);
     }
 
     private static BattleDamageSupport createSupport() {

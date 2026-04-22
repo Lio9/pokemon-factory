@@ -22,6 +22,7 @@ final class BattleRoundSupport {
                        Map<String, Boolean> wideGuardSides,
                        Map<String, Boolean> quickGuardSides,
                        Map<String, BattleEngine.RedirectionEffect> redirectionTargets,
+                       Map<String, BattleEngine.Action> plannedActions,
                        Map<Map<String, Object>, Boolean> helpingHandBoosts,
                        List<Map<String, Object>> actionLogs, List<String> events) {
         boolean playerSide = "player".equals(action.side());
@@ -101,6 +102,7 @@ final class BattleRoundSupport {
         if (forcedChargeMove == null && action.specialSystemRequested() != null) {
             engine.activateSpecialSystem(state, playerSide, actor, move, action.specialSystemRequested(), round, actionLog, events);
         }
+        move = engine.resolveMoveForUse(actor, move);
         if (forcedChargeMove == null && shouldStartCharging(actor, move, state)) {
             startCharging(actor, move, actionLog, actionLogs, events);
             return;
@@ -130,6 +132,8 @@ final class BattleRoundSupport {
 
         int totalDamage = 0;
         boolean anyHit = false;
+        boolean selfStatChangeTriggered = false;
+        boolean suckerPunchAttempted = false;
         for (BattleEngine.TargetRef targetRef : targets) {
             List<Map<String, Object>> targetSideTeam = engine.team(state, targetRef.playerSide());
             if (!engine.isAvailableMon(targetSideTeam, targetRef.teamIndex())) {
@@ -139,6 +143,16 @@ final class BattleRoundSupport {
             Map<String, Object> targetLog = new LinkedHashMap<>(actionLog);
             targetLog.put("target", target.get("name"));
             targetLog.put("targetFieldSlot", targetRef.fieldSlot());
+            if (engine.isSuckerPunch(move)) {
+                suckerPunchAttempted = true;
+                if (!canSuckerPunchTarget(plannedActions, targetRef, move)) {
+                    targetLog.put("result", "failed");
+                    targetLog.put("damage", 0);
+                    actionLogs.add(targetLog);
+                    events.add(actor.get("name") + " 使用了 Sucker Punch，但失败了");
+                    continue;
+                }
+            }
 
             if (isBlockedByQuickGuard(move, targetRef.side(), quickGuardSides)) {
                 targetLog.put("result", "quick-guard-blocked");
@@ -212,7 +226,8 @@ final class BattleRoundSupport {
                 continue;
             }
 
-            if (conditionSupport.applyDefenderAbilityImmunity(target, move, targetLog, events)) {
+            selfStatChangeTriggered = true;
+            if (conditionSupport.applyDefenderAbilityImmunity(actor, target, move, targetLog, events)) {
                 actionLogs.add(targetLog);
                 continue;
             }
@@ -222,11 +237,18 @@ final class BattleRoundSupport {
             int criticalHits = 0;
             int remainingHp = engine.toInt(target.get("currentHp"), 0);
             List<Integer> hitDamages = new ArrayList<>();
+            Map<String, Object> baseDamageMove = move;
+            if (engine.isKnockOff(move) && conditionSupport.knockOffGetsBoost(target)) {
+                baseDamageMove = new LinkedHashMap<>(move);
+                baseDamageMove.put("power", (int) Math.floor(engine.toInt(move.get("power"), 1) * 1.5d));
+                targetLog.put("knockOffBoosted", true);
+            }
             for (int hitIndex = 0; hitIndex < hitCount && remainingHp > 0; hitIndex++) {
+                int hpBeforeDamage = engine.toInt(target.get("currentHp"), 0);
                 boolean criticalHit = resolveCriticalHit(actor, move, random);
-                Map<String, Object> resolvedMove = move;
+                Map<String, Object> resolvedMove = baseDamageMove;
                 if (criticalHit) {
-                    resolvedMove = new LinkedHashMap<>(move);
+                    resolvedMove = new LinkedHashMap<>(baseDamageMove);
                     resolvedMove.put("criticalHit", true);
                     criticalHits += 1;
                 }
@@ -234,16 +256,23 @@ final class BattleRoundSupport {
                 if (targets.size() > 1 && engine.isSpreadMove(move)) {
                     damage = Math.max(1, (int) Math.floor(damage * 0.75d));
                 }
-                remainingHp = engine.applyIncomingDamage(target, damage, targetLog, events);
+                remainingHp = engine.applyIncomingDamage(actor, target, damage, targetLog, events);
                 int actualDamage = engine.toInt(targetLog.get("damage"), damage);
                 target.put("currentHp", remainingHp);
                 conditionSupport.thawFromFireHit(target, move, targetLog, events);
+                if (actualDamage > 0 && engine.isKnockOff(move)) {
+                    conditionSupport.applyKnockOff(target, targetLog, events);
+                }
                 hitDamages.add(actualDamage);
                 totalActualDamage += actualDamage;
+                conditionSupport.applyReactiveDamageAbilities(actor, target, move, hpBeforeDamage, remainingHp, actualDamage, targetLog, events);
                 engine.applyDefenderItemEffects(target, move, actualDamage, targetLog, events);
-                conditionSupport.applyReactiveContactEffects(actor, target, move, targetLog, events);
+                conditionSupport.applyReactiveContactEffects(state, actor, target, move, targetLog, events, random);
                 if (remainingHp == 0) {
                     target.put("status", "fainted");
+                }
+                if (engine.toInt(actor.get("currentHp"), 0) <= 0) {
+                    break;
                 }
             }
 
@@ -296,10 +325,20 @@ final class BattleRoundSupport {
             }
         }
 
+        if (engine.isSuckerPunch(move) && !suckerPunchAttempted) {
+            actionLog.put("result", "failed");
+            actionLog.put("damage", 0);
+            actionLogs.add(actionLog);
+            events.add(actor.get("name") + " 使用了 Sucker Punch，但失败了");
+            return;
+        }
+        if (selfStatChangeTriggered && engine.toInt(actor.get("currentHp"), 0) > 0) {
+            conditionSupport.applyDamagingSelfStatChanges(actor, move, actionLog, events, random);
+        }
         if (anyHit) {
             engine.applyAttackerItemEffects(actor, totalDamage, actionLog, events);
         }
-        if (anyHit && engine.isRechargeMove(move)) {
+        if (anyHit && engine.isRechargeMove(move) && engine.toInt(actor.get("currentHp"), 0) > 0) {
             actor.put("rechargeTurns", 1);
             actionLog.put("rechargeNextTurn", true);
             events.add(actor.get("name") + " 下回合需要回复，无法行动");
@@ -312,8 +351,26 @@ final class BattleRoundSupport {
         if ("z-move".equals(actor.get("specialSystemActivated"))) {
             actor.put("specialSystemActivated", null);
         }
+        if (anyHit && engine.isPivotSwitchMove(move) && engine.toInt(actor.get("currentHp"), 0) > 0) {
+            autoSwitchAfterMove(state, action, actor, move, "pivot-switch", events, actionLogs);
+            return;
+        }
+        engine.rememberLastMove(actor, move);
         engine.rememberChoiceMove(actor, move);
         engine.applyCooldown(actor, move);
+    }
+
+    private boolean canSuckerPunchTarget(Map<String, BattleEngine.Action> plannedActions,
+                                         BattleEngine.TargetRef targetRef,
+                                         Map<String, Object> move) {
+        BattleEngine.Action plannedTargetAction = plannedActions.get(engine.actionKey(targetRef.side(), targetRef.teamIndex()));
+        if (plannedTargetAction == null || plannedTargetAction.isSwitch() || plannedTargetAction.move() == null) {
+            return false;
+        }
+        Map<String, Object> plannedMove = plannedTargetAction.move();
+        return engine.toInt(plannedMove.get("power"), 0) > 0
+                && !engine.isStatusMove(plannedMove)
+                && !engine.isProtectionMove(plannedMove);
     }
 
     private int resolveHitCount(Map<String, Object> actor, Map<String, Object> move, Random random) {
@@ -512,6 +569,10 @@ final class BattleRoundSupport {
             engine.activateScreen(state, "aurora-veil", playerSide, actor, actionLog, events);
             return finishNonDamagingMove(actor, move, actionLog, actionLogs);
         }
+        if (engine.isSafeguard(move)) {
+            engine.activateScreen(state, "safeguard", playerSide, actor, actionLog, events);
+            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+        }
         if (engine.isRedirectionMove(move)) {
             targetSupport.activateRedirection(redirectionTargets, action.side(), action.actorIndex(), move, actor, actionLog, events);
             return finishNonDamagingMove(actor, move, actionLog, actionLogs);
@@ -558,6 +619,31 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
+        if (engine.isEncore(move)) {
+            conditionSupport.applyEncore(actor, target, targetLog, events);
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isDisable(move)) {
+            conditionSupport.applyDisable(state, actor, target, targetLog, events);
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isHealBlock(move)) {
+            conditionSupport.applyHealBlock(actor, target, targetLog, events);
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isTorment(move)) {
+            conditionSupport.applyTorment(actor, target, targetLog, events);
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isYawn(move)) {
+            conditionSupport.applyYawn(state, actor, target, move, targetLog, events);
+            actionLogs.add(targetLog);
+            return true;
+        }
         if (engine.isSpore(move)) {
             conditionSupport.applySleep(state, actor, target, move, targetLog, events, random, round);
             actionLogs.add(targetLog);
@@ -578,7 +664,7 @@ final class BattleRoundSupport {
             targetLog.put("result", succeeded ? "parting-shot" : "failed");
             actionLogs.add(targetLog);
             if (succeeded) {
-                autoSwitchAfterPartingShot(state, action, actor, events, actionLogs);
+                autoSwitchAfterMove(state, action, actor, move, "parting-shot-switch", events, actionLogs);
             }
             return true;
         }
@@ -588,6 +674,7 @@ final class BattleRoundSupport {
     private boolean finishNonDamagingMove(Map<String, Object> actor, Map<String, Object> move,
                                           Map<String, Object> actionLog, List<Map<String, Object>> actionLogs) {
         actionLogs.add(actionLog);
+        engine.rememberLastMove(actor, move);
         engine.rememberChoiceMove(actor, move);
         engine.applyCooldown(actor, move);
         return true;
@@ -627,6 +714,9 @@ final class BattleRoundSupport {
             events.add(engine.sideName(side) + " 的 " + actor.get("name") + " 使用了 " + move.get("name"));
         }
         actionLogs.add(actionLog);
+        engine.rememberLastMove(actor, move);
+        engine.rememberChoiceMove(actor, move);
+        engine.applyCooldown(actor, move);
         return true;
     }
 
@@ -641,17 +731,24 @@ final class BattleRoundSupport {
         return targetId != 4 && targetId != 7;
     }
 
-    private void autoSwitchAfterPartingShot(Map<String, Object> state, BattleEngine.Action action, Map<String, Object> actor,
-                                            List<String> events, List<Map<String, Object>> actionLogs) {
+    private void autoSwitchAfterMove(Map<String, Object> state, BattleEngine.Action action, Map<String, Object> actor,
+                                     Map<String, Object> move, String switchResult,
+                                     List<String> events, List<Map<String, Object>> actionLogs) {
         boolean playerSide = "player".equals(action.side());
         List<Map<String, Object>> team = engine.team(state, playerSide);
         List<Integer> activeSlots = engine.activeSlots(state, playerSide);
         int switchToIndex = engine.firstAvailableBench(team, activeSlots);
         if (switchToIndex < 0) {
+            engine.rememberLastMove(actor, move);
+            engine.rememberChoiceMove(actor, move);
+            engine.applyCooldown(actor, move);
             return;
         }
         List<Integer> previousSlots = new ArrayList<>(activeSlots);
         Map<String, Object> switchedIn = team.get(switchToIndex);
+        engine.rememberLastMove(actor, move);
+        engine.rememberChoiceMove(actor, move);
+        engine.applyCooldown(actor, move);
         conditionSupport.applySwitchOutEffects(actor, events);
         actor.put("choiceLockedMove", null);
         conditionSupport.resetBattleStages(actor);
@@ -663,7 +760,7 @@ final class BattleRoundSupport {
         switchLog.put("actor", actor.get("name"));
         switchLog.put("actionType", "switch");
         switchLog.put("switchTo", switchedIn.get("name"));
-        switchLog.put("result", "parting-shot-switch");
+        switchLog.put("result", switchResult);
         actionLogs.add(switchLog);
         events.add(engine.sideName(action.side()) + " 收回了 " + actor.get("name") + "，派出了 " + switchedIn.get("name"));
         conditionSupport.applyEntryAbilities(state, playerSide, previousSlots, events);

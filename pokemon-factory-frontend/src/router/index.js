@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
+import { translate } from '../composables/useLocale'
 
 // 路由懒加载 - 按需加载组件，减少首屏加载时间
 const routes = [
@@ -11,56 +12,56 @@ const routes = [
     path: '/pokemon', 
     name: 'PokemonList', 
     component: () => import('../views/PokemonList.vue'),
-    meta: { title: '宝可梦图鉴' }
+    meta: { title: { zh: '宝可梦图鉴', en: 'Pokemon Dex' } }
   },
   { 
     path: '/pokemon/:id', 
     name: 'PokemonDetail', 
     component: () => import('../views/PokemonDetail.vue'), 
     props: true,
-    meta: { title: '宝可梦详情' }
+    meta: { title: { zh: '宝可梦详情', en: 'Pokemon Details' } }
   },
   { 
     path: '/moves', 
     name: 'MoveList', 
     component: () => import('../views/MoveList.vue'),
-    meta: { title: '技能列表' }
+    meta: { title: { zh: '技能列表', en: 'Moves' } }
   },
   { 
     path: '/abilities', 
     name: 'AbilityList', 
     component: () => import('../views/AbilityList.vue'),
-    meta: { title: '特性列表' }
+    meta: { title: { zh: '特性列表', en: 'Abilities' } }
   },
   { 
     path: '/items', 
     name: 'ItemList', 
     component: () => import('../views/ItemList.vue'),
-    meta: { title: '物品列表' }
+    meta: { title: { zh: '物品列表', en: 'Items' } }
   },
   { 
     path: '/damage-calculator', 
     name: 'DamageCalculator', 
     component: () => import('../views/DamageCalculator.vue'),
-    meta: { title: '伤害计算器' }
+    meta: { title: { zh: '伤害计算器', en: 'Damage Calculator' } }
   },
   {
     path: '/import',
     name: 'ImportManager',
     component: () => import('../views/ImportManager.vue'),
-    meta: { title: '导入管理' }
+    meta: { title: { zh: '导入管理', en: 'Import Manager' } }
   },
   { 
     path: '/battle', 
     name: 'Battle', 
     component: () => import('../views/Battle.vue'),
-    meta: { title: '对战工厂', requiresAuth: true }
+    meta: { title: { zh: '对战工厂', en: 'Battle Factory' }, requiresAuth: true }
   },
   {
     path: '/login',
     name: 'Login',
     component: () => import('../views/Login.vue'),
-    meta: { title: '登录' }
+    meta: { title: { zh: '登录', en: 'Login' } }
   },
   {
     path: '/:pathMatch(.*)*',
@@ -85,7 +86,10 @@ const auth = useAuth()
 
 // 全局前置守卫统一处理页面标题、登录恢复和受保护页面跳转。
 router.beforeEach(async (to) => {
-  document.title = to.meta.title ? `${to.meta.title} - Pokemon Factory` : 'Pokemon Factory'
+  const pageTitle = typeof to.meta.title === 'object' && to.meta.title
+    ? translate(to.meta.title.zh, to.meta.title.en)
+    : 'Pokemon Factory'
+  document.title = pageTitle ? `${pageTitle} - Pokemon Factory` : 'Pokemon Factory'
 
   // 只有本地存在 token 时才向后端恢复会话，避免普通页面反复请求 /me。
   if (!auth.state.initialized && auth.state.token) {

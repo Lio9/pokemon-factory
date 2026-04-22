@@ -84,7 +84,7 @@ public interface BattleDexMapper {
             "AND (" +
             "m.name_en IN (" +
             "'protect','detect','wide-guard','quick-guard','tailwind','trick-room','rain-dance','sunny-day','sandstorm','snowscape'," +
-            "'electric-terrain','psychic-terrain','grassy-terrain','misty-terrain','reflect','light-screen','aurora-veil','taunt','spore'," +
+            "'electric-terrain','psychic-terrain','grassy-terrain','misty-terrain','reflect','light-screen','aurora-veil','safeguard','taunt','disable','heal-block','torment','encore','yawn','spore'," +
             "'helping-hand','follow-me','rage-powder','will-o-wisp','thunder-wave','icy-wind','electroweb','snarl','fake-tears'," +
             "'parting-shot','ally-switch','feint','recover','roost','slack-off','soft-boiled','moonlight','synthesis','morning-sun'" +
             ") OR (m.damage_class_id IN (1, 2) AND COALESCE(m.power, 0) > 0)" +

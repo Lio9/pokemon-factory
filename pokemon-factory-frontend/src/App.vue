@@ -19,7 +19,7 @@
                 Pokemon Factory
               </h1>
               <div class="hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400 sm:block">
-                Data Dex + Battle Lab
+                {{ tr('图鉴数据 + 对战实验室', 'Data Dex + Battle Lab') }}
               </div>
             </div>
           </router-link>
@@ -40,6 +40,18 @@
               </router-link>
             </nav>
 
+            <div class="flex items-center gap-1 rounded-xl border border-slate-200 bg-white/80 p-1">
+              <button
+                v-for="option in localeOptions"
+                :key="option.value"
+                class="rounded-lg px-2.5 py-1.5 text-xs font-semibold transition"
+                :class="locale === option.value ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
+                @click="setLocale(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+
             <div class="ml-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
               <span class="text-sm font-semibold text-slate-700">{{ authDisplayName }}</span>
               <button
@@ -47,14 +59,14 @@
                 class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700"
                 @click="handleLogout"
               >
-                退出登录
+                {{ tr('退出登录', 'Sign out') }}
               </button>
               <router-link
                 v-else
                 to="/login"
                 class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
               >
-                去登录
+                {{ tr('去登录', 'Log in') }}
               </router-link>
             </div>
 
@@ -72,6 +84,17 @@
 
           <!-- 移动端菜单 & 主题切换 -->
           <div class="md:hidden flex items-center gap-1.5">
+            <div class="flex items-center gap-1 rounded-full bg-white/80 p-1 shadow-sm">
+              <button
+                v-for="option in localeOptions"
+                :key="`mobile-${option.value}`"
+                class="rounded-full px-2 py-1 text-[10px] font-semibold transition"
+                :class="locale === option.value ? 'bg-slate-900 text-white' : 'text-slate-600'"
+                @click="setLocale(option.value)"
+              >
+                {{ option.shortLabel }}
+              </button>
+            </div>
             <div class="max-w-[110px] truncate rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
               {{ authDisplayName }}
             </div>
@@ -106,7 +129,7 @@
                       class="w-full text-left"
                       @click="handleLogout"
                     >
-                      退出登录（{{ authDisplayName }}）
+                      {{ tr('退出登录', 'Sign out') }}（{{ authDisplayName }}）
                     </button>
                   </el-dropdown-item>
                   <el-dropdown-item v-else>
@@ -114,7 +137,7 @@
                       to="/login"
                       class="w-full"
                     >
-                      登录
+                      {{ tr('登录', 'Login') }}
                     </router-link>
                   </el-dropdown-item>
                 </el-dropdown-menu>
@@ -132,10 +155,10 @@
           >
             <div>
               <h2 class="text-[clamp(1.4rem,4vw,2rem)] font-black tracking-tight text-slate-950">
-                探索图鉴，进入战斗实验室
+                {{ tr('探索图鉴，进入战斗实验室', 'Explore the dex and enter the battle lab') }}
               </h2>
               <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                现在的首页不只是查询入口，也承担战斗工厂的导航壳层。筛选、查看、模拟和对战被放进同一套更统一的视觉语言里。
+                {{ tr('现在的首页不只是查询入口，也承担战斗工厂的导航壳层。筛选、查看、模拟和对战被放进同一套更统一的视觉语言里。', 'The homepage is no longer just a dex entry point. It also serves as the navigation shell for the battle factory, unifying search, inspection, simulation, and battling in one visual language.') }}
               </p>
             </div>
             <div class="hidden sm:flex items-center">
@@ -186,7 +209,7 @@
       
       <!-- Footer -->
       <el-footer class="px-4 py-5 text-center text-xs text-gray-400 sm:py-6 sm:text-sm">
-        <p>© 2024-{{ new Date().getFullYear() }} 宝可梦图鉴 - Pokemon Factory</p>
+        <p>© 2024-{{ new Date().getFullYear() }} {{ tr('宝可梦图鉴', 'Pokemon Dex') }} - Pokemon Factory</p>
       </el-footer>
     </el-container>
 
@@ -201,20 +224,26 @@ import { useRoute, useRouter } from 'vue-router'
 import { Menu, Sun, Moon } from 'lucide-vue-next'
 import ErrorHandler from './components/ErrorHandler.vue'
 import { useAuth } from './composables/useAuth'
+import { useLocale } from './composables/useLocale'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuth()
-// 顶部导航集中定义，方便桌面端和移动端共用同一份菜单数据。
-const navItems = [
-  { name: '宝可梦', path: '/pokemon' },
-  { name: '技能', path: '/moves' },
-  { name: '特性', path: '/abilities' },
-  { name: '物品', path: '/items' },
-  { name: '伤害计算', path: '/damage-calculator' },
-  { name: '导入管理', path: '/import' },
-  { name: '对战工厂', path: '/battle' }
+const { locale, setLocale, translate: tr } = useLocale()
+const localeOptions = [
+  { value: 'zh-CN', label: '中文', shortLabel: '中' },
+  { value: 'en-US', label: 'English', shortLabel: 'EN' }
 ]
+// 顶部导航集中定义，方便桌面端和移动端共用同一份菜单数据。
+const navItems = computed(() => [
+  { name: tr('宝可梦', 'Pokemon'), path: '/pokemon' },
+  { name: tr('技能', 'Moves'), path: '/moves' },
+  { name: tr('特性', 'Abilities'), path: '/abilities' },
+  { name: tr('物品', 'Items'), path: '/items' },
+  { name: tr('伤害计算', 'Damage Calc'), path: '/damage-calculator' },
+  { name: tr('导入管理', 'Imports'), path: '/import' },
+  { name: tr('对战工厂', 'Battle Factory'), path: '/battle' }
+])
 const theme = ref(localStorage.getItem('theme') || 'light')
 const isAuthenticated = computed(() => auth.isAuthenticated.value)
 const authDisplayName = computed(() => auth.displayName.value)

@@ -6,7 +6,7 @@
     <div class="w-full max-w-lg rounded-[24px] bg-white p-4 shadow-xl sm:rounded-2xl sm:p-6">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-bold text-slate-900">
-          大师球段位排行榜
+          {{ tr('大师球段位排行榜', 'Master Ball leaderboard') }}
         </h2>
         <button
           class="text-slate-400 hover:text-slate-600"
@@ -20,7 +20,7 @@
           v-if="loading"
           class="py-8 text-center text-sm text-slate-500"
         >
-          正在加载排行榜...
+          {{ tr('正在加载排行榜...', 'Loading leaderboard...') }}
         </div>
         <template v-else-if="leaderboardData.length">
           <div
@@ -39,10 +39,10 @@
             </div>
             <div class="text-right">
               <div class="font-semibold text-indigo-600">
-                {{ entry.totalPoints }} 分
+                {{ entry.totalPoints }} {{ tr('分', 'pts') }}
               </div>
               <div class="text-xs text-slate-500">
-                {{ entry.wins }}胜 {{ entry.losses }}负
+                {{ entry.wins }}{{ tr('胜', 'W') }} {{ entry.losses }}{{ tr('负', 'L') }}
               </div>
             </div>
           </div>
@@ -51,7 +51,7 @@
           v-else
           class="py-8 text-center text-sm text-slate-500"
         >
-          暂无大师球段位玩家
+          {{ tr('暂无大师球段位玩家', 'No Master Ball players yet') }}
         </div>
       </div>
     </div>
@@ -59,6 +59,10 @@
 </template>
 
 <script setup>
+import { useLocale } from '../composables/useLocale'
+
+const { translate: tr } = useLocale()
+
 const emit = defineEmits(['close'])
 
 defineProps({

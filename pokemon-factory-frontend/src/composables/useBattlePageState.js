@@ -2,6 +2,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import api from '../services/api'
 import { useAuth } from './useAuth'
 import { useBattleDerivedState } from './battle/useBattleDerivedState'
+import { translate } from './useLocale'
 import {
   buildBattleSettlement,
   buildMoveSubmission,
@@ -15,7 +16,7 @@ import {
 export function useBattlePageState() {
   const auth = useAuth()
 
-  const resultText = ref('等待开始对战')
+  const resultText = ref(translate('等待开始对战', 'Waiting to start a battle'))
   const summary = ref(null)
   const selectedActions = ref({})
   const selectedMoves = ref({})
@@ -144,7 +145,7 @@ export function useBattlePageState() {
       factoryRun.value = null
     }
     if (!keepResultText) {
-      resultText.value = '等待开始对战'
+      resultText.value = translate('等待开始对战', 'Waiting to start a battle')
     }
     resetLocalSelections()
     markUpdated()
@@ -187,7 +188,7 @@ export function useBattlePageState() {
     showExchange.value = false
     resetLocalSelections()
     requestError.value = ''
-    resultText.value = '当前轮次已完成，可以进入下一轮。'
+    resultText.value = translate('当前轮次已完成，可以进入下一轮。', 'This round is complete. You can enter the next one now.')
     markUpdated()
   }
 
@@ -352,32 +353,32 @@ export function useBattlePageState() {
   async function startBattle() {
     await runBusy('start-manual', async () => {
       stopPolling()
-      resultText.value = '正在开始手动对战...'
+      resultText.value = translate('正在开始手动对战...', 'Starting a manual battle...')
       const res = await api.battle.start({})
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-      resultText.value = `开始失败: ${error.message || error}`
+      resultText.value = translate('开始失败: {message}', 'Failed to start: {message}', { message: error.message || error })
     })
   }
 
   async function startAsyncBattle() {
     await runBusy('start-async', async () => {
       stopPolling()
-      resultText.value = '正在提交异步模拟...'
+      resultText.value = translate('正在提交异步模拟...', 'Submitting async simulation...')
       const res = await api.battle.startAsync({})
       currentBattleId.value = res.battleId
       resultText.value = JSON.stringify(res, null, 2)
       await refreshStatus(true)
       startPolling()
     }).catch((error) => {
-      resultText.value = `提交失败: ${error.message || error}`
+      resultText.value = translate('提交失败: {message}', 'Submit failed: {message}', { message: error.message || error })
     })
   }
 
   async function refreshStatus(silent = false) {
     if (!currentBattleId.value) {
-      resultText.value = '请先开始对战'
+      resultText.value = translate('请先开始对战', 'Start a battle first')
       return
     }
 
@@ -395,13 +396,13 @@ export function useBattlePageState() {
         await task()
       } catch (error) {
         requestError.value = error?.message || String(error)
-        resultText.value = `刷新失败: ${error.message || error}`
+        resultText.value = translate('刷新失败: {message}', 'Refresh failed: {message}', { message: error.message || error })
       }
       return
     }
 
     await runBusy('refresh-status', task).catch((error) => {
-      resultText.value = `刷新失败: ${error.message || error}`
+      resultText.value = translate('刷新失败: {message}', 'Refresh failed: {message}', { message: error.message || error })
     })
   }
 
@@ -415,7 +416,7 @@ export function useBattlePageState() {
 
   async function confirmPreview() {
     if (!canConfirmPreview.value) {
-      resultText.value = '请选择 4 只宝可梦，并从中指定 2 只首发'
+      resultText.value = translate('请选择 4 只宝可梦，并从中指定 2 只首发', 'Choose 4 Pokemon and assign 2 leads')
       return
     }
 
@@ -427,13 +428,13 @@ export function useBattlePageState() {
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-      resultText.value = `确认失败: ${error.message || error}`
+      resultText.value = translate('确认失败: {message}', 'Confirmation failed: {message}', { message: error.message || error })
     })
   }
 
   async function submitMove() {
     if (!canSubmitMove.value) {
-      resultText.value = '请为两只在场宝可梦分别选择行动；若使用招式还需指定目标'
+      resultText.value = translate('请为两只在场宝可梦分别选择行动；若使用招式还需指定目标', 'Choose an action for both active Pokemon, and pick targets for targeted moves')
       return
     }
 
@@ -453,13 +454,13 @@ export function useBattlePageState() {
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-      resultText.value = `提交失败: ${error.message || error}`
+      resultText.value = translate('提交失败: {message}', 'Submit failed: {message}', { message: error.message || error })
     })
   }
 
   async function confirmReplacement() {
     if (!canConfirmReplacement.value) {
-      resultText.value = `请选择 ${pendingReplacementCount.value} 只后备宝可梦上场`
+      resultText.value = translate('请选择 {count} 只后备宝可梦上场', 'Choose {count} bench Pokemon to send in', { count: pendingReplacementCount.value })
       return
     }
 
@@ -470,14 +471,14 @@ export function useBattlePageState() {
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-      resultText.value = `补位失败: ${error.message || error}`
+      resultText.value = translate('补位失败: {message}', 'Replacement failed: {message}', { message: error.message || error })
     })
   }
 
   async function onConfirmExchange(pickedIdx) {
     const picked = exchangeCandidates.value[pickedIdx]
     if (!picked) {
-      resultText.value = '未找到可交换的宝可梦'
+      resultText.value = translate('未找到可交换的宝可梦', 'No exchange candidate was found')
       return
     }
 
@@ -495,7 +496,7 @@ export function useBattlePageState() {
         replacedHighlight.value = -1
       }, 4000)
     }).catch((error) => {
-      resultText.value = `交换失败: ${error.message || error}`
+      resultText.value = translate('交换失败: {message}', 'Exchange failed: {message}', { message: error.message || error })
     })
   }
 
@@ -574,7 +575,7 @@ export function useBattlePageState() {
       playerProfile.value = res?.profile || res
       return playerProfile.value
     } catch (error) {
-      setRequestErrorMessage(error?.message || '加载玩家资料失败')
+       setRequestErrorMessage(error?.message || translate('加载玩家资料失败', 'Failed to load player profile'))
       throw error
     }
   }
@@ -591,7 +592,7 @@ export function useBattlePageState() {
       return factoryRun.value
     } catch (error) {
       factoryRun.value = null
-      setRequestErrorMessage(error?.message || '加载工厂挑战状态失败')
+       setRequestErrorMessage(error?.message || translate('加载工厂挑战状态失败', 'Failed to load factory run status'))
       throw error
     }
   }
@@ -603,7 +604,7 @@ export function useBattlePageState() {
       return leaderboardData.value
     } catch (error) {
       leaderboardData.value = []
-      setRequestErrorMessage(error?.message || '加载排行榜失败')
+       setRequestErrorMessage(error?.message || translate('加载排行榜失败', 'Failed to load leaderboard'))
       throw error
     } finally {
       leaderboardLoading.value = false
@@ -618,7 +619,7 @@ export function useBattlePageState() {
   async function startFactoryChallenge() {
     await runBusy('factory-start', async () => {
       stopPolling()
-      resultText.value = '正在开始工厂挑战...'
+       resultText.value = translate('正在开始工厂挑战...', 'Starting the factory challenge...')
       const res = await api.battle.factoryStart()
       const nextRun = normalizeFactoryRun(res.run || res)
       factoryRun.value = nextRun
@@ -649,7 +650,7 @@ export function useBattlePageState() {
       resultText.value = JSON.stringify(res, null, 2)
       await loadProfile().catch(() => null)
     }).catch((error) => {
-      resultText.value = `开始挑战失败: ${error.message || error}`
+       resultText.value = translate('开始挑战失败: {message}', 'Failed to start the challenge: {message}', { message: error.message || error })
     })
   }
 
@@ -657,7 +658,7 @@ export function useBattlePageState() {
     if (!factoryRun.value?.id) return
     await runBusy('factory-next', async () => {
       stopPolling()
-      resultText.value = '正在进入下一轮...'
+       resultText.value = translate('正在进入下一轮...', 'Entering the next round...')
       const res = await api.battle.factoryNext(factoryRun.value.id)
       factoryRun.value = normalizeFactoryRun(res.run || res) || factoryRun.value
       if (res.battleId || res.battle?.id) {
@@ -670,7 +671,7 @@ export function useBattlePageState() {
       }
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-      resultText.value = `进入下一轮失败: ${error.message || error}`
+       resultText.value = translate('进入下一轮失败: {message}', 'Failed to enter the next round: {message}', { message: error.message || error })
     })
   }
 
@@ -678,10 +679,10 @@ export function useBattlePageState() {
     await runBusy('factory-abandon', async () => {
       await api.battle.factoryAbandon()
       resetBattleState({ keepFactoryRun: false, keepResultText: true })
-      resultText.value = '已放弃本次工厂挑战'
+       resultText.value = translate('已放弃本次工厂挑战', 'The current factory run has been abandoned')
       await loadProfile().catch(() => null)
     }).catch((error) => {
-      resultText.value = `放弃失败: ${error.message || error}`
+       resultText.value = translate('放弃失败: {message}', 'Abandon failed: {message}', { message: error.message || error })
     })
   }
 
@@ -692,7 +693,7 @@ export function useBattlePageState() {
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-      resultText.value = `投降失败: ${error.message || error}`
+       resultText.value = translate('投降失败: {message}', 'Forfeit failed: {message}', { message: error.message || error })
     })
   }
 
@@ -701,10 +702,10 @@ export function useBattlePageState() {
     settlement.value = null
     if (wasRunFinished || !factoryRun.value) {
       resetBattleState({ keepFactoryRun: false, keepResultText: true })
-      resultText.value = '等待开始对战'
+       resultText.value = translate('等待开始对战', 'Waiting to start a battle')
       loadProfile().catch(() => null)
     } else if (summary.value?.status === 'completed') {
-      resultText.value = '本轮已完成，可以查看战场详情或继续下一轮。'
+       resultText.value = translate('本轮已完成，可以查看战场详情或继续下一轮。', 'This round is complete. Review the battlefield or continue to the next round.')
     }
   }
 

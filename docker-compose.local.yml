@@ -64,7 +64,7 @@ services:
       - pokedex
       - battlefactory
     ports:
-      - "5173:80"
+      - "7890:80"
 
 volumes:
   backend-db:

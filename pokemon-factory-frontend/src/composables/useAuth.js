@@ -2,6 +2,7 @@ import { computed, reactive, readonly } from 'vue'
 import api from '../services/api'
 import { normalizeAuthSession } from '../services/contracts/authContract'
 import { getToken, getStoredUser, persistSession } from '../services/sessionStorage'
+import { translate } from './useLocale'
 
 const initialToken = getToken()
 
@@ -75,7 +76,7 @@ async function register(credentials) {
 }
 
 const isAuthenticated = computed(() => Boolean(state.token && state.user))
-const displayName = computed(() => state.user?.displayName || state.user?.username || '游客')
+const displayName = computed(() => state.user?.displayName || state.user?.username || translate('游客', 'Guest'))
 
 // 对外只暴露只读状态和受控操作，避免任意组件直接改内部 state。
 export function useAuth() {

@@ -4,17 +4,22 @@ import com.lio9.pokedex.util.DamageCalculatorUtil;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 final class BattleTurnCleanupSupport {
     private final BattleEngine engine;
     private final BattleFieldEffectSupport fieldEffectSupport;
+    private final BattleConditionSupport conditionSupport;
 
-    BattleTurnCleanupSupport(BattleEngine engine, BattleFieldEffectSupport fieldEffectSupport) {
+    BattleTurnCleanupSupport(BattleEngine engine, BattleFieldEffectSupport fieldEffectSupport,
+                             BattleConditionSupport conditionSupport) {
         this.engine = engine;
         this.fieldEffectSupport = fieldEffectSupport;
+        this.conditionSupport = conditionSupport;
     }
 
-    void applyEndTurnEffects(Map<String, Object> state, Map<String, Object> fieldSnapshot, List<String> events) {
+    void applyEndTurnEffects(Map<String, Object> state, Map<String, Object> fieldSnapshot, List<String> events,
+                             Random random, int currentRound) {
         applyEndTurnStatusEffects(engine.team(state, true), events);
         applyEndTurnStatusEffects(engine.team(state, false), events);
         applyEndTurnHealing(engine.team(state, true), events);
@@ -24,6 +29,16 @@ final class BattleTurnCleanupSupport {
         decrementDynamax(engine.team(state, false), events);
         decrementTauntEffects(engine.team(state, true), events);
         decrementTauntEffects(engine.team(state, false), events);
+        decrementHealBlockEffects(engine.team(state, true), events);
+        decrementHealBlockEffects(engine.team(state, false), events);
+        decrementTormentEffects(engine.team(state, true), events);
+        decrementTormentEffects(engine.team(state, false), events);
+        decrementDisableEffects(engine.team(state, true), events);
+        decrementDisableEffects(engine.team(state, false), events);
+        decrementEncoreEffects(engine.team(state, true), events);
+        decrementEncoreEffects(engine.team(state, false), events);
+        decrementYawnEffects(state, engine.team(state, true), events, random, currentRound);
+        decrementYawnEffects(state, engine.team(state, false), events, random, currentRound);
         fieldEffectSupport.decrementFieldEffects(state, fieldSnapshot, events);
     }
 
@@ -74,6 +89,10 @@ final class BattleTurnCleanupSupport {
             if (engine.toInt(mon.get("currentHp"), 0) <= 0 || !grassyTerrainActiveFor(mon, state)) {
                 continue;
             }
+            if (engine.healBlockTurns(mon) > 0) {
+                events.add(mon.get("name") + " 受到回复封锁，无法从青草场地回复 HP");
+                continue;
+            }
             int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
             int currentHp = engine.toInt(mon.get("currentHp"), 0);
             if (currentHp >= maxHp) {
@@ -95,6 +114,83 @@ final class BattleTurnCleanupSupport {
             mon.put("tauntTurns", after);
             if (after == 0 && engine.toInt(mon.get("currentHp"), 0) > 0) {
                 events.add(mon.get("name") + " 不再处于挑衅状态");
+            }
+        }
+    }
+
+    private void decrementHealBlockEffects(List<Map<String, Object>> team, List<String> events) {
+        for (Map<String, Object> mon : team) {
+            int before = engine.healBlockTurns(mon);
+            if (before <= 0) {
+                continue;
+            }
+            int after = Math.max(0, before - 1);
+            mon.put("healBlockTurns", after);
+            if (after == 0 && engine.toInt(mon.get("currentHp"), 0) > 0) {
+                events.add(mon.get("name") + " 不再受回复封锁影响");
+            }
+        }
+    }
+
+    private void decrementEncoreEffects(List<Map<String, Object>> team, List<String> events) {
+        for (Map<String, Object> mon : team) {
+            int before = engine.toInt(mon.get("encoreTurns"), 0);
+            if (before <= 0) {
+                continue;
+            }
+            int after = Math.max(0, before - 1);
+            mon.put("encoreTurns", after);
+            if (after == 0) {
+                mon.put("encoreMove", null);
+                if (engine.toInt(mon.get("currentHp"), 0) > 0) {
+                    events.add(mon.get("name") + " 不再受再来一次影响");
+                }
+            }
+        }
+    }
+
+    private void decrementTormentEffects(List<Map<String, Object>> team, List<String> events) {
+        for (Map<String, Object> mon : team) {
+            int before = engine.tormentTurns(mon);
+            if (before <= 0) {
+                continue;
+            }
+            int after = Math.max(0, before - 1);
+            mon.put("tormentTurns", after);
+            if (after == 0 && engine.toInt(mon.get("currentHp"), 0) > 0) {
+                events.add(mon.get("name") + " 不再受无理取闹影响");
+            }
+        }
+    }
+
+    private void decrementDisableEffects(List<Map<String, Object>> team, List<String> events) {
+        for (Map<String, Object> mon : team) {
+            int before = engine.toInt(mon.get("disableTurns"), 0);
+            if (before <= 0) {
+                continue;
+            }
+            int after = Math.max(0, before - 1);
+            mon.put("disableTurns", after);
+            if (after == 0) {
+                mon.put("disableMove", null);
+                if (engine.toInt(mon.get("currentHp"), 0) > 0) {
+                    events.add(mon.get("name") + " 不再受定身法影响");
+                }
+            }
+        }
+    }
+
+    private void decrementYawnEffects(Map<String, Object> state, List<Map<String, Object>> team, List<String> events,
+                                      Random random, int currentRound) {
+        for (Map<String, Object> mon : team) {
+            int before = engine.yawnTurns(mon);
+            if (before <= 0) {
+                continue;
+            }
+            int after = Math.max(0, before - 1);
+            mon.put("yawnTurns", after);
+            if (after == 0) {
+                conditionSupport.resolveYawn(state, mon, events, random, currentRound);
             }
         }
     }
@@ -137,6 +233,10 @@ final class BattleTurnCleanupSupport {
     private void applyEndTurnHealing(List<Map<String, Object>> team, List<String> events) {
         for (Map<String, Object> mon : team) {
             if (engine.toInt(mon.get("currentHp"), 0) <= 0 || !"leftovers".equals(engine.heldItem(mon))) {
+                continue;
+            }
+            if (engine.healBlockTurns(mon) > 0) {
+                events.add(mon.get("name") + " 受到回复封锁，剩饭无法生效");
                 continue;
             }
             int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);

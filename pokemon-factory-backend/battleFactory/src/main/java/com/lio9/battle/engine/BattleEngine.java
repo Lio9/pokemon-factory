@@ -66,7 +66,7 @@ public class BattleEngine {
         this.setupSupport = new BattleSetupSupport(previewSupport, stateSupport, fieldEffectSupport, conditionSupport,
             flowSupport, LEVEL, BATTLE_TEAM_SIZE);
         this.roundSupport = new BattleRoundSupport(this, conditionSupport, targetSupport);
-        this.turnCleanupSupport = new BattleTurnCleanupSupport(this, fieldEffectSupport);
+        this.turnCleanupSupport = new BattleTurnCleanupSupport(this, fieldEffectSupport, conditionSupport);
     }
 
     /**
@@ -119,6 +119,10 @@ public class BattleEngine {
         List<Action> actions = new ArrayList<>();
         actions.addAll(buildPlayerActions(state, playerMoveMap));
         actions.addAll(buildOpponentActions(state, random));
+        Map<String, Action> plannedActions = new HashMap<>();
+        for (Action action : actions) {
+            plannedActions.put(actionKey(action.side(), action.actorIndex()), action);
+        }
         sortActions(actions, trickRoomTurns(state) > 0);
 
         Map<String, Object> roundLog = new LinkedHashMap<>();
@@ -128,10 +132,11 @@ public class BattleEngine {
 
         for (Action action : actions) {
             roundSupport.processAction(state, action, round, random, protectedTargets, wideGuardSides, quickGuardSides, redirectionTargets,
+                    plannedActions,
                     helpingHandBoosts, actionLogs, events);
         }
 
-        turnCleanupSupport.applyEndTurnEffects(state, fieldSnapshot, events);
+        turnCleanupSupport.applyEndTurnEffects(state, fieldSnapshot, events, random, round);
         flowSupport.prepareReplacementPhase(state, events);
         turnCleanupSupport.clearFlinch(state);
         roundLog.put("actions", actionLogs);
@@ -282,6 +287,11 @@ public class BattleEngine {
         return "feint".equalsIgnoreCase(String.valueOf(move.get("name_en")));
     }
 
+    boolean isKnockOff(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "knock-off".equalsIgnoreCase(nameEn) || "knock off".equalsIgnoreCase(nameEn);
+    }
+
     boolean isTaunt(Map<String, Object> move) {
         String nameEn = String.valueOf(move.get("name_en"));
         return "taunt".equalsIgnoreCase(nameEn);
@@ -290,6 +300,11 @@ public class BattleEngine {
     boolean isSpore(Map<String, Object> move) {
         String nameEn = String.valueOf(move.get("name_en"));
         return "spore".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isYawn(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "yawn".equalsIgnoreCase(nameEn);
     }
 
     boolean isToxic(Map<String, Object> move) {
@@ -321,8 +336,61 @@ public class BattleEngine {
         return "aurora-veil".equalsIgnoreCase(nameEn) || "aurora veil".equalsIgnoreCase(nameEn);
     }
 
+    boolean isSafeguard(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "safeguard".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isEncore(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "encore".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isDisable(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "disable".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isTorment(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "torment".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isHealBlock(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "heal-block".equalsIgnoreCase(nameEn) || "heal block".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isHealingMove(Map<String, Object> move) {
+        return toInt(move.get("healing"), 0) > 0;
+    }
+
     boolean canUseMove(Map<String, Object> mon, Map<String, Object> move, int currentRound) {
         String item = heldItem(mon);
+        if (toInt(mon.get("healBlockTurns"), 0) > 0 && isHealingMove(move)) {
+            return false;
+        }
+        Object lastMoveUsed = mon.get("lastMoveUsed");
+        if (toInt(mon.get("tormentTurns"), 0) > 0
+                && lastMoveUsed != null
+                && !String.valueOf(lastMoveUsed).isBlank()
+                && String.valueOf(move.get("name_en")).equalsIgnoreCase(String.valueOf(lastMoveUsed))) {
+            return false;
+        }
+        Object disabledMove = mon.get("disableMove");
+        if (toInt(mon.get("disableTurns"), 0) > 0
+                && disabledMove != null
+                && !String.valueOf(disabledMove).isBlank()
+                && String.valueOf(move.get("name_en")).equalsIgnoreCase(String.valueOf(disabledMove))) {
+            return false;
+        }
+        Object encoredMove = mon.get("encoreMove");
+        if (toInt(mon.get("encoreTurns"), 0) > 0
+                && encoredMove != null
+                && !String.valueOf(encoredMove).isBlank()
+                && !String.valueOf(move.get("name_en")).equalsIgnoreCase(String.valueOf(encoredMove))) {
+            return false;
+        }
         if (toInt(mon.get("rechargeTurns"), 0) > 0) {
             return false;
         }
@@ -477,6 +545,35 @@ public class BattleEngine {
         return "parting-shot".equalsIgnoreCase(nameEn) || "parting shot".equalsIgnoreCase(nameEn);
     }
 
+    boolean isUTurn(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "u-turn".equalsIgnoreCase(nameEn) || "u turn".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isVoltSwitch(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "volt-switch".equalsIgnoreCase(nameEn) || "volt switch".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isFlipTurn(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "flip-turn".equalsIgnoreCase(nameEn) || "flip turn".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isTeraBlast(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "tera-blast".equalsIgnoreCase(nameEn) || "tera blast".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isSuckerPunch(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "sucker-punch".equalsIgnoreCase(nameEn) || "sucker punch".equalsIgnoreCase(nameEn);
+    }
+
+    boolean isPivotSwitchMove(Map<String, Object> move) {
+        return isUTurn(move) || isVoltSwitch(move) || isFlipTurn(move);
+    }
+
     boolean isRechargeMove(Map<String, Object> move) {
         String effectShort = String.valueOf(move.getOrDefault("effect_short", "")).toLowerCase();
         if (effectShort.contains("recharge")) {
@@ -574,11 +671,11 @@ public class BattleEngine {
     }
 
     private int modifiedAttackStat(Map<String, Object> mon, int baseStat, int damageClassId) {
-        return damageSupport.modifiedAttackStat(mon, baseStat, damageClassId, false);
+        return damageSupport.modifiedAttackStat(mon, mon, baseStat, damageClassId, false);
     }
 
     private int modifiedDefenseStat(Map<String, Object> mon, int baseStat, int damageClassId, Map<String, Object> state) {
-        return damageSupport.modifiedDefenseStat(mon, baseStat, damageClassId, state, false);
+        return damageSupport.modifiedDefenseStat(mon, mon, baseStat, damageClassId, state, false);
     }
 
     private double itemDamageModifier(Map<String, Object> mon, int moveTypeId) {
@@ -617,8 +714,20 @@ public class BattleEngine {
         mon.put("itemConsumed", true);
     }
 
-    int applyIncomingDamage(Map<String, Object> target, int damage, Map<String, Object> actionLog, List<String> events) {
-        return damageSupport.applyIncomingDamage(target, damage, actionLog, events);
+    void removeHeldItem(Map<String, Object> mon) {
+        String item = heldItem(mon);
+        if (item.isBlank()) {
+            return;
+        }
+        mon.put("heldItem", "");
+        if ("choice-band".equals(item) || "choice-specs".equals(item) || "choice-scarf".equals(item)) {
+            mon.put("choiceLockedMove", null);
+        }
+    }
+
+    int applyIncomingDamage(Map<String, Object> attacker, Map<String, Object> target, int damage,
+                            Map<String, Object> actionLog, List<String> events) {
+        return damageSupport.applyIncomingDamage(attacker, target, damage, actionLog, events);
     }
 
     void applyDefenderItemEffects(Map<String, Object> target, Map<String, Object> move, int actualDamage,
@@ -644,6 +753,11 @@ public class BattleEngine {
         int maxHp = toInt(castMap(target.get("stats")).get("hp"), 1);
         int currentHp = toInt(target.get("currentHp"), 0);
         if (currentHp * 2 <= maxHp) {
+            if (healBlockTurns(target) > 0) {
+                actionLog.put("berryHealBlocked", true);
+                events.add(target.get("name") + " 受到回复封锁，文柚果无法生效");
+                return;
+            }
             int heal = Math.max(1, maxHp / 4);
             target.put("currentHp", Math.min(maxHp, currentHp + heal));
             consumeItem(target);
@@ -673,6 +787,10 @@ public class BattleEngine {
         if ("choice-band".equals(item) || "choice-specs".equals(item) || "choice-scarf".equals(item)) {
             mon.put("choiceLockedMove", move.get("name_en"));
         }
+    }
+
+    void rememberLastMove(Map<String, Object> mon, Map<String, Object> move) {
+        mon.put("lastMoveUsed", move.get("name_en"));
     }
 
     Map<String, Object> lockedChoiceMove(Map<String, Object> mon, int currentRound) {
@@ -705,6 +823,18 @@ public class BattleEngine {
 
     int tauntTurns(Map<String, Object> mon) {
         return toInt(mon.get("tauntTurns"), 0);
+    }
+
+    int healBlockTurns(Map<String, Object> mon) {
+        return toInt(mon.get("healBlockTurns"), 0);
+    }
+
+    int tormentTurns(Map<String, Object> mon) {
+        return toInt(mon.get("tormentTurns"), 0);
+    }
+
+    int yawnTurns(Map<String, Object> mon) {
+        return toInt(mon.get("yawnTurns"), 0);
     }
 
     boolean isSleepingThisTurn(Map<String, Object> mon, int currentRound) {
@@ -1006,6 +1136,29 @@ public class BattleEngine {
         return damageSupport.screenDamageModifier(state, defender, damageClassId);
     }
 
+    Map<String, Object> resolveMoveForUse(Map<String, Object> actor, Map<String, Object> move) {
+        if (!isTeraBlast(move)) {
+            return move;
+        }
+        Map<String, Object> resolved = new LinkedHashMap<>(move);
+        int teraTypeId = toInt(actor.get("teraTypeId"), 0);
+        resolved.put("type_id", Boolean.TRUE.equals(actor.get("terastallized")) && teraTypeId > 0
+                ? teraTypeId
+                : DamageCalculatorUtil.TYPE_NORMAL);
+        resolved.put("damage_class_id", teraBlastUsesPhysicalCategory(actor)
+                ? DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
+                : DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL);
+        return resolved;
+    }
+
+    private boolean teraBlastUsesPhysicalCategory(Map<String, Object> actor) {
+        Map<String, Object> stats = castMap(actor.get("stats"));
+        int attack = damageSupport.applyStageModifier(toInt(stats.get("attack"), 100), damageSupport.statStage(actor, "attack"));
+        int specialAttack = damageSupport.applyStageModifier(toInt(stats.get("specialAttack"), 100),
+                damageSupport.statStage(actor, "specialAttack"));
+        return attack > specialAttack;
+    }
+
     private void sortActions(List<Action> actions, boolean trickRoomActive) {
         actions.sort((left, right) -> {
             int byPriority = Integer.compare(right.priority(), left.priority());
@@ -1045,6 +1198,10 @@ public class BattleEngine {
             }
         }
         return fallback;
+    }
+
+    String actionKey(String side, int actorIndex) {
+        return side + ":" + actorIndex;
     }
 
     private long toLong(Object value, long fallback) {

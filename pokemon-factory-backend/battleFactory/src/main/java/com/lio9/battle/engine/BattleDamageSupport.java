@@ -30,12 +30,12 @@ final class BattleDamageSupport {
         Map<String, Object> defenderStats = engine.castMap(defender.get("stats"));
 
         int attackStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
-                ? modifiedAttackStat(attacker, engine.toInt(attackerStats.get("attack"), 100), damageClassId, criticalHit)
-                : modifiedAttackStat(attacker, engine.toInt(attackerStats.get("specialAttack"), 100), damageClassId, criticalHit);
+                ? modifiedAttackStat(attacker, defender, engine.toInt(attackerStats.get("attack"), 100), damageClassId, criticalHit)
+                : modifiedAttackStat(attacker, defender, engine.toInt(attackerStats.get("specialAttack"), 100), damageClassId, criticalHit);
         int baseDefenseStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
                 ? engine.toInt(defenderStats.get("defense"), 100)
                 : engine.toInt(defenderStats.get("specialDefense"), 100);
-        int defenseStat = Math.max(1, modifiedDefenseStat(defender, baseDefenseStat, damageClassId, state, criticalHit));
+        int defenseStat = Math.max(1, modifiedDefenseStat(attacker, defender, baseDefenseStat, damageClassId, state, criticalHit));
 
         int power = Math.max(1, engine.toInt(move.get("power"), 1));
         int baseDamage = DamageCalculatorUtil.calculateBaseDamage(level, power, attackStat, defenseStat);
@@ -43,7 +43,11 @@ final class BattleDamageSupport {
         double modifier = 1.0d;
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
         modifier *= stabModifier(attacker, moveTypeId);
-        modifier *= typeModifier(defender, moveTypeId);
+        double typeModifier = typeModifier(defender, moveTypeId);
+        modifier *= typeModifier;
+        if (typeModifier <= 0.0d) {
+            return 0;
+        }
         modifier *= itemDamageModifier(attacker, moveTypeId);
         if (Boolean.TRUE.equals(helpingHandBoosts.get(attacker))) {
             modifier *= 1.5d;
@@ -59,6 +63,7 @@ final class BattleDamageSupport {
                     ? DamageCalculatorUtil.CRITICAL_MULTIPLIER * 1.5d
                     : DamageCalculatorUtil.CRITICAL_MULTIPLIER;
         }
+        modifier *= fullHpDefenseModifier(attacker, defender);
         modifier *= weatherDamageModifier(state, moveTypeId);
         modifier *= terrainDamageModifier(state, attacker, defender, moveTypeId);
         modifier *= screenDamageModifier(state, defender, damageClassId);
@@ -81,9 +86,9 @@ final class BattleDamageSupport {
         return modifier;
     }
 
-    int modifiedAttackStat(Map<String, Object> mon, int baseStat, int damageClassId, boolean criticalHit) {
+    int modifiedAttackStat(Map<String, Object> mon, Map<String, Object> defender, int baseStat, int damageClassId, boolean criticalHit) {
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            int attackStage = statStage(mon, "attack");
+            int attackStage = hasAbility(defender, "unaware") ? 0 : statStage(mon, "attack");
             if (criticalHit && attackStage < 0) {
                 attackStage = 0;
             }
@@ -92,7 +97,7 @@ final class BattleDamageSupport {
                 baseStat = Math.max(1, (int) Math.floor(baseStat * 0.5d));
             }
         } else if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            int specialAttackStage = statStage(mon, "specialAttack");
+            int specialAttackStage = hasAbility(defender, "unaware") ? 0 : statStage(mon, "specialAttack");
             if (criticalHit && specialAttackStage < 0) {
                 specialAttackStage = 0;
             }
@@ -112,15 +117,16 @@ final class BattleDamageSupport {
         return baseStat;
     }
 
-    int modifiedDefenseStat(Map<String, Object> mon, int baseStat, int damageClassId, Map<String, Object> state, boolean criticalHit) {
+    int modifiedDefenseStat(Map<String, Object> attacker, Map<String, Object> mon, int baseStat, int damageClassId,
+                            Map<String, Object> state, boolean criticalHit) {
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            int defenseStage = statStage(mon, "defense");
+            int defenseStage = hasAbility(attacker, "unaware") ? 0 : statStage(mon, "defense");
             if (criticalHit && defenseStage > 0) {
                 defenseStage = 0;
             }
             baseStat = applyStageModifier(baseStat, defenseStage);
         } else if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            int specialDefenseStage = statStage(mon, "specialDefense");
+            int specialDefenseStage = hasAbility(attacker, "unaware") ? 0 : statStage(mon, "specialDefense");
             if (criticalHit && specialDefenseStage > 0) {
                 specialDefenseStage = 0;
             }
@@ -140,6 +146,16 @@ final class BattleDamageSupport {
             baseStat = (int) Math.floor(baseStat * 1.5d);
         }
         return baseStat;
+    }
+
+    private boolean hasAbility(Map<String, Object> mon, String... names) {
+        String ability = engine.abilityName(mon);
+        for (String name : names) {
+            if (name.equalsIgnoreCase(ability)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     double itemDamageModifier(Map<String, Object> mon, int moveTypeId) {
@@ -168,10 +184,18 @@ final class BattleDamageSupport {
         return speed;
     }
 
-    int applyIncomingDamage(Map<String, Object> target, int damage, Map<String, Object> actionLog, List<String> events) {
+    int applyIncomingDamage(Map<String, Object> attacker, Map<String, Object> target, int damage,
+                            Map<String, Object> actionLog, List<String> events) {
         int currentHp = engine.toInt(target.get("currentHp"), 0);
         int maxHp = engine.toInt(engine.castMap(target.get("stats")).get("hp"), Math.max(1, currentHp));
         int actualDamage = damage;
+        if (!ignoresTargetAbility(attacker)
+                && "sturdy".equalsIgnoreCase(engine.abilityName(target))
+                && currentHp == maxHp && damage >= currentHp) {
+            actualDamage = Math.max(0, currentHp - 1);
+            actionLog.put("sturdy", true);
+            events.add(target.get("name") + " 靠结实撑住了攻击");
+        }
         if ("focus-sash".equals(heldItem(target)) && !itemConsumed(target) && currentHp == maxHp && damage >= currentHp) {
             actualDamage = Math.max(0, currentHp - 1);
             consumeItem(target);
@@ -180,6 +204,24 @@ final class BattleDamageSupport {
         }
         actionLog.put("damage", actualDamage);
         return Math.max(0, currentHp - actualDamage);
+    }
+
+    private double fullHpDefenseModifier(Map<String, Object> attacker, Map<String, Object> defender) {
+        int currentHp = engine.toInt(defender.get("currentHp"), 0);
+        int maxHp = engine.toInt(engine.castMap(defender.get("stats")).get("hp"), Math.max(1, currentHp));
+        if (currentHp <= 0 || currentHp != maxHp || ignoresTargetAbility(attacker)) {
+            return 1.0d;
+        }
+        String ability = engine.abilityName(defender);
+        if ("multiscale".equalsIgnoreCase(ability) || "shadow-shield".equalsIgnoreCase(ability)
+                || "shadow shield".equalsIgnoreCase(ability)) {
+            return 0.5d;
+        }
+        return 1.0d;
+    }
+
+    private boolean ignoresTargetAbility(Map<String, Object> attacker) {
+        return hasAbility(attacker, "mold-breaker", "mold breaker", "teravolt", "turboblaze");
     }
 
     double weatherDamageModifier(Map<String, Object> state, int moveTypeId) {

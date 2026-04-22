@@ -4,12 +4,12 @@
     class="rounded-2xl border border-amber-200 bg-[linear-gradient(180deg,rgba(254,243,199,0.7),rgba(255,255,255,0.95))] p-4"
   >
     <div class="mb-3 text-sm font-semibold text-slate-800">
-      队伍预览：从 6 只里选择 4 只，并指定 2 只首发
+      {{ tr('队伍预览：从 6 只里选择 4 只，并指定 2 只首发', 'Team preview: pick 4 of 6 Pokemon and choose 2 leads') }}
     </div>
     <div class="grid gap-4 lg:grid-cols-2">
       <div>
         <div class="mb-2 text-xs font-semibold text-slate-500">
-          你的队伍
+          {{ tr('你的队伍', 'Your roster') }}
         </div>
         <div class="space-y-2">
           <button
@@ -22,15 +22,15 @@
             <div class="flex items-center justify-between gap-3">
               <div class="text-left">
                 <div class="font-semibold text-slate-900">
-                  {{ pokemon.name || pokemon.name_en || `宝可梦 ${index + 1}` }}
+                  {{ pokemon.name || pokemon.name_en || tr(`宝可梦 ${index + 1}`, `Pokemon ${index + 1}`) }}
                 </div>
                 <div class="text-xs text-slate-500">
                   {{ formatTypes(pokemon.types) }}
                 </div>
               </div>
               <div class="text-right text-xs text-slate-500">
-                <div>{{ isPicked(index) ? '已选入' : '未选入' }}</div>
-                <div>{{ isLead(index) ? '首发' : '后备' }}</div>
+                <div>{{ isPicked(index) ? tr('已选入', 'Selected') : tr('未选入', 'Not selected') }}</div>
+                <div>{{ isLead(index) ? tr('首发', 'Lead') : tr('后备', 'Back') }}</div>
               </div>
             </div>
           </button>
@@ -39,7 +39,7 @@
 
       <div>
         <div class="mb-2 text-xs font-semibold text-slate-500">
-          对手公开队伍
+          {{ tr('对手公开队伍', 'Opponent preview') }}
         </div>
         <div class="space-y-2">
           <div
@@ -48,7 +48,7 @@
             class="rounded-xl border border-slate-200 bg-white p-3"
           >
             <div class="font-semibold text-slate-900">
-              {{ pokemon.name || pokemon.name_en || `宝可梦 ${index + 1}` }}
+              {{ pokemon.name || pokemon.name_en || tr(`宝可梦 ${index + 1}`, `Pokemon ${index + 1}`) }}
             </div>
             <div class="text-xs text-slate-500">
               {{ formatTypes(pokemon.types) }}
@@ -60,7 +60,7 @@
 
     <div class="mt-4 rounded-xl bg-white p-4">
       <div class="text-sm text-slate-700">
-        已选择 {{ selectedRosterIndexes.length }}/4 只；首发 {{ leadRosterIndexes.length }}/2 只
+        {{ tr('已选择 {selected}/4 只；首发 {lead}/2 只', '{selected}/4 selected; {lead}/2 leads', { selected: selectedRosterIndexes.length, lead: leadRosterIndexes.length }) }}
       </div>
       <div class="mt-2 flex flex-wrap gap-2">
         <button
@@ -71,7 +71,7 @@
           :class="isLead(index) ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'"
           @click="toggleLead(index)"
         >
-          {{ playerRoster[index]?.name || playerRoster[index]?.name_en || `宝可梦 ${index + 1}` }}{{ isLead(index) ? ' · 首发' : '' }}
+          {{ playerRoster[index]?.name || playerRoster[index]?.name_en || tr(`宝可梦 ${index + 1}`, `Pokemon ${index + 1}`) }}{{ isLead(index) ? tr(' · 首发', ' · Lead') : '' }}
         </button>
       </div>
       <button
@@ -79,7 +79,7 @@
         :disabled="!canConfirmPreview || isBusy"
         @click="confirmPreview"
       >
-        {{ busyAction === 'confirm-preview' ? '正在确认阵容...' : '确认 6 选 4 与首发' }}
+        {{ busyAction === 'confirm-preview' ? tr('正在确认阵容...', 'Confirming team...') : tr('确认 6 选 4 与首发', 'Confirm preview and leads') }}
       </button>
     </div>
   </section>
@@ -89,7 +89,7 @@
     class="rounded-2xl border border-rose-200 bg-[linear-gradient(180deg,rgba(255,228,230,0.72),rgba(255,255,255,0.96))] p-4"
   >
     <div class="mb-3 text-sm font-semibold text-slate-800">
-      倒下补位：请选择 {{ pendingReplacementCount }} 只后备宝可梦上场
+      {{ tr('倒下补位：请选择 {count} 只后备宝可梦上场', 'Replacement: choose {count} bench Pokemon to send in', { count: pendingReplacementCount }) }}
     </div>
     <div class="space-y-2">
       <button
@@ -120,13 +120,13 @@
       :disabled="!canConfirmReplacement || isBusy"
       @click="confirmReplacement"
     >
-      {{ busyAction === 'confirm-replacement' ? '正在确认替补...' : '确认替补上场' }}
+      {{ busyAction === 'confirm-replacement' ? tr('正在确认替补...', 'Confirming replacements...') : tr('确认替补上场', 'Confirm replacement') }}
     </button>
   </section>
 
   <section class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
     <div class="mb-3 text-sm font-semibold text-slate-800">
-      {{ isReplacementPhase ? '当前回合已暂停，等待补位' : '当前可选招式' }}
+      {{ isReplacementPhase ? tr('当前回合已暂停，等待补位', 'The turn is paused until replacements are chosen') : tr('当前可选招式', 'Available actions this turn') }}
     </div>
     <div
       v-if="playerActiveMons.length && !isPreviewPhase && !isReplacementPhase"
@@ -143,7 +143,7 @@
               {{ mon.name }}
             </div>
             <div class="text-xs text-slate-500">
-              槽位 {{ mon.fieldSlot + 1 }} · HP {{ mon.currentHp }}/{{ mon.maxHp }}
+              {{ tr('槽位 {slot} · HP {current}/{max}', 'Slot {slot} · HP {current}/{max}', { slot: mon.fieldSlot + 1, current: mon.currentHp, max: mon.maxHp }) }}
             </div>
           </div>
           <div class="text-xs text-slate-500">
@@ -157,13 +157,13 @@
           @change="setSelectedAction(mon.fieldSlot, $event.target.value)"
         >
           <option value="move">
-            使用招式
+            {{ tr('使用招式', 'Use move') }}
           </option>
           <option
             value="switch"
             :disabled="!playerBenchOptions.length"
           >
-            换人
+            {{ tr('换人', 'Switch') }}
           </option>
         </select>
 
@@ -178,7 +178,7 @@
               :key="`switch-${mon.fieldSlot}-${target.value}`"
               :value="target.value"
             >
-              换上：{{ target.label }} · HP {{ target.hp }}
+              {{ tr('换上', 'Switch in') }}：{{ target.label }} · HP {{ target.hp }}
             </option>
           </select>
         </template>
@@ -191,11 +191,11 @@
               v-if="activeSpecialSystemLabel(mon)"
               class="font-semibold"
             >
-              已发动：{{ activeSpecialSystemLabel(mon) }}<span v-if="mon.terastallized"> · {{ teraTypeLabel(mon) }}</span>
+              {{ tr('已发动', 'Activated') }}：{{ activeSpecialSystemLabel(mon) }}<span v-if="mon.terastallized"> · {{ teraTypeLabel(mon) }}</span>
             </div>
             <template v-if="availableSpecialSystems(mon).length">
               <div class="font-semibold">
-                本回合可发动特殊系统
+                {{ tr('本回合可发动特殊系统', 'Special systems available this turn') }}
               </div>
               <select
                 :value="selectedSpecialSystems[`special-slot-${mon.fieldSlot}`] || ''"
@@ -203,7 +203,7 @@
                 @change="setSelectedSpecialSystem(mon.fieldSlot, $event.target.value || undefined)"
               >
                 <option value="">
-                  不发动
+                  {{ tr('不发动', 'Do not activate') }}
                 </option>
                 <option
                   v-for="system in availableSpecialSystems(mon)"
@@ -228,7 +228,7 @@
               :key="move.name_en || move.name"
               :value="move.name_en || move.name"
             >
-              {{ move.name || move.name_en }} · 威力 {{ move.power || 0 }} · 优先度 {{ move.priority || 0 }} · {{ moveTargetText(move) }}
+              {{ move.name || move.name_en }} · {{ tr('威力', 'Power') }} {{ move.power || 0 }} · {{ tr('优先度', 'Priority') }} {{ move.priority || 0 }} · {{ moveTargetText(move) }}
             </option>
           </select>
 
@@ -243,7 +243,7 @@
               :key="`target-${mon.fieldSlot}-${target.value}`"
               :value="target.value"
             >
-              目标：对手槽位 {{ target.value + 1 }} · {{ target.label }}
+              {{ tr('目标：对手槽位 {slot}', 'Target: foe slot {slot}', { slot: target.value + 1 }) }} · {{ target.label }}
             </option>
           </select>
 
@@ -252,7 +252,7 @@
             class="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
           >
             <div class="text-xs font-semibold text-slate-600">
-              技能克制关系
+              {{ tr('技能克制关系', 'Type matchup hints') }}
             </div>
             <div class="mt-2 flex flex-wrap gap-2">
               <span
@@ -273,14 +273,14 @@
         :disabled="!canSubmitMove || isBusy"
         @click="submitMove"
       >
-        {{ busyAction === 'submit-move' ? '正在提交回合...' : '提交当前回合' }}
+        {{ busyAction === 'submit-move' ? tr('正在提交回合...', 'Submitting turn...') : tr('提交当前回合', 'Submit turn') }}
       </button>
     </div>
     <div
       v-else
       class="text-sm text-slate-500"
     >
-      {{ isPreviewPhase ? '先完成队伍预览后，才能提交回合操作。' : isReplacementPhase ? '有宝可梦倒下时，必须先完成替补上场。' : '先开始一场手动对战后，这里会显示你当前两只在场宝可梦的出招选择。' }}
+      {{ isPreviewPhase ? tr('先完成队伍预览后，才能提交回合操作。', 'Complete team preview before submitting turn actions.') : isReplacementPhase ? tr('有宝可梦倒下时，必须先完成替补上场。', 'When a Pokemon faints, you must finish replacements first.') : tr('先开始一场手动对战后，这里会显示你当前两只在场宝可梦的出招选择。', 'Start a manual battle first, then this panel will show the move choices for your two active Pokemon.') }}
     </div>
   </section>
 
@@ -290,16 +290,20 @@
     @toggle="emit('toggle-debug-panel', $event.target.open)"
   >
     <summary class="cursor-pointer list-none text-sm font-semibold text-slate-800">
-      调试响应
+      {{ tr('调试响应', 'Debug response') }}
     </summary>
     <div class="mt-2 text-xs leading-5 text-slate-500">
-      日常使用时可以收起；排查接口返回时再展开。
+      {{ tr('日常使用时可以收起；排查接口返回时再展开。', 'Keep this collapsed for normal play and expand it when you need to inspect API responses.') }}
     </div>
     <pre class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-slate-950 p-4 text-xs text-slate-100">{{ resultText }}</pre>
   </details>
 </template>
 
 <script setup>
+import { useLocale } from '../composables/useLocale'
+
+const { translate: tr } = useLocale()
+
 const emit = defineEmits(['toggle-debug-panel'])
 
 defineProps({

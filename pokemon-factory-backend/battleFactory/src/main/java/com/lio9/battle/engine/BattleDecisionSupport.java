@@ -122,9 +122,7 @@ final class BattleDecisionSupport {
                 return move;
             }
         }
-        return moves.isEmpty()
-                ? Map.of("name", "Struggle", "name_en", "struggle", "power", 50, "accuracy", 100, "priority", 0, "damage_class_id", 1, "type_id", 1)
-                : moves.get(0);
+        return Map.of("name", "Struggle", "name_en", "struggle", "power", 50, "accuracy", 100, "priority", 0, "damage_class_id", 1, "type_id", 1);
     }
 
 }

@@ -1,4 +1,12 @@
-export const TIER_NAMES = ['精灵球', '超级球', '高级球', '大师球']
+import { translate } from '../../composables/useLocale'
+
+const TIER_NAMES_ZH = ['精灵球', '超级球', '高级球', '大师球']
+const TIER_NAMES_EN = ['Poke Ball', 'Great Ball', 'Ultra Ball', 'Master Ball']
+
+export function getTierName(tier, fallbackName = '') {
+  const fallbackByTier = translate(TIER_NAMES_ZH[tier] || TIER_NAMES_ZH[0], TIER_NAMES_EN[tier] || TIER_NAMES_EN[0])
+  return translate(fallbackName || fallbackByTier, fallbackByTier)
+}
 
 export function normalizeFactoryRun(raw) {
   if (!raw) {
@@ -18,7 +26,9 @@ export function normalizeFactoryRun(raw) {
 }
 
 export function formatPokemonTypes(types) {
-  return (types || []).map((type) => type.name || type.name_zh || `属性${type.type_id}`).join(' / ') || '未知属性'
+  return (types || [])
+    .map((type) => translate(type.name || type.name_zh || `属性${type.type_id}`, type.name_en || type.name || `Type ${type.type_id}`))
+    .join(' / ') || translate('未知属性', 'Unknown Type')
 }
 
 export function moveNeedsOpponentTarget(move) {
@@ -30,19 +40,19 @@ export function moveTargetText(move) {
   const targetId = Number(move?.target_id || 10)
   switch (targetId) {
     case 7:
-      return '目标：自身'
+      return translate('目标：自身', 'Target: Self')
     case 8:
-      return '目标：随机对手'
+      return translate('目标：随机对手', 'Target: Random foe')
     case 9:
-      return '目标：场上其他宝可梦'
+      return translate('目标：场上其他宝可梦', 'Target: Other active Pokemon')
     case 11:
-      return '目标：对手全体'
+      return translate('目标：对手全体', 'Target: All foes')
     case 13:
-      return '目标：自身与队友'
+      return translate('目标：自身与队友', 'Target: Self and ally')
     case 14:
-      return '目标：场上全体'
+      return translate('目标：场上全体', 'Target: All active Pokemon')
     default:
-      return '目标：单体'
+      return translate('目标：单体', 'Target: Single foe')
   }
 }
 
@@ -78,10 +88,10 @@ export function buildBattleSettlement(summary, payload) {
   let newTierName = null
   if (meta.promoted) {
     tierChange = 'promoted'
-    newTierName = meta.playerTierName || TIER_NAMES[meta.playerTier] || ''
+    newTierName = getTierName(meta.playerTier, meta.playerTierName || '')
   } else if (meta.demoted) {
     tierChange = 'demoted'
-    newTierName = meta.playerTierName || TIER_NAMES[meta.playerTier] || ''
+    newTierName = getTierName(meta.playerTier, meta.playerTierName || '')
   }
 
   return {

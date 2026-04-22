@@ -149,6 +149,27 @@ final class BattleAnalysisSupport {
         return false;
     }
 
+    boolean opposingSideLikelyHealing(Map<String, Object> state, boolean playerSide) {
+        for (Integer slot : engine.activeSlots(state, !playerSide)) {
+            if (slot == null || slot < 0 || slot >= engine.team(state, !playerSide).size()) {
+                continue;
+            }
+            Map<String, Object> target = engine.team(state, !playerSide).get(slot);
+            if ("leftovers".equals(engine.heldItem(target)) || "sitrus-berry".equals(engine.heldItem(target))) {
+                return true;
+            }
+            if (hasHealingAbility(target)) {
+                return true;
+            }
+            for (Map<String, Object> move : engine.moves(target)) {
+                if (engine.toInt(move.get("healing"), 0) > 0 || engine.toInt(move.get("drain"), 0) > 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     boolean opposingSideLikelyUsingPriority(Map<String, Object> state, boolean playerSide) {
         for (Integer slot : engine.activeSlots(state, !playerSide)) {
             if (slot == null || slot < 0 || slot >= engine.team(state, !playerSide).size()) {
@@ -186,13 +207,41 @@ final class BattleAnalysisSupport {
         return false;
     }
 
+    boolean opposingSideCanBeYawed(Map<String, Object> state, boolean playerSide) {
+        for (Integer slot : engine.activeSlots(state, !playerSide)) {
+            if (slot == null || slot < 0 || slot >= engine.team(state, !playerSide).size()) {
+                continue;
+            }
+            Map<String, Object> target = engine.team(state, !playerSide).get(slot);
+            if (engine.toInt(target.get("currentHp"), 0) <= 0) {
+                continue;
+            }
+            if (target.get("condition") != null && !String.valueOf(target.get("condition")).isBlank()) {
+                continue;
+            }
+            if (engine.yawnTurns(target) > 0) {
+                continue;
+            }
+            boolean targetOnPlayerSide = engine.isOnSide(state, target, true);
+            if (engine.toInt(engine.castMap(state.get("fieldEffects")).get(targetOnPlayerSide ? "playerSafeguardTurns" : "opponentSafeguardTurns"), 0) > 0) {
+                continue;
+            }
+            if (engine.isGrounded(target)
+                    && (electricTerrainTurns(state) > 0 || mistyTerrainTurns(state) > 0)) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
     boolean opposingSideCanSleepAlly(Map<String, Object> state, boolean playerSide) {
         for (Integer slot : engine.activeSlots(state, !playerSide)) {
             if (slot == null || slot < 0 || slot >= engine.team(state, !playerSide).size()) {
                 continue;
             }
             for (Map<String, Object> move : engine.moves(engine.team(state, !playerSide).get(slot))) {
-                if (isSpore(move)) {
+                if (isSpore(move) || isYawn(move)) {
                     return true;
                 }
             }
@@ -204,6 +253,10 @@ final class BattleAnalysisSupport {
         return engine.toInt(engine.castMap(state.get("fieldEffects")).get("electricTerrainTurns"), 0);
     }
 
+    private int mistyTerrainTurns(Map<String, Object> state) {
+        return engine.toInt(engine.castMap(state.get("fieldEffects")).get("mistyTerrainTurns"), 0);
+    }
+
     private boolean isStatusMove(Map<String, Object> move) {
         return engine.toInt(move.get("damage_class_id"), 0) == 3 || engine.toInt(move.get("power"), 0) == 0;
     }
@@ -212,7 +265,20 @@ final class BattleAnalysisSupport {
         return "taunt".equalsIgnoreCase(String.valueOf(move.get("name_en")));
     }
 
+    private boolean hasHealingAbility(Map<String, Object> mon) {
+        String ability = engine.abilityName(mon);
+        return "regenerator".equalsIgnoreCase(ability)
+                || "water-absorb".equalsIgnoreCase(ability)
+                || "water absorb".equalsIgnoreCase(ability)
+                || "volt-absorb".equalsIgnoreCase(ability)
+                || "volt absorb".equalsIgnoreCase(ability);
+    }
+
     private boolean isSpore(Map<String, Object> move) {
         return "spore".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    private boolean isYawn(Map<String, Object> move) {
+        return "yawn".equalsIgnoreCase(String.valueOf(move.get("name_en")));
     }
 }

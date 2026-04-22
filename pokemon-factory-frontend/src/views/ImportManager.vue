@@ -2,17 +2,17 @@
   <div class="import-manager">
     <div class="container mx-auto px-4 py-8">
       <h1 class="text-3xl font-bold text-gray-900 mb-8">
-        数据导入管理
+        {{ tr('数据导入管理', 'Import Manager') }}
       </h1>
 
       <div class="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
-        这里用于启动后端已有的全量导入任务并查看任务状态；当前系统没有提供“清空数据库”的管理接口，因此页面只支持清空本地任务历史记录。
+        {{ tr('这里用于启动后端已有的全量导入任务并查看任务状态；当前系统没有提供“清空数据库”的管理接口，因此页面只支持清空本地任务历史记录。', 'Use this page to start the existing backend full import task and inspect its status. The system does not expose a database wipe endpoint, so this page only clears local task history.') }}
       </div>
 
       <!-- 导入控制区 -->
       <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">
-          导入控制
+          {{ tr('导入控制', 'Import controls') }}
         </h2>
         <div class="flex flex-wrap gap-4">
           <button
@@ -20,22 +20,22 @@
             class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             @click="startImport"
           >
-            <span v-if="currentTask && currentTask.status === 'running'">导入中...</span>
-            <span v-else>开始全量导入</span>
+            <span v-if="currentTask && currentTask.status === 'running'">{{ tr('导入中...', 'Importing...') }}</span>
+            <span v-else>{{ tr('开始全量导入', 'Start full import') }}</span>
           </button>
 
           <button
             class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             @click="clearAllData"
           >
-            清空本地任务历史
+            {{ tr('清空本地任务历史', 'Clear local task history') }}
           </button>
 
           <button
             class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             @click="refreshStatus"
           >
-            刷新状态
+            {{ tr('刷新状态', 'Refresh status') }}
           </button>
         </div>
       </div>
@@ -46,25 +46,25 @@
         class="bg-white rounded-xl shadow-lg p-6 mb-6"
       >
         <h2 class="text-xl font-semibold mb-4">
-          当前任务
+          {{ tr('当前任务', 'Current task') }}
         </h2>
         <div class="space-y-4">
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">任务ID:</span>
+            <span class="text-gray-600">{{ tr('任务ID', 'Task ID') }}:</span>
             <span class="font-mono text-sm">{{ currentTask.taskId }}</span>
           </div>
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">任务类型:</span>
+            <span class="text-gray-600">{{ tr('任务类型', 'Task type') }}:</span>
             <span>{{ getTaskTypeText(currentTask.taskType) }}</span>
           </div>
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">状态:</span>
+            <span class="text-gray-600">{{ tr('状态', 'Status') }}:</span>
             <span :class="getStatusClass(currentTask.status)">
               {{ getStatusText(currentTask.status) }}
             </span>
           </div>
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">进度:</span>
+            <span class="text-gray-600">{{ tr('进度', 'Progress') }}:</span>
             <span>{{ currentTask.progress }}%</span>
           </div>
           <div class="w-full bg-gray-200 rounded-full h-4">
@@ -74,7 +74,7 @@
             />
           </div>
           <div class="flex justify-between items-center">
-            <span class="text-gray-600">消息:</span>
+            <span class="text-gray-600">{{ tr('消息', 'Message') }}:</span>
             <span class="text-sm text-gray-800">{{ currentTask.message }}</span>
           </div>
 
@@ -84,12 +84,12 @@
             class="mt-4 p-4 bg-gray-50 rounded-lg"
           >
             <h3 class="font-semibold mb-2">
-              导入结果
+              {{ tr('导入结果', 'Import result') }}
             </h3>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div v-if="currentTask.data.pokemonCount !== undefined">
                 <div class="text-gray-600">
-                  宝可梦
+                  {{ tr('宝可梦', 'Pokemon') }}
                 </div>
                 <div class="font-bold text-blue-600">
                   {{ currentTask.data.pokemonCount }}
@@ -97,7 +97,7 @@
               </div>
               <div v-if="currentTask.data.moveCount !== undefined">
                 <div class="text-gray-600">
-                  技能
+                  {{ tr('技能', 'Moves') }}
                 </div>
                 <div class="font-bold text-green-600">
                   {{ currentTask.data.moveCount }}
@@ -105,7 +105,7 @@
               </div>
               <div v-if="currentTask.data.itemCount !== undefined">
                 <div class="text-gray-600">
-                  物品
+                  {{ tr('物品', 'Items') }}
                 </div>
                 <div class="font-bold text-purple-600">
                   {{ currentTask.data.itemCount }}
@@ -113,7 +113,7 @@
               </div>
               <div v-if="currentTask.data.abilityCount !== undefined">
                 <div class="text-gray-600">
-                  特性
+                  {{ tr('特性', 'Abilities') }}
                 </div>
                 <div class="font-bold text-orange-600">
                   {{ currentTask.data.abilityCount }}
@@ -127,13 +127,13 @@
       <!-- 任务列表 -->
       <div class="bg-white rounded-xl shadow-lg p-6">
         <h2 class="text-xl font-semibold mb-4">
-          任务历史
+          {{ tr('任务历史', 'Task history') }}
         </h2>
         <div
           v-if="taskList.length === 0"
           class="text-gray-500 text-center py-8"
         >
-          暂无任务记录
+          {{ tr('暂无任务记录', 'No task history yet') }}
         </div>
         <div
           v-else
@@ -159,9 +159,9 @@
                   {{ task.message }}
                 </div>
                 <div class="text-xs text-gray-500 mt-1">
-                  开始时间: {{ formatTime(task.startTime) }}
+                  {{ tr('开始时间', 'Started at') }}: {{ formatTime(task.startTime) }}
                   <span v-if="task.endTime">
-                    | 结束时间: {{ formatTime(task.endTime) }}
+                    | {{ tr('结束时间', 'Ended at') }}: {{ formatTime(task.endTime) }}
                   </span>
                 </div>
               </div>
@@ -182,6 +182,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { importApi } from '../services/api'
+import { translate } from '../composables/useLocale'
 
 const IMPORT_TASKS_STORAGE_KEY = 'pokemon-factory-import-tasks'
 const IMPORT_SUCCESS_CODES = new Set([200, 2002, 2003])
@@ -248,7 +249,7 @@ export default {
         status: task.status || 'pending',
         progress: normalizeProgress(task.progress),
         rawProgress: task.progress,
-        message: task.message || '等待中',
+        message: task.message || translate('等待中', 'Pending'),
         data,
         startTime: task.startTime || Date.now(),
         endTime: task.status === 'completed' || task.status === 'failed' ? (task.endTime || Date.now()) : null
@@ -272,19 +273,19 @@ export default {
 
             currentTask.value = task
             mergeTask(task)
-            ElMessage.success(`导入任务已启动，任务ID: ${taskId}`)
+            ElMessage.success(translate('导入任务已启动，任务ID: {id}', 'Import task started, task ID: {id}', { id: taskId }))
             setTimeout(() => {
               refreshStatus()
             }, 500)
           } else {
-            ElMessage.error('未获取到任务ID')
+            ElMessage.error(translate('未获取到任务ID', 'Task ID was not returned'))
           }
         } else {
-          ElMessage.error(result.message || '启动导入失败')
+          ElMessage.error(result.message || translate('启动导入失败', 'Failed to start import'))
         }
       } catch (error) {
         console.error('启动导入失败:', error)
-        ElMessage.error('网络错误，请稍后重试')
+        ElMessage.error(translate('网络错误，请稍后重试', 'Network error, please try again later'))
       }
     }
 
@@ -292,11 +293,11 @@ export default {
     const clearAllData = async () => {
       try {
         await ElMessageBox.confirm(
-          '这会删除当前浏览器保存的导入任务历史，不会影响后端数据库。是否继续？',
-          '提示',
+          translate('这会删除当前浏览器保存的导入任务历史，不会影响后端数据库。是否继续？', 'This removes the import task history stored in this browser and will not affect the backend database. Continue?'),
+          translate('提示', 'Notice'),
           {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
+            confirmButtonText: translate('确定', 'Confirm'),
+            cancelButtonText: translate('取消', 'Cancel'),
             type: 'info'
           }
         )
@@ -304,11 +305,11 @@ export default {
         taskList.value = []
         currentTask.value = null
         localStorage.removeItem(IMPORT_TASKS_STORAGE_KEY)
-        ElMessage.success('本地任务历史已清空')
+        ElMessage.success(translate('本地任务历史已清空', 'Local task history cleared'))
       } catch (error) {
         if (error !== 'cancel') {
           console.error('清空本地任务历史失败:', error)
-          ElMessage.error('清空本地任务历史失败')
+          ElMessage.error(translate('清空本地任务历史失败', 'Failed to clear local task history'))
         }
       }
     }
@@ -333,7 +334,7 @@ export default {
                 ...task,
                 status: 'failed',
                 endTime: Date.now(),
-                message: statusResult.message || '获取导入状态失败'
+                message: statusResult.message || translate('获取导入状态失败', 'Failed to fetch import status')
               }
             }
 
@@ -370,7 +371,7 @@ export default {
         if (latestTask) {
           currentTask.value = {
             ...latestTask,
-            message: '状态刷新失败，请稍后重试'
+            message: translate('状态刷新失败，请稍后重试', 'Status refresh failed, please try again later')
           }
         }
       }
@@ -379,16 +380,16 @@ export default {
     // 格式化时间
     const formatTime = (timestamp) => {
       if (!timestamp) return '-'
-      return new Date(timestamp).toLocaleString('zh-CN')
+      return new Date(timestamp).toLocaleString(translate('zh-CN', 'en-US'))
     }
 
     // 获取状态文本
     const getStatusText = (status) => {
       const statusMap = {
-        'pending': '等待中',
-        'running': '运行中',
-        'completed': '已完成',
-        'failed': '失败'
+        'pending': translate('等待中', 'Pending'),
+        'running': translate('运行中', 'Running'),
+        'completed': translate('已完成', 'Completed'),
+        'failed': translate('失败', 'Failed')
       }
       return statusMap[status] || status
     }
@@ -407,8 +408,8 @@ export default {
     // 获取任务类型文本
     const getTaskTypeText = (taskType) => {
       const typeMap = {
-        'IMPORT_ALL': '全量导入',
-        'IMPORT_POKEMON_RANGE': '范围导入'
+        'IMPORT_ALL': translate('全量导入', 'Full import'),
+        'IMPORT_POKEMON_RANGE': translate('范围导入', 'Range import')
       }
       return typeMap[taskType] || taskType
     }

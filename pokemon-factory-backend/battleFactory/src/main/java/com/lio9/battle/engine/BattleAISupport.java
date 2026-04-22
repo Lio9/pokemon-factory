@@ -24,11 +24,17 @@ final class BattleAISupport {
 
     Map<String, Object> selectAISleepMove(Map<String, Object> mon, Map<String, Object> state,
                                           boolean playerSide, int currentRound) {
-        if (!analysisSupport.opposingSideCanBeSlept(state, playerSide)) {
-            return null;
-        }
         for (Map<String, Object> move : engine.moves(mon)) {
-            if (isSpore(move) && engine.cooldown(mon, move) == 0 && engine.canUseMove(mon, move, currentRound)) {
+            if (isSpore(move)
+                    && analysisSupport.opposingSideCanBeSlept(state, playerSide)
+                    && engine.cooldown(mon, move) == 0
+                    && engine.canUseMove(mon, move, currentRound)) {
+                return move;
+            }
+            if (isYawn(move)
+                    && analysisSupport.opposingSideCanBeYawed(state, playerSide)
+                    && engine.cooldown(mon, move) == 0
+                    && engine.canUseMove(mon, move, currentRound)) {
                 return move;
             }
         }
@@ -83,17 +89,35 @@ final class BattleAISupport {
                     && analysisSupport.opposingSideLikelySpecial(state, playerSide)) {
                 return move;
             }
+            if (isSafeguard(move) && safeguardTurns(state, playerSide) == 0
+                    && analysisSupport.opposingSideLikelyUsingStatus(state, playerSide)) {
+                return move;
+            }
         }
         return null;
     }
 
     Map<String, Object> selectAITauntMove(Map<String, Object> mon, Map<String, Object> state,
                                           boolean playerSide, int currentRound) {
-        if (!analysisSupport.opposingSideLikelyUsingStatus(state, playerSide)) {
+        boolean statusThreat = analysisSupport.opposingSideLikelyUsingStatus(state, playerSide);
+        boolean healingThreat = analysisSupport.opposingSideLikelyHealing(state, playerSide);
+        if (!statusThreat && !healingThreat) {
             return null;
         }
         for (Map<String, Object> move : engine.moves(mon)) {
-            if (isTaunt(move) && engine.cooldown(mon, move) == 0 && engine.canUseMove(mon, move, currentRound)) {
+            if (statusThreat && isTaunt(move) && engine.cooldown(mon, move) == 0 && engine.canUseMove(mon, move, currentRound)) {
+                return move;
+            }
+            if (statusThreat && isEncore(move) && engine.cooldown(mon, move) == 0 && engine.canUseMove(mon, move, currentRound)) {
+                return move;
+            }
+            if (statusThreat && isDisable(move) && engine.cooldown(mon, move) == 0 && engine.canUseMove(mon, move, currentRound)) {
+                return move;
+            }
+            if (statusThreat && isTorment(move) && engine.cooldown(mon, move) == 0 && engine.canUseMove(mon, move, currentRound)) {
+                return move;
+            }
+            if (healingThreat && isHealBlock(move) && engine.cooldown(mon, move) == 0 && engine.canUseMove(mon, move, currentRound)) {
                 return move;
             }
         }
@@ -225,6 +249,10 @@ final class BattleAISupport {
         return engine.toInt(fieldEffects(state).get(playerSide ? "playerLightScreenTurns" : "opponentLightScreenTurns"), 0);
     }
 
+    private int safeguardTurns(Map<String, Object> state, boolean playerSide) {
+        return engine.toInt(fieldEffects(state).get(playerSide ? "playerSafeguardTurns" : "opponentSafeguardTurns"), 0);
+    }
+
     private boolean isFakeOut(Map<String, Object> move) {
         String nameEn = String.valueOf(move.get("name_en"));
         return "fake-out".equalsIgnoreCase(nameEn) || "fake out".equalsIgnoreCase(nameEn);
@@ -232,6 +260,27 @@ final class BattleAISupport {
 
     private boolean isTaunt(Map<String, Object> move) {
         return "taunt".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    private boolean isYawn(Map<String, Object> move) {
+        return "yawn".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    private boolean isEncore(Map<String, Object> move) {
+        return "encore".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    private boolean isDisable(Map<String, Object> move) {
+        return "disable".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    private boolean isTorment(Map<String, Object> move) {
+        return "torment".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
+    private boolean isHealBlock(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "heal-block".equalsIgnoreCase(nameEn) || "heal block".equalsIgnoreCase(nameEn);
     }
 
     private boolean isSpore(Map<String, Object> move) {
@@ -245,6 +294,10 @@ final class BattleAISupport {
     private boolean isLightScreen(Map<String, Object> move) {
         String nameEn = String.valueOf(move.get("name_en"));
         return "light-screen".equalsIgnoreCase(nameEn) || "light screen".equalsIgnoreCase(nameEn);
+    }
+
+    private boolean isSafeguard(Map<String, Object> move) {
+        return "safeguard".equalsIgnoreCase(String.valueOf(move.get("name_en")));
     }
 
     private boolean isFollowMe(Map<String, Object> move) {
