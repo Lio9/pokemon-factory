@@ -161,6 +161,31 @@ class BattleConditionSupportTest {
     }
 
     @Test
+    void applyDefenderAbilityImmunity_moldBreakerBypassesStormDrain() {
+        BattleConditionSupport support = createSupport();
+        Map<String, Object> attacker = pokemon("Breaker-A", 220, 120, "", "mold-breaker", DamageCalculatorUtil.TYPE_NORMAL);
+        Map<String, Object> target = pokemon("Drain-A", 220, 120, "", "storm-drain", DamageCalculatorUtil.TYPE_NORMAL);
+        Map<String, Object> actionLog = new LinkedHashMap<>();
+        List<String> events = new ArrayList<>();
+
+        boolean blocked = support.applyDefenderAbilityImmunity(
+                attacker,
+                target,
+                move("Water Pulse", "water-pulse", 80, 100, 0,
+                        DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL, DamageCalculatorUtil.TYPE_WATER, 10),
+                actionLog,
+                events
+        );
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> stages = (Map<String, Object>) target.get("statStages");
+        assertTrue(!blocked);
+        assertTrue(stages == null || Integer.valueOf(0).equals(stages.get("specialAttack")));
+        assertTrue(actionLog.isEmpty());
+        assertTrue(events.isEmpty());
+    }
+
+    @Test
     void applyDefenderAbilityImmunity_moldBreakerBypassesSoundproof() {
         BattleConditionSupport support = createSupport();
         Map<String, Object> attacker = pokemon("Breaker-A", 220, 120, "", "mold-breaker", DamageCalculatorUtil.TYPE_NORMAL);

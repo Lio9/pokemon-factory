@@ -97,6 +97,14 @@ final class BattleRoundSupport {
             return;
         }
 
+        if (forcedChargeMove != null) {
+            Map<String, Object> trackedChargeMove = new LinkedHashMap<>(forcedChargeMove);
+            trackedChargeMove.put("tracksTarget", true);
+            action = BattleEngine.Action.moveAction(action.side(), action.actorIndex(), action.actorFieldSlot(),
+                engine.toInt(actor.get("chargingTargetTeamIndex"), action.targetTeamIndex()),
+                engine.toInt(actor.get("chargingTargetFieldSlot"), action.targetFieldSlot()),
+                trackedChargeMove, action.speed(), action.specialSystemRequested());
+        }
         Map<String, Object> move = forcedChargeMove != null ? forcedChargeMove : action.move();
         actionLog.put("move", move.get("name"));
         if (forcedChargeMove == null && action.specialSystemRequested() != null) {
@@ -104,7 +112,7 @@ final class BattleRoundSupport {
         }
         move = engine.resolveMoveForUse(actor, move);
         if (forcedChargeMove == null && shouldStartCharging(actor, move, state)) {
-            startCharging(actor, move, actionLog, actionLogs, events);
+            startCharging(actor, action, move, actionLog, actionLogs, events);
             return;
         }
         if (engine.tauntTurns(actor) > 0 && engine.isStatusMove(move)) {
@@ -127,6 +135,13 @@ final class BattleRoundSupport {
 
         List<BattleEngine.TargetRef> targets = targetSupport.resolveMoveTargets(state, action, move, random, redirectionTargets);
         if (targets.isEmpty()) {
+            actionLog.put("result", "failed");
+            actionLog.put("damage", 0);
+            actionLogs.add(actionLog);
+            events.add(actor.get("name") + " 使用了 " + move.get("name") + "，但失败了");
+            engine.rememberLastMove(actor, move);
+            engine.rememberChoiceMove(actor, move);
+            engine.applyCooldown(actor, move);
             return;
         }
 
@@ -134,11 +149,13 @@ final class BattleRoundSupport {
         boolean anyHit = false;
         boolean selfStatChangeTriggered = false;
         boolean suckerPunchAttempted = false;
+        boolean liveTargetFound = false;
         for (BattleEngine.TargetRef targetRef : targets) {
             List<Map<String, Object>> targetSideTeam = engine.team(state, targetRef.playerSide());
             if (!engine.isAvailableMon(targetSideTeam, targetRef.teamIndex())) {
                 continue;
             }
+            liveTargetFound = true;
             Map<String, Object> target = targetSideTeam.get(targetRef.teamIndex());
             Map<String, Object> targetLog = new LinkedHashMap<>(actionLog);
             targetLog.put("target", target.get("name"));
@@ -325,6 +342,17 @@ final class BattleRoundSupport {
             }
         }
 
+        if (!liveTargetFound) {
+            actionLog.put("result", "failed");
+            actionLog.put("damage", 0);
+            actionLogs.add(actionLog);
+            events.add(actor.get("name") + " 使用了 " + move.get("name") + "，但失败了");
+            engine.rememberLastMove(actor, move);
+            engine.rememberChoiceMove(actor, move);
+            engine.applyCooldown(actor, move);
+            return;
+        }
+
         if (engine.isSuckerPunch(move) && !suckerPunchAttempted) {
             actionLog.put("result", "failed");
             actionLog.put("damage", 0);
@@ -417,8 +445,7 @@ final class BattleRoundSupport {
                 return move;
             }
         }
-        actor.put("chargingMove", null);
-        actor.put("chargingTurns", 0);
+        clearCharging(actor);
         return null;
     }
 
@@ -439,10 +466,13 @@ final class BattleRoundSupport {
         return true;
     }
 
-    private void startCharging(Map<String, Object> actor, Map<String, Object> move, Map<String, Object> actionLog,
+    private void startCharging(Map<String, Object> actor, BattleEngine.Action action, Map<String, Object> move,
+                               Map<String, Object> actionLog,
                                List<Map<String, Object>> actionLogs, List<String> events) {
         actor.put("chargingMove", move.get("name_en"));
         actor.put("chargingTurns", 1);
+        actor.put("chargingTargetTeamIndex", action.targetTeamIndex());
+        actor.put("chargingTargetFieldSlot", action.targetFieldSlot());
         actionLog.put("result", "charge");
         actionLog.put("charging", true);
         actionLogs.add(actionLog);
@@ -452,6 +482,8 @@ final class BattleRoundSupport {
     private void clearCharging(Map<String, Object> actor) {
         actor.put("chargingMove", null);
         actor.put("chargingTurns", 0);
+        actor.put("chargingTargetTeamIndex", -1);
+        actor.put("chargingTargetFieldSlot", -1);
     }
 
     private boolean resolveCriticalHit(Map<String, Object> actor, Map<String, Object> move, Random random) {

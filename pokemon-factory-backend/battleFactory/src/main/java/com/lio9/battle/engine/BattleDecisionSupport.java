@@ -15,7 +15,7 @@ final class BattleDecisionSupport {
     }
 
     Map<String, Object> selectPlayerMove(Map<String, Object> mon, Map<String, String> playerMoveMap, int fieldSlot, int currentRound) {
-        Map<String, Object> lockedMove = engine.lockedChoiceMove(mon, currentRound);
+        Map<String, Object> lockedMove = forcedChoiceSelection(mon, currentRound);
         if (lockedMove != null) {
             return lockedMove;
         }
@@ -46,7 +46,7 @@ final class BattleDecisionSupport {
     }
 
     Map<String, Object> selectAIMove(Map<String, Object> mon, Random random, Map<String, Object> state, boolean playerSide, int currentRound) {
-        Map<String, Object> lockedMove = engine.lockedChoiceMove(mon, currentRound);
+        Map<String, Object> lockedMove = forcedChoiceSelection(mon, currentRound);
         if (lockedMove != null) {
             return lockedMove;
         }
@@ -107,7 +107,7 @@ final class BattleDecisionSupport {
     }
 
     Map<String, Object> defaultMoveSelection(Map<String, Object> mon, int currentRound) {
-        Map<String, Object> lockedMove = engine.lockedChoiceMove(mon, currentRound);
+        Map<String, Object> lockedMove = forcedChoiceSelection(mon, currentRound);
         if (lockedMove != null) {
             return lockedMove;
         }
@@ -122,6 +122,22 @@ final class BattleDecisionSupport {
                 return move;
             }
         }
+        return struggleMove();
+    }
+
+    private Map<String, Object> forcedChoiceSelection(Map<String, Object> mon, int currentRound) {
+        Map<String, Object> lockedMove = engine.lockedChoiceMove(mon, currentRound);
+        if (lockedMove != null) {
+            return lockedMove;
+        }
+        Object lockedMoveName = mon.get("choiceLockedMove");
+        if (lockedMoveName != null && !String.valueOf(lockedMoveName).isBlank()) {
+            return struggleMove();
+        }
+        return null;
+    }
+
+    private Map<String, Object> struggleMove() {
         return Map.of("name", "Struggle", "name_en", "struggle", "power", 50, "accuracy", 100, "priority", 0, "damage_class_id", 1, "type_id", 1);
     }
 

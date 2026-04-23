@@ -122,6 +122,8 @@ final class BattlePreviewSupport {
             mon.put("rechargeTurns", 0);
             mon.put("chargingMove", null);
             mon.put("chargingTurns", 0);
+            mon.put("chargingTargetTeamIndex", -1);
+            mon.put("chargingTargetFieldSlot", -1);
             mon.put("protectionStreak", 0);
             mon.put("lastProtectionRound", 0);
             mon.put("specialSystemActivated", null);

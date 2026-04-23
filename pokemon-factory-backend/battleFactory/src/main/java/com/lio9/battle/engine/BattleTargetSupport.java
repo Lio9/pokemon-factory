@@ -1,5 +1,7 @@
 package com.lio9.battle.engine;
 
+import com.lio9.pokedex.util.DamageCalculatorUtil;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,13 +22,15 @@ final class BattleTargetSupport {
             case 7, 4 -> List.of(new BattleEngine.TargetRef(action.side(), "player".equals(action.side()),
                     action.actorIndex(), action.actorFieldSlot()));
             case 11, 6 -> activeTargetRefs(state, !"player".equals(action.side()));
-            case 8 -> randomOpponentTargetRefs(state, !"player".equals(action.side()), random);
+            case 8 -> randomOpponentTargetRefs(state, !"player".equals(action.side()), random,
+                redirectionTargets, engine.team(state, "player".equals(action.side())).get(action.actorIndex()), move);
             case 9 -> allOtherActiveTargetRefs(state, action);
             case 13, 5 -> activeTargetRefs(state, "player".equals(action.side()));
             case 14, 12 -> allActiveTargetRefs(state);
             case 3 -> allyTargetRefs(state, action);
-            default -> singleOpponentTargetRefs(state, !"player".equals(action.side()), action.targetFieldSlot(),
-                    redirectionTargets, engine.team(state, "player".equals(action.side())).get(action.actorIndex()));
+            default -> singleOpponentTargetRefs(state, !"player".equals(action.side()), action.targetTeamIndex(),
+                    action.targetFieldSlot(), move, random, redirectionTargets,
+                    engine.team(state, "player".equals(action.side())).get(action.actorIndex()), moveTracksTarget(move));
         };
     }
 
@@ -35,8 +39,10 @@ final class BattleTargetSupport {
         if (targets.isEmpty()) {
             return -1;
         }
-        int normalizedSlot = Math.max(0, Math.min(targets.size() - 1, targetFieldSlot));
-        return targets.get(normalizedSlot);
+        if (targetFieldSlot < 0 || targetFieldSlot >= targets.size()) {
+            return -1;
+        }
+        return targets.get(targetFieldSlot);
     }
 
     void activateRedirection(Map<String, BattleEngine.RedirectionEffect> redirectionTargets, String side, int actorIndex,
@@ -103,6 +109,9 @@ final class BattleTargetSupport {
     private int redirectedTargetIndex(Map<String, Object> state, boolean playerTarget,
                                       Map<String, BattleEngine.RedirectionEffect> redirectionTargets,
                                       Map<String, Object> attacker) {
+        if (ignoresRedirection(attacker)) {
+            return -1;
+        }
         BattleEngine.RedirectionEffect redirected = redirectionTargets.get(playerTarget ? "player" : "opponent");
         if (redirected == null) {
             return -1;
@@ -114,11 +123,27 @@ final class BattleTargetSupport {
     }
 
     private List<BattleEngine.TargetRef> singleOpponentTargetRefs(Map<String, Object> state, boolean playerTarget,
-                                                                  int targetFieldSlot,
+                                                                  int targetTeamIndex, int targetFieldSlot,
+                                                                  Map<String, Object> move, Random random,
                                                                   Map<String, BattleEngine.RedirectionEffect> redirectionTargets,
-                                                                  Map<String, Object> attacker) {
+                                                                  Map<String, Object> attacker,
+                                                                  boolean tracksTarget) {
+        if ((tracksTarget || ignoresRedirection(attacker)) && targetTeamIndex >= 0
+                && engine.isAvailableMon(engine.team(state, playerTarget), targetTeamIndex)) {
+            return List.of(new BattleEngine.TargetRef(playerTarget ? "player" : "opponent", playerTarget,
+                    targetTeamIndex, fieldSlotForTeamIndex(state, playerTarget, targetTeamIndex)));
+        }
         int redirected = redirectedTargetIndex(state, playerTarget, redirectionTargets, attacker);
-        int teamIndex = redirected >= 0 ? redirected : targetIndex(state, playerTarget, targetFieldSlot);
+        int abilityRedirected = abilityRedirectedTargetIndex(state, playerTarget, move, attacker);
+        int teamIndex = redirected >= 0 ? redirected
+            : abilityRedirected >= 0 ? abilityRedirected : targetIndex(state, playerTarget, targetFieldSlot);
+        if (teamIndex >= 0 && !engine.isAvailableMon(engine.team(state, playerTarget), teamIndex)) {
+            List<BattleEngine.TargetRef> availableTargets = activeTargetRefs(state, playerTarget);
+            if (availableTargets.isEmpty()) {
+                return List.of();
+            }
+            return List.of(availableTargets.get(random.nextInt(availableTargets.size())));
+        }
         if (teamIndex < 0) {
             return List.of();
         }
@@ -127,7 +152,20 @@ final class BattleTargetSupport {
     }
 
     private List<BattleEngine.TargetRef> randomOpponentTargetRefs(Map<String, Object> state, boolean playerTarget,
-                                                                  Random random) {
+                                                                  Random random,
+                                                                  Map<String, BattleEngine.RedirectionEffect> redirectionTargets,
+                                                                  Map<String, Object> attacker,
+                                                                  Map<String, Object> move) {
+        int redirected = redirectedTargetIndex(state, playerTarget, redirectionTargets, attacker);
+        if (redirected >= 0) {
+            return List.of(new BattleEngine.TargetRef(playerTarget ? "player" : "opponent", playerTarget, redirected,
+                    fieldSlotForTeamIndex(state, playerTarget, redirected)));
+        }
+        int abilityRedirected = abilityRedirectedTargetIndex(state, playerTarget, move, attacker);
+        if (abilityRedirected >= 0) {
+            return List.of(new BattleEngine.TargetRef(playerTarget ? "player" : "opponent", playerTarget, abilityRedirected,
+                    fieldSlotForTeamIndex(state, playerTarget, abilityRedirected)));
+        }
         List<BattleEngine.TargetRef> targets = activeTargetRefs(state, playerTarget);
         if (targets.isEmpty()) {
             return List.of();
@@ -176,11 +214,7 @@ final class BattleTargetSupport {
                 targets.add(target);
             }
         }
-        if (targets.isEmpty()) {
-            return List.of(new BattleEngine.TargetRef(action.side(), "player".equals(action.side()),
-                    action.actorIndex(), action.actorFieldSlot()));
-        }
-        return List.of(targets.get(0));
+        return targets.isEmpty() ? List.of() : List.of(targets.get(0));
     }
 
     private List<BattleEngine.TargetRef> allyAssistTargetRefs(Map<String, Object> state, BattleEngine.Action action) {
@@ -200,5 +234,52 @@ final class BattleTargetSupport {
     private boolean isRagePowder(Map<String, Object> move) {
         String nameEn = String.valueOf(move.get("name_en"));
         return "rage-powder".equalsIgnoreCase(nameEn) || "rage powder".equalsIgnoreCase(nameEn);
+    }
+
+    private boolean moveTracksTarget(Map<String, Object> move) {
+        if (Boolean.TRUE.equals(move.get("tracksTarget"))) {
+            return true;
+        }
+        String nameEn = String.valueOf(move.get("name_en"));
+        return "snipe-shot".equalsIgnoreCase(nameEn) || "snipe shot".equalsIgnoreCase(nameEn);
+    }
+
+    private int abilityRedirectedTargetIndex(Map<String, Object> state, boolean playerTarget,
+                                             Map<String, Object> move, Map<String, Object> attacker) {
+        if (move == null || engine.isSpreadMove(move) || ignoresTargetAbility(attacker) || ignoresRedirection(attacker)) {
+            return -1;
+        }
+        int moveTypeId = engine.toInt(move.get("type_id"), 0);
+        if (moveTypeId != DamageCalculatorUtil.TYPE_WATER && moveTypeId != DamageCalculatorUtil.TYPE_ELECTRIC) {
+            return -1;
+        }
+        for (BattleEngine.TargetRef targetRef : activeTargetRefs(state, playerTarget)) {
+            Map<String, Object> target = engine.team(state, playerTarget).get(targetRef.teamIndex());
+            String ability = engine.abilityName(target);
+            if (moveTypeId == DamageCalculatorUtil.TYPE_WATER
+                    && ("storm-drain".equalsIgnoreCase(ability) || "storm drain".equalsIgnoreCase(ability))) {
+                return targetRef.teamIndex();
+            }
+            if (moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC
+                    && ("lightning-rod".equalsIgnoreCase(ability) || "lightning rod".equalsIgnoreCase(ability))) {
+                return targetRef.teamIndex();
+            }
+        }
+        return -1;
+    }
+
+    private boolean ignoresTargetAbility(Map<String, Object> attacker) {
+        String ability = engine.abilityName(attacker);
+        return "mold-breaker".equalsIgnoreCase(ability)
+                || "mold breaker".equalsIgnoreCase(ability)
+                || "teravolt".equalsIgnoreCase(ability)
+                || "turboblaze".equalsIgnoreCase(ability);
+    }
+
+    private boolean ignoresRedirection(Map<String, Object> attacker) {
+        String ability = engine.abilityName(attacker);
+        return "stalwart".equalsIgnoreCase(ability)
+                || "propeller-tail".equalsIgnoreCase(ability)
+                || "propeller tail".equalsIgnoreCase(ability);
     }
 }
