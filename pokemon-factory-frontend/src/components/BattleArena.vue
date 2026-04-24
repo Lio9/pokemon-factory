@@ -81,6 +81,18 @@
         {{ tr('大晴天 {turns} 回合', 'Sun: {turns} turns', { turns: summary.fieldEffects.sunTurns }) }}
       </span>
       <span
+        v-if="summary.fieldEffects.sandTurns > 0"
+        class="rounded-full bg-orange-50 px-3 py-1 text-xs text-orange-700"
+      >
+        🌪️ {{ tr('沙暴 {turns} 回合', 'Sandstorm: {turns} turns', { turns: summary.fieldEffects.sandTurns }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.snowTurns > 0"
+        class="rounded-full bg-cyan-50 px-3 py-1 text-xs text-cyan-700"
+      >
+        ❄️ {{ tr('雪天 {turns} 回合', 'Snow: {turns} turns', { turns: summary.fieldEffects.snowTurns }) }}
+      </span>
+      <span
         v-if="summary.fieldEffects.electricTerrainTurns > 0"
         class="rounded-full bg-yellow-50 px-3 py-1 text-xs text-yellow-700"
       >
@@ -91,6 +103,18 @@
         class="rounded-full bg-purple-50 px-3 py-1 text-xs text-purple-700"
       >
         {{ tr('精神场地 {turns} 回合', 'Psychic Terrain: {turns} turns', { turns: summary.fieldEffects.psychicTerrainTurns }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.grassyTerrainTurns > 0"
+        class="rounded-full bg-green-50 px-3 py-1 text-xs text-green-700"
+      >
+        🌿 {{ tr('青草场地 {turns} 回合', 'Grassy Terrain: {turns} turns', { turns: summary.fieldEffects.grassyTerrainTurns }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.mistyTerrainTurns > 0"
+        class="rounded-full bg-pink-50 px-3 py-1 text-xs text-pink-700"
+      >
+        💫 {{ tr('薄雾场地 {turns} 回合', 'Misty Terrain: {turns} turns', { turns: summary.fieldEffects.mistyTerrainTurns }) }}
       </span>
       <span
         v-if="summary.fieldEffects.playerReflectTurns > 0"
@@ -115,6 +139,80 @@
         class="rounded-full bg-fuchsia-50 px-3 py-1 text-xs text-fuchsia-700"
       >
         {{ tr('对手光墙 {turns} 回合', 'Opponent Light Screen: {turns} turns', { turns: summary.fieldEffects.opponentLightScreenTurns }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.playerAuroraVeilTurns > 0"
+        class="rounded-full bg-indigo-50 px-3 py-1 text-xs text-indigo-700"
+      >
+        🛡️ {{ tr('我方极光幕 {turns} 回合', 'Your Aurora Veil: {turns} turns', { turns: summary.fieldEffects.playerAuroraVeilTurns }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.opponentAuroraVeilTurns > 0"
+        class="rounded-full bg-violet-50 px-3 py-1 text-xs text-violet-700"
+      >
+        🛡️ {{ tr('对手极光幕 {turns} 回合', 'Opponent Aurora Veil: {turns} turns', { turns: summary.fieldEffects.opponentAuroraVeilTurns }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.playerSafeguardTurns > 0"
+        class="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700"
+      >
+        ✨ {{ tr('我方神秘守护 {turns} 回合', 'Your Safeguard: {turns} turns', { turns: summary.fieldEffects.playerSafeguardTurns }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.opponentSafeguardTurns > 0"
+        class="rounded-full bg-teal-50 px-3 py-1 text-xs text-teal-700"
+      >
+        ✨ {{ tr('对手神秘守护 {turns} 回合', 'Opponent Safeguard: {turns} turns', { turns: summary.fieldEffects.opponentSafeguardTurns }) }}
+      </span>
+      
+      <!-- Entry Hazards (Pokemon Showdown standard) -->
+      <span
+        v-if="summary.fieldEffects.playerStealthRock"
+        class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700"
+      >
+        ⚡ {{ tr('我方隐形岩', 'Your Stealth Rock') }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.opponentStealthRock"
+        class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700"
+      >
+        ⚡ {{ tr('对手隐形岩', 'Opponent Stealth Rock') }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.playerSpikesLayers > 0"
+        class="rounded-full bg-green-50 px-3 py-1 text-xs text-green-700"
+      >
+        📍 {{ tr('我方撒菱 {layers}/3', 'Your Spikes: {layers}/3', { layers: summary.fieldEffects.playerSpikesLayers }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.opponentSpikesLayers > 0"
+        class="rounded-full bg-red-50 px-3 py-1 text-xs text-red-700"
+      >
+        📍 {{ tr('对手撒菱 {layers}/3', 'Opponent Spikes: {layers}/3', { layers: summary.fieldEffects.opponentSpikesLayers }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.playerToxicSpikesLayers > 0"
+        class="rounded-full bg-purple-50 px-3 py-1 text-xs text-purple-700"
+      >
+        ☠️ {{ tr('我方毒菱 {layers}/2', 'Your Toxic Spikes: {layers}/2', { layers: summary.fieldEffects.playerToxicSpikesLayers }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.opponentToxicSpikesLayers > 0"
+        class="rounded-full bg-pink-50 px-3 py-1 text-xs text-pink-700"
+      >
+        ☠️ {{ tr('对手毒菱 {layers}/2', 'Opponent Toxic Spikes: {layers}/2', { layers: summary.fieldEffects.opponentToxicSpikesLayers }) }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.playerStickyWeb"
+        class="rounded-full bg-yellow-50 px-3 py-1 text-xs text-yellow-700"
+      >
+        🕸️ {{ tr('我方黏黏网', 'Your Sticky Web') }}
+      </span>
+      <span
+        v-if="summary.fieldEffects.opponentStickyWeb"
+        class="rounded-full bg-orange-50 px-3 py-1 text-xs text-orange-700"
+      >
+        🕸️ {{ tr('对手黏黏网', 'Opponent Sticky Web') }}
       </span>
     </div>
 

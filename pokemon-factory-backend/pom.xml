@@ -18,8 +18,8 @@
 	<modules>
 		<module>common</module>
 		<module>user-module</module>
-		<module>pokeDex</module>
-		<module>battleFactory</module>
+		<module>poke-dex</module>
+		<module>battle-factory</module>
 	</modules>
 
 	<properties>
@@ -75,7 +75,7 @@
 					<artifactId>spring-boot-maven-plugin</artifactId>
 					<version>4.0.5</version>
 					<configuration>
-						<mainClass>com.lio9.pokedex.PokeDexApplication</mainClass>
+						<mainClass>com.lio9.pokedex.PokedexApplication</mainClass>
 					</configuration>
 					<executions>
 						<execution>

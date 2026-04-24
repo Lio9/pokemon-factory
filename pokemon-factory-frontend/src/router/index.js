@@ -64,6 +64,18 @@ const routes = [
     meta: { title: { zh: '登录', en: 'Login' } }
   },
   {
+    path: '/auth/verify',
+    name: 'EmailVerification',
+    component: () => import('../views/EmailVerification.vue'),
+    meta: { title: { zh: '邮箱验证', en: 'Email Verification' } }
+  },
+  {
+    path: '/auth/callback',
+    name: 'AuthCallback',
+    component: () => import('../views/EmailVerification.vue'),
+    meta: { title: { zh: '认证回调', en: 'Authentication Callback' } }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     redirect: '/pokemon'
