@@ -154,7 +154,12 @@ public class BattleServiceStartMatchTest {
             public void addTeamToPool(Integer teamId, Integer rank) { /* noop for tests */ }
         };
 
-        AIService aiService = new AIService(new com.lio9.battle.mapper.BattleDexMapper() {
+        com.lio9.battle.config.BattleConfig battleConfig = new com.lio9.battle.config.BattleConfig();
+
+        AIService aiService = new AIService(
+            battleConfig,
+            new com.lio9.battle.engine.TeamBalanceEvaluator(),
+            new com.lio9.battle.mapper.BattleDexMapper() {
             public java.util.List<java.util.Map<String, Object>> selectRandomDefaultForms(int limit) { return java.util.List.of(); }
             public java.util.List<java.util.Map<String, Object>> selectFormStats(Integer formId) { return java.util.List.of(); }
             public java.util.List<java.util.Map<String, Object>> selectFormTypes(Integer formId) { return java.util.List.of(); }
@@ -167,7 +172,8 @@ public class BattleServiceStartMatchTest {
             }
         };
 
-        BattleService service = new BattleService(playerMapper, teamMapper, battleMapper, roundMapper, exchangeMapper, engine, poolService, aiService, factoryRunMapper, objectMapper);
+        BattleService service = new BattleService(playerMapper, teamMapper, battleMapper, roundMapper, exchangeMapper,
+                engine, poolService, aiService, factoryRunMapper, objectMapper, battleConfig);
 
         Map<String, Object> req = new HashMap<>();
         req.put("username", "tester");

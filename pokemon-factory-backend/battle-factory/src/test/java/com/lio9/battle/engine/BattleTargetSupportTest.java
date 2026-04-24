@@ -517,6 +517,64 @@ class BattleTargetSupportTest {
     }
 
     @Test
+    void resolveMoveTargets_snipeShotIgnoresLightningRodPath() {
+        BattleTargetSupport support = new BattleTargetSupport(createEngine());
+        Map<String, Object> attacker = pokemon("Shooter-A", 220, DamageCalculatorUtil.TYPE_NORMAL, List.of());
+        Map<String, Object> redirector = pokemon("Rod-Opp", 220, DamageCalculatorUtil.TYPE_NORMAL, List.of());
+        redirector.put("ability", "lightning-rod");
+        Map<String, Object> originalTarget = pokemon("Target-Opp", 220, DamageCalculatorUtil.TYPE_NORMAL, List.of());
+        Map<String, Object> state = battleState(
+                List.of(attacker),
+                List.of(redirector, originalTarget),
+                List.of(0),
+                List.of(0, 1)
+        );
+        BattleEngine.Action action = BattleEngine.Action.moveAction(
+                "player", 0, 0, 1, 1,
+                move("Snipe Shot", "snipe-shot", 80, 100, 0, DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL,
+                        DamageCalculatorUtil.TYPE_WATER, 10),
+                100,
+                false
+        );
+
+        List<BattleEngine.TargetRef> targets = support.resolveMoveTargets(state, action, action.move(), new Random(0), Map.of());
+
+        assertEquals(1, targets.size());
+        assertEquals(1, targets.get(0).teamIndex());
+        assertEquals(1, targets.get(0).fieldSlot());
+    }
+
+        @Test
+        void resolveMoveTargets_snipeShotBypassesRagePowderRedirection() {
+        BattleTargetSupport support = new BattleTargetSupport(createEngine());
+        Map<String, Object> attacker = pokemon("Shooter-A", 220, DamageCalculatorUtil.TYPE_NORMAL, List.of());
+        Map<String, Object> powderTarget = pokemon("Powder-Opp", 220, DamageCalculatorUtil.TYPE_NORMAL, List.of());
+        Map<String, Object> originalTarget = pokemon("Target-Opp", 220, DamageCalculatorUtil.TYPE_NORMAL, List.of());
+        Map<String, Object> state = battleState(
+            List.of(attacker),
+            List.of(powderTarget, originalTarget),
+            List.of(0),
+            List.of(0, 1)
+        );
+        BattleEngine.Action action = BattleEngine.Action.moveAction(
+            "player", 0, 0, 1, 1,
+            move("Snipe Shot", "snipe-shot", 80, 100, 0, DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL,
+                DamageCalculatorUtil.TYPE_WATER, 10),
+            100,
+            false
+        );
+        Map<String, BattleEngine.RedirectionEffect> redirectionTargets = Map.of(
+            "opponent", new BattleEngine.RedirectionEffect(0, true)
+        );
+
+        List<BattleEngine.TargetRef> targets = support.resolveMoveTargets(state, action, action.move(), new Random(0), redirectionTargets);
+
+        assertEquals(1, targets.size());
+        assertEquals(1, targets.get(0).teamIndex());
+        assertEquals(1, targets.get(0).fieldSlot());
+        }
+
+    @Test
     void resolveMoveTargets_propellerTailBypassesLightningRodRedirection() {
         BattleTargetSupport support = new BattleTargetSupport(createEngine());
         Map<String, Object> attacker = pokemon("Breaker-A", 220, DamageCalculatorUtil.TYPE_NORMAL, List.of());

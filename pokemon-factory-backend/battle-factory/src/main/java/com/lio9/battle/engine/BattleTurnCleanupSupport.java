@@ -24,6 +24,8 @@ final class BattleTurnCleanupSupport {
         applyEndTurnStatusEffects(engine.team(state, false), events);
         applyEndTurnHealing(engine.team(state, true), events);
         applyEndTurnHealing(engine.team(state, false), events);
+        applyEndTurnAbilityEffects(state, true, events);
+        applyEndTurnAbilityEffects(state, false, events);
         applyEndTurnFieldEffects(state, events);
         decrementDynamax(engine.team(state, true), events);
         decrementDynamax(engine.team(state, false), events);
@@ -248,6 +250,32 @@ final class BattleTurnCleanupSupport {
             mon.put("currentHp", Math.min(maxHp, currentHp + heal));
             events.add(mon.get("name") + " 通过剩饭回复了 " + heal + " 点 HP");
         }
+    }
+
+    private void applyEndTurnAbilityEffects(Map<String, Object> state, boolean playerSide, List<String> events) {
+        for (Integer slot : engine.activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0 || slot >= engine.team(state, playerSide).size()) {
+                continue;
+            }
+            Map<String, Object> mon = engine.team(state, playerSide).get(slot);
+            if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
+                continue;
+            }
+            String ability = engine.abilityName(mon);
+            if ("speed-boost".equalsIgnoreCase(ability) || "speed boost".equalsIgnoreCase(ability)) {
+                applySpeedBoost(mon, events);
+            }
+        }
+    }
+
+    private void applySpeedBoost(Map<String, Object> mon, List<String> events) {
+        Map<String, Object> statStages = engine.castMap(mon.get("statStages"));
+        int currentStage = engine.toInt(statStages.get("speed"), 0);
+        if (currentStage >= 6) {
+            return;
+        }
+        statStages.put("speed", Math.min(6, currentStage + 1));
+        events.add(mon.get("name") + " 的加速提升了速度");
     }
 
     private void clearFlinch(List<Map<String, Object>> team) {

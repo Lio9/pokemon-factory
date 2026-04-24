@@ -161,7 +161,10 @@ public class BattleExecutorSubmitTest {
         jdbc.update("INSERT OR IGNORE INTO player(username, rank, points) VALUES(?, 0, 0)", "tester");
         Integer playerId = jdbc.queryForObject("SELECT id FROM player WHERE username = ?", Integer.class, "tester");
 
-        AIService aiService = new AIService(new com.lio9.battle.mapper.BattleDexMapper() {
+        AIService aiService = new AIService(
+            new com.lio9.battle.config.BattleConfig(),
+            new com.lio9.battle.engine.TeamBalanceEvaluator(),
+            new com.lio9.battle.mapper.BattleDexMapper() {
             public java.util.List<java.util.Map<String, Object>> selectRandomDefaultForms(int limit) { return java.util.List.of(); }
             public java.util.List<java.util.Map<String, Object>> selectFormStats(Integer formId) { return java.util.List.of(); }
             public java.util.List<java.util.Map<String, Object>> selectFormTypes(Integer formId) { return java.util.List.of(); }
