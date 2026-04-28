@@ -1,0 +1,54 @@
+# 自动检测文本文件并统一使用 LF 换行符
+* text=auto eol=lf
+
+# Java 文件
+*.java text eol=lf
+
+# JavaScript/TypeScript 文件
+*.js text eol=lf
+*.ts text eol=lf
+*.jsx text eol=lf
+*.tsx text eol=lf
+
+# Vue 文件
+*.vue text eol=lf
+
+# CSS/SCSS 文件
+*.css text eol=lf
+*.scss text eol=lf
+
+# HTML 文件
+*.html text eol=lf
+
+# JSON 文件
+*.json text eol=lf
+
+# YAML 文件
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Markdown 文件
+*.md text eol=lf
+
+# XML 文件
+*.xml text eol=lf
+
+# Shell 脚本
+*.sh text eol=lf
+*.ps1 text eol=lf
+
+# 二进制文件（不转换）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.db binary
+*.sqlite binary
+*.jar binary
+*.class binary
