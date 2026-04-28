@@ -1,5 +1,14 @@
 package com.lio9.common.config;
 
+/**
+ * CommonCsvDataImporter 文件说明
+ * 所属模块：common 公共模块。
+ * 文件类型：后端配置文件。
+ * 核心职责：负责模块启动时的 Bean、序列化、数据源或异常处理配置。
+ * 阅读建议：建议优先关注对运行期行为有全局影响的配置项。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -51,8 +60,7 @@ public class CommonCsvDataImporter {
             Map.entry(8, "it"),
             Map.entry(9, "en"),
             Map.entry(11, "ja"),
-            Map.entry(12, "zh-hans")
-    );
+            Map.entry(12, "zh-hans"));
 
     private final CommonDatabaseProperties properties;
 
@@ -150,7 +158,8 @@ public class CommonCsvDataImporter {
             int count = 0;
             for (CSVRecord record : records(csvDirectory.resolve("genders.csv"))) {
                 statement.setInt(1, requiredInt(record, "id"));
-                statement.setString(2, Optional.ofNullable(nullable(record, "identifier")).orElse("gender-" + requiredInt(record, "id")));
+                statement.setString(2, Optional.ofNullable(nullable(record, "identifier"))
+                        .orElse("gender-" + requiredInt(record, "id")));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -160,7 +169,8 @@ public class CommonCsvDataImporter {
     }
 
     private void importGrowthRates(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("growth_rate_prose.csv")), "growth_rate_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("growth_rate_prose.csv")),
+                "growth_rate_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO growth_rate (id, name, name_en, formula, description) VALUES (?, ?, ?, ?, ?)")) {
             int count = 0;
@@ -169,11 +179,13 @@ public class CommonCsvDataImporter {
                 String identifier = nullable(record, "identifier");
                 List<CSVRecord> proses = proseById.getOrDefault(id, List.of());
                 statement.setInt(1, id);
-                statement.setString(2, Optional.ofNullable(localizedName(proses, List.of("zh-hans", "zh-hant", "en", "ja")))
-                        .orElse(Optional.ofNullable(identifier).orElse("growth-rate-" + id)));
+                statement.setString(2,
+                        Optional.ofNullable(localizedName(proses, List.of("zh-hans", "zh-hant", "en", "ja")))
+                                .orElse(Optional.ofNullable(identifier).orElse("growth-rate-" + id)));
                 statement.setString(3, Optional.ofNullable(identifier).orElse("growth-rate-" + id));
                 statement.setString(4, nullable(record, "formula"));
-                statement.setString(5, localizedText(proses, List.of("zh-hans", "zh-hant", "en", "ja"), "description", "name"));
+                statement.setString(5,
+                        localizedText(proses, List.of("zh-hans", "zh-hant", "en", "ja"), "description", "name"));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -183,7 +195,8 @@ public class CommonCsvDataImporter {
     }
 
     private void importEggGroups(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("egg_group_prose.csv")), "egg_group_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("egg_group_prose.csv")),
+                "egg_group_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO egg_group (id, name, name_en, name_jp) VALUES (?, ?, ?, ?)")) {
             int count = 0;
@@ -195,7 +208,8 @@ public class CommonCsvDataImporter {
                 String fallbackName = Optional.ofNullable(localizedName).orElse(identifier);
                 statement.setInt(1, id);
                 statement.setString(2, Optional.ofNullable(fallbackName).orElse("egg-group-" + id));
-                statement.setString(3, Optional.ofNullable(identifier).orElse(Optional.ofNullable(fallbackName).orElse("egg-group-" + id)));
+                statement.setString(3, Optional.ofNullable(identifier)
+                        .orElse(Optional.ofNullable(fallbackName).orElse("egg-group-" + id)));
                 statement.setString(4, localizedName(proses, List.of("ja", "en")));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
@@ -206,7 +220,8 @@ public class CommonCsvDataImporter {
     }
 
     private void importNatures(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("nature_names.csv")), "nature_id");
+        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("nature_names.csv")),
+                "nature_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO nature (id, name, name_en, name_jp, increased_stat, decreased_stat, likes_flavor, hates_flavor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
             int count = 0;
@@ -230,7 +245,8 @@ public class CommonCsvDataImporter {
     }
 
     private void importMoveLearnMethods(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("pokemon_move_method_prose.csv")), "pokemon_move_method_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(
+                records(csvDirectory.resolve("pokemon_move_method_prose.csv")), "pokemon_move_method_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO move_learn_method (id, name, name_en, description) VALUES (?, ?, ?, ?)")) {
             int count = 0;
@@ -254,7 +270,8 @@ public class CommonCsvDataImporter {
     }
 
     private void importEvolutionTriggers(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("evolution_trigger_prose.csv")), "evolution_trigger_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(
+                records(csvDirectory.resolve("evolution_trigger_prose.csv")), "evolution_trigger_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR IGNORE INTO evolution_trigger (id, name, name_en) VALUES (?, ?, ?)")) {
             int count = 0;
@@ -263,10 +280,12 @@ public class CommonCsvDataImporter {
                 String identifier = nullable(record, "identifier");
                 List<CSVRecord> proses = proseById.getOrDefault(id, List.of());
                 String fallback = Optional.ofNullable(identifier).orElse("evolution-trigger-" + id);
-                String displayName = Optional.ofNullable(localizedName(proses, List.of("zh-hans", "zh-hant", "en", "ja")))
+                String displayName = Optional
+                        .ofNullable(localizedName(proses, List.of("zh-hans", "zh-hant", "en", "ja")))
                         .orElse(fallback);
                 String englishName = Optional.ofNullable(identifier)
-                        .orElse(Optional.ofNullable(localizedName(proses, List.of("en", "ja", "zh-hans", "zh-hant"))).orElse(displayName));
+                        .orElse(Optional.ofNullable(localizedName(proses, List.of("en", "ja", "zh-hans", "zh-hant")))
+                                .orElse(displayName));
                 statement.setInt(1, id);
                 statement.setString(2, displayName);
                 statement.setString(3, englishName);
@@ -279,7 +298,8 @@ public class CommonCsvDataImporter {
     }
 
     private void importMoveTargets(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("move_target_prose.csv")), "move_target_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("move_target_prose.csv")),
+                "move_target_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR IGNORE INTO move_target (id, name, name_en, description) VALUES (?, ?, ?, ?)")) {
             int count = 0;
@@ -288,14 +308,17 @@ public class CommonCsvDataImporter {
                 String identifier = nullable(record, "identifier");
                 List<CSVRecord> proses = proseById.getOrDefault(id, List.of());
                 String fallback = Optional.ofNullable(identifier).orElse("move-target-" + id);
-                String displayName = Optional.ofNullable(localizedName(proses, List.of("zh-hans", "zh-hant", "en", "ja")))
+                String displayName = Optional
+                        .ofNullable(localizedName(proses, List.of("zh-hans", "zh-hant", "en", "ja")))
                         .orElse(fallback);
                 String englishName = Optional.ofNullable(identifier)
-                        .orElse(Optional.ofNullable(localizedName(proses, List.of("en", "ja", "zh-hans", "zh-hant"))).orElse(displayName));
+                        .orElse(Optional.ofNullable(localizedName(proses, List.of("en", "ja", "zh-hans", "zh-hant")))
+                                .orElse(displayName));
                 statement.setInt(1, id);
                 statement.setString(2, displayName);
                 statement.setString(3, englishName);
-                statement.setString(4, localizedText(proses, List.of("zh-hans", "zh-hant", "en", "ja"), "description", "name"));
+                statement.setString(4,
+                        localizedText(proses, List.of("zh-hans", "zh-hant", "en", "ja"), "description", "name"));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -305,17 +328,20 @@ public class CommonCsvDataImporter {
     }
 
     private void importTypes(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("type_names.csv")), "type_id");
+        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("type_names.csv")),
+                "type_id");
         try (PreparedStatement updateStatement = connection.prepareStatement(
                 "UPDATE type SET name = ?, name_en = ?, name_jp = ? WHERE id = ?");
-             PreparedStatement insertStatement = connection.prepareStatement(
-                     "INSERT INTO type (id, name, name_en, name_jp, color, icon_url) VALUES (?, ?, ?, ?, ?, ?)")) {
+                PreparedStatement insertStatement = connection.prepareStatement(
+                        "INSERT INTO type (id, name, name_en, name_jp, color, icon_url) VALUES (?, ?, ?, ?, ?, ?)")) {
             int count = 0;
             for (Integer typeId : namesById.keySet().stream().sorted().toList()) {
                 List<CSVRecord> names = namesById.getOrDefault(typeId, List.of());
-                String displayName = Optional.ofNullable(localizedName(names, List.of("zh-hans", "zh-hant", "en", "ja")))
+                String displayName = Optional
+                        .ofNullable(localizedName(names, List.of("zh-hans", "zh-hant", "en", "ja")))
                         .orElse("type-" + typeId);
-                String englishName = Optional.ofNullable(localizedName(names, List.of("en", "ja", "zh-hans", "zh-hant")))
+                String englishName = Optional
+                        .ofNullable(localizedName(names, List.of("en", "ja", "zh-hans", "zh-hant")))
                         .orElse(displayName);
                 String japaneseName = Optional.ofNullable(localizedName(names, List.of("ja", "en")))
                         .orElse(englishName);
@@ -359,18 +385,22 @@ public class CommonCsvDataImporter {
     }
 
     private void importAbilities(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("ability_names.csv")), "ability_id");
-        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("ability_prose.csv")), "ability_id");
+        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("ability_names.csv")),
+                "ability_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("ability_prose.csv")),
+                "ability_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO ability (id, name, name_en, name_jp, description, generation_id, is_main_series) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
             int count = 0;
             for (CSVRecord record : records(csvDirectory.resolve("abilities.csv"))) {
                 int id = requiredInt(record, "id");
                 statement.setInt(1, id);
-                statement.setString(2, localizedName(namesById.getOrDefault(id, List.of()), List.of("zh-hans", "zh-hant", "en", "ja")));
+                statement.setString(2, localizedName(namesById.getOrDefault(id, List.of()),
+                        List.of("zh-hans", "zh-hant", "en", "ja")));
                 statement.setString(3, nullable(record, "identifier"));
                 statement.setString(4, localizedName(namesById.getOrDefault(id, List.of()), List.of("ja", "en")));
-                statement.setString(5, localizedText(proseById.getOrDefault(id, List.of()), List.of("zh-hans", "zh-hant", "en"), "short_effect", "effect"));
+                statement.setString(5, localizedText(proseById.getOrDefault(id, List.of()),
+                        List.of("zh-hans", "zh-hant", "en"), "short_effect", "effect"));
                 bindNullableInt(statement, 6, nullableInt(record, "generation_id"));
                 statement.setInt(7, "1".equals(nullable(record, "is_main_series")) ? 1 : 0);
                 statement.addBatch();
@@ -382,15 +412,18 @@ public class CommonCsvDataImporter {
     }
 
     private void importMoves(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("move_names.csv")), "move_id");
-        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("move_flavor_text.csv")), "move_id");
+        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("move_names.csv")),
+                "move_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("move_flavor_text.csv")),
+                "move_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO move (id, name, name_en, name_jp, type_id, damage_class_id, target_id, power, pp, accuracy, priority, effect_chance, generation_id, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
             int count = 0;
             for (CSVRecord record : records(csvDirectory.resolve("moves.csv"))) {
                 int id = requiredInt(record, "id");
                 statement.setInt(1, id);
-                statement.setString(2, localizedName(namesById.getOrDefault(id, List.of()), List.of("zh-hans", "zh-hant", "en", "ja")));
+                statement.setString(2, localizedName(namesById.getOrDefault(id, List.of()),
+                        List.of("zh-hans", "zh-hant", "en", "ja")));
                 statement.setString(3, nullable(record, "identifier"));
                 statement.setString(4, localizedName(namesById.getOrDefault(id, List.of()), List.of("ja", "en")));
                 bindNullableInt(statement, 5, nullableInt(record, "type_id"));
@@ -399,10 +432,12 @@ public class CommonCsvDataImporter {
                 bindNullableInt(statement, 8, nullableInt(record, "power"));
                 bindNullableInt(statement, 9, nullableInt(record, "pp"));
                 bindNullableInt(statement, 10, nullableInt(record, "accuracy"));
-                statement.setInt(11, nullableInt(record, "priority") == null ? 0 : Objects.requireNonNull(nullableInt(record, "priority")));
+                statement.setInt(11, nullableInt(record, "priority") == null ? 0
+                        : Objects.requireNonNull(nullableInt(record, "priority")));
                 bindNullableInt(statement, 12, nullableInt(record, "effect_chance"));
                 bindNullableInt(statement, 13, nullableInt(record, "generation_id"));
-                statement.setString(14, latestLocalizedText(proseById.getOrDefault(id, List.of()), "version_group_id", List.of("zh-hans", "zh-hant", "en", "ja"), "flavor_text"));
+                statement.setString(14, latestLocalizedText(proseById.getOrDefault(id, List.of()), "version_group_id",
+                        List.of("zh-hans", "zh-hant", "en", "ja"), "flavor_text"));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -476,8 +511,8 @@ public class CommonCsvDataImporter {
     private void importMoveFlags(Connection connection, Path csvDirectory) throws Exception {
         try (PreparedStatement flagStatement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO move_flags (id, identifier, name) VALUES (?, ?, ?)");
-             PreparedStatement mapStatement = connection.prepareStatement(
-                     "INSERT OR REPLACE INTO move_flag_map (move_id, flag_id) VALUES (?, ?)") ) {
+                PreparedStatement mapStatement = connection.prepareStatement(
+                        "INSERT OR REPLACE INTO move_flag_map (move_id, flag_id) VALUES (?, ?)")) {
             int flagCount = 0;
             for (CSVRecord record : records(csvDirectory.resolve("move_flags.csv"))) {
                 flagStatement.setInt(1, requiredInt(record, "id"));
@@ -592,8 +627,10 @@ public class CommonCsvDataImporter {
     }
 
     private void importItems(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("item_names.csv")), "item_id");
-        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("item_flavor_text.csv")), "item_id");
+        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("item_names.csv")),
+                "item_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("item_flavor_text.csv")),
+                "item_id");
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO item (id, name, name_en, name_jp, category_id, cost, fling_power, fling_effect_id, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
             int count = 0;
@@ -601,14 +638,20 @@ public class CommonCsvDataImporter {
                 int id = requiredInt(record, "id");
                 statement.setInt(1, id);
                 String fallback = nullable(record, "identifier");
-                statement.setString(2, Optional.ofNullable(localizedName(namesById.getOrDefault(id, List.of()), List.of("zh-hans", "zh-hant", "en", "ja"))).orElse(fallback));
+                statement.setString(2, Optional.ofNullable(
+                        localizedName(namesById.getOrDefault(id, List.of()), List.of("zh-hans", "zh-hant", "en", "ja")))
+                        .orElse(fallback));
                 statement.setString(3, fallback);
-                statement.setString(4, Optional.ofNullable(localizedName(namesById.getOrDefault(id, List.of()), List.of("ja", "en"))).orElse(fallback));
+                statement.setString(4,
+                        Optional.ofNullable(localizedName(namesById.getOrDefault(id, List.of()), List.of("ja", "en")))
+                                .orElse(fallback));
                 bindNullableInt(statement, 5, nullableInt(record, "category_id"));
-                statement.setInt(6, nullableInt(record, "cost") == null ? 0 : Objects.requireNonNull(nullableInt(record, "cost")));
+                statement.setInt(6,
+                        nullableInt(record, "cost") == null ? 0 : Objects.requireNonNull(nullableInt(record, "cost")));
                 bindNullableInt(statement, 7, nullableInt(record, "fling_power"));
                 bindNullableInt(statement, 8, nullableInt(record, "fling_effect_id"));
-                statement.setString(9, latestLocalizedText(proseById.getOrDefault(id, List.of()), "version_group_id", List.of("zh-hans", "zh-hant", "en", "ja"), "flavor_text"));
+                statement.setString(9, latestLocalizedText(proseById.getOrDefault(id, List.of()), "version_group_id",
+                        List.of("zh-hans", "zh-hant", "en", "ja"), "flavor_text"));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -619,33 +662,37 @@ public class CommonCsvDataImporter {
 
     private void importEffectSeeds(Connection connection) throws Exception {
         try (PreparedStatement deleteAbility = connection.prepareStatement("DELETE FROM ability_effect");
-             PreparedStatement deleteItem = connection.prepareStatement("DELETE FROM item_effect");
-             PreparedStatement abilityStatement = connection.prepareStatement(
-                     "INSERT INTO ability_effect (ability_id, effect_type, effect_value, target, condition, description) VALUES (?, ?, ?, ?, ?, ?)");
-             PreparedStatement itemStatement = connection.prepareStatement(
-                     "INSERT INTO item_effect (item_id, effect_type, effect_value, target, condition, description) VALUES (?, ?, ?, ?, ?, ?)") ) {
+                PreparedStatement deleteItem = connection.prepareStatement("DELETE FROM item_effect");
+                PreparedStatement abilityStatement = connection.prepareStatement(
+                        "INSERT INTO ability_effect (ability_id, effect_type, effect_value, target, condition, description) VALUES (?, ?, ?, ?, ?, ?)");
+                PreparedStatement itemStatement = connection.prepareStatement(
+                        "INSERT INTO item_effect (item_id, effect_type, effect_value, target, condition, description) VALUES (?, ?, ?, ?, ?, ?)")) {
             deleteAbility.executeUpdate();
             deleteItem.executeUpdate();
 
             Object[][] abilityEffects = {
-                    {91, "stab_multiplier", "2.0", "attacker", "is_stab", "本系技能威力提升至2.0倍"},
-                    {66, "damage_multiplier", "1.5", "attacker", "type_id=10 AND hp_percent<=33", "HP低于1/3时火系技能威力提升50%"},
-                    {67, "damage_multiplier", "1.5", "attacker", "type_id=11 AND hp_percent<=33", "HP低于1/3时水系技能威力提升50%"},
-                    {18, "damage_multiplier", "1.5", "attacker", "type_id=7 AND hp_percent<=33", "HP低于1/3时虫系技能威力提升50%"},
-                    {65, "damage_multiplier", "1.5", "attacker", "type_id=12 AND hp_percent<=33", "HP低于1/3时草系技能威力提升50%"},
-                    {152, "damage_multiplier", "1.3", "attacker", "is_contact", "接触技能威力提升30%"},
-                    {232, "damage_multiplier", "1.2", "attacker", "is_punch", "拳类技能威力提升20%"},
-                    {86, "damage_multiplier", "1.5", "attacker", "power<=60", "威力60以下技能提升50%"},
-                    {62, "damage_multiplier", "0.5", "defender", "type_id IN (10, 14)", "火系和冰系伤害减半"},
-                    {153, "damage_multiplier", "0.5", "defender", "hp_percent=100", "满HP时受到伤害减半"},
-                    {216, "damage_multiplier", "0.5", "defender", "damage_class=physical", "物理伤害减半"},
-                    {22, "stat_boost", "-1", "defender", "on_switch_in", "出场时降低对方攻击1级"},
-                    {29, "status_immunity", "flinch", "always", "always", "免疫畏缩效果"},
-                    {59, "weather_effect", null, "self", "always", "免疫天气效果"},
-                    {31, "terrain_set", "electric", "self", "on_switch_in", "出场时设置电气场地"},
-                    {229, "terrain_set", "grassy", "self", "on_switch_in", "出场时设置草地场地"},
-                    {268, "terrain_set", "psychic", "self", "on_switch_in", "出场时设置超能力场地"},
-                    {243, "terrain_set", "misty", "self", "on_switch_in", "出场时设置薄雾场地"}
+                    { 91, "stab_multiplier", "2.0", "attacker", "is_stab", "本系技能威力提升至2.0倍" },
+                    { 66, "damage_multiplier", "1.5", "attacker", "type_id=10 AND hp_percent<=33",
+                            "HP低于1/3时火系技能威力提升50%" },
+                    { 67, "damage_multiplier", "1.5", "attacker", "type_id=11 AND hp_percent<=33",
+                            "HP低于1/3时水系技能威力提升50%" },
+                    { 18, "damage_multiplier", "1.5", "attacker", "type_id=7 AND hp_percent<=33",
+                            "HP低于1/3时虫系技能威力提升50%" },
+                    { 65, "damage_multiplier", "1.5", "attacker", "type_id=12 AND hp_percent<=33",
+                            "HP低于1/3时草系技能威力提升50%" },
+                    { 152, "damage_multiplier", "1.3", "attacker", "is_contact", "接触技能威力提升30%" },
+                    { 232, "damage_multiplier", "1.2", "attacker", "is_punch", "拳类技能威力提升20%" },
+                    { 86, "damage_multiplier", "1.5", "attacker", "power<=60", "威力60以下技能提升50%" },
+                    { 62, "damage_multiplier", "0.5", "defender", "type_id IN (10, 14)", "火系和冰系伤害减半" },
+                    { 153, "damage_multiplier", "0.5", "defender", "hp_percent=100", "满HP时受到伤害减半" },
+                    { 216, "damage_multiplier", "0.5", "defender", "damage_class=physical", "物理伤害减半" },
+                    { 22, "stat_boost", "-1", "defender", "on_switch_in", "出场时降低对方攻击1级" },
+                    { 29, "status_immunity", "flinch", "always", "always", "免疫畏缩效果" },
+                    { 59, "weather_effect", null, "self", "always", "免疫天气效果" },
+                    { 31, "terrain_set", "electric", "self", "on_switch_in", "出场时设置电气场地" },
+                    { 229, "terrain_set", "grassy", "self", "on_switch_in", "出场时设置草地场地" },
+                    { 268, "terrain_set", "psychic", "self", "on_switch_in", "出场时设置超能力场地" },
+                    { 243, "terrain_set", "misty", "self", "on_switch_in", "出场时设置薄雾场地" }
             };
             int abilityCount = 0;
             for (Object[] row : abilityEffects) {
@@ -656,23 +703,23 @@ public class CommonCsvDataImporter {
             flushBatch(abilityStatement, abilityCount, true);
 
             Object[][] itemEffects = {
-                    {130, "damage_multiplier", "1.3", "attacker", "always", "所有技能威力提升30%"},
-                    {327, "damage_multiplier", "1.5", "attacker", "damage_class=special", "特攻技能威力提升50%"},
-                    {299, "damage_multiplier", "1.5", "attacker", "damage_class=physical", "物理技能威力提升50%"},
-                    {83, "damage_multiplier", "1.2", "attacker", "type_id=10", "火系技能威力提升20%"},
-                    {171, "damage_multiplier", "1.2", "attacker", "type_id=13", "电系技能威力提升20%"},
-                    {91, "damage_multiplier", "1.2", "attacker", "type_id=9", "钢系技能威力提升20%"},
-                    {85, "damage_multiplier", "1.2", "attacker", "type_id=12", "草系技能威力提升20%"},
-                    {82, "damage_multiplier", "1.2", "attacker", "type_id=11", "水系技能威力提升20%"},
-                    {239, "damage_multiplier", "1.2", "attacker", "type_id=17", "恶系技能威力提升20%"},
-                    {267, "damage_multiplier", "1.2", "attacker", "type_id=14", "超能力系技能威力提升20%"},
-                    {89, "damage_multiplier", "1.2", "attacker", "type_id=5", "地面系技能威力提升20%"},
-                    {88, "damage_multiplier", "1.2", "attacker", "type_id=6", "岩石系技能威力提升20%"},
-                    {87, "damage_multiplier", "1.2", "attacker", "type_id=15", "冰系技能威力提升20%"},
-                    {84, "damage_multiplier", "1.2", "attacker", "type_id=4", "毒系技能威力提升20%"},
-                    {90, "damage_multiplier", "1.2", "attacker", "type_id=3", "飞行系技能威力提升20%"},
-                    {279, "damage_multiplier", "1.2", "attacker", "type_id=8", "岩石系技能威力提升20%"},
-                    {305, "recoil", "1/6", "attacker", "is_contact", "接触技能受到反伤1/6"}
+                    { 130, "damage_multiplier", "1.3", "attacker", "always", "所有技能威力提升30%" },
+                    { 327, "damage_multiplier", "1.5", "attacker", "damage_class=special", "特攻技能威力提升50%" },
+                    { 299, "damage_multiplier", "1.5", "attacker", "damage_class=physical", "物理技能威力提升50%" },
+                    { 83, "damage_multiplier", "1.2", "attacker", "type_id=10", "火系技能威力提升20%" },
+                    { 171, "damage_multiplier", "1.2", "attacker", "type_id=13", "电系技能威力提升20%" },
+                    { 91, "damage_multiplier", "1.2", "attacker", "type_id=9", "钢系技能威力提升20%" },
+                    { 85, "damage_multiplier", "1.2", "attacker", "type_id=12", "草系技能威力提升20%" },
+                    { 82, "damage_multiplier", "1.2", "attacker", "type_id=11", "水系技能威力提升20%" },
+                    { 239, "damage_multiplier", "1.2", "attacker", "type_id=17", "恶系技能威力提升20%" },
+                    { 267, "damage_multiplier", "1.2", "attacker", "type_id=14", "超能力系技能威力提升20%" },
+                    { 89, "damage_multiplier", "1.2", "attacker", "type_id=5", "地面系技能威力提升20%" },
+                    { 88, "damage_multiplier", "1.2", "attacker", "type_id=6", "岩石系技能威力提升20%" },
+                    { 87, "damage_multiplier", "1.2", "attacker", "type_id=15", "冰系技能威力提升20%" },
+                    { 84, "damage_multiplier", "1.2", "attacker", "type_id=4", "毒系技能威力提升20%" },
+                    { 90, "damage_multiplier", "1.2", "attacker", "type_id=3", "飞行系技能威力提升20%" },
+                    { 279, "damage_multiplier", "1.2", "attacker", "type_id=8", "岩石系技能威力提升20%" },
+                    { 305, "recoil", "1/6", "attacker", "is_contact", "接触技能受到反伤1/6" }
             };
             int itemCount = 0;
             for (Object[] row : itemEffects) {
@@ -701,8 +748,10 @@ public class CommonCsvDataImporter {
     }
 
     private Map<Integer, Integer> importPokemonSpecies(Connection connection, Path csvDirectory) throws Exception {
-        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(records(csvDirectory.resolve("pokemon_species_names.csv")), "pokemon_species_id");
-        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(records(csvDirectory.resolve("pokemon_species_flavor_text.csv")), "species_id");
+        Map<Integer, List<CSVRecord>> namesById = groupByIntKey(
+                records(csvDirectory.resolve("pokemon_species_names.csv")), "pokemon_species_id");
+        Map<Integer, List<CSVRecord>> proseById = groupByIntKey(
+                records(csvDirectory.resolve("pokemon_species_flavor_text.csv")), "species_id");
         Map<Integer, Integer> evolvesFromMap = new HashMap<>();
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO pokemon_species (id, name, name_en, name_jp, genus, generation_id, evolution_chain_id, evolves_from_species_id, gender_rate, capture_rate, base_happiness, hatch_counter, is_baby, is_legendary, is_mythical, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
@@ -722,14 +771,18 @@ public class CommonCsvDataImporter {
                 bindNullableInt(statement, 6, nullableInt(record, "generation_id"));
                 bindNullableInt(statement, 7, nullableInt(record, "evolution_chain_id"));
                 bindNullableInt(statement, 8, evolvesFrom);
-                statement.setInt(9, nullableInt(record, "gender_rate") == null ? -1 : Objects.requireNonNull(nullableInt(record, "gender_rate")));
-                statement.setInt(10, nullableInt(record, "capture_rate") == null ? 0 : Objects.requireNonNull(nullableInt(record, "capture_rate")));
-                statement.setInt(11, nullableInt(record, "base_happiness") == null ? 70 : Objects.requireNonNull(nullableInt(record, "base_happiness")));
+                statement.setInt(9, nullableInt(record, "gender_rate") == null ? -1
+                        : Objects.requireNonNull(nullableInt(record, "gender_rate")));
+                statement.setInt(10, nullableInt(record, "capture_rate") == null ? 0
+                        : Objects.requireNonNull(nullableInt(record, "capture_rate")));
+                statement.setInt(11, nullableInt(record, "base_happiness") == null ? 70
+                        : Objects.requireNonNull(nullableInt(record, "base_happiness")));
                 bindNullableInt(statement, 12, nullableInt(record, "hatch_counter"));
                 statement.setInt(13, boolInt(record, "is_baby"));
                 statement.setInt(14, boolInt(record, "is_legendary"));
                 statement.setInt(15, boolInt(record, "is_mythical"));
-                statement.setString(16, latestLocalizedText(proseById.getOrDefault(id, List.of()), "version_id", List.of("zh-hans", "zh-hant", "en", "ja"), "flavor_text"));
+                statement.setString(16, latestLocalizedText(proseById.getOrDefault(id, List.of()), "version_id",
+                        List.of("zh-hans", "zh-hant", "en", "ja"), "flavor_text"));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -802,7 +855,8 @@ public class CommonCsvDataImporter {
                 statement.setInt(1, requiredInt(record, "pokemon_id"));
                 statement.setInt(2, requiredInt(record, "stat_id"));
                 statement.setInt(3, requiredInt(record, "base_stat"));
-                statement.setInt(4, nullableInt(record, "effort") == null ? 0 : Objects.requireNonNull(nullableInt(record, "effort")));
+                statement.setInt(4, nullableInt(record, "effort") == null ? 0
+                        : Objects.requireNonNull(nullableInt(record, "effort")));
                 statement.addBatch();
                 count = flushBatch(statement, count + 1);
             }
@@ -844,7 +898,8 @@ public class CommonCsvDataImporter {
         }
     }
 
-    private void importPokemonEvolution(Connection connection, Path csvDirectory, Map<Integer, Integer> evolvesFromMap) throws Exception {
+    private void importPokemonEvolution(Connection connection, Path csvDirectory, Map<Integer, Integer> evolvesFromMap)
+            throws Exception {
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR REPLACE INTO pokemon_evolution (evolved_species_id, evolves_from_species_id, evolution_trigger_id, min_level, min_happiness, min_affection, time_of_day, held_item_id, evolution_item_id, known_move_id, known_move_type_id, location_id, party_species_id, party_type_id, trade_species_id, needs_overworld_rain, turn_upside_down, relative_physical_stats, gender_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
             int count = 0;
@@ -950,7 +1005,8 @@ public class CommonCsvDataImporter {
             HttpResponse<Path> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(tempFile));
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 Files.deleteIfExists(tempFile);
-                throw new IllegalStateException("下载远程 CSV 失败: " + fileName + " <- " + uri + "，HTTP 状态码=" + response.statusCode());
+                throw new IllegalStateException(
+                        "下载远程 CSV 失败: " + fileName + " <- " + uri + "，HTTP 状态码=" + response.statusCode());
             }
             if (!Files.exists(tempFile) || Files.size(tempFile) == 0L) {
                 Files.deleteIfExists(tempFile);
@@ -1057,7 +1113,7 @@ public class CommonCsvDataImporter {
     private List<String> foreignKeyViolations(Connection connection, int limit) throws Exception {
         List<String> violations = new ArrayList<>();
         try (Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery("PRAGMA foreign_key_check")) {
+                ResultSet resultSet = statement.executeQuery("PRAGMA foreign_key_check")) {
             while (resultSet.next() && violations.size() < limit) {
                 violations.add(resultSet.getString("table")
                         + " rowid=" + resultSet.getString("rowid")
@@ -1121,34 +1177,12 @@ public class CommonCsvDataImporter {
         return rows;
     }
 
-    private Map<Integer, CSVRecord> firstByIntKey(List<CSVRecord> records, String key) {
-        Map<Integer, CSVRecord> grouped = new HashMap<>();
-        for (CSVRecord record : records) {
-            grouped.putIfAbsent(requiredInt(record, key), record);
-        }
-        return grouped;
-    }
-
     private Map<Integer, List<CSVRecord>> groupByIntKey(List<CSVRecord> records, String key) {
         Map<Integer, List<CSVRecord>> grouped = new HashMap<>();
         for (CSVRecord record : records) {
             grouped.computeIfAbsent(requiredInt(record, key), ignored -> new ArrayList<>()).add(record);
         }
         return grouped;
-    }
-
-    private Map<Integer, CSVRecord> latestByKey(List<CSVRecord> records, String keyField, String orderField) {
-        Map<Integer, CSVRecord> latest = new HashMap<>();
-        Map<Integer, Integer> order = new HashMap<>();
-        for (CSVRecord record : records) {
-            int key = requiredInt(record, keyField);
-            int currentOrder = nullableInt(record, orderField) == null ? 0 : Objects.requireNonNull(nullableInt(record, orderField));
-            if (!order.containsKey(key) || currentOrder > order.get(key)) {
-                order.put(key, currentOrder);
-                latest.put(key, record);
-            }
-        }
-        return latest;
     }
 
     private String localizedName(List<CSVRecord> records, List<String> preferredLanguages) {
@@ -1198,7 +1232,8 @@ public class CommonCsvDataImporter {
         return null;
     }
 
-    private String latestLocalizedText(List<CSVRecord> records, String orderField, List<String> preferredLanguages, String... candidateFields) {
+    private String latestLocalizedText(List<CSVRecord> records, String orderField, List<String> preferredLanguages,
+            String... candidateFields) {
         if (records.isEmpty()) {
             return null;
         }
@@ -1321,7 +1356,7 @@ public class CommonCsvDataImporter {
 
     private int count(Connection connection, String tableName) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) FROM " + tableName);
-             ResultSet resultSet = statement.executeQuery()) {
+                ResultSet resultSet = statement.executeQuery()) {
             return resultSet.next() ? resultSet.getInt(1) : 0;
         }
     }
@@ -1335,7 +1370,8 @@ public class CommonCsvDataImporter {
         headers.put("egg_groups.csv", List.of("id"));
         headers.put("nature_names.csv", List.of("nature_id", "local_language_id", "name"));
         headers.put("natures.csv", List.of("id", "identifier"));
-        headers.put("pokemon_move_method_prose.csv", List.of("pokemon_move_method_id", "local_language_id", "name", "description"));
+        headers.put("pokemon_move_method_prose.csv",
+                List.of("pokemon_move_method_id", "local_language_id", "name", "description"));
         headers.put("pokemon_move_methods.csv", List.of("id", "identifier"));
         headers.put("evolution_triggers.csv", List.of("id", "identifier"));
         headers.put("evolution_trigger_prose.csv", List.of("evolution_trigger_id", "local_language_id", "name"));
@@ -1350,8 +1386,10 @@ public class CommonCsvDataImporter {
         headers.put("abilities.csv", List.of("id", "identifier", "generation_id", "is_main_series"));
         headers.put("move_names.csv", List.of("move_id", "local_language_id", "name"));
         headers.put("move_flavor_text.csv", List.of("move_id", "version_group_id", "language_id", "flavor_text"));
-        headers.put("moves.csv", List.of("id", "identifier", "type_id", "damage_class_id", "target_id", "power", "pp", "accuracy", "priority", "effect_chance", "generation_id"));
-        headers.put("move_meta.csv", List.of("move_id", "min_hits", "max_hits", "min_turns", "max_turns", "drain", "healing", "crit_rate", "ailment_id", "category_id", "ailment_chance", "flinch_chance", "stat_chance"));
+        headers.put("moves.csv", List.of("id", "identifier", "type_id", "damage_class_id", "target_id", "power", "pp",
+                "accuracy", "priority", "effect_chance", "generation_id"));
+        headers.put("move_meta.csv", List.of("move_id", "min_hits", "max_hits", "min_turns", "max_turns", "drain",
+                "healing", "crit_rate", "ailment_id", "category_id", "ailment_chance", "flinch_chance", "stat_chance"));
         headers.put("move_flags.csv", List.of("id", "identifier"));
         headers.put("move_flag_map.csv", List.of("move_id", "move_flag_id"));
         headers.put("move_meta_stat_changes.csv", List.of("move_id", "stat_id", "change"));
@@ -1364,15 +1402,25 @@ public class CommonCsvDataImporter {
         headers.put("items.csv", List.of("id", "identifier", "category_id", "cost", "fling_power", "fling_effect_id"));
         headers.put("evolution_chains.csv", List.of("id", "baby_trigger_item_id"));
         headers.put("pokemon_species_names.csv", List.of("pokemon_species_id", "local_language_id", "name", "genus"));
-        headers.put("pokemon_species_flavor_text.csv", List.of("species_id", "version_id", "language_id", "flavor_text"));
-        headers.put("pokemon_species.csv", List.of("id", "identifier", "generation_id", "evolution_chain_id", "evolves_from_species_id", "gender_rate", "capture_rate", "base_happiness", "hatch_counter", "is_baby", "is_legendary", "is_mythical"));
-        headers.put("pokemon.csv", List.of("id", "species_id", "identifier", "is_default", "height", "weight", "base_experience", "order"));
+        headers.put("pokemon_species_flavor_text.csv",
+                List.of("species_id", "version_id", "language_id", "flavor_text"));
+        headers.put("pokemon_species.csv",
+                List.of("id", "identifier", "generation_id", "evolution_chain_id", "evolves_from_species_id",
+                        "gender_rate", "capture_rate", "base_happiness", "hatch_counter", "is_baby", "is_legendary",
+                        "is_mythical"));
+        headers.put("pokemon.csv", List.of("id", "species_id", "identifier", "is_default", "height", "weight",
+                "base_experience", "order"));
         headers.put("pokemon_types.csv", List.of("pokemon_id", "type_id", "slot"));
         headers.put("pokemon_abilities.csv", List.of("pokemon_id", "ability_id", "is_hidden", "slot"));
         headers.put("pokemon_stats.csv", List.of("pokemon_id", "stat_id", "base_stat", "effort"));
         headers.put("pokemon_egg_groups.csv", List.of("species_id", "egg_group_id"));
-        headers.put("pokemon_moves.csv", List.of("pokemon_id", "move_id", "pokemon_move_method_id", "level", "version_group_id"));
-        headers.put("pokemon_evolution.csv", List.of("evolved_species_id", "evolution_trigger_id", "minimum_level", "minimum_happiness", "minimum_affection", "time_of_day", "held_item_id", "trigger_item_id", "known_move_id", "known_move_type_id", "location_id", "party_species_id", "party_type_id", "trade_species_id", "needs_overworld_rain", "turn_upside_down", "relative_physical_stats", "gender_id"));
+        headers.put("pokemon_moves.csv",
+                List.of("pokemon_id", "move_id", "pokemon_move_method_id", "level", "version_group_id"));
+        headers.put("pokemon_evolution.csv",
+                List.of("evolved_species_id", "evolution_trigger_id", "minimum_level", "minimum_happiness",
+                        "minimum_affection", "time_of_day", "held_item_id", "trigger_item_id", "known_move_id",
+                        "known_move_type_id", "location_id", "party_species_id", "party_type_id", "trade_species_id",
+                        "needs_overworld_rain", "turn_upside_down", "relative_physical_stats", "gender_id"));
         return Map.copyOf(headers);
     }
 
