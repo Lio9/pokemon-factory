@@ -254,16 +254,10 @@ python scripts/init_db.py
 python scripts/start-backend.py
 ```
 
-- Windows 下也可以继续使用 PowerShell 包装脚本：
-
-```powershell
-./scripts/start-backend.ps1
-```
-
 - 或手动启动 common JAR：
 
 ```bash
-java -jar pokemon-factory-backend/common/target/common-0.0.1-SNAPSHOT-exec.jar
+python scripts/start-backend.py
 ```
 
 common 启动完成后，会统一从 `REMOTE_CSV_BASE_URL`（默认指向 PokeAPI CSV 源）按需下载 CSV 到本地缓存目录后再导入，并在导入过程中校验关键文件表头与核心数据完整性。旧的本地 `csv/` 目录配置已废弃，即使保留也只会被忽略并打印警告。当前也可以手动运行校验脚本：
@@ -329,7 +323,6 @@ npm run dev
 - scripts/init_db.py：一键删库、启动 common、等待 Java 初始化链建表并导入 CSV、最后校验
 - scripts/start-backend.py：跨平台直接启动 common 的 exec jar，手动观察初始化日志
 - scripts/verify_sqlite.py：校验 SQLite 关键表和核心数据量
-- scripts/start-backend.ps1：Windows 包装脚本，内部转调 scripts/start-backend.py
 
 ### 使用方法
 
