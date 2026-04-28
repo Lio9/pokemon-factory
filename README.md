@@ -14,7 +14,7 @@ Pokemon Factory is a Spring Boot + Vue 3 + SQLite project focused on three core 
 
 - Backend battle logic has already been expanded beyond a simple prototype and now includes a growing set of competitive battle mechanics such as status interactions, side conditions, special system exclusivity, and factory progression.
 - Frontend now includes a **lightweight locale layer** with Chinese / English switching for the app shell and core pages such as **Battle Factory**, **Login**, **Damage Calculator**, and **Import Manager**.
-- The battle system is still **not yet Pokemon Showdown-level complete**, but it is already much closer to a deliverable vertical slice than the original AI-generated prototype.
+- The battle system is actively being aligned with **Pokemon Showdown Gen9 Doubles**. Core battle chain (turn order, damage calculation, basic status gates) is **100% consistent** with Showdown baseline. Extended mechanics coverage is at **89.5%** with detailed gap analysis documented.
 
 ### Repository structure
 
@@ -26,6 +26,13 @@ Pokemon Factory is a Spring Boot + Vue 3 + SQLite project focused on three core 
 | `battleFactory` | Battle factory business logic, protected APIs, battle engine |
 | `pokemon-factory-frontend` | Vue 3 frontend |
 | `scripts` | Database init, CSV import, validation helpers |
+| `docs` | Technical documentation and optimization roadmaps |
+
+### Documentation
+
+- [Battle System Optimization Roadmap](./docs/battle_system_optimization_roadmap.md) - A/B/C phase planning
+- [Battle Optimization Progress](./docs/battle_optimization_progress.md) - Current progress tracking
+- [Showdown Gap Analysis](./docs/battle_showdown_gap_analysis.md) - Detailed behavior differences and fix plans
 
 ### Quick start
 
@@ -62,7 +69,8 @@ npm run dev
 
 - Frontend: `npm run lint && npm run build`
 - Backend: `mvn -q -pl common,user-module,pokeDex,battleFactory test`
-- Focused battle regression: `mvn --% -q -pl battleFactory -am -Dtest=BattleEngineSwitchingTest -Dsurefire.failIfNoSpecifiedTests=false test`
+- **Core battle regression**: `mvn --% -q -pl battleFactory -am -Dtest=BattleEngineRegressionBaselineTest test` (15/15 passing, 100% consistent)
+- **Extended battle tests**: `mvn --% -q -pl battleFactory -am -Dtest=BattleEngineSwitchingTest test` (196/219 passing, 89.5% coverage)
 
 ### Internationalization note
 
@@ -109,6 +117,8 @@ Pokemon Factory 当前由以下几部分组成：
 - 支持注册、登录、当前用户信息查询
 - 前端支持会话恢复、登录回跳和退出登录
 - 对战工厂复用统一 JWT 鉴权链路
+- **对战系统对齐 Pokemon Showdown Gen9 Doubles**：核心链路 100% 一致，扩展机制覆盖 89.5%
+- 详细差距分析见 [battle_showdown_gap_analysis.md](./docs/battle_showdown_gap_analysis.md)
 
 ### 🧱 统一基础设施
 
@@ -121,6 +131,30 @@ Pokemon Factory 当前由以下几部分组成：
 - 响应式设计，支持多设备访问
 - 实时数据展示和搜索
 - 交互式宝可梦详情查看
+
+### ⚔️ 对战系统状态
+
+**当前对齐程度**：
+- ✅ **核心回归基线**：15/15 (100%) - 回合顺序、伤害计算、基础状态门控完全对齐
+- ⚠️ **扩展功能测试**：196/219 (89.5%) - 存在 11 个已知 P1 级偏差
+- ✅ **P0 级错误**：0 - 无阻断性问题
+
+**主要差距类别**：
+- 特性联动（36%）：Intimidate+Defiant, Lightning Rod, Storm Drain 等
+- 状态门控（18%）：Heal Block, Taunt+Choice Lock 等
+- 伤害计算（18%）：吸收特性免疫逻辑
+- 招式元数据（9%）：强制暴击招式
+- 道具交互（9%）：White Herb 时序
+
+**优化路线图**：
+- **阶段 A**（已完成）：核心对战链路对齐
+- **阶段 B**（进行中）：扩展机制覆盖（特性/道具/场地/回合结束链路）
+- **阶段 C**（规划中）：融合收敛与发布门禁
+
+详见：
+- [对战系统优化路线图](./docs/battle_system_optimization_roadmap.md)
+- [对战系统优化进度](./docs/battle_optimization_progress.md)
+- [Showdown 差距分析](./docs/battle_showdown_gap_analysis.md)
 
 ## 技术栈
 
@@ -423,7 +457,7 @@ tail -f logs/pokemon-factory.log
 ## 致谢
 
 - [PokeAPI](https://pokeapi.co/)：宝可梦数据来源
-- [Pokemon Showdown](https://github.com/smogon/pokemon-showdown)：battle 规则完善过程中参考了其开源实现思路与机制研究沉淀，感谢 Smogon 社区的长期贡献
+- [Pokemon Showdown](https://github.com/smogon/pokemon-showdown)：battle 规则完善过程中参考了其开源实现思路与机制研究沉淀，感谢 Smogon 社区的长期贡献。本项目正在积极对齐 Showdown Gen9 Doubles 的行为，详细差距分析见 [docs/battle_showdown_gap_analysis.md](./docs/battle_showdown_gap_analysis.md)
 
 ## 联系方式
 
