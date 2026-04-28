@@ -1,5 +1,16 @@
 package com.lio9.user.security;
 
+
+
+/**
+ * UserModuleJwtAuthenticationFilter 文件说明
+ * 所属模块：user-module 后端模块。
+ * 文件类型：后端安全配置文件。
+ * 核心职责：负责认证鉴权、过滤链或安全边界相关逻辑。
+ * 阅读建议：建议重点关注请求进入系统前的校验链路。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.lio9.user.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

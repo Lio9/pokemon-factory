@@ -1,3 +1,12 @@
+<!--
+  EmailVerification 文件说明
+  所属模块：前端应用。
+  文件类型：页面视图文件。
+  核心职责：负责页面级状态编排、接口调用结果承接以及子组件协同展示。
+  阅读建议：建议优先关注页面状态来源、事件分发与子组件依赖关系。
+  项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+-->
+
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-50 px-4 py-8">
     <div class="w-full max-w-md">

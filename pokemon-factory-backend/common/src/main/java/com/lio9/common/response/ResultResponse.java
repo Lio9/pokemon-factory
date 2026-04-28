@@ -1,5 +1,16 @@
 package com.lio9.common.response;
 
+
+
+/**
+ * ResultResponse 文件说明
+ * 所属模块：common 公共模块。
+ * 文件类型：公共响应封装文件。
+ * 核心职责：负责统一接口返回结构、响应码或导入结果表达方式。
+ * 阅读建议：建议结合控制器层返回格式一起阅读。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import java.util.HashMap;
 import java.util.Map;
 

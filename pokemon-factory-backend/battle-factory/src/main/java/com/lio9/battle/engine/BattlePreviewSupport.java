@@ -1,5 +1,14 @@
 package com.lio9.battle.engine;
 
+/**
+ * BattlePreviewSupport 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 BattlePreviewSupport 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
@@ -13,6 +22,13 @@ import java.util.Random;
 import java.util.Set;
 
 final class BattlePreviewSupport {
+    /**
+     * 队伍预览与初始战斗数据标准化支持类。
+     * <p>
+     * 其职责不是推进回合，而是把前端/数据库给出的原始宝可梦数据整理成战斗引擎可直接消费的统一结构。
+     * 本轮额外负责在建队阶段预种 control volatiles，保证新旧状态字段在开局时就保持一致。
+     * </p>
+     */
     private final ObjectMapper mapper;
     private final BattleStateSupport stateSupport;
     private final int battleTeamSize;
@@ -44,7 +60,10 @@ final class BattlePreviewSupport {
 
         List<Integer> leads = new ArrayList<>();
         List<Integer> bySpeed = new ArrayList<>(picked);
-        bySpeed.sort(Comparator.comparingInt((Integer index) -> toInt(stateSupport.castMap(roster.get(index).get("stats")).get("speed"), 0)).reversed());
+        bySpeed.sort(Comparator
+                .comparingInt(
+                        (Integer index) -> toInt(stateSupport.castMap(roster.get(index).get("stats")).get("speed"), 0))
+                .reversed());
         for (int index = 0; index < Math.min(activeSlots, bySpeed.size()); index++) {
             leads.add(bySpeed.get(index));
         }
@@ -64,7 +83,8 @@ final class BattlePreviewSupport {
         return selection;
     }
 
-    Map<String, Object> normalizeSelection(Map<String, Object> rawSelection, List<Map<String, Object>> roster, long seed) {
+    Map<String, Object> normalizeSelection(Map<String, Object> rawSelection, List<Map<String, Object>> roster,
+            long seed) {
         List<Integer> picked = uniqueIndexes(rawSelection == null ? null : rawSelection.get("pickedRosterIndexes"));
         List<Integer> leads = uniqueIndexes(rawSelection == null ? null : rawSelection.get("leadRosterIndexes"));
 
@@ -135,6 +155,9 @@ final class BattlePreviewSupport {
             mon.put("zMoveUsed", false);
             mon.putIfAbsent("itemConsumed", false);
             mon.putIfAbsent("choiceLockedMove", null);
+            mon.put("volatiles", new LinkedHashMap<>());
+            // 新战斗状态统一预创建 volatile 容器，避免后续首次访问时才补齐导致测试快照不稳定。
+            seedControlVolatiles(mon);
             selected.add(mon);
         }
         return selected;
@@ -150,7 +173,6 @@ final class BattlePreviewSupport {
         return slots;
     }
 
-    @SuppressWarnings("unchecked")
     List<Map<String, Object>> parseTeam(String teamJson) {
         if (teamJson == null || teamJson.isBlank()) {
             return new ArrayList<>();
@@ -158,10 +180,14 @@ final class BattlePreviewSupport {
         try {
             Object parsed = mapper.readValue(teamJson, Object.class);
             if (parsed instanceof List) {
-                return (List<Map<String, Object>>) parsed;
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> result = (List<Map<String, Object>>) parsed;
+                return result;
             }
             if (parsed instanceof Map) {
-                return new ArrayList<>(List.of((Map<String, Object>) parsed));
+                @SuppressWarnings("unchecked")
+                Map<String, Object> singlePokemon = (Map<String, Object>) parsed;
+                return new ArrayList<>(List.of(singlePokemon));
             }
         } catch (Exception ignored) {
         }
@@ -191,8 +217,7 @@ final class BattlePreviewSupport {
                 "defense", 0,
                 "specialAttack", 0,
                 "specialDefense", 0,
-                "speed", 0
-        )));
+                "speed", 0)));
         normalized.putIfAbsent("condition", null);
         normalized.putIfAbsent("entryRound", 1);
         normalized.putIfAbsent("flinched", false);
@@ -225,7 +250,23 @@ final class BattlePreviewSupport {
         normalized.put("specialSystems", inferSpecialSystems(normalized));
         normalized.putIfAbsent("itemConsumed", false);
         normalized.putIfAbsent("choiceLockedMove", null);
+        normalized.putIfAbsent("volatiles", new LinkedHashMap<>());
+        // 对历史数据/测试数据做兼容：即使原对象只带旧字段，也在标准化阶段补出对应 volatile。
+        seedControlVolatiles(normalized);
         return normalized;
+    }
+
+    private void seedControlVolatiles(Map<String, Object> mon) {
+        Map<String, Object> volatiles = stateSupport.castMap(mon.get("volatiles"));
+        // 控制类状态统一放入 volatile，旧字段继续保留用于兼容。
+        // putIfAbsent 的意义是：如果上游已经显式传入了新的 volatile 值，就不再被旧字段覆盖。
+        volatiles.putIfAbsent("tauntTurns", toInt(mon.get("tauntTurns"), 0));
+        volatiles.putIfAbsent("healBlockTurns", toInt(mon.get("healBlockTurns"), 0));
+        volatiles.putIfAbsent("tormentTurns", toInt(mon.get("tormentTurns"), 0));
+        volatiles.putIfAbsent("disableTurns", toInt(mon.get("disableTurns"), 0));
+        volatiles.putIfAbsent("disableMove", mon.get("disableMove"));
+        volatiles.putIfAbsent("encoreTurns", toInt(mon.get("encoreTurns"), 0));
+        volatiles.putIfAbsent("encoreMove", mon.get("encoreMove"));
     }
 
     List<Map<String, Object>> normalizeMoves(List<Map<String, Object>> moves) {
@@ -251,7 +292,8 @@ final class BattlePreviewSupport {
             copied.put("category_name_en", copied.getOrDefault("category_name_en", ""));
             copied.put("effect_short", copied.getOrDefault("effect_short", ""));
             copied.put("flags", normalizeFlags(copied.get("flags")));
-            copied.put("metaStatChanges", normalizeStatChanges(copied.get("metaStatChanges"), copied.get("stat_changes")));
+            copied.put("metaStatChanges",
+                    normalizeStatChanges(copied.get("metaStatChanges"), copied.get("stat_changes")));
             normalized.add(copied);
         }
         return normalized;
@@ -288,8 +330,7 @@ final class BattlePreviewSupport {
         for (Map<String, Object> statChange : stateSupport.castList(rawList)) {
             normalized.add(Map.of(
                     "stat_id", toInt(statChange.get("stat_id"), 0),
-                    "change", toInt(statChange.get("change"), 0)
-            ));
+                    "change", toInt(statChange.get("change"), 0)));
         }
         if (!normalized.isEmpty()) {
             return normalized;
@@ -308,8 +349,7 @@ final class BattlePreviewSupport {
             }
             normalized.add(Map.of(
                     "stat_id", toInt(pair[0], 0),
-                    "change", toInt(pair[1], 0)
-            ));
+                    "change", toInt(pair[1], 0)));
         }
         return normalized;
     }
@@ -398,7 +438,8 @@ final class BattlePreviewSupport {
         if (Boolean.TRUE.equals(pokemon.get("megaEligible"))) {
             return true;
         }
-        return pokemon.containsKey("megaStats") || pokemon.containsKey("megaAbility") || pokemon.containsKey("megaTypes");
+        return pokemon.containsKey("megaStats") || pokemon.containsKey("megaAbility")
+                || pokemon.containsKey("megaTypes");
     }
 
     private boolean inferZMoveEligibility(Map<String, Object> pokemon) {
@@ -410,6 +451,7 @@ final class BattlePreviewSupport {
     }
 
     private boolean inferDynamaxEligibility(Map<String, Object> pokemon) {
-        return Boolean.TRUE.equals(pokemon.get("dynamaxEligible")) || Boolean.TRUE.equals(pokemon.get("gigantamaxEligible"));
+        return Boolean.TRUE.equals(pokemon.get("dynamaxEligible"))
+                || Boolean.TRUE.equals(pokemon.get("gigantamaxEligible"));
     }
 }

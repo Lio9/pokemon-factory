@@ -1,5 +1,18 @@
 package com.lio9.battle.engine;
 
+
+
+/**
+ * BattleRoundSupport 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 BattleRoundSupport 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
+import com.lio9.pokedex.util.DamageCalculatorUtil;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -7,6 +20,13 @@ import java.util.Map;
 import java.util.Random;
 
 final class BattleRoundSupport {
+    /**
+     * 单回合动作执行器。
+     * <p>
+     * 该类负责把已经排好序的 Action 真正落地到战斗状态中，包括：
+     * 行动前阻断（畏缩/睡眠/混乱等）、保护类判定、命中判定、伤害结算、追加效果与回合日志记录。
+     * </p>
+     */
     private final BattleEngine engine;
     private final BattleConditionSupport conditionSupport;
     private final BattleTargetSupport targetSupport;
@@ -32,6 +52,7 @@ final class BattleRoundSupport {
         }
 
         Map<String, Object> actor = actingTeam.get(action.actorIndex());
+        // 所有“行动前就会阻断本次出手”的状态都在这里集中处理，避免分散到各个伤害/状态模块里。
         if (engine.toInt(actor.get("rechargeTurns"), 0) > 0) {
             Map<String, Object> rechargeLog = new LinkedHashMap<>();
             rechargeLog.put("side", action.side());
@@ -44,7 +65,7 @@ final class BattleRoundSupport {
             return;
         }
         Map<String, Object> forcedChargeMove = chargingMove(actor);
-        if (Boolean.TRUE.equals(actor.get("flinched"))) {
+        if (engine.volatileFlag(actor, "flinch")) {
             Map<String, Object> flinchLog = new LinkedHashMap<>();
             flinchLog.put("side", action.side());
             flinchLog.put("actor", actor.get("name"));
@@ -52,7 +73,7 @@ final class BattleRoundSupport {
             flinchLog.put("result", "flinch");
             actionLogs.add(flinchLog);
             events.add(actor.get("name") + " 畏缩了，无法行动");
-            actor.put("flinched", false);
+            engine.setVolatile(actor, "flinch", false);
             return;
         }
         if (conditionSupport.handleFrozenBeforeAction(actor, action.side(), actionLogs, events, random)) {
@@ -91,6 +112,11 @@ final class BattleRoundSupport {
         Map<String, Object> actionLog = new LinkedHashMap<>();
         actionLog.put("side", action.side());
         actionLog.put("actor", actor.get("name"));
+        if (action.orderSource() != null && !action.orderSource().isBlank()) {
+            // 把顺序来源写入日志，便于固定 seed 回归时直接观察先后手原因。
+            actionLog.put("orderSource", action.orderSource());
+            events.add(actor.get("name") + orderSourceMessage(action.orderSource()));
+        }
 
         if (forcedChargeMove == null && action.isSwitch()) {
             handleSwitch(state, action, actingTeam, actor, playerSide, actionLogs, events, actionLog);
@@ -123,6 +149,16 @@ final class BattleRoundSupport {
             actor.put("lastProtectionRound", 0);
             return;
         }
+        Object disabledMove = engine.disableMove(actor);
+        if (engine.disableTurns(actor) > 0 && disabledMove != null
+                && String.valueOf(disabledMove).equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+            actionLog.put("result", "disabled");
+            actionLogs.add(actionLog);
+            events.add(actor.get("name") + " 的 " + move.get("name") + " 被定身法封住了，无法使用");
+            actor.put("protectionStreak", 0);
+            actor.put("lastProtectionRound", 0);
+            return;
+        }
         if (!MoveRegistry.isProtectionMove(move)) {
             actor.put("protectionStreak", 0);
             actor.put("lastProtectionRound", 0);
@@ -150,6 +186,21 @@ final class BattleRoundSupport {
         boolean selfStatChangeTriggered = false;
         boolean suckerPunchAttempted = false;
         boolean liveTargetFound = false;
+        int spreadTargetCount = 0;
+        if (engine.isSpreadMove(move)) {
+            for (BattleEngine.TargetRef targetRef : targets) {
+                List<Map<String, Object>> targetSideTeam = engine.team(state, targetRef.playerSide());
+                if (engine.isAvailableMon(targetSideTeam, targetRef.teamIndex())) {
+                    spreadTargetCount += 1;
+                }
+            }
+        }
+        Map<String, Object> moveForDamage = move;
+        if (engine.isSpreadMove(move)) {
+            // 群攻招式是否吃 0.75 修正，应基于“实际命中的存活目标数”，而不是仅凭 target_id 推断。
+            moveForDamage = new LinkedHashMap<>(move);
+            moveForDamage.put("spreadTargetCount", spreadTargetCount);
+        }
         for (BattleEngine.TargetRef targetRef : targets) {
             List<Map<String, Object>> targetSideTeam = engine.team(state, targetRef.playerSide());
             if (!engine.isAvailableMon(targetSideTeam, targetRef.teamIndex())) {
@@ -213,7 +264,7 @@ final class BattleRoundSupport {
             }
 
             // Calculate accuracy with stages (Pokemon Showdown standard)
-            int accuracy = calculateAccuracyWithStages(actor, target, move);
+            int accuracy = calculateAccuracyWithStages(state, actor, target, move);
             if (random.nextInt(100) + 1 > accuracy) {
                 targetLog.put("result", "miss");
                 targetLog.put("damage", 0);
@@ -255,25 +306,22 @@ final class BattleRoundSupport {
             int criticalHits = 0;
             int remainingHp = engine.toInt(target.get("currentHp"), 0);
             List<Integer> hitDamages = new ArrayList<>();
-            Map<String, Object> baseDamageMove = move;
+            Map<String, Object> baseDamageMove = moveForDamage;
             if (engine.isKnockOff(move) && conditionSupport.knockOffGetsBoost(target)) {
-                baseDamageMove = new LinkedHashMap<>(move);
+                baseDamageMove = new LinkedHashMap<>(moveForDamage);
                 baseDamageMove.put("power", (int) Math.floor(engine.toInt(move.get("power"), 1) * 1.5d));
                 targetLog.put("knockOffBoosted", true);
             }
             for (int hitIndex = 0; hitIndex < hitCount && remainingHp > 0; hitIndex++) {
                 int hpBeforeDamage = engine.toInt(target.get("currentHp"), 0);
+                // 暴击在执行层预先解析，再传给伤害层消费，避免重复判定导致日志与数值不一致。
                 boolean criticalHit = resolveCriticalHit(actor, move, random);
-                Map<String, Object> resolvedMove = baseDamageMove;
+                Map<String, Object> resolvedMove = new LinkedHashMap<>(baseDamageMove);
+                resolvedMove.put("criticalHit", criticalHit);
                 if (criticalHit) {
-                    resolvedMove = new LinkedHashMap<>(baseDamageMove);
-                    resolvedMove.put("criticalHit", true);
                     criticalHits += 1;
                 }
                 int damage = engine.calculateDamage(actor, target, resolvedMove, random, helpingHandBoosts, state);
-                if (targets.size() > 1 && engine.isSpreadMove(move)) {
-                    damage = Math.max(1, (int) Math.floor(damage * 0.75d));
-                }
                 remainingHp = engine.applyIncomingDamage(actor, target, damage, targetLog, events);
                 int actualDamage = engine.toInt(targetLog.get("damage"), damage);
                 target.put("currentHp", remainingHp);
@@ -320,7 +368,7 @@ final class BattleRoundSupport {
                     targetLog.put("ability", engine.abilityName(target));
                     events.add(target.get("name") + " 的特性让其不会畏缩");
                 } else if (!conditionSupport.blocksSecondaryEffects(target, "flinch", targetLog, events)) {
-                    target.put("flinched", true);
+                    engine.setVolatile(target, "flinch", true);
                     targetLog.put("flinch", true);
                     events.add(target.get("name") + " 畏缩了");
                 }
@@ -488,17 +536,7 @@ final class BattleRoundSupport {
     }
 
     private boolean resolveCriticalHit(Map<String, Object> actor, Map<String, Object> move, Random random) {
-        int critStage = Math.max(0, engine.toInt(move.get("crit_rate"), 0));
-        String ability = engine.abilityName(actor);
-        if ("super-luck".equalsIgnoreCase(ability) || "super luck".equalsIgnoreCase(ability)) {
-            critStage += 1;
-        }
-        String heldItem = engine.heldItem(actor);
-        if ("scope-lens".equalsIgnoreCase(heldItem) || "scope lens".equalsIgnoreCase(heldItem)
-                || "razor-claw".equalsIgnoreCase(heldItem) || "razor claw".equalsIgnoreCase(heldItem)) {
-            critStage += 1;
-        }
-        return critStage >= 3;
+        return engine.rollCriticalHit(actor, move, random);
     }
 
     private boolean matches(String value, String... names) {
@@ -524,7 +562,7 @@ final class BattleRoundSupport {
         actor.put("choiceLockedMove", null);
         conditionSupport.resetBattleStages(actor);
         switchedIn.put("entryRound", engine.toInt(state.get("currentRound"), 0) + 1);
-        switchedIn.put("flinched", false);
+        engine.setVolatile(switchedIn, "flinch", false);
         engine.replaceActiveSlot(state, playerSide, action.actorFieldSlot(), action.switchToTeamIndex());
         actionLogs.add(actionLog);
         events.add(engine.sideName(action.side()) + " 收回了 " + actor.get("name") + "，派出了 " + switchedIn.get("name"));
@@ -967,7 +1005,7 @@ final class BattleRoundSupport {
         actor.put("choiceLockedMove", null);
         conditionSupport.resetBattleStages(actor);
         switchedIn.put("entryRound", engine.toInt(state.get("currentRound"), 0) + 1);
-        switchedIn.put("flinched", false);
+        engine.setVolatile(switchedIn, "flinch", false);
         engine.replaceActiveSlot(state, playerSide, action.actorFieldSlot(), switchToIndex);
         Map<String, Object> switchLog = new LinkedHashMap<>();
         switchLog.put("side", action.side());
@@ -986,12 +1024,20 @@ final class BattleRoundSupport {
     }
     
     /**
-     * Calculate accuracy with accuracy and evasion stages (Pokemon Showdown standard)
-     * Formula: base_accuracy * accuracy_stage_multiplier / evasion_stage_multiplier
+     * 按照接近 Pokemon Showdown 的顺序计算最终命中率。
+     * <p>
+     * 计算链路为：基础命中 → 命中/闪避阶段 → 特性修正 → 道具修正 → 天气特判。
+     * 这里返回的是 1~100 的最终百分比整数，供上层直接做随机判定。
+     * </p>
      */
-    int calculateAccuracyWithStages(Map<String, Object> attacker, Map<String, Object> defender, Map<String, Object> move) {
-        // Moves that never miss
+    int calculateAccuracyWithStages(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> defender, Map<String, Object> move) {
+        // 永不中技能、No Guard 这类规则优先短路，避免再参与后续阶段修正。
         String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
+        String attackerAbility = engine.abilityName(attacker);
+        String defenderAbility = engine.abilityName(defender);
+        if (matches(attackerAbility, "no-guard", "no guard") || matches(defenderAbility, "no-guard", "no guard")) {
+            return 100;
+        }
         if (nameEn.contains("aerial ace") || nameEn.contains("swift") || 
             nameEn.contains("shock wave") || nameEn.contains("magnet bomb") ||
             nameEn.contains("aura sphere") || nameEn.contains("fissure") ||
@@ -1000,18 +1046,18 @@ final class BattleRoundSupport {
             return 100;
         }
         
-        // Get base accuracy
+        // 读取招式基础命中率；accuracy=0 在这套数据里视为“必定命中”。
         int baseAccuracy = engine.toInt(move.get("accuracy"), 0);
         if (baseAccuracy == 0) {
             // Accuracy 0 means it never misses (like Swift)
             return 100;
         }
         
-        // Get accuracy and evasion stages
+        // 读取命中/闪避阶段。当前实现仍从 statStages 取值，但输出会统一折算为 PS 风格倍率。
         int accuracyStage = getStatStage(attacker, "accuracy");
         int evasionStage = getStatStage(defender, "evasion");
         
-        // Clamp stages to [-6, +6]
+        // 阶段必须被限制在 [-6, +6]，否则脏数据会把倍率放大到不合理区间。
         accuracyStage = Math.max(-6, Math.min(6, accuracyStage));
         evasionStage = Math.max(-6, Math.min(6, evasionStage));
         
@@ -1022,9 +1068,84 @@ final class BattleRoundSupport {
         
         // Final accuracy = base * accuracy_mult / evasion_mult
         double finalAccuracy = baseAccuracy * accuracyMultiplier / evasionMultiplier;
+        // 按 PS 风格在阶段修正后继续叠加特性、道具、天气等额外命中修正。
+        finalAccuracy = applyAbilityAccuracyModifier(attacker, defender, move, finalAccuracy);
+        finalAccuracy = applyItemAccuracyModifier(attacker, defender, finalAccuracy);
+        finalAccuracy = applyWeatherAccuracyRule(state, move, finalAccuracy);
         
         // Clamp to 1-100 range
         return Math.max(1, Math.min(100, (int) Math.floor(finalAccuracy)));
+    }
+
+    private double applyAbilityAccuracyModifier(Map<String, Object> attacker, Map<String, Object> defender,
+                                                Map<String, Object> move, double currentAccuracy) {
+        String attackerAbility = engine.abilityName(attacker);
+        String defenderAbility = engine.abilityName(defender);
+        if (matches(attackerAbility, "compound-eyes", "compound eyes")) {
+            currentAccuracy *= 1.3d;
+        }
+        if (matches(attackerAbility, "hustle")
+                && engine.toInt(move.get("damage_class_id"), 0) == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
+            currentAccuracy *= 0.8d;
+        }
+        if (matches(defenderAbility, "tangled-feet", "tangled feet")
+                && engine.volatileFlag(defender, "confused")) {
+            currentAccuracy *= 0.5d;
+        }
+        return currentAccuracy;
+    }
+
+    private double applyItemAccuracyModifier(Map<String, Object> attacker, Map<String, Object> defender,
+                                             double currentAccuracy) {
+        String attackerItem = engine.heldItem(attacker);
+        if (matches(attackerItem, "wide-lens", "wide lens")) {
+            currentAccuracy *= 1.1d;
+        }
+        String defenderItem = engine.heldItem(defender);
+        if (matches(defenderItem, "bright-powder", "bright powder")) {
+            currentAccuracy *= 0.9d;
+        }
+        return currentAccuracy;
+    }
+
+    private double applyWeatherAccuracyRule(Map<String, Object> state, Map<String, Object> move, double currentAccuracy) {
+        int rainTurns = engine.toInt(engine.castMap(state.get("fieldEffects")).get("rainTurns"), 0);
+        int sunTurns = engine.toInt(engine.castMap(state.get("fieldEffects")).get("sunTurns"), 0);
+        int snowTurns = engine.toInt(engine.castMap(state.get("fieldEffects")).get("snowTurns"), 0);
+        if (MoveRegistry.isThunder(move) || MoveRegistry.isHurricane(move)) {
+            if (rainTurns > 0) {
+                return 100;
+            }
+            if (sunTurns > 0) {
+                return 50;
+            }
+        }
+        if (MoveRegistry.isBlizzard(move) && snowTurns > 0) {
+            return 100;
+        }
+        return currentAccuracy;
+    }
+
+    private String orderSourceMessage(String orderSource) {
+        if ("quick-claw".equals(orderSource)) {
+            return " 的先制之爪发动了";
+        }
+        if ("custap-berry".equals(orderSource)) {
+            return " 的释陀果发动了";
+        }
+        if ("quick-draw".equals(orderSource)) {
+            return " 的速击特性发动了";
+        }
+        if ("stall".equals(orderSource)) {
+            return " 因特性慢出而延后行动";
+        }
+        if ("lagging-tail".equals(orderSource)) {
+            return " 因后攻之尾而延后行动";
+        }
+        if ("full-incense".equals(orderSource)) {
+            return " 因满腹熏香而延后行动";
+        }
+        return " 获得了行动顺序加成";
     }
     
     /**

@@ -1,5 +1,16 @@
 package com.lio9.battle.config;
 
+
+
+/**
+ * BattleConfig 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：后端配置文件。
+ * 核心职责：负责模块启动时的 Bean、序列化、数据源或异常处理配置。
+ * 阅读建议：建议优先关注对运行期行为有全局影响的配置项。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -60,6 +71,11 @@ public class BattleConfig {
      * 对手池匹配配置
      */
     private MatchmakingConfig matchmaking = new MatchmakingConfig();
+
+    /**
+     * 段位限制配置
+     */
+    private TierRestrictionConfig tierRestrictions = new TierRestrictionConfig();
 
     // Getters and Setters
 
@@ -141,6 +157,14 @@ public class BattleConfig {
 
     public void setMatchmaking(MatchmakingConfig matchmaking) {
         this.matchmaking = matchmaking;
+    }
+
+    public TierRestrictionConfig getTierRestrictions() {
+        return tierRestrictions;
+    }
+
+    public void setTierRestrictions(TierRestrictionConfig tierRestrictions) {
+        this.tierRestrictions = tierRestrictions;
     }
 
     /**
@@ -336,6 +360,50 @@ public class BattleConfig {
 
         public void setAiOpponentRankBonus(int aiOpponentRankBonus) {
             this.aiOpponentRankBonus = aiOpponentRankBonus;
+        }
+    }
+
+    /**
+     * 段位限制配置
+     */
+    public static class TierRestrictionConfig {
+        /**
+         * 最低允许段位
+         */
+        private int minTier = 0;
+
+        /**
+         * 最高允许段位
+         */
+        private int maxTier = 4;
+
+        /**
+         * 是否启用严格分流
+         */
+        private boolean strictMode = true;
+
+        public int getMinTier() {
+            return minTier;
+        }
+
+        public void setMinTier(int minTier) {
+            this.minTier = minTier;
+        }
+
+        public int getMaxTier() {
+            return maxTier;
+        }
+
+        public void setMaxTier(int maxTier) {
+            this.maxTier = maxTier;
+        }
+
+        public boolean isStrictMode() {
+            return strictMode;
+        }
+
+        public void setStrictMode(boolean strictMode) {
+            this.strictMode = strictMode;
         }
     }
 }

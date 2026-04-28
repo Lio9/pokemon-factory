@@ -1,3 +1,12 @@
+/*
+ * battleContract 文件说明
+ * 所属模块：前端应用。
+ * 文件类型：前端接口契约文件。
+ * 核心职责：负责约束接口数据结构、字段命名和适配规则。
+ * 阅读建议：建议重点关注字段标准化与容错处理逻辑。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import { translate } from '../../composables/useLocale'
 
 const TIER_NAMES_ZH = ['精灵球', '超级球', '高级球', '大师球']
@@ -8,6 +17,11 @@ export function getTierName(tier, fallbackName = '') {
   return translate(fallbackName || fallbackByTier, fallbackByTier)
 }
 
+/**
+ * 归一化工厂挑战对象，兼容 snake_case / camelCase 两种后端返回。
+ * @param {any} raw 原始 run 数据
+ * @returns {{id: number|null, current_battle: number, max_battles: number, current_battle_id: number|null, wins: number, losses: number, status: any, team_json: any}|null}
+ */
 export function normalizeFactoryRun(raw) {
   if (!raw) {
     return null
@@ -56,6 +70,11 @@ export function moveTargetText(move) {
   }
 }
 
+/**
+ * 从 battle 接口返回中提取统一 summary 与 battleId。
+ * @param {any} payload battle 相关响应
+ * @returns {{summary: any, battleId: number|null}}
+ */
 export function normalizeBattlePayload(payload) {
   const nextSummary = payload?.summary || payload?.battle?.summary || null
   let summary = nextSummary
@@ -75,6 +94,12 @@ export function normalizeBattlePayload(payload) {
   }
 }
 
+/**
+ * 组装结算弹窗所需字段。
+ * @param {any} summary battle summary
+ * @param {any} payload 原始响应（可能包含额外 factoryMeta）
+ * @returns {null|{won: boolean, pointsDelta: any, tierChange: string|null, newTierName: string|null, factoryRound: any, runFinished: boolean, runWins: any, runLosses: any, runReward: any}}
+ */
 export function buildBattleSettlement(summary, payload) {
   if (summary?.status !== 'completed') {
     return null
@@ -107,6 +132,11 @@ export function buildBattleSettlement(summary, payload) {
   }
 }
 
+/**
+ * 按后端约定组装 playerMoveMap。
+ * @param {Object} options 组装参数
+ * @returns {Record<string, string>}
+ */
 export function buildMoveSubmission({
   playerActiveMons,
   selectedActions,

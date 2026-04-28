@@ -1,3 +1,12 @@
+/*
+ * index 文件说明
+ * 所属模块：前端应用。
+ * 文件类型：前端路由配置文件。
+ * 核心职责：负责页面路由注册、导航入口和访问组织方式。
+ * 阅读建议：建议结合页面文件一起理解路由层级。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import { translate } from '../composables/useLocale'
@@ -96,7 +105,13 @@ const router = createRouter({
 
 const auth = useAuth()
 
-// 全局前置守卫统一处理页面标题、登录恢复和受保护页面跳转。
+/**
+ * 全局前置守卫：
+ * 1) 同步页面标题；
+ * 2) 首次导航时按需恢复会话；
+ * 3) 拦截 requiresAuth 页面并重定向登录；
+ * 4) 已登录访问登录页时回跳业务页。
+ */
 router.beforeEach(async (to) => {
   const pageTitle = typeof to.meta.title === 'object' && to.meta.title
     ? translate(to.meta.title.zh, to.meta.title.en)

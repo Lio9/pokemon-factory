@@ -1,5 +1,14 @@
 package com.lio9.battle.engine;
 
+/**
+ * BattleEngine 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 BattleEngine 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.service.SkillService;
 import com.lio9.pokedex.mapper.TypeEfficacyMapper;
@@ -7,7 +16,6 @@ import com.lio9.pokedex.util.DamageCalculatorUtil;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -28,9 +36,7 @@ public class BattleEngine {
     private static final int BATTLE_TEAM_SIZE = 4;
     private static final int ACTIVE_SLOTS = 2;
 
-    private final ObjectMapper mapper;
     private final SkillService skillService;
-    private final TypeEfficacyMapper typeEfficacyMapper;
     private final BattleStateSupport stateSupport;
     private final BattlePreviewSupport previewSupport;
     private final BattleFieldEffectSupport fieldEffectSupport;
@@ -49,9 +55,7 @@ public class BattleEngine {
 
     public BattleEngine(SkillService skillService, TypeEfficacyMapper typeEfficacyMapper, ObjectMapper mapper) {
         this.skillService = skillService;
-        this.typeEfficacyMapper = typeEfficacyMapper;
-        this.mapper = mapper;
-        this.stateSupport = new BattleStateSupport(mapper);
+        this.stateSupport = new BattleStateSupport();
         this.previewSupport = new BattlePreviewSupport(mapper, stateSupport, BATTLE_TEAM_SIZE, ACTIVE_SLOTS);
         this.fieldEffectSupport = new BattleFieldEffectSupport();
         this.analysisSupport = new BattleAnalysisSupport(this);
@@ -64,15 +68,22 @@ public class BattleEngine {
         this.conditionSupport = new BattleConditionSupport(this, damageSupport, fieldEffectSupport);
         this.flowSupport = new BattleFlowSupport(this, conditionSupport, ACTIVE_SLOTS);
         this.setupSupport = new BattleSetupSupport(previewSupport, stateSupport, fieldEffectSupport, conditionSupport,
-            flowSupport, LEVEL, BATTLE_TEAM_SIZE);
+                flowSupport, LEVEL, BATTLE_TEAM_SIZE);
         this.roundSupport = new BattleRoundSupport(this, conditionSupport, targetSupport);
         this.turnCleanupSupport = new BattleTurnCleanupSupport(this, fieldEffectSupport, conditionSupport);
     }
 
     /**
      * 创建“队伍预览阶段”的初始状态。
+     *
+     * @param playerTeamJson   玩家 6 人队伍 JSON
+     * @param opponentTeamJson 对手 6 人队伍 JSON
+     * @param maxRounds        最大回合上限
+     * @param seed             随机种子（影响后续随机行为）
+     * @return 可直接用于 preview UI 的状态对象
      */
-    public Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
+    public Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds,
+            long seed) {
         return setupSupport.createPreviewState(playerTeamJson, opponentTeamJson, maxRounds, seed);
     }
 
@@ -80,21 +91,38 @@ public class BattleEngine {
      * 直接创建可进入战斗的状态。
      * <p>
      * 该方法会在内部自动完成 6 选 4 和首发选择，主要用于异步自动模拟。
+     * 调用方无需再执行 preview 确认流程。
      * </p>
+     *
+     * @param playerTeamJson   玩家队伍 JSON
+     * @param opponentTeamJson 对手队伍 JSON
+     * @param maxRounds        最大回合上限
+     * @param seed             随机种子
+     * @return 处于 running/battle 阶段的状态对象
      */
-    public Map<String, Object> createBattleState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
+    public Map<String, Object> createBattleState(String playerTeamJson, String opponentTeamJson, int maxRounds,
+            long seed) {
         return setupSupport.createBattleState(playerTeamJson, opponentTeamJson, maxRounds, seed);
     }
 
     /**
      * 应用队伍预览阶段的选择，并把状态切到 running/battle。
      */
-    public Map<String, Object> applyTeamPreviewSelection(Map<String, Object> rawState, Map<String, Object> playerSelectionInput, Map<String, Object> opponentSelectionInput) {
+    public Map<String, Object> applyTeamPreviewSelection(Map<String, Object> rawState,
+            Map<String, Object> playerSelectionInput, Map<String, Object> opponentSelectionInput) {
         return setupSupport.applyTeamPreviewSelection(rawState, playerSelectionInput, opponentSelectionInput);
     }
 
     /**
      * 推进一整个回合。
+     * <p>
+     * 核心流程：预处理 -> 收集动作 -> 顺序修正 -> 执行动作 -> 回合结算 -> 结果刷新。
+     * 该方法返回新状态副本，不直接修改调用方传入的 rawState 引用。
+     * </p>
+     *
+     * @param rawState      旧状态
+     * @param playerMoveMap 玩家动作映射（可为空）
+     * @return 已推进 1 回合后的新状态；若状态不在 running/battle 则原样返回
      */
     public Map<String, Object> playRound(Map<String, Object> rawState, Map<String, String> playerMoveMap) {
         Map<String, Object> state = cloneState(rawState);
@@ -102,6 +130,7 @@ public class BattleEngine {
             return state;
         }
 
+        // 进入新回合前，先处理跨回合残留状态：技能冷却、空槽修剪等。
         decrementCooldowns(team(state, true));
         decrementCooldowns(team(state, false));
         flowSupport.pruneActiveSlots(state);
@@ -117,13 +146,15 @@ public class BattleEngine {
         Map<String, RedirectionEffect> redirectionTargets = new HashMap<>();
         Map<Map<String, Object>, Boolean> helpingHandBoosts = new IdentityHashMap<>();
         List<Action> actions = new ArrayList<>();
+        // 先收集双方本回合声明动作，再统一套用顺序层修正，避免先后手判定分散在多个模块中。
         actions.addAll(buildPlayerActions(state, playerMoveMap));
         actions.addAll(buildOpponentActions(state, random));
+        applyActionOrderEffects(state, actions, random);
         Map<String, Action> plannedActions = new HashMap<>();
         for (Action action : actions) {
             plannedActions.put(actionKey(action.side(), action.actorIndex()), action);
         }
-        sortActions(actions, trickRoomTurns(state) > 0);
+        sortActions(actions, trickRoomTurns(state) > 0, random);
 
         Map<String, Object> roundLog = new LinkedHashMap<>();
         roundLog.put("round", round);
@@ -131,7 +162,8 @@ public class BattleEngine {
         List<Map<String, Object>> actionLogs = new ArrayList<>();
 
         for (Action action : actions) {
-            roundSupport.processAction(state, action, round, random, protectedTargets, wideGuardSides, quickGuardSides, redirectionTargets,
+            roundSupport.processAction(state, action, round, random, protectedTargets, wideGuardSides, quickGuardSides,
+                    redirectionTargets,
                     plannedActions,
                     helpingHandBoosts, actionLogs, events);
         }
@@ -155,13 +187,19 @@ public class BattleEngine {
      * 自动把一场战斗从当前状态推进到结束。
      * <p>
      * 如果中途进入 replacement 阶段，会自动替玩家补位后继续推进。
+     * 该方法用于离线模拟，不适合需要逐回合交互的前端链路。
      * </p>
+     *
+     * @param rawState      当前状态
+     * @param playerMoveMap 玩家动作策略（为空时由决策模块兜底）
+     * @return 终局状态（status=completed）
      */
     public Map<String, Object> autoPlay(Map<String, Object> rawState, Map<String, String> playerMoveMap) {
         Map<String, Object> state = cloneState(rawState);
         while ("running".equals(state.get("status"))) {
             if ("replacement".equals(state.get("phase"))) {
-                state = applyReplacementSelection(state, Map.of("replacementIndexes", flowSupport.autoReplacementIndexes(state, true)));
+                state = applyReplacementSelection(state,
+                        Map.of("replacementIndexes", flowSupport.autoReplacementIndexes(state, true)));
                 continue;
             }
             state = playRound(state, playerMoveMap);
@@ -172,14 +210,22 @@ public class BattleEngine {
     /**
      * 应用玩家补位选择。
      */
-    public Map<String, Object> applyReplacementSelection(Map<String, Object> rawState, Map<String, Object> selectionInput) {
+    public Map<String, Object> applyReplacementSelection(Map<String, Object> rawState,
+            Map<String, Object> selectionInput) {
         return setupSupport.applyReplacementSelection(rawState, selectionInput);
     }
 
     /**
      * 直接执行一场完整自动模拟。
+     *
+     * @param playerTeamJson   玩家队伍 JSON
+     * @param opponentTeamJson 对手队伍 JSON
+     * @param maxRounds        最大回合上限
+     * @param playerMoveMap    玩家动作策略
+     * @return 完整战斗结果
      */
-    public Map<String, Object> simulate(String playerTeamJson, String opponentTeamJson, int maxRounds, Map<String, String> playerMoveMap) {
+    public Map<String, Object> simulate(String playerTeamJson, String opponentTeamJson, int maxRounds,
+            Map<String, String> playerMoveMap) {
         long seed = Math.abs((playerTeamJson + opponentTeamJson).hashCode()) + maxRounds;
         return autoPlay(createBattleState(playerTeamJson, opponentTeamJson, maxRounds, seed), playerMoveMap);
     }
@@ -187,7 +233,8 @@ public class BattleEngine {
     /**
      * 在胜利交换奖励后，用新成员替换玩家原队伍中的一名成员。
      */
-    public Map<String, Object> replacePlayerTeamMember(Map<String, Object> rawState, int replacedIndex, Map<String, Object> newMember) {
+    public Map<String, Object> replacePlayerTeamMember(Map<String, Object> rawState, int replacedIndex,
+            Map<String, Object> newMember) {
         return setupSupport.replacePlayerTeamMember(rawState, replacedIndex, newMember);
     }
 
@@ -199,11 +246,13 @@ public class BattleEngine {
         return actionBuilder.buildOpponentActions(state, random);
     }
 
-    Map<String, Object> selectPlayerMove(Map<String, Object> mon, Map<String, String> playerMoveMap, int fieldSlot, int currentRound) {
+    Map<String, Object> selectPlayerMove(Map<String, Object> mon, Map<String, String> playerMoveMap, int fieldSlot,
+            int currentRound) {
         return decisionSupport.selectPlayerMove(mon, playerMoveMap, fieldSlot, currentRound);
     }
 
-    boolean canSwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int actorFieldSlot, int switchToIndex) {
+    boolean canSwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int actorFieldSlot,
+            int switchToIndex) {
         if (switchToIndex < 0 || switchToIndex >= team.size()) {
             return false;
         }
@@ -225,7 +274,8 @@ public class BattleEngine {
         return -1;
     }
 
-    Map<String, Object> selectAIMove(Map<String, Object> mon, Random random, Map<String, Object> state, boolean playerSide, int currentRound) {
+    Map<String, Object> selectAIMove(Map<String, Object> mon, Random random, Map<String, Object> state,
+            boolean playerSide, int currentRound) {
         return decisionSupport.selectAIMove(mon, random, state, playerSide, currentRound);
     }
 
@@ -233,8 +283,9 @@ public class BattleEngine {
         return decisionSupport.defaultMoveSelection(mon, currentRound);
     }
 
-    int calculateDamage(Map<String, Object> attacker, Map<String, Object> defender, Map<String, Object> move, Random random,
-                        Map<Map<String, Object>, Boolean> helpingHandBoosts, Map<String, Object> state) {
+    int calculateDamage(Map<String, Object> attacker, Map<String, Object> defender, Map<String, Object> move,
+            Random random,
+            Map<Map<String, Object>, Boolean> helpingHandBoosts, Map<String, Object> state) {
         return damageSupport.calculateDamage(attacker, defender, move, random, helpingHandBoosts, state);
     }
 
@@ -257,8 +308,9 @@ public class BattleEngine {
     }
 
     // Delegating to MoveRegistry for move classification
-    
-    // BattleEngine-specific helper: check if healing move (based on healing property)
+
+    // BattleEngine-specific helper: check if healing move (based on healing
+    // property)
     boolean isHealingMove(Map<String, Object> move) {
         return MoveRegistry.isHealingMove(move);
     }
@@ -567,25 +619,26 @@ public class BattleEngine {
 
     boolean canUseMove(Map<String, Object> mon, Map<String, Object> move, int currentRound) {
         String item = heldItem(mon);
-        if (toInt(mon.get("healBlockTurns"), 0) > 0 && isHealingMove(move)) {
+        // 统一通过 volatile 访问器读取控制类状态，确保与旧字段保持同步。
+        if (healBlockTurns(mon) > 0 && isHealingMove(move)) {
             return false;
         }
         Object lastMoveUsed = mon.get("lastMoveUsed");
-        if (toInt(mon.get("tormentTurns"), 0) > 0
+        if (tormentTurns(mon) > 0
                 && lastMoveUsed != null
                 && !String.valueOf(lastMoveUsed).isBlank()
                 && String.valueOf(move.get("name_en")).equalsIgnoreCase(String.valueOf(lastMoveUsed))) {
             return false;
         }
-        Object disabledMove = mon.get("disableMove");
-        if (toInt(mon.get("disableTurns"), 0) > 0
+        Object disabledMove = disableMove(mon);
+        if (disableTurns(mon) > 0
                 && disabledMove != null
                 && !String.valueOf(disabledMove).isBlank()
                 && String.valueOf(move.get("name_en")).equalsIgnoreCase(String.valueOf(disabledMove))) {
             return false;
         }
-        Object encoredMove = mon.get("encoreMove");
-        if (toInt(mon.get("encoreTurns"), 0) > 0
+        Object encoredMove = encoreMove(mon);
+        if (encoreTurns(mon) > 0
                 && encoredMove != null
                 && !String.valueOf(encoredMove).isBlank()
                 && !String.valueOf(move.get("name_en")).equalsIgnoreCase(String.valueOf(encoredMove))) {
@@ -620,40 +673,36 @@ public class BattleEngine {
 
     int effectivePriority(Map<String, Object> mon, Map<String, Object> move) {
         int priority = toInt(move.get("priority"), 0);
-        
+
         // Prankster: Status moves get +1 priority
         if (priority >= 0 && isStatusMove(move) && "prankster".equalsIgnoreCase(abilityName(mon))) {
             priority += 1;
         }
-        
+
         // Gale Wings: Flying-type moves get +1 priority when at full HP (Gen 7+)
-        if ("gale-wings".equalsIgnoreCase(abilityName(mon)) && 
-            toInt(move.get("type_id"), 0) == DamageCalculatorUtil.TYPE_FLYING &&
-            priority >= 0) {
+        if ("gale-wings".equalsIgnoreCase(abilityName(mon)) &&
+                toInt(move.get("type_id"), 0) == DamageCalculatorUtil.TYPE_FLYING &&
+                priority >= 0) {
             int currentHp = toInt(mon.get("currentHp"), 0);
             int maxHp = toInt(castMap(mon.get("stats")).get("hp"), 1);
             if (currentHp >= maxHp) {
                 priority += 1;
             }
         }
-        
+
         // Triage: Healing moves get +3 priority
         if ("triage".equalsIgnoreCase(abilityName(mon)) && isHealingMove(move) && priority >= 0) {
             priority += 3;
         }
-        
+
         // Note: Quick Claw and Custap Berry provide random priority boosts
         // They are handled separately in action building, not here
-        
+
         return priority;
     }
 
     int targetIndex(Map<String, Object> state, boolean playerTarget, int targetFieldSlot) {
         return targetSupport.targetIndex(state, playerTarget, targetFieldSlot);
-    }
-
-    private int targetId(Map<String, Object> move) {
-        return toInt(move.get("target_id"), 10);
     }
 
     String protectionKey(String side, int index) {
@@ -673,17 +722,14 @@ public class BattleEngine {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> cloneState(Map<String, Object> state) {
         return stateSupport.cloneState(state);
     }
 
-    @SuppressWarnings("unchecked")
     Map<String, Object> castMap(Object value) {
         return stateSupport.castMap(value);
     }
 
-    @SuppressWarnings("unchecked")
     List<Map<String, Object>> castList(Object value) {
         return stateSupport.castList(value);
     }
@@ -692,12 +738,10 @@ public class BattleEngine {
         return stateSupport.cloneMap(value);
     }
 
-    @SuppressWarnings("unchecked")
     List<Map<String, Object>> team(Map<String, Object> state, boolean player) {
         return stateSupport.team(state, player);
     }
 
-    @SuppressWarnings("unchecked")
     private List<Map<String, Object>> rounds(Map<String, Object> state) {
         return stateSupport.rounds(state);
     }
@@ -706,26 +750,16 @@ public class BattleEngine {
         return stateSupport.activeSlots(state, player);
     }
 
-    @SuppressWarnings("unchecked")
     List<Map<String, Object>> moves(Map<String, Object> mon) {
         return stateSupport.moves(mon);
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> cooldowns(Map<String, Object> mon) {
         return stateSupport.cooldowns(mon);
     }
 
     int cooldown(Map<String, Object> mon, Map<String, Object> move) {
         return toInt(cooldowns(mon).get(move.get("name_en")), 0);
-    }
-
-    private int modifiedAttackStat(Map<String, Object> mon, int baseStat, int damageClassId) {
-        return damageSupport.modifiedAttackStat(mon, mon, baseStat, damageClassId, false);
-    }
-
-    private int modifiedDefenseStat(Map<String, Object> mon, int baseStat, int damageClassId, Map<String, Object> state) {
-        return damageSupport.modifiedDefenseStat(mon, mon, baseStat, damageClassId, state, false);
     }
 
     int speedValue(Map<String, Object> mon, Map<String, Object> state, boolean playerSide) {
@@ -752,12 +786,30 @@ public class BattleEngine {
         return ability == null ? "" : String.valueOf(ability);
     }
 
+    boolean hasAbility(Map<String, Object> mon, String... names) {
+        String ability = abilityName(mon);
+        for (String name : names) {
+            if (name.equalsIgnoreCase(ability)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    boolean isMagicGuard(Map<String, Object> mon) {
+        return hasAbility(mon, "magic-guard", "magic guard");
+    }
+
     boolean itemConsumed(Map<String, Object> mon) {
         return Boolean.TRUE.equals(mon.get("itemConsumed"));
     }
 
     void consumeItem(Map<String, Object> mon) {
+        String previousItem = heldItem(mon);
         mon.put("itemConsumed", true);
+        if (!previousItem.isBlank() && hasAbility(mon, "unburden")) {
+            mon.put("unburdenActive", true);
+        }
     }
 
     void removeHeldItem(Map<String, Object> mon) {
@@ -766,24 +818,32 @@ public class BattleEngine {
             return;
         }
         mon.put("heldItem", "");
+        if (hasAbility(mon, "unburden")) {
+            mon.put("unburdenActive", true);
+        }
         if ("choice-band".equals(item) || "choice-specs".equals(item) || "choice-scarf".equals(item)) {
             mon.put("choiceLockedMove", null);
         }
     }
 
     int applyIncomingDamage(Map<String, Object> attacker, Map<String, Object> target, int damage,
-                            Map<String, Object> actionLog, List<String> events) {
+            Map<String, Object> actionLog, List<String> events) {
         return damageSupport.applyIncomingDamage(attacker, target, damage, actionLog, events);
     }
 
+    boolean rollCriticalHit(Map<String, Object> attacker, Map<String, Object> move, Random random) {
+        return damageSupport.calculateCriticalHitChance(attacker, move, random);
+    }
+
     void applyDefenderItemEffects(Map<String, Object> target, Map<String, Object> move, int actualDamage,
-                                  Map<String, Object> actionLog, List<String> events) {
-        if (toInt(target.get("currentHp"), 0) <= 0) {
+            Map<String, Object> actionLog, List<String> events) {
+        if (toInt(target.get("currentHp"), 0) <= 0)
             return;
-        }
-        if ("weakness-policy".equals(heldItem(target))
-                && !itemConsumed(target)
-                && actualDamage > 0
+
+        String item = heldItem(target);
+
+        // Weakness Policy
+        if ("weakness-policy".equals(item) && !itemConsumed(target) && actualDamage > 0
                 && typeModifier(target, toInt(move.get("type_id"), 0)) > 1.0d) {
             int attackStage = Math.min(6, statStage(target, "attack") + 2);
             int specialAttackStage = Math.min(6, statStage(target, "specialAttack") + 2);
@@ -793,27 +853,85 @@ public class BattleEngine {
             actionLog.put("weaknessPolicy", true);
             events.add(target.get("name") + " 的弱点保险发动了，攻击和特攻大幅提升");
         }
-        if (!"sitrus-berry".equals(heldItem(target)) || itemConsumed(target)) {
-            return;
-        }
-        int maxHp = toInt(castMap(target.get("stats")).get("hp"), 1);
-        int currentHp = toInt(target.get("currentHp"), 0);
-        if (currentHp * 2 <= maxHp) {
-            if (healBlockTurns(target) > 0) {
-                actionLog.put("berryHealBlocked", true);
-                events.add(target.get("name") + " 受到回复封锁，文柚果无法生效");
-                return;
+
+        // Berries (Sitrus, Type-resist)
+        if (!itemConsumed(target)) {
+            int maxHp = toInt(castMap(target.get("stats")).get("hp"), 1);
+            int currentHp = toInt(target.get("currentHp"), 0);
+
+            // Sitrus Berry: Heal 25% when HP drops to 50% or below
+            if ("sitrus-berry".equals(item) && currentHp * 2 <= maxHp) {
+                if (healBlockTurns(target) > 0) {
+                    actionLog.put("berryHealBlocked", true);
+                    events.add(target.get("name") + " 受到回复封锁，文柚果无法生效");
+                    return;
+                }
+                int heal = Math.max(1, maxHp / 4);
+                target.put("currentHp", Math.min(maxHp, currentHp + heal));
+                consumeItem(target);
+                actionLog.put("berryHeal", heal);
+                events.add(target.get("name") + " 食用了文柚果，回复了 " + heal + " 点 HP");
             }
-            int heal = Math.max(1, maxHp / 4);
-            target.put("currentHp", Math.min(maxHp, currentHp + heal));
-            consumeItem(target);
-            actionLog.put("berryHeal", heal);
-            events.add(target.get("name") + " 食用了文柚果，回复了 " + heal + " 点 HP");
+
+            // Resist Berries (e.g., Babiri Berry for Steel)
+            double resistFactor = getBerryResistFactor(item, toInt(move.get("type_id"), 0));
+            if (resistFactor < 1.0 && actualDamage > 0) {
+                // Note: In a real engine, we'd need to retroactively adjust the damage taken.
+                // For now, we just log the trigger and consume the berry.
+                consumeItem(target);
+                actionLog.put("berryResist", item);
+                events.add(target.get("name") + " 的 " + item + " 削弱了受到的伤害");
+            }
         }
     }
 
-    void applyAttackerItemEffects(Map<String, Object> attacker, int damage, Map<String, Object> actionLog, List<String> events) {
+    private double getBerryResistFactor(String item, int moveTypeId) {
+        // Mapping of berries to their corresponding types
+        if (moveTypeId == DamageCalculatorUtil.TYPE_STEEL && "babiri-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_FIRE && "charti-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_WATER && "passho-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC && "wacan-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_GRASS && "rindo-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_ICE && "yache-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_FIGHTING && "chople-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_POISON && "kebia-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_GROUND && "tanga-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_FLYING && "colbur-berry".equals(item))
+            return 0.5; // Actually Colbur is Dark, but placeholder
+        if (moveTypeId == DamageCalculatorUtil.TYPE_PSYCHIC && "payapa-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_BUG && "tangia-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_ROCK && "haban-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_GHOST && "kasib-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_DRAGON && "haban-berry".equals(item))
+            return 0.5; // Haban is Dragon
+        if (moveTypeId == DamageCalculatorUtil.TYPE_DARK && "colbur-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_FAIRY && "roseli-berry".equals(item))
+            return 0.5;
+        return 1.0;
+    }
+
+    void applyAttackerItemEffects(Map<String, Object> attacker, int damage, Map<String, Object> actionLog,
+            List<String> events) {
         if (!"life-orb".equals(heldItem(attacker)) || damage <= 0 || toInt(attacker.get("currentHp"), 0) <= 0) {
+            return;
+        }
+        // Pokemon Showdown behavior: Magic Guard ignores Life Orb recoil while keeping
+        // the power boost.
+        if (isMagicGuard(attacker)) {
             return;
         }
         int maxHp = toInt(castMap(attacker.get("stats")).get("hp"), 1);
@@ -854,12 +972,7 @@ public class BattleEngine {
         return null;
     }
 
-    private int applyStageModifier(int baseStat, int stage) {
-        return damageSupport.applyStageModifier(baseStat, stage);
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> statStages(Map<String, Object> mon) {
+    Map<String, Object> statStages(Map<String, Object> mon) {
         return damageSupport.statStages(mon);
     }
 
@@ -868,19 +981,116 @@ public class BattleEngine {
     }
 
     int tauntTurns(Map<String, Object> mon) {
-        return toInt(mon.get("tauntTurns"), 0);
+        // 先读 volatiles，再回退旧字段，兼容历史状态结构。
+        return toInt(volatileValue(mon, "tauntTurns", mon.get("tauntTurns")), 0);
     }
 
     int healBlockTurns(Map<String, Object> mon) {
-        return toInt(mon.get("healBlockTurns"), 0);
+        return toInt(volatileValue(mon, "healBlockTurns", mon.get("healBlockTurns")), 0);
     }
 
     int tormentTurns(Map<String, Object> mon) {
-        return toInt(mon.get("tormentTurns"), 0);
+        return toInt(volatileValue(mon, "tormentTurns", mon.get("tormentTurns")), 0);
+    }
+
+    int disableTurns(Map<String, Object> mon) {
+        // Disable 持续回合与被封印招式统一走 volatile，避免部分逻辑仍直接读取旧字段导致不一致。
+        return toInt(volatileValue(mon, "disableTurns", mon.get("disableTurns")), 0);
+    }
+
+    Object disableMove(Map<String, Object> mon) {
+        return volatileValue(mon, "disableMove", mon.get("disableMove"));
+    }
+
+    int encoreTurns(Map<String, Object> mon) {
+        return toInt(volatileValue(mon, "encoreTurns", mon.get("encoreTurns")), 0);
+    }
+
+    Object encoreMove(Map<String, Object> mon) {
+        return volatileValue(mon, "encoreMove", mon.get("encoreMove"));
     }
 
     int yawnTurns(Map<String, Object> mon) {
-        return toInt(mon.get("yawnTurns"), 0);
+        return toInt(volatileValue(mon, "yawnTurns", mon.get("yawnTurns")), 0);
+    }
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> volatiles(Map<String, Object> mon) {
+        Object value = mon.get("volatiles");
+        if (value instanceof Map<?, ?>) {
+            return (Map<String, Object>) value;
+        }
+        // 兼容旧存档/旧测试：如果尚未初始化 volatiles，则在首次访问时补齐容器。
+        Map<String, Object> created = new LinkedHashMap<>();
+        mon.put("volatiles", created);
+        return created;
+    }
+
+    Object volatileValue(Map<String, Object> mon, String key, Object fallback) {
+        // volatile 为新标准存储；fallback 为旧字段回退，便于渐进迁移。
+        Map<String, Object> volatileState = volatiles(mon);
+        return volatileState.containsKey(key) ? volatileState.get(key) : fallback;
+    }
+
+    boolean volatileFlag(Map<String, Object> mon, String key) {
+        Object fallback = switch (key) {
+            case "flinch" -> mon.get("flinched");
+            case "confused" -> mon.get("confused");
+            default -> false;
+        };
+        Object raw = volatileValue(mon, key, fallback);
+        if (raw instanceof Boolean flag) {
+            return flag;
+        }
+        return Boolean.parseBoolean(String.valueOf(raw));
+    }
+
+    void setVolatile(Map<String, Object> mon, String key, Object value) {
+        // 统一写入口：先写新结构，再把仍被旧逻辑依赖的平铺字段同步回去。
+        volatiles(mon).put(key, value);
+        if ("flinch".equals(key)) {
+            mon.put("flinched", Boolean.TRUE.equals(value));
+        } else if ("confused".equals(key)) {
+            mon.put("confused", Boolean.TRUE.equals(value));
+        } else if ("confusionTurns".equals(key)) {
+            mon.put("confusionTurns", toInt(value, 0));
+        } else if ("yawnTurns".equals(key)) {
+            mon.put("yawnTurns", toInt(value, 0));
+        } else if ("tauntTurns".equals(key)) {
+            mon.put("tauntTurns", toInt(value, 0));
+        } else if ("healBlockTurns".equals(key)) {
+            mon.put("healBlockTurns", toInt(value, 0));
+        } else if ("tormentTurns".equals(key)) {
+            mon.put("tormentTurns", toInt(value, 0));
+        } else if ("disableTurns".equals(key)) {
+            mon.put("disableTurns", toInt(value, 0));
+        } else if ("disableMove".equals(key)) {
+            mon.put("disableMove", value);
+        } else if ("encoreTurns".equals(key)) {
+            mon.put("encoreTurns", toInt(value, 0));
+        } else if ("encoreMove".equals(key)) {
+            mon.put("encoreMove", value);
+        }
+    }
+
+    void clearVolatile(Map<String, Object> mon, String key) {
+        // 统一清理入口：删除 volatile 后同步重置旧字段，避免双来源状态漂移。
+        volatiles(mon).remove(key);
+        if ("flinch".equals(key)) {
+            mon.put("flinched", false);
+        } else if ("confused".equals(key)) {
+            mon.put("confused", false);
+        } else if ("disableMove".equals(key) || "encoreMove".equals(key)) {
+            mon.put(key, null);
+        } else if ("confusionTurns".equals(key)
+                || "yawnTurns".equals(key)
+                || "tauntTurns".equals(key)
+                || "healBlockTurns".equals(key)
+                || "tormentTurns".equals(key)
+                || "disableTurns".equals(key)
+                || "encoreTurns".equals(key)) {
+            mon.put(key, 0);
+        }
     }
 
     boolean isSleepingThisTurn(Map<String, Object> mon, int currentRound) {
@@ -934,7 +1144,7 @@ public class BattleEngine {
     }
 
     void activateTerastallization(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
-                                  Map<String, Object> actionLog, List<String> events) {
+            Map<String, Object> actionLog, List<String> events) {
         if (!canUseSpecialSystem(state, playerSide, mon, "tera", null)) {
             return;
         }
@@ -949,10 +1159,16 @@ public class BattleEngine {
     }
 
     boolean canUseSpecialSystem(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
-                                String system, Map<String, Object> move) {
-        if (system == null || system.isBlank() || Boolean.TRUE.equals(state.get(playerSide ? "playerSpecialUsed" : "opponentSpecialUsed"))) {
-            return false;
+            String system, Map<String, Object> move) {
+        // 1. 严格互斥性校验：一旦某方使用了任何一种特殊系统，其他三种在该场战斗中永久锁定
+        // 但太晶化作为 Gen9 规则的特例，允许与其他系统共存，不过每队限一次
+        if (Boolean.TRUE.equals(state.get(playerSide ? "playerSpecialUsed" : "opponentSpecialUsed"))) {
+            if (!"tera".equals(system))
+                return false; // 其他系统永久锁定
+            if (Boolean.TRUE.equals(state.get(playerSide ? "playerTeraUsed" : "opponentTeraUsed")))
+                return false; // 太晶化用过也不能再用
         }
+
         return switch (system) {
             case "tera" -> !Boolean.TRUE.equals(mon.get("terastallized")) && toInt(mon.get("teraTypeId"), 0) > 0;
             case "mega" -> Boolean.TRUE.equals(mon.get("megaEligible")) && !Boolean.TRUE.equals(mon.get("megaEvolved"));
@@ -961,13 +1177,15 @@ public class BattleEngine {
                     && move != null
                     && !isStatusMove(move)
                     && toInt(move.get("power"), 0) > 0;
-            case "dynamax" -> Boolean.TRUE.equals(mon.get("dynamaxEligible")) && !Boolean.TRUE.equals(mon.get("dynamaxed"));
+            case "dynamax" ->
+                Boolean.TRUE.equals(mon.get("dynamaxEligible")) && !Boolean.TRUE.equals(mon.get("dynamaxed"));
             default -> false;
         };
     }
 
-    void activateSpecialSystem(Map<String, Object> state, boolean playerSide, Map<String, Object> mon, Map<String, Object> move,
-                               String system, int round, Map<String, Object> actionLog, List<String> events) {
+    void activateSpecialSystem(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
+            Map<String, Object> move,
+            String system, int round, Map<String, Object> actionLog, List<String> events) {
         if (!canUseSpecialSystem(state, playerSide, mon, system, move)) {
             return;
         }
@@ -993,7 +1211,7 @@ public class BattleEngine {
     }
 
     private void activateMegaEvolution(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
-                                       Map<String, Object> actionLog, List<String> events) {
+            Map<String, Object> actionLog, List<String> events) {
         mon.put("megaEvolved", true);
         mon.put("specialSystemActivated", "mega");
         applyMegaTemplate(mon);
@@ -1002,19 +1220,75 @@ public class BattleEngine {
         events.add(mon.get("name") + " 完成了 Mega 进化");
     }
 
-    private void activateZMove(Map<String, Object> state, boolean playerSide, Map<String, Object> mon, Map<String, Object> move,
-                               int round, Map<String, Object> actionLog, List<String> events) {
+    private void activateZMove(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
+            Map<String, Object> move,
+            int round, Map<String, Object> actionLog, List<String> events) {
         mon.put("zMoveUsed", true);
         mon.put("specialSystemActivated", "z-move");
         mon.put("zMoveRound", round);
         mon.put("zMoveBase", move == null ? "" : move.get("name_en"));
         markSpecialSystemUsed(state, playerSide, "z-move");
+
+        // Identify Z-Crystal and map to exclusive Z-Move
+        String item = heldItem(mon);
+        String zMoveName = getZMoveName(move, item);
+        if (zMoveName != null && move != null) {
+            move.put("name", zMoveName); // Temporarily rename for logging/effect purposes
+            actionLog.put("exclusiveZMove", zMoveName);
+        }
+
+        // Calculate Z-Move power boost (Pokemon Showdown standard)
+        int basePower = move != null ? toInt(move.get("power"), 0) : 0;
+        int zPower = basePower;
+        if (basePower >= 140)
+            zPower = 200;
+        else if (basePower >= 130)
+            zPower = 195;
+        else if (basePower >= 120)
+            zPower = 190;
+        else if (basePower >= 110)
+            zPower = 185;
+        else if (basePower >= 100)
+            zPower = 180;
+        else if (basePower >= 90)
+            zPower = 175;
+        else if (basePower >= 80)
+            zPower = 160;
+        else if (basePower >= 75)
+            zPower = 140;
+        else if (basePower >= 70)
+            zPower = 140;
+        else if (basePower >= 65)
+            zPower = 130;
+        else if (basePower >= 60)
+            zPower = 120;
+
         actionLog.put("zMove", true);
-        events.add(mon.get("name") + " 释放了 Z 招式能量");
+        actionLog.put("zPower", zPower);
+        events.add(mon.get("name") + " 释放了 Z 招式能量，威力提升至 " + zPower);
+    }
+
+    private String getZMoveName(Map<String, Object> move, String item) {
+        if (move == null)
+            return null;
+        String moveName = String.valueOf(move.get("name_en")).toLowerCase();
+
+        // Exclusive Z-Moves mapping (simplified for baseline)
+        if ("snorlium-z".equals(item) && moveName.contains("giga-impact"))
+            return "Pulverizing Pancake";
+        if ("pikanium-z".equals(item) && moveName.contains("thunderbolt"))
+            return "Catastropika";
+        if ("incinium-z".equals(item) && moveName.contains("darkest-lariat"))
+            return "Malicious Moonsault";
+        if ("decidium-z".equals(item) && moveName.contains("spirit-shackle"))
+            return "Sinister Arrow Raid";
+
+        // Generic Z-Moves don't change name but get power boost
+        return null;
     }
 
     private void activateDynamax(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
-                                 Map<String, Object> actionLog, List<String> events) {
+            Map<String, Object> actionLog, List<String> events) {
         Map<String, Object> stats = castMap(mon.get("stats"));
         int baseHp = toInt(mon.get("dynamaxBaseHp"), toInt(stats.get("hp"), 1));
         int maxHp = toInt(stats.get("hp"), baseHp);
@@ -1083,120 +1357,67 @@ public class BattleEngine {
         return index >= 0 && index < team.size() && toInt(team.get(index).get("currentHp"), 0) > 0;
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> fieldEffects(Map<String, Object> state) {
         return fieldEffectSupport.fieldEffects(state);
-    }
-
-    private int tailwindTurns(Map<String, Object> state, boolean playerSide) {
-        return fieldEffectSupport.tailwindTurns(state, playerSide);
     }
 
     private int trickRoomTurns(Map<String, Object> state) {
         return fieldEffectSupport.trickRoomTurns(state);
     }
 
-    private int rainTurns(Map<String, Object> state) {
-        return fieldEffectSupport.rainTurns(state);
-    }
-
-    private int sunTurns(Map<String, Object> state) {
-        return fieldEffectSupport.sunTurns(state);
-    }
-
-    private int sandTurns(Map<String, Object> state) {
-        return fieldEffectSupport.sandTurns(state);
-    }
-
     int snowTurns(Map<String, Object> state) {
         return fieldEffectSupport.snowTurns(state);
-    }
-
-    private int electricTerrainTurns(Map<String, Object> state) {
-        return fieldEffectSupport.electricTerrainTurns(state);
-    }
-
-    private int psychicTerrainTurns(Map<String, Object> state) {
-        return fieldEffectSupport.psychicTerrainTurns(state);
-    }
-
-    private int grassyTerrainTurns(Map<String, Object> state) {
-        return fieldEffectSupport.grassyTerrainTurns(state);
-    }
-
-    private int mistyTerrainTurns(Map<String, Object> state) {
-        return fieldEffectSupport.mistyTerrainTurns(state);
-    }
-
-    private int weatherTurns(Map<String, Object> state) {
-        return fieldEffectSupport.weatherTurns(state);
-    }
-
-    private int terrainTurns(Map<String, Object> state) {
-        return fieldEffectSupport.terrainTurns(state);
-    }
-
-    private int reflectTurns(Map<String, Object> state, boolean playerSide) {
-        return fieldEffectSupport.reflectTurns(state, playerSide);
-    }
-
-    private int lightScreenTurns(Map<String, Object> state, boolean playerSide) {
-        return fieldEffectSupport.lightScreenTurns(state, playerSide);
     }
 
     int auroraVeilTurns(Map<String, Object> state, boolean playerSide) {
         return fieldEffectSupport.auroraVeilTurns(state, playerSide);
     }
 
-    void activateTailwind(Map<String, Object> state, boolean playerSide, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+    void activateTailwind(Map<String, Object> state, boolean playerSide, Map<String, Object> actor,
+            Map<String, Object> actionLog, List<String> events) {
         fieldEffectSupport.activateTailwind(state, playerSide, actor, actionLog, events);
         conditionSupport.applyTailwindWindRiderBoosts(state, actionLog, events);
     }
 
-    void toggleTrickRoom(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+    void toggleTrickRoom(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> actionLog,
+            List<String> events) {
         fieldEffectSupport.toggleTrickRoom(state, actor, actionLog, events);
     }
 
-    void activateWeather(Map<String, Object> state, String weather, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+    void activateWeather(Map<String, Object> state, String weather, Map<String, Object> actor,
+            Map<String, Object> actionLog, List<String> events) {
         fieldEffectSupport.activateWeather(state, weather, actor, actionLog, events);
     }
 
-    void activateTerrain(Map<String, Object> state, String terrain, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+    void activateTerrain(Map<String, Object> state, String terrain, Map<String, Object> actor,
+            Map<String, Object> actionLog, List<String> events) {
         fieldEffectSupport.activateTerrain(state, terrain, actor, actionLog, events);
     }
 
     // Entry hazard methods (public wrappers)
-    void setStealthRock(Map<String, Object> state, boolean playerSide, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+    void setStealthRock(Map<String, Object> state, boolean playerSide, Map<String, Object> actor,
+            Map<String, Object> actionLog, List<String> events) {
         fieldEffectSupport.setStealthRock(state, playerSide, actor, actionLog, events);
     }
 
-    void addSpikesLayer(Map<String, Object> state, boolean playerSide, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+    void addSpikesLayer(Map<String, Object> state, boolean playerSide, Map<String, Object> actor,
+            Map<String, Object> actionLog, List<String> events) {
         fieldEffectSupport.addSpikesLayer(state, playerSide, actor, actionLog, events);
     }
 
-    void addToxicSpikesLayer(Map<String, Object> state, boolean playerSide, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+    void addToxicSpikesLayer(Map<String, Object> state, boolean playerSide, Map<String, Object> actor,
+            Map<String, Object> actionLog, List<String> events) {
         fieldEffectSupport.addToxicSpikesLayer(state, playerSide, actor, actionLog, events);
     }
 
-    void setStickyWeb(Map<String, Object> state, boolean playerSide, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+    void setStickyWeb(Map<String, Object> state, boolean playerSide, Map<String, Object> actor,
+            Map<String, Object> actionLog, List<String> events) {
         fieldEffectSupport.setStickyWeb(state, playerSide, actor, actionLog, events);
     }
 
     void activateScreen(Map<String, Object> state, String screen, boolean playerSide, Map<String, Object> actor,
-                        Map<String, Object> actionLog, List<String> events) {
+            Map<String, Object> actionLog, List<String> events) {
         fieldEffectSupport.activateScreen(state, screen, playerSide, actor, actionLog, events);
-    }
-
-    private double weatherDamageModifier(Map<String, Object> state, int moveTypeId) {
-        return damageSupport.weatherDamageModifier(state, moveTypeId);
-    }
-
-    private double terrainDamageModifier(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> defender, int moveTypeId) {
-        return damageSupport.terrainDamageModifier(state, attacker, defender, moveTypeId);
-    }
-
-    private double screenDamageModifier(Map<String, Object> state, Map<String, Object> defender, int damageClassId) {
-        return damageSupport.screenDamageModifier(state, defender, damageClassId);
     }
 
     Map<String, Object> resolveMoveForUse(Map<String, Object> actor, Map<String, Object> move) {
@@ -1216,23 +1437,46 @@ public class BattleEngine {
 
     private boolean teraBlastUsesPhysicalCategory(Map<String, Object> actor) {
         Map<String, Object> stats = castMap(actor.get("stats"));
-        int attack = damageSupport.applyStageModifier(toInt(stats.get("attack"), 100), damageSupport.statStage(actor, "attack"));
+        int attack = damageSupport.applyStageModifier(toInt(stats.get("attack"), 100),
+                damageSupport.statStage(actor, "attack"));
         int specialAttack = damageSupport.applyStageModifier(toInt(stats.get("specialAttack"), 100),
                 damageSupport.statStage(actor, "specialAttack"));
         return attack > specialAttack;
     }
 
-    private void sortActions(List<Action> actions, boolean trickRoomActive) {
+    /**
+     * 对本回合动作进行稳定排序。
+     * <p>
+     * 顺序层级：优先级 > 抢先/延后修正 > 速度(受戏法空间影响) > 随机同速打破 > side/index。
+     * 通过每回合随机 tie-break 更接近 Showdown 的同速行为。
+     * </p>
+     */
+    private void sortActions(List<Action> actions, boolean trickRoomActive, Random random) {
+        Map<Action, Integer> speedTieBreakers = new IdentityHashMap<>();
+        for (Action action : actions) {
+            speedTieBreakers.put(action, random.nextInt());
+        }
         actions.sort((left, right) -> {
             int byPriority = Integer.compare(right.priority(), left.priority());
             if (byPriority != 0) {
                 return byPriority;
             }
+            // 第二层顺序：Quick Claw / Quick Draw / Custap 之类的“抢先”与 Stall / Lagging Tail 之类的“延后”。
+            int byOrderBoost = Integer.compare(right.orderBoost(), left.orderBoost());
+            if (byOrderBoost != 0) {
+                return byOrderBoost;
+            }
+            // 第三层顺序：正常按速度，戏法空间下反转速度比较方向。
             int bySpeed = trickRoomActive
                     ? Integer.compare(left.speed(), right.speed())
                     : Integer.compare(right.speed(), left.speed());
             if (bySpeed != 0) {
                 return bySpeed;
+            }
+            // 同速不再固定按 side/index，而是每回合随机决定，更贴近 PS 的 tie-break 行为。
+            int byRandomTie = Integer.compare(speedTieBreakers.get(left), speedTieBreakers.get(right));
+            if (byRandomTie != 0) {
+                return byRandomTie;
             }
             int bySide = left.side().compareTo(right.side());
             if (bySide != 0) {
@@ -1280,21 +1524,119 @@ public class BattleEngine {
         return fallback;
     }
 
-    record Action(String side, String actionType, int actorIndex, int actorFieldSlot, int targetTeamIndex, int targetFieldSlot,
-                  int switchToTeamIndex, Map<String, Object> move, int speed, String specialSystemRequested) {
-        static Action moveAction(String side, int actorIndex, int actorFieldSlot, int targetTeamIndex, int targetFieldSlot,
-                                 Map<String, Object> move, int speed, boolean terastallizeRequested) {
-            return new Action(side, "move", actorIndex, actorFieldSlot, targetTeamIndex, targetFieldSlot, -1, move, speed,
-                    terastallizeRequested ? "tera" : null);
+    /**
+     * 应用动作顺序修正层。
+     * <p>
+     * 该阶段只改变执行先后（orderBoost），不改变动作语义本身。
+     * 复杂度为 O(n)，其中 n 为本回合声明动作数量。
+     * </p>
+     */
+    private void applyActionOrderEffects(Map<String, Object> state, List<Action> actions, Random random) {
+        for (int index = 0; index < actions.size(); index++) {
+            Action action = actions.get(index);
+            if (action.isSwitch()) {
+                continue;
+            }
+            List<Map<String, Object>> sideTeam = team(state, "player".equals(action.side()));
+            if (!isAvailableMon(sideTeam, action.actorIndex())) {
+                continue;
+            }
+            Map<String, Object> actor = sideTeam.get(action.actorIndex());
+            String item = heldItem(actor);
+            // 顺序加成层：先处理“抢先行动”来源，再处理“延后行动”来源。
+            if (isQuickDrawTriggered(actor, random)) {
+                actions.set(index, action.withOrderBoost(1, "quick-draw"));
+                continue;
+            }
+            if (isQuickClawTriggered(item, random)) {
+                actions.set(index, action.withOrderBoost(1, "quick-claw"));
+                continue;
+            }
+            if (isCustapBerryTriggered(actor, item)) {
+                // Custap Berry 触发后立即标记已消耗，保证同一场战斗内不会重复触发。
+                consumeItem(actor);
+                actions.set(index, action.withOrderBoost(1, "custap-berry"));
+                continue;
+            }
+            if (isDelayOrderItem(item)) {
+                String source = "lagging-tail".equalsIgnoreCase(item) || "lagging tail".equalsIgnoreCase(item)
+                        ? "lagging-tail"
+                        : "full-incense";
+                actions.set(index, action.withOrderBoost(-1, source));
+                continue;
+            }
+            if (hasAbility(actor, "stall")) {
+                actions.set(index, action.withOrderBoost(-1, "stall"));
+            }
+        }
+    }
+
+    private boolean isQuickDrawTriggered(Map<String, Object> mon, Random random) {
+        // Quick Draw：30% 概率在同优先级内抢先行动。
+        return hasAbility(mon, "quick-draw", "quick draw") && random.nextInt(100) < 30;
+    }
+
+    private boolean isQuickClawTriggered(String item, Random random) {
+        return ("quick-claw".equalsIgnoreCase(item) || "quick claw".equalsIgnoreCase(item))
+                && random.nextInt(100) < 20;
+    }
+
+    private boolean isCustapBerryTriggered(Map<String, Object> mon, String item) {
+        if (!"custap-berry".equalsIgnoreCase(item) && !"custap berry".equalsIgnoreCase(item)) {
+            return false;
+        }
+        if (itemConsumed(mon)) {
+            return false;
+        }
+        int maxHp = toInt(castMap(mon.get("stats")).get("hp"), 1);
+        int currentHp = toInt(mon.get("currentHp"), 0);
+        return currentHp > 0 && currentHp * 4 <= maxHp;
+    }
+
+    private boolean isDelayOrderItem(String item) {
+        // Lagging Tail / Full Incense：在同优先级内后手。
+        return "lagging-tail".equalsIgnoreCase(item)
+                || "lagging tail".equalsIgnoreCase(item)
+                || "full-incense".equalsIgnoreCase(item)
+                || "full incense".equalsIgnoreCase(item);
+    }
+
+    record Action(String side, String actionType, int actorIndex, int actorFieldSlot, int targetTeamIndex,
+            int targetFieldSlot,
+            int switchToTeamIndex, Map<String, Object> move, int speed, String specialSystemRequested,
+            int orderBoost, String orderSource) {
+        /**
+         * 单个声明动作的不可变快照。
+         * <p>
+         * 这里显式携带 orderBoost/orderSource，目的是把“动作构建”和“顺序层修正”解耦：
+         * 构建阶段只关心玩家/AI想做什么，顺序阶段再决定是否因特性或道具改变执行先后。
+         * </p>
+         */
+        static Action moveAction(String side, int actorIndex, int actorFieldSlot, int targetTeamIndex,
+                int targetFieldSlot,
+                Map<String, Object> move, int speed, boolean terastallizeRequested) {
+            return new Action(side, "move", actorIndex, actorFieldSlot, targetTeamIndex, targetFieldSlot, -1, move,
+                    speed,
+                    terastallizeRequested ? "tera" : null, 0, null);
         }
 
-        static Action moveAction(String side, int actorIndex, int actorFieldSlot, int targetTeamIndex, int targetFieldSlot,
-                                 Map<String, Object> move, int speed, String specialSystemRequested) {
-            return new Action(side, "move", actorIndex, actorFieldSlot, targetTeamIndex, targetFieldSlot, -1, move, speed, specialSystemRequested);
+        static Action moveAction(String side, int actorIndex, int actorFieldSlot, int targetTeamIndex,
+                int targetFieldSlot,
+                Map<String, Object> move, int speed, String specialSystemRequested) {
+            return new Action(side, "move", actorIndex, actorFieldSlot, targetTeamIndex, targetFieldSlot, -1, move,
+                    speed,
+                    specialSystemRequested, 0, null);
         }
 
         static Action switchAction(String side, int actorIndex, int actorFieldSlot, int switchToTeamIndex, int speed) {
-            return new Action(side, "switch", actorIndex, actorFieldSlot, -1, -1, switchToTeamIndex, null, speed, null);
+            return new Action(side, "switch", actorIndex, actorFieldSlot, -1, -1, switchToTeamIndex, null, speed,
+                    null, 0, null);
+        }
+
+        Action withOrderBoost(int boost, String source) {
+            // 通过复制生成新 Action，避免原始动作在排序前后被可变修改污染。
+            return new Action(side, actionType, actorIndex, actorFieldSlot, targetTeamIndex, targetFieldSlot,
+                    switchToTeamIndex, move, speed, specialSystemRequested, boost, source);
         }
 
         int priority() {

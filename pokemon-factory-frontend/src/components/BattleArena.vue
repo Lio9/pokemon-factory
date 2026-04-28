@@ -1,3 +1,12 @@
+<!--
+  BattleArena 文件说明
+  所属模块：前端应用。
+  文件类型：界面组件文件。
+  核心职责：负责局部交互、展示逻辑与对外事件抛出。
+  阅读建议：建议结合父组件传入的 props 与 emits 一起阅读。
+  项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+-->
+
 <template>
   <div class="battle-arena space-y-4 rounded-[24px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_24px_90px_-54px_rgba(15,23,42,0.5)] backdrop-blur sm:rounded-[28px] sm:p-6">
     <div class="flex flex-wrap items-start justify-between gap-4">
@@ -164,7 +173,7 @@
       >
         ✨ {{ tr('对手神秘守护 {turns} 回合', 'Opponent Safeguard: {turns} turns', { turns: summary.fieldEffects.opponentSafeguardTurns }) }}
       </span>
-      
+
       <!-- Entry Hazards (Pokemon Showdown standard) -->
       <span
         v-if="summary.fieldEffects.playerStealthRock"
@@ -239,20 +248,39 @@
               :class="['rounded-2xl border p-4 shadow-sm transition', pokemon.active ? 'border-sky-400 bg-white shadow-sky-100' : 'border-slate-200 bg-white/80']"
             >
               <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                <div>
-                  <div class="flex items-center gap-2">
-                    <div class="font-semibold text-slate-900">
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <div
+                      class="font-semibold text-slate-900 truncate"
+                      :class="{
+                        'animate-pulse text-indigo-600': pokemon.terastallized,
+                        'animate-bounce text-purple-600': pokemon.dynamaxed,
+                        'text-yellow-600': pokemon.zMoveUsed
+                      }"
+                    >
                       {{ pokemon.name }}
                     </div>
                     <span
                       v-if="pokemon.active"
-                      class="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-sky-700"
+                      class="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-sky-700"
                     >
-                      {{ tr('在场', 'Active') }}
+                      {{ tr('在场', 'Active', 'アクティブ') }}
+                    </span>
+                    <span
+                      v-if="pokemon.terastallized"
+                      class="shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-700 animate-pulse"
+                    >
+                      💎 {{ tr('太晶', 'Tera', 'テラスタル') }}
+                    </span>
+                    <span
+                      v-if="pokemon.dynamaxed"
+                      class="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-red-700 scale-110"
+                    >
+                      🦍 {{ tr('极巨', 'Max', 'ダイマックス') }}
                     </span>
                   </div>
-                  <div class="text-xs text-slate-500">
-                    HP {{ pokemon.currentHp }}/{{ pokemon.maxHp }} · {{ pokemon.statusText }}
+                  <div class="mt-1 text-xs text-slate-500 sm:hidden">
+                    HP {{ pokemon.currentHp }}/{{ pokemon.maxHp }} · {{ pokemon.hpPercent }}%
                   </div>
                 </div>
                 <div class="text-right text-xs text-slate-500">
@@ -309,12 +337,33 @@
               <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div>
                   <div class="flex items-center gap-2">
-                    {{ pokemon.name }}
+                    <div
+                      class="font-semibold text-slate-900"
+                      :class="{
+                        'animate-pulse text-indigo-600': pokemon.terastallized,
+                        'animate-bounce text-purple-600': pokemon.dynamaxed,
+                        'text-yellow-600': pokemon.zMoveUsed
+                      }"
+                    >
+                      {{ pokemon.name }}
+                    </div>
                     <span
                       v-if="pokemon.active"
                       class="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-rose-700"
                     >
                       {{ tr('在场', 'Active') }}
+                    </span>
+                    <span
+                      v-if="pokemon.terastallized"
+                      class="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-700 animate-pulse"
+                    >
+                      💎 {{ tr('太晶', 'Tera') }}
+                    </span>
+                    <span
+                      v-if="pokemon.dynamaxed"
+                      class="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-red-700 scale-110"
+                    >
+                      🦍 {{ tr('极巨', 'Max') }}
                     </span>
                   </div>
                   <div class="text-xs text-slate-500">

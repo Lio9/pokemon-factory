@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PokemonMapper 文件说明
+  所属模块：poke-dex 后端模块。
+  文件类型：数据库映射配置文件。
+  核心职责：负责声明 SQL、结果映射和 Mapper 接口之间的绑定关系。
+  阅读建议：建议结合对应 Java Mapper 接口与数据模型一起阅读。
+  项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+-->
+
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lio9.pokedex.mapper.PokemonMapper">
 

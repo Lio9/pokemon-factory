@@ -1,5 +1,14 @@
 package com.lio9.battle.engine;
 
+/**
+ * BattleSetupSupportTest 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 BattleSetupSupportTest 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.mapper.SkillMapper;
@@ -23,11 +32,11 @@ class BattleSetupSupportTest {
 
         Map<String, Object> state = support.createPreviewState(teamJson(List.of(
                 pokemon("Player-A", 120, 110, ""),
-                pokemon("Player-B", 118, 100, "")
-        )), teamJson(List.of(
-                pokemon("Opp-A", 120, 90, ""),
-                pokemon("Opp-B", 118, 80, "")
-        )), 12, 4242L);
+                pokemon("Player-B", 118, 100, ""))), teamJson(
+                        List.of(
+                                pokemon("Opp-A", 120, 90, ""),
+                                pokemon("Opp-B", 118, 80, ""))),
+                12, 4242L);
 
         assertEquals("preview", state.get("status"));
         assertEquals("team-preview", state.get("phase"));
@@ -46,19 +55,18 @@ class BattleSetupSupportTest {
                 pokemon("Player-A", 120, 95, ""),
                 pokemon("Player-B", 120, 125, "intimidate"),
                 pokemon("Player-C", 120, 105, ""),
-                pokemon("Player-D", 120, 85, "")
-        )), teamJson(List.of(
-                pokemon("Opp-A", 120, 120, ""),
-                pokemon("Opp-B", 120, 90, ""),
-                pokemon("Opp-C", 120, 80, ""),
-                pokemon("Opp-D", 120, 70, "")
-        )), 12, 5151L);
+                pokemon("Player-D", 120, 85, ""))), teamJson(
+                        List.of(
+                                pokemon("Opp-A", 120, 120, ""),
+                                pokemon("Opp-B", 120, 90, ""),
+                                pokemon("Opp-C", 120, 80, ""),
+                                pokemon("Opp-D", 120, 70, ""))),
+                12, 5151L);
 
         Map<String, Object> state = support.applyTeamPreviewSelection(
                 previewState,
                 Map.of("pickedRosterIndexes", List.of(0, 1, 2, 3), "leadRosterIndexes", List.of(1, 0)),
-                Map.of("pickedRosterIndexes", List.of(0, 1, 2, 3), "leadRosterIndexes", List.of(0, 1))
-        );
+                Map.of("pickedRosterIndexes", List.of(0, 1, 2, 3), "leadRosterIndexes", List.of(0, 1)));
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> playerTeam = (List<Map<String, Object>>) state.get("playerTeam");
@@ -83,13 +91,13 @@ class BattleSetupSupportTest {
                 pokemon("Lead-A", 120, 120, ""),
                 pokemon("Lead-B", 115, 110, ""),
                 pokemon("Bench-C", 110, 105, ""),
-                pokemon("Bench-D", 108, 100, "")
-        )), teamJson(List.of(
-                pokemon("Opp-A", 120, 90, ""),
-                pokemon("Opp-B", 120, 80, ""),
-                pokemon("Opp-C", 120, 70, ""),
-                pokemon("Opp-D", 120, 60, "")
-        )), 12, 6161L);
+                pokemon("Bench-D", 108, 100, ""))), teamJson(
+                        List.of(
+                                pokemon("Opp-A", 120, 90, ""),
+                                pokemon("Opp-B", 120, 80, ""),
+                                pokemon("Opp-C", 120, 70, ""),
+                                pokemon("Opp-D", 120, 60, ""))),
+                12, 6161L);
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> playerTeam = (List<Map<String, Object>>) state.get("playerTeam");
@@ -100,7 +108,8 @@ class BattleSetupSupportTest {
         state.put("playerPendingReplacementCount", 1);
         state.put("playerPendingReplacementOptions", List.of(2, 3));
 
-        Map<String, Object> updated = support.applyReplacementSelection(state, Map.of("replacementIndexes", List.of(2)));
+        Map<String, Object> updated = support.applyReplacementSelection(state,
+                Map.of("replacementIndexes", List.of(2)));
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rounds = (List<Map<String, Object>>) updated.get("rounds");
@@ -120,13 +129,13 @@ class BattleSetupSupportTest {
                 pokemon("Lead-A", 120, 120, ""),
                 pokemon("Lead-B", 115, 110, ""),
                 pokemon("Bench-C", 110, 105, ""),
-                pokemon("Bench-D", 108, 100, "")
-        )), teamJson(List.of(
-                pokemon("Opp-A", 120, 90, ""),
-                pokemon("Opp-B", 120, 80, ""),
-                pokemon("Opp-C", 120, 70, ""),
-                pokemon("Opp-D", 120, 60, "")
-        )), 12, 7171L);
+                pokemon("Bench-D", 108, 100, ""))), teamJson(
+                        List.of(
+                                pokemon("Opp-A", 120, 90, ""),
+                                pokemon("Opp-B", 120, 80, ""),
+                                pokemon("Opp-C", 120, 70, ""),
+                                pokemon("Opp-D", 120, 60, ""))),
+                12, 7171L);
         state.put("exchangeAvailable", true);
 
         Map<String, Object> updated = support.replacePlayerTeamMember(state, 0, pokemon("Reward-Mon", 130, 140, ""));
@@ -143,13 +152,14 @@ class BattleSetupSupportTest {
     private static BattleSetupSupport createSupport() {
         ObjectMapper mapper = new ObjectMapper();
         BattleEngine engine = createEngine(mapper);
-        BattleStateSupport stateSupport = new BattleStateSupport(mapper);
+        BattleStateSupport stateSupport = new BattleStateSupport();
         BattlePreviewSupport previewSupport = new BattlePreviewSupport(mapper, stateSupport, 4, 2);
         BattleFieldEffectSupport fieldEffectSupport = new BattleFieldEffectSupport();
         BattleDamageSupport damageSupport = new BattleDamageSupport(engine, createTypeMapper(), fieldEffectSupport, 50);
         BattleConditionSupport conditionSupport = new BattleConditionSupport(engine, damageSupport, fieldEffectSupport);
         BattleFlowSupport flowSupport = new BattleFlowSupport(engine, conditionSupport, 2);
-        return new BattleSetupSupport(previewSupport, stateSupport, fieldEffectSupport, conditionSupport, flowSupport, 50, 4);
+        return new BattleSetupSupport(previewSupport, stateSupport, fieldEffectSupport, conditionSupport, flowSupport,
+                50, 4);
     }
 
     private static BattleEngine createEngine(ObjectMapper mapper) {
@@ -197,21 +207,19 @@ class BattleSetupSupportTest {
         pokemon.put("types", List.of(Map.of("type_id", 1, "name", "normal")));
         pokemon.put("moves", List.of(
                 move("Strike", "strike", 70, 100, 0, 1, 1, 10),
-                move("Protect", "protect", 0, 100, 4, 3, 1, 7)
-        ));
+                move("Protect", "protect", 0, 100, 4, 3, 1, 7)));
         pokemon.put("stats", new LinkedHashMap<>(Map.of(
                 "hp", hp,
                 "attack", 100,
                 "defense", 90,
                 "specialAttack", 95,
                 "specialDefense", 90,
-                "speed", speed
-        )));
+                "speed", speed)));
         return pokemon;
     }
 
     private static Map<String, Object> move(String name, String nameEn, int power, int accuracy, int priority,
-                                            int damageClassId, int typeId, int targetId) {
+            int damageClassId, int typeId, int targetId) {
         return Map.of(
                 "name", name,
                 "name_en", nameEn,
@@ -220,7 +228,6 @@ class BattleSetupSupportTest {
                 "priority", priority,
                 "damage_class_id", damageClassId,
                 "type_id", typeId,
-                "target_id", targetId
-        );
+                "target_id", targetId);
     }
 }

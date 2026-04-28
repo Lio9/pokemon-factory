@@ -1,5 +1,16 @@
 package com.lio9.user.service;
 
+
+
+/**
+ * UserService 文件说明
+ * 所属模块：user-module 后端模块。
+ * 文件类型：后端业务服务文件。
+ * 核心职责：负责定义或承载模块级业务能力，对上层暴露稳定服务接口。
+ * 阅读建议：建议结合控制器和实现类一起阅读。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.lio9.user.dto.AuthRequest;
 import com.lio9.user.dto.AuthResponse;
 import com.lio9.user.dto.UserProfile;
@@ -61,6 +72,12 @@ public class UserService {
         this.tokenExpMs = tokenExpireHours * 60L * 60L * 1000L;
     }
 
+    /**
+     * 初始化 JWT 签名密钥。
+     * <p>
+     * 优先使用环境变量 JWT_SECRET；未配置时退回随机开发密钥。
+     * </p>
+     */
     @PostConstruct
     public void init() {
         // 用固定 secret 派生签名 key，避免开发时因为密钥长度不够直接启动失败。
@@ -72,6 +89,12 @@ public class UserService {
         }
     }
 
+    /**
+     * 注册新用户并直接返回登录态。
+     *
+     * @param request 注册请求
+     * @return 包含 token 与用户资料
+     */
     public AuthResponse register(AuthRequest request) {
         // 注册链路会复用和登录同样的标准化校验，保证两条入口的用户名口径一致。
         requireRequest(request);
@@ -91,6 +114,12 @@ public class UserService {
         return buildAuthResponse(userMapper.findByUsername(username));
     }
 
+    /**
+     * 用户登录并签发新的 JWT。
+     *
+     * @param request 登录请求
+     * @return 包含 token 与用户资料
+     */
     public AuthResponse login(AuthRequest request) {
         // 登录前同样先做统一参数标准化，避免“注册能过、登录不过”的口径分裂。
         requireRequest(request);
@@ -106,6 +135,12 @@ public class UserService {
         return buildAuthResponse(refreshed);
     }
 
+    /**
+     * 读取当前登录用户资料。
+     *
+     * @param username 用户名（通常来自已验证 token）
+     * @return 最新用户资料
+     */
     public UserProfile getCurrentUser(String username) {
         // /me 接口只认数据库里的当前状态，不直接信任 token 里缓存的展示字段。
         UserAccount account = userMapper.findByUsername(username);
@@ -115,6 +150,12 @@ public class UserService {
         return account.toProfile();
     }
 
+    /**
+     * 校验 token 并提取用户名。
+     *
+     * @param token Bearer token（不含前缀）
+     * @return 校验通过返回用户名，否则返回 null
+     */
     public String validateTokenAndGetUsername(String token) {
         try {
             return Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token).getBody().getSubject();
@@ -151,6 +192,12 @@ public class UserService {
         return new AuthResponse(token, account.toProfile());
     }
 
+    /**
+     * 规范化并校验用户名。
+     *
+     * @param username 原始用户名
+     * @return trim 后且满足格式约束的用户名
+     */
     private String normalizeUsername(String username) {
         if (username == null || username.isBlank()) {
             throw new ResponseStatusException(BAD_REQUEST, "用户名不能为空");
@@ -163,6 +210,12 @@ public class UserService {
         return normalized;
     }
 
+    /**
+     * 校验密码基础约束。
+     *
+     * @param password 原始密码
+     * @return 原样返回（仅做合法性检查）
+     */
     private String normalizePassword(String password) {
         if (password == null || password.isBlank()) {
             throw new ResponseStatusException(BAD_REQUEST, "密码不能为空");
@@ -173,6 +226,9 @@ public class UserService {
         return password;
     }
 
+    /**
+     * 保护认证入口，禁止空请求体。
+     */
     private void requireRequest(AuthRequest request) {
         if (request == null) {
             throw new ResponseStatusException(BAD_REQUEST, "请求体不能为空");

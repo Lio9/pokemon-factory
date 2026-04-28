@@ -1,6 +1,14 @@
 package com.lio9.battle.engine.event;
 
-import com.lio9.battle.engine.MoveRegistry;
+/**
+ * AbilityEventConfig 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战事件机制文件。
+ * 核心职责：负责抽象对战事件、事件总线或事件处理契约。
+ * 阅读建议：建议结合 BattleEngine 主流程理解触发时机。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,14 +32,14 @@ public class AbilityEventConfig {
                 if (event instanceof TryHitEvent) {
                     Map<String, Object> target = event.getTarget(context);
                     Map<String, Object> move = event.getMove(context);
-                    
+
                     if (target != null && move != null) {
                         String ability = getAbilityName(target);
                         if ("levitate".equalsIgnoreCase(ability)) {
                             int moveTypeId = toInt(move.get("type_id"), 0);
                             if (moveTypeId == 4) { // TYPE_GROUND = 4
-                                return EventResult.stopWithMessage("immune", 
-                                    target.get("name") + " 漂浮在空中，免疫地面系招式");
+                                return EventResult.stopWithMessage("immune",
+                                        target.get("name") + " 漂浮在空中，免疫地面系招式");
                             }
                         }
                     }
@@ -138,12 +146,12 @@ public class AbilityEventConfig {
                 if (event instanceof ModifyPowerEvent powerEvent) {
                     Map<String, Object> source = event.getSource(context);
                     Map<String, Object> move = event.getMove(context);
-                    
+
                     if (source != null && move != null) {
                         String ability = getAbilityName(source);
-                        if (("tough-claws".equalsIgnoreCase(ability) || 
-                             "iron-fist".equalsIgnoreCase(ability)) &&
-                            isContactMove(move)) {
+                        if (("tough-claws".equalsIgnoreCase(ability) ||
+                                "iron-fist".equalsIgnoreCase(ability)) &&
+                                isContactMove(move)) {
                             int boosted = (int) Math.floor(powerEvent.getBasePower() * 1.3);
                             return EventResult.modifyAndContinue(boosted);
                         }
@@ -224,10 +232,10 @@ public class AbilityEventConfig {
         if (damageClassId != 2) { // DAMAGE_CLASS_PHYSICAL = 2
             return false;
         }
-        
+
         // 检查是否为非接触类招式
         String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
-        return !nameEn.contains("beam") && !nameEn.contains("bomb") && 
-               !nameEn.contains("pulse") && !nameEn.contains("wave");
+        return !nameEn.contains("beam") && !nameEn.contains("bomb") &&
+                !nameEn.contains("pulse") && !nameEn.contains("wave");
     }
 }

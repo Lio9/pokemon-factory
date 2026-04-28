@@ -1,5 +1,14 @@
 package com.lio9.battle.engine;
 
+/**
+ * BattleSetupSupport 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 BattleSetupSupport 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -17,8 +26,8 @@ final class BattleSetupSupport {
     private final int battleTeamSize;
 
     BattleSetupSupport(BattlePreviewSupport previewSupport, BattleStateSupport stateSupport,
-                       BattleFieldEffectSupport fieldEffectSupport, BattleConditionSupport conditionSupport,
-                       BattleFlowSupport flowSupport, int level, int battleTeamSize) {
+            BattleFieldEffectSupport fieldEffectSupport, BattleConditionSupport conditionSupport,
+            BattleFlowSupport flowSupport, int level, int battleTeamSize) {
         this.previewSupport = previewSupport;
         this.stateSupport = stateSupport;
         this.fieldEffectSupport = fieldEffectSupport;
@@ -30,8 +39,10 @@ final class BattleSetupSupport {
 
     Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
         Map<String, Object> state = new LinkedHashMap<>();
-        List<Map<String, Object>> playerRoster = previewSupport.normalizeRoster(previewSupport.parseTeam(playerTeamJson));
-        List<Map<String, Object>> opponentRoster = previewSupport.normalizeRoster(previewSupport.parseTeam(opponentTeamJson));
+        List<Map<String, Object>> playerRoster = previewSupport
+                .normalizeRoster(previewSupport.parseTeam(playerTeamJson));
+        List<Map<String, Object>> opponentRoster = previewSupport
+                .normalizeRoster(previewSupport.parseTeam(opponentTeamJson));
 
         state.put("status", "preview");
         state.put("phase", "team-preview");
@@ -73,20 +84,21 @@ final class BattleSetupSupport {
         return applyTeamPreviewSelection(
                 preview,
                 previewSupport.autoSelect(stateSupport.roster(preview, true), seed),
-                previewSupport.autoSelect(stateSupport.roster(preview, false), seed + 31L)
-        );
+                previewSupport.autoSelect(stateSupport.roster(preview, false), seed + 31L));
     }
 
     Map<String, Object> applyTeamPreviewSelection(Map<String, Object> rawState,
-                                                  Map<String, Object> playerSelectionInput,
-                                                  Map<String, Object> opponentSelectionInput) {
+            Map<String, Object> playerSelectionInput,
+            Map<String, Object> opponentSelectionInput) {
         Map<String, Object> state = stateSupport.cloneState(rawState);
         List<Map<String, Object>> playerRoster = stateSupport.roster(state, true);
         List<Map<String, Object>> opponentRoster = stateSupport.roster(state, false);
         long seed = toLong(state.get("seed"), System.currentTimeMillis());
 
-        Map<String, Object> playerSelection = previewSupport.normalizeSelection(playerSelectionInput, playerRoster, seed);
-        Map<String, Object> opponentSelection = previewSupport.normalizeSelection(opponentSelectionInput, opponentRoster, seed + 31L);
+        Map<String, Object> playerSelection = previewSupport.normalizeSelection(playerSelectionInput, playerRoster,
+                seed);
+        Map<String, Object> opponentSelection = previewSupport.normalizeSelection(opponentSelectionInput,
+                opponentRoster, seed + 31L);
 
         state.put("playerSelection", playerSelection);
         state.put("opponentSelection", opponentSelection);
@@ -132,7 +144,8 @@ final class BattleSetupSupport {
             return state;
         }
 
-        List<Integer> requested = uniqueIndexes(selectionInput == null ? null : selectionInput.get("replacementIndexes"));
+        List<Integer> requested = uniqueIndexes(
+                selectionInput == null ? null : selectionInput.get("replacementIndexes"));
         List<Integer> available = flowSupport.availableBenchIndexes(state, true);
         if (requested.size() != needed) {
             throw new IllegalArgumentException("replacement_count_mismatch");
@@ -145,6 +158,27 @@ final class BattleSetupSupport {
 
         List<Integer> updatedSlots = new ArrayList<>(stateSupport.activeSlots(state, true));
         List<Integer> previousSlots = new ArrayList<>(updatedSlots);
+
+        // 3. 极巨化生命周期管理：极巨化期间禁止轮换
+        for (Integer slot : previousSlots) {
+            if (slot != null && slot < stateSupport.team(state, true).size()) {
+                Map<String, Object> mon = stateSupport.team(state, true).get(slot);
+                if (Boolean.TRUE.equals(mon.get("dynamaxed"))) {
+                    throw new IllegalArgumentException("cannot_switch_while_dynamaxed");
+                }
+            }
+        }
+
+        // 检查替补是否也处于极巨化状态（虽然逻辑上替补不应该极巨化，但做一层防护）
+        for (Integer index : requested) {
+            if (index != null && index < stateSupport.team(state, true).size()) {
+                Map<String, Object> benchMon = stateSupport.team(state, true).get(index);
+                if (Boolean.TRUE.equals(benchMon.get("dynamaxed"))) {
+                    throw new IllegalArgumentException("cannot_send_in_dynamaxed_mon");
+                }
+            }
+        }
+
         updatedSlots.addAll(requested);
         state.put("playerActiveSlots", updatedSlots);
         for (Integer index : requested) {
@@ -165,7 +199,8 @@ final class BattleSetupSupport {
         return state;
     }
 
-    Map<String, Object> replacePlayerTeamMember(Map<String, Object> rawState, int replacedIndex, Map<String, Object> newMember) {
+    Map<String, Object> replacePlayerTeamMember(Map<String, Object> rawState, int replacedIndex,
+            Map<String, Object> newMember) {
         Map<String, Object> state = stateSupport.cloneState(rawState);
         List<Map<String, Object>> playerRoster = stateSupport.roster(state, true);
         if (replacedIndex < 0 || replacedIndex >= playerRoster.size()) {
@@ -178,9 +213,8 @@ final class BattleSetupSupport {
                 "playerTeam",
                 previewSupport.buildBattleTeam(
                         playerRoster,
-                        selection.isEmpty() ? previewSupport.autoSelect(playerRoster, toLong(state.get("seed"), 0L)) : selection
-                )
-        );
+                        selection.isEmpty() ? previewSupport.autoSelect(playerRoster, toLong(state.get("seed"), 0L))
+                                : selection));
         state.put("playerActiveSlots", previewSupport.initialActiveSlots(stateSupport.team(state, true)));
         state.put("exchangeUsed", true);
         state.put("exchangeAvailable", false);

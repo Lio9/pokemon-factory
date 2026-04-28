@@ -1,10 +1,29 @@
 package com.lio9.battle.engine;
 
+
+
+/**
+ * BattleFlowSupport 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 BattleFlowSupport 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 final class BattleFlowSupport {
+    /**
+     * 战斗流程状态维护支持类。
+     * <p>
+     * 这里不直接处理招式结算，而是负责：
+     * 胜负判定、活动位修剪、补位阶段切换、派出日志补充，以及回合后派生状态刷新。
+     * 对双打来说，这一层可以保证“有人倒下后要不要立刻补位、是否进入 replacement phase”保持统一。
+     * </p>
+     */
     private final BattleEngine engine;
     private final BattleConditionSupport conditionSupport;
     private final int activeSlotsLimit;
@@ -19,21 +38,29 @@ final class BattleFlowSupport {
         pruneActiveSlots(state);
         boolean playerAlive = hasAvailableMon(engine.team(state, true));
         boolean opponentAlive = hasAvailableMon(engine.team(state, false));
-        boolean roundLimitReached = engine.toInt(state.get("currentRound"), 0) >= engine.toInt(state.get("roundLimit"), 12);
+        int currentRound = engine.toInt(state.get("currentRound"), 0);
+        int roundLimit = engine.toInt(state.get("roundLimit"), 12);
+        boolean roundLimitReached = currentRound >= roundLimit;
 
+        // 极端情况处理：如果双方都无存活宝可梦，或者达到回合上限
         if (!playerAlive || !opponentAlive || roundLimitReached) {
             state.put("status", "completed");
             state.put("phase", "completed");
+
+            String winner;
             if (!playerAlive && opponentAlive) {
-                state.put("winner", "opponent");
+                winner = "opponent";
             } else if (!opponentAlive && playerAlive) {
-                state.put("winner", "player");
+                winner = "player";
             } else {
-                state.put("winner", totalRemainingHp(engine.team(state, true)) >= totalRemainingHp(engine.team(state, false))
-                        ? "player"
-                        : "opponent");
+                // 双方同时倒下或平局判定：比较剩余总 HP
+                int playerHp = totalRemainingHp(engine.team(state, true));
+                int opponentHp = totalRemainingHp(engine.team(state, false));
+                winner = (playerHp >= opponentHp) ? "player" : "opponent";
             }
-            state.put("exchangeAvailable", "player".equals(state.get("winner")) && !Boolean.TRUE.equals(state.get("exchangeUsed")));
+
+            state.put("winner", winner);
+            state.put("exchangeAvailable", "player".equals(winner) && !Boolean.TRUE.equals(state.get("exchangeUsed")));
         }
     }
 
@@ -51,6 +78,7 @@ final class BattleFlowSupport {
 
     void prepareReplacementPhase(Map<String, Object> state, List<String> events) {
         pruneActiveSlots(state);
+        // 对手补位可以自动完成；玩家侧如果仍缺活动位，则进入 replacement 阶段等待选择。
         autoFillSideActiveSlotsWithEvents(state, false, events);
         int playerReplacementCount = replacementNeededCount(state, true);
         if (playerReplacementCount > 0) {
@@ -113,8 +141,9 @@ final class BattleFlowSupport {
         for (Integer slot : refreshed) {
             if (slot != null && !previousSlots.contains(slot) && slot >= 0 && slot < engine.team(state, player).size()) {
                 Map<String, Object> switchedIn = engine.team(state, player).get(slot);
+                // 自动补位也要补齐入场轮次和 flinch 清理，否则会污染下一回合行为。
                 switchedIn.put("entryRound", engine.toInt(state.get("currentRound"), 0) + 1);
-                switchedIn.put("flinched", false);
+                engine.setVolatile(switchedIn, "flinch", false);
             }
         }
         appendSendOutEvents(state, player, previousSlots, events);

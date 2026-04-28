@@ -1,5 +1,14 @@
 package com.lio9.battle.service;
 
+/**
+ * AIService 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：后端业务服务文件。
+ * 核心职责：负责定义或承载模块级业务能力，对上层暴露稳定服务接口。
+ * 阅读建议：建议结合控制器和实现类一起阅读。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.config.BattleConfig;
 import com.lio9.battle.engine.MoveRegistry;
@@ -15,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 对战工厂 AI 队伍生成服务。
@@ -34,8 +42,8 @@ public class AIService {
     /**
      * 注入 battleFactory 侧使用的图鉴查询能力。
      */
-    public AIService(BattleConfig config, TeamBalanceEvaluator balanceEvaluator, 
-                     BattleDexMapper battleDexMapper, ObjectMapper mapper) {
+    public AIService(BattleConfig config, TeamBalanceEvaluator balanceEvaluator,
+            BattleDexMapper battleDexMapper, ObjectMapper mapper) {
         this.config = config;
         this.balanceEvaluator = balanceEvaluator;
         this.battleDexMapper = battleDexMapper;
@@ -56,31 +64,33 @@ public class AIService {
     public String generateFactoryTeamJson(int size, int rank, long seed, Set<String> excludedNames) {
         int normalizedSize = Math.max(4, Math.min(6, size));
         int level = config.getLevel();
-        
+
         // 扩大候选池，增加选择空间
         List<Map<String, Object>> candidates = battleDexMapper.selectRandomDefaultForms(normalizedSize * 15);
         Random random = new Random(seed);
         Set<String> excluded = normalizeNames(excludedNames);
-        
+
         // 生成多个候选队伍，选择最平衡的
         List<List<Map<String, Object>>> candidateTeams = new ArrayList<>();
-        
+
         for (int attempt = 0; attempt < 5; attempt++) {
             Set<String> usedSpecies = new LinkedHashSet<>();
             List<Map<String, Object>> roster = new ArrayList<>();
             List<String> itemPool = createItemPool();
-            
+
             // 打乱候选顺序，增加多样性
             List<Map<String, Object>> shuffledCandidates = new ArrayList<>(candidates);
             Random shuffleRandom = new Random(seed + attempt);
             java.util.Collections.shuffle(shuffledCandidates, shuffleRandom);
-            
+
             for (Map<String, Object> candidate : shuffledCandidates) {
                 if (roster.size() >= normalizedSize) {
                     break;
                 }
 
-                String speciesName = String.valueOf(candidate.getOrDefault("name_en", candidate.getOrDefault("name", "unknown"))).toLowerCase();
+                String speciesName = String
+                        .valueOf(candidate.getOrDefault("name_en", candidate.getOrDefault("name", "unknown")))
+                        .toLowerCase();
                 if (excluded.contains(speciesName) || usedSpecies.contains(speciesName)) {
                     continue;
                 }
@@ -91,43 +101,40 @@ public class AIService {
                     usedSpecies.add(speciesName);
                 }
             }
-            
+
             if (roster.size() == normalizedSize) {
                 candidateTeams.add(roster);
             }
         }
-        
+
         // 如果没有生成足够的队伍，返回第一个
         if (candidateTeams.isEmpty()) {
             return "[]";
         }
-        
+
         // 评估所有候选队伍，选择最平衡的
         List<Map<String, Object>> bestTeam = candidateTeams.stream()
-            .max(Comparator.comparingDouble(team -> 
-                balanceEvaluator.evaluateTeamBalance(team).getOverallScore()
-            ))
-            .orElse(candidateTeams.get(0));
-        
+                .max(Comparator.comparingDouble(team -> balanceEvaluator.evaluateTeamBalance(team).getOverallScore()))
+                .orElse(candidateTeams.get(0));
+
         try {
             return mapper.writeValueAsString(bestTeam);
         } catch (Exception e) {
             return "[]";
         }
     }
-    
+
     /**
      * 创建道具池
      */
     private List<String> createItemPool() {
         return new ArrayList<>(List.of(
-            "focus-sash", "sitrus-berry", "assault-vest", "life-orb",
-            "choice-scarf", "choice-band", "choice-specs", "clear-amulet",
-            "covert-cloak", "mental-herb", "safety-goggles", "leftovers",
-            "rocky-helmet", "light-clay", "terrain-extender",
-            "mystic-water", "charcoal", "miracle-seed", "expert-belt",
-            "muscle-band", "wise-glasses", "weakness-policy"
-        ));
+                "focus-sash", "sitrus-berry", "assault-vest", "life-orb",
+                "choice-scarf", "choice-band", "choice-specs", "clear-amulet",
+                "covert-cloak", "mental-herb", "safety-goggles", "leftovers",
+                "rocky-helmet", "light-clay", "terrain-extender",
+                "mystic-water", "charcoal", "miracle-seed", "expert-belt",
+                "muscle-band", "wise-glasses", "weakness-policy"));
     }
 
     @SuppressWarnings("unchecked")
@@ -171,8 +178,8 @@ public class AIService {
     /**
      * 基于图鉴候选构造单只可参战宝可梦。
      */
-    private Map<String, Object> buildCompetitivePokemon(Map<String, Object> candidate, Random random, 
-                                                         List<String> itemPool, int level, int rank) {
+    private Map<String, Object> buildCompetitivePokemon(Map<String, Object> candidate, Random random,
+            List<String> itemPool, int level, int rank) {
         Integer formId = toInt(candidate.get("form_id"), null);
         if (formId == null) {
             return null;
@@ -182,7 +189,8 @@ public class AIService {
         List<Map<String, Object>> types = battleDexMapper.selectFormTypes(formId);
         List<Map<String, Object>> abilities = battleDexMapper.selectFormAbilities(formId);
         List<Map<String, Object>> movePool = battleDexMapper.selectCompetitiveMoves(formId, 36);
-        if (stats == null || stats.isEmpty() || types == null || types.isEmpty() || movePool == null || movePool.isEmpty()) {
+        if (stats == null || stats.isEmpty() || types == null || types.isEmpty() || movePool == null
+                || movePool.isEmpty()) {
             return null;
         }
         if (abilities == null) {
@@ -205,55 +213,98 @@ public class AIService {
         pokemon.put("level", level);
         pokemon.put("types", types);
         pokemon.put("moves", selectedMoves);
-        
+
         // 智能选择特性
         pokemon.put("ability", selectBestAbility(abilities, selectedMoves));
-        
+
         // 智能选择道具
         pokemon.put("heldItem", selectBestItem(itemPool, pokemon, selectedMoves));
-        
+
         Map<String, Object> teraType = pickTeraType(types, selectedMoves, random);
         pokemon.put("teraType", teraType);
         pokemon.put("teraTypeId", toInt(teraType.get("type_id"), 0));
-        
+
         // 根据定位分配性格
         String nature = determineNature(build, statMap);
         pokemon.put("nature", nature);
-        
+
         // 智能分配EV
         Map<String, Integer> evSpread = allocateEVs(statMap, build, selectedMoves);
         pokemon.put("evSpread", evSpread);
-        
+
         // 构建战斗属性
         pokemon.put("stats", buildBattleStats(statMap, evSpread, nature));
-        
+
         assignSpecialSystemProfile(pokemon, random);
-        
+
         // 计算战斗力评分
         double strength = balanceEvaluator.evaluatePokemonStrength(pokemon);
         pokemon.put("battleScore", (int) strength);
-        
+
+        // 可玩性校验：确保至少有 1 个攻击招式且属性不严重冲突
+        if (!validatePlayability(pokemon, selectedMoves)) {
+            return null;
+        }
+
         return pokemon;
     }
-    
+
+    /**
+     * 验证宝可梦的可玩性：确保至少有 1 个攻击招式且属性不严重冲突
+     */
+    private boolean validatePlayability(Map<String, Object> pokemon, List<Map<String, Object>> moves) {
+        // 1. 检查是否有攻击招式
+        boolean hasAttackMove = moves.stream()
+                .anyMatch(move -> toInt(move.get("power"), 0) > 0);
+
+        if (!hasAttackMove) {
+            return false;
+        }
+
+        // 2. 检查招式多样性（避免全是同一种属性的招式）
+        long distinctTypes = moves.stream()
+                .map(m -> String.valueOf(m.get("type_name_en")))
+                .distinct()
+                .count();
+        if (moves.size() >= 4 && distinctTypes < 2) {
+            return false; // 4 个招式如果全是同一种属性，可玩性太低
+        }
+
+        // 3. 检查属性冲突（例如水系宝可梦带电系装备）
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> types = (List<Map<String, Object>>) pokemon.get("types");
+        String heldItem = String.valueOf(pokemon.getOrDefault("heldItem", ""));
+
+        // 示例：水珠 + 火/电属性的冲突
+        if ("life-orb".equals(heldItem) && types.stream()
+                .anyMatch(type -> "fire".equalsIgnoreCase(String.valueOf(type.get("name_en"))) ||
+                        "electric".equalsIgnoreCase(String.valueOf(type.get("name_en"))))) {
+            return false; // 水珠与火/电属性相冲
+        }
+
+        return true;
+    }
+
     /**
      * 智能判断定位
      */
     private String determineBuild(Map<Integer, Integer> statMap) {
         int atk = statMap.getOrDefault(2, 50);
         int spa = statMap.getOrDefault(4, 50);
-        
-        if (atk >= spa * 1.15) return "physical";
-        if (spa >= atk * 1.15) return "special";
+
+        if (atk >= spa * 1.15)
+            return "physical";
+        if (spa >= atk * 1.15)
+            return "special";
         return "mixed";
     }
-    
+
     /**
      * 确定性格
      */
     private String determineNature(String build, Map<Integer, Integer> statMap) {
         int spe = statMap.getOrDefault(6, 80);
-        
+
         if ("physical".equals(build)) {
             return spe >= 90 ? "jolly" : "adamant";
         } else if ("special".equals(build)) {
@@ -262,24 +313,18 @@ public class AIService {
             return "serious";
         }
     }
-    
+
     /**
      * 智能分配EV
      */
-    private Map<String, Integer> allocateEVs(Map<Integer, Integer> baseStats, String build, 
-                                              List<Map<String, Object>> moves) {
-        int hp = baseStats.getOrDefault(1, 80);
-        int atk = baseStats.getOrDefault(2, 50);
-        int def = baseStats.getOrDefault(3, 50);
-        int spa = baseStats.getOrDefault(4, 50);
-        int spd = baseStats.getOrDefault(5, 50);
+    private Map<String, Integer> allocateEVs(Map<Integer, Integer> baseStats, String build,
+            List<Map<String, Object>> moves) {
         int spe = baseStats.getOrDefault(6, 80);
-        
+
         boolean hasSetupMove = moves.stream().anyMatch(this::isSetupMove);
-        boolean hasRecovery = moves.stream().anyMatch(MoveRegistry::isHealingMove);
-        
+
         Map<String, Integer> evs = new LinkedHashMap<>();
-        
+
         if ("physical".equals(build)) {
             // 物理攻击手
             if (spe >= 100) {
@@ -340,50 +385,48 @@ public class AIService {
             evs.put("spd", 0);
             evs.put("spe", 0);
         }
-        
+
         return evs;
     }
-    
+
     /**
      * 智能选择特性
      */
-    private Map<String, Object> selectBestAbility(List<Map<String, Object>> abilities, 
-                                                    List<Map<String, Object>> moves) {
+    private Map<String, Object> selectBestAbility(List<Map<String, Object>> abilities,
+            List<Map<String, Object>> moves) {
         if (abilities == null || abilities.isEmpty()) {
             return null;
         }
         if (abilities.size() == 1) {
             return abilities.get(0);
         }
-        
+
         // S级特性列表
         Set<String> sTierAbilities = Set.of(
-            "adaptability", "aerilate", "pixilate", "refrigerate", "galvanize",
-            "dragons-maw", "transistor", "steely-spirit"
-        );
-        
+                "adaptability", "aerilate", "pixilate", "refrigerate", "galvanize",
+                "dragons-maw", "transistor", "steely-spirit");
+
         // A级特性列表
         Set<String> aTierAbilities = Set.of(
-            "technician", "sheer-force", "iron-fist", "reckless", "guts",
-            "flare-boost", "toxic-boost", "tinted-lens", "analytic",
-            "levitate", "thick-fat", "water-absorb", "volt-absorb",
-            "flash-fire", "storm-drain", "sap-sipper"
-        );
-        
+                "technician", "sheer-force", "iron-fist", "reckless", "guts",
+                "flare-boost", "toxic-boost", "tinted-lens", "analytic",
+                "levitate", "thick-fat", "water-absorb", "volt-absorb",
+                "flash-fire", "storm-drain", "sap-sipper");
+
         // 评分并选择最高分的特性
         Map<String, Object> bestAbility = null;
         double bestScore = -1;
-        
+
         for (Map<String, Object> ability : abilities) {
             String nameEn = String.valueOf(ability.getOrDefault("name_en", "")).toLowerCase();
             double score = 5.0; // 基础分
-            
+
             if (sTierAbilities.contains(nameEn)) {
                 score = 25.0;
             } else if (aTierAbilities.contains(nameEn)) {
                 score = 18.0;
             }
-            
+
             // 检查与招式的协同
             if ("technician".equals(nameEn) && hasLowPowerMoves(moves)) {
                 score += 10;
@@ -391,36 +434,37 @@ public class AIService {
             if ("sheer-force".equals(nameEn) && hasSecondaryEffectMoves(moves)) {
                 score += 8;
             }
-            
+
             if (score > bestScore) {
                 bestScore = score;
                 bestAbility = ability;
             }
         }
-        
+
         return bestAbility != null ? bestAbility : abilities.get(0);
     }
-    
+
     /**
      * 智能选择道具
      */
-    private String selectBestItem(List<String> itemPool, Map<String, Object> pokemon, 
-                                   List<Map<String, Object>> moves) {
+    @SuppressWarnings("unchecked")
+    private String selectBestItem(List<String> itemPool, Map<String, Object> pokemon,
+            List<Map<String, Object>> moves) {
         if (itemPool == null || itemPool.isEmpty()) {
             return null;
         }
-        
+
         Map<String, Object> stats = (Map<String, Object>) pokemon.get("stats");
         int spe = stats != null ? toInt(stats.get("speed"), 0) : 0;
-        
+
         boolean hasSetupMove = moves.stream().anyMatch(this::isSetupMove);
-        boolean isPhysical = toInt(pokemon.get("nature"), 0) == 0 || 
-                            "adamant".equals(pokemon.get("nature")) || 
-                            "jolly".equals(pokemon.get("nature"));
-        
+        boolean isPhysical = toInt(pokemon.get("nature"), 0) == 0 ||
+                "adamant".equals(pokemon.get("nature")) ||
+                "jolly".equals(pokemon.get("nature"));
+
         // 根据定位选择道具
         String selectedItem;
-        
+
         if (hasSetupMove) {
             // 有强化技能：生命宝珠
             selectedItem = "life-orb";
@@ -434,45 +478,37 @@ public class AIService {
             // 中速：随机选择
             selectedItem = itemPool.get(new Random().nextInt(itemPool.size()));
         }
-        
+
         // 从道具池中移除已选道具，避免重复
         itemPool.remove(selectedItem);
-        
+
         return selectedItem;
     }
-    
+
     private boolean isSetupMove(Map<String, Object> move) {
         return MoveRegistry.isSwordsDance(move) ||
-               MoveRegistry.isNastyPlot(move) ||
-               MoveRegistry.isDragonDance(move) ||
-               MoveRegistry.isCalmMind(move) ||
-               MoveRegistry.isAgility(move) ||
-               MoveRegistry.isBulkUp(move) ||
-               MoveRegistry.isQuiverDance(move);
-    }
-    
-    private boolean hasLowPowerMoves(List<Map<String, Object>> moves) {
-        return moves.stream()
-            .anyMatch(m -> !MoveRegistry.isStatusMove(m) && toInt(m.get("power"), 0) <= 60);
-    }
-    
-    private boolean hasSecondaryEffectMoves(List<Map<String, Object>> moves) {
-        return moves.stream()
-            .anyMatch(m -> toInt(m.get("effect_chance"), 0) > 0);
+                MoveRegistry.isNastyPlot(move) ||
+                MoveRegistry.isDragonDance(move) ||
+                MoveRegistry.isCalmMind(move) ||
+                MoveRegistry.isAgility(move) ||
+                MoveRegistry.isBulkUp(move) ||
+                MoveRegistry.isQuiverDance(move);
     }
 
-    private Map<String, Object> buildBattleStats(Map<Integer, Integer> baseStats, boolean physical) {
-        // 兼容旧代码，使用默认EV分配
-        Map<String, Integer> defaultEVs = physical 
-            ? Map.of("hp", 4, "atk", 252, "def", 0, "spa", 0, "spd", 0, "spe", 252)
-            : Map.of("hp", 4, "atk", 0, "def", 0, "spa", 252, "spd", 0, "spe", 252);
-        String nature = physical ? "adamant" : "modest";
-        return buildBattleStats(baseStats, defaultEVs, nature);
+    private boolean hasLowPowerMoves(List<Map<String, Object>> moves) {
+        return moves.stream()
+                .anyMatch(m -> !MoveRegistry.isStatusMove(m) && toInt(m.get("power"), 0) <= 60);
     }
-    
-    private Map<String, Object> buildBattleStats(Map<Integer, Integer> baseStats, Map<String, Integer> evSpread, String nature) {
+
+    private boolean hasSecondaryEffectMoves(List<Map<String, Object>> moves) {
+        return moves.stream()
+                .anyMatch(m -> toInt(m.get("effect_chance"), 0) > 0);
+    }
+
+    private Map<String, Object> buildBattleStats(Map<Integer, Integer> baseStats, Map<String, Integer> evSpread,
+            String nature) {
         Map<String, Object> stats = new LinkedHashMap<>();
-        
+
         int hpIV = 31, atkIV = 31, defIV = 31, spaIV = 31, spdIV = 31, speIV = 31;
         int hpEV = evSpread.getOrDefault("hp", 0);
         int atkEV = evSpread.getOrDefault("atk", 0);
@@ -480,32 +516,54 @@ public class AIService {
         int spaEV = evSpread.getOrDefault("spa", 0);
         int spdEV = evSpread.getOrDefault("spd", 0);
         int speEV = evSpread.getOrDefault("spe", 0);
-        
+
         // 性格修正
         double atkNatureMod = 1.0, spaNatureMod = 1.0, defNatureMod = 1.0, spdNatureMod = 1.0, speNatureMod = 1.0;
-        
+
         switch (nature != null ? nature : "") {
-            case "adamant": atkNatureMod = 1.1; spaNatureMod = 0.9; break;
-            case "modest": spaNatureMod = 1.1; atkNatureMod = 0.9; break;
-            case "jolly": speNatureMod = 1.1; spaNatureMod = 0.9; break;
-            case "timid": speNatureMod = 1.1; atkNatureMod = 0.9; break;
-            case "bold": defNatureMod = 1.1; atkNatureMod = 0.9; break;
-            case "calm": spdNatureMod = 1.1; atkNatureMod = 0.9; break;
-            default: break;
+            case "adamant":
+                atkNatureMod = 1.1;
+                spaNatureMod = 0.9;
+                break;
+            case "modest":
+                spaNatureMod = 1.1;
+                atkNatureMod = 0.9;
+                break;
+            case "jolly":
+                speNatureMod = 1.1;
+                spaNatureMod = 0.9;
+                break;
+            case "timid":
+                speNatureMod = 1.1;
+                atkNatureMod = 0.9;
+                break;
+            case "bold":
+                defNatureMod = 1.1;
+                atkNatureMod = 0.9;
+                break;
+            case "calm":
+                spdNatureMod = 1.1;
+                atkNatureMod = 0.9;
+                break;
+            default:
+                break;
         }
-        
+
         int level = config.getLevel();
         stats.put("hp", calculateHp(baseStats.getOrDefault(1, 80), hpIV, hpEV, level));
         stats.put("attack", calculateOtherStat(baseStats.getOrDefault(2, 80), atkIV, atkEV, level, atkNatureMod));
         stats.put("defense", calculateOtherStat(baseStats.getOrDefault(3, 80), defIV, defEV, level, defNatureMod));
-        stats.put("specialAttack", calculateOtherStat(baseStats.getOrDefault(4, 80), spaIV, spaEV, level, spaNatureMod));
-        stats.put("specialDefense", calculateOtherStat(baseStats.getOrDefault(5, 80), spdIV, spdEV, level, spdNatureMod));
+        stats.put("specialAttack",
+                calculateOtherStat(baseStats.getOrDefault(4, 80), spaIV, spaEV, level, spaNatureMod));
+        stats.put("specialDefense",
+                calculateOtherStat(baseStats.getOrDefault(5, 80), spdIV, spdEV, level, spdNatureMod));
         stats.put("speed", calculateOtherStat(baseStats.getOrDefault(6, 80), speIV, speEV, level, speNatureMod));
-        
+
         return stats;
     }
 
-    private List<Map<String, Object>> pickMoves(List<Map<String, Object>> movePool, String build, Random random, int baseSpeed) {
+    private List<Map<String, Object>> pickMoves(List<Map<String, Object>> movePool, String build, Random random,
+            int baseSpeed) {
         List<Map<String, Object>> attacks = new ArrayList<>();
         Map<String, Object> protect = null;
         List<Map<String, Object>> utilities = new ArrayList<>();
@@ -615,7 +673,8 @@ public class AIService {
         return selected;
     }
 
-    private Map<String, Object> pickTeraType(List<Map<String, Object>> types, List<Map<String, Object>> moves, Random random) {
+    private Map<String, Object> pickTeraType(List<Map<String, Object>> types, List<Map<String, Object>> moves,
+            Random random) {
         Map<Integer, Integer> attackWeights = new LinkedHashMap<>();
         for (Map<String, Object> move : moves) {
             if (toInt(move.get("power"), 0) <= 0) {
@@ -649,7 +708,8 @@ public class AIService {
         }
         if (baseSpeed <= 60) {
             for (Map<String, Object> move : utilities) {
-                if ("trick-room".equalsIgnoreCase(String.valueOf(move.get("name_en"))) || "trick room".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+                if ("trick-room".equalsIgnoreCase(String.valueOf(move.get("name_en")))
+                        || "trick room".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
                     return move;
                 }
             }
@@ -718,7 +778,8 @@ public class AIService {
             }
         }
         for (Map<String, Object> move : utilities) {
-            if ("helping-hand".equalsIgnoreCase(String.valueOf(move.get("name_en"))) || "helping hand".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+            if ("helping-hand".equalsIgnoreCase(String.valueOf(move.get("name_en")))
+                    || "helping hand".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
                 return move;
             }
         }
@@ -732,17 +793,20 @@ public class AIService {
             }
         }
         for (Map<String, Object> move : utilities) {
-            if ("will-o-wisp".equalsIgnoreCase(String.valueOf(move.get("name_en"))) || "will o wisp".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+            if ("will-o-wisp".equalsIgnoreCase(String.valueOf(move.get("name_en")))
+                    || "will o wisp".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
                 return move;
             }
         }
         for (Map<String, Object> move : utilities) {
-            if ("thunder-wave".equalsIgnoreCase(String.valueOf(move.get("name_en"))) || "thunder wave".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+            if ("thunder-wave".equalsIgnoreCase(String.valueOf(move.get("name_en")))
+                    || "thunder wave".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
                 return move;
             }
         }
         for (Map<String, Object> move : utilities) {
-            if ("icy-wind".equalsIgnoreCase(String.valueOf(move.get("name_en"))) || "icy wind".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
+            if ("icy-wind".equalsIgnoreCase(String.valueOf(move.get("name_en")))
+                    || "icy wind".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
                 return move;
             }
         }
@@ -774,14 +838,6 @@ public class AIService {
         return normalized;
     }
 
-    private int totalPower(List<Map<String, Object>> moves) {
-        int total = 0;
-        for (Map<String, Object> move : moves) {
-            total += toInt(move.get("power"), 0);
-        }
-        return total;
-    }
-
     @SuppressWarnings("unchecked")
     private void assignSpecialSystemProfile(Map<String, Object> pokemon, Random random) {
         int roll = random.nextInt(100);
@@ -794,8 +850,7 @@ public class AIService {
                     "defense", (int) Math.floor(toInt(stats.get("defense"), 80) * 1.12d),
                     "specialAttack", (int) Math.floor(toInt(stats.get("specialAttack"), 80) * 1.18d),
                     "specialDefense", (int) Math.floor(toInt(stats.get("specialDefense"), 80) * 1.12d),
-                    "speed", (int) Math.floor(toInt(stats.get("speed"), 80) * 1.1d)
-            ));
+                    "speed", (int) Math.floor(toInt(stats.get("speed"), 80) * 1.1d)));
             return;
         }
         if (roll < 34) {
@@ -806,23 +861,6 @@ public class AIService {
         if (roll < 50) {
             pokemon.put("dynamaxEligible", true);
         }
-    }
-
-    private String pickUniqueItem(List<String> itemPool, Random random, List<Map<String, Object>> selectedMoves) {
-        List<String> availableItems = new ArrayList<>(itemPool);
-        if (selectedMoves.stream().anyMatch(this::isStatusMove)) {
-            availableItems.remove("assault-vest");
-        }
-        if (availableItems.isEmpty()) {
-            return "leftovers";
-        }
-        String chosen = availableItems.get(random.nextInt(availableItems.size()));
-        itemPool.remove(chosen);
-        return chosen;
-    }
-
-    private boolean isStatusMove(Map<String, Object> move) {
-        return toInt(move.get("damage_class_id"), 0) == 3 || toInt(move.get("power"), 0) == 0;
     }
 
     private Set<String> normalizeNames(Set<String> names) {

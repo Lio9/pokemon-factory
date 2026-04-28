@@ -1,3 +1,12 @@
+<!--
+  ExchangeModal 文件说明
+  所属模块：前端应用。
+  文件类型：界面组件文件。
+  核心职责：负责局部交互、展示逻辑与对外事件抛出。
+  阅读建议：建议结合父组件传入的 props 与 emits 一起阅读。
+  项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+-->
+
 <template>
   <div class="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/50 p-2 backdrop-blur-sm sm:items-center sm:p-4">
     <div class="w-full max-w-5xl rounded-t-[28px] border border-white/70 bg-white/95 p-4 shadow-[0_28px_120px_-50px_rgba(15,23,42,0.8)] backdrop-blur sm:rounded-[28px] sm:p-6 max-h-[92vh] overflow-y-auto">

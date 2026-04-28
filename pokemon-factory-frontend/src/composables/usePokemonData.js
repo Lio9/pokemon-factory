@@ -1,3 +1,12 @@
+/*
+ * usePokemonData 文件说明
+ * 所属模块：前端应用。
+ * 文件类型：前端组合式逻辑文件。
+ * 核心职责：负责抽离可复用状态、派生数据和副作用处理流程。
+ * 阅读建议：建议结合调用它的页面或组件一起理解数据流。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import { ref } from 'vue'
 import { pokemonApi } from '../services/api'
 import { normalizePokemonCollection, normalizePokemonDetail } from '../services/contracts/pokemonContract'

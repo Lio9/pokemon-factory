@@ -1,5 +1,16 @@
 package com.lio9.battle.service;
 
+
+
+/**
+ * FactoryRunService 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：后端业务服务文件。
+ * 核心职责：负责定义或承载模块级业务能力，对上层暴露稳定服务接口。
+ * 阅读建议：建议结合控制器和实现类一起阅读。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.lio9.battle.mapper.FactoryRunMapper;
 import com.lio9.battle.mapper.PlayerMapper;
 import org.springframework.stereotype.Service;
@@ -33,6 +44,12 @@ public class FactoryRunService {
 
     /**
      * 开始一次新的工厂挑战。
+     * <p>
+     * 若玩家已有 active run，则直接返回恢复态，避免并发创建多条进行中记录。
+     * </p>
+     *
+     * @param username 玩家用户名
+     * @return run 初始化信息或已存在 run 的恢复信息
      */
     public Map<String, Object> startRun(String username) {
         playerMapper.insertIgnore(username);
@@ -90,6 +107,14 @@ public class FactoryRunService {
 
     /**
      * 在工厂挑战中开始下一场对战。
+     * <p>
+     * 该方法会复用 run 中沿用队伍并委托 BattleService.startMatch 创建 battle。
+     * run 的 currentBattle/currentBattleId 也会同步推进。
+     * </p>
+     *
+     * @param username 玩家用户名
+     * @param runId 工厂挑战 ID
+     * @return 新一轮 battle 初始化结果，或 run_not_active/not_your_run 等错误
      */
     public Map<String, Object> startNextBattle(String username, Integer runId) {
         playerMapper.insertIgnore(username);
@@ -139,7 +164,14 @@ public class FactoryRunService {
 
     /**
      * 单场对战结束后更新工厂挑战进度。
-     * 由 BattleService 在对战结束时回调。
+     * <p>
+     * 由 BattleService 在对战结束时回调。该方法只维护 run 内统计，
+     * 达到终止条件时再统一触发 finishRun 做积分结算。
+     * </p>
+     *
+     * @param factoryRunId 工厂挑战 ID
+     * @param playerWon 是否玩家获胜
+     * @param updatedTeamJson 胜利交换后可能变更的最新队伍 JSON
      */
     public void onBattleCompleted(Integer factoryRunId, boolean playerWon, String updatedTeamJson) {
         if (factoryRunId == null) return;
@@ -164,6 +196,14 @@ public class FactoryRunService {
 
     /**
      * 结束工厂挑战并结算积分。
+     * <p>
+     * 积分按 run 全局战绩计算，结算后写回 tier/tierPoints/totalPoints 与总胜负。
+     * </p>
+     *
+     * @param runId 工厂挑战 ID
+     * @param run run 行数据
+     * @param profile 玩家资料快照
+     * @return 结算结果（包含升降段位信息）
      */
     public Map<String, Object> finishRun(Integer runId, Map<String, Object> run, Map<String, Object> profile) {
         int wins = toInt(run.get("wins"), 0);
@@ -206,6 +246,9 @@ public class FactoryRunService {
 
     /**
      * 主动结束（放弃）当前工厂挑战。
+     *
+     * @param username 玩家用户名
+     * @return 无 active run 返回 no_active_run；否则立即走 finishRun 结算
      */
     public Map<String, Object> abandonRun(String username) {
         playerMapper.insertIgnore(username);
@@ -221,6 +264,9 @@ public class FactoryRunService {
 
     /**
      * 获取当前工厂挑战状态。
+     *
+     * @param username 玩家用户名
+     * @return 包含 profile 与 activeRun（若存在）
      */
     public Map<String, Object> getRunStatus(String username) {
         playerMapper.insertIgnore(username);
@@ -238,6 +284,9 @@ public class FactoryRunService {
 
     /**
      * 玩家信息摘要。
+     *
+     * @param username 玩家用户名
+     * @return 包含 profile、activeRun、最近对战与最近 run 列表
      */
     public Map<String, Object> getProfile(String username) {
         playerMapper.insertIgnore(username);

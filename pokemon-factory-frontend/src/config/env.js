@@ -1,3 +1,12 @@
+/*
+ * env 文件说明
+ * 所属模块：前端应用。
+ * 文件类型：前端配置文件。
+ * 核心职责：负责环境变量、运行参数或构建期配置映射。
+ * 阅读建议：建议关注不同环境下的取值来源。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 const DEFAULT_ENV = Object.freeze({
   apiBase: '/api/pokedex',
   damageApiBase: '/api/damage',

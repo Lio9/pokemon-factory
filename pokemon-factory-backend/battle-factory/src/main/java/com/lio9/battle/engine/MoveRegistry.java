@@ -1,13 +1,32 @@
 package com.lio9.battle.engine;
 
+
+
+/**
+ * MoveRegistry 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 MoveRegistry 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.lio9.common.util.BattleUtils;
 
 import java.util.Map;
 import java.util.Set;
 
 /**
- * 招式注册表
- * 统一管理所有招式的分类和判断逻辑，替代 BattleEngine 中的大量 isXxx() 方法
+ * 招式注册表。
+ * <p>
+ * 统一管理所有招式的分类和判断逻辑，替代 BattleEngine 中分散的大量 isXxx() 硬编码判断。
+ * 这一层的核心价值是：
+ * <ul>
+ *     <li>把“招式名别名/连字符差异”统一归并</li>
+ *     <li>让行动、状态、场地、命中等模块复用同一份分类标准</li>
+ *     <li>降低后续对齐 PS 规则时的重复修改成本</li>
+ * </ul>
+ * </p>
  */
 public final class MoveRegistry {
 
@@ -145,6 +164,11 @@ public final class MoveRegistry {
 
     // === 击落类招式 ===
     private static final Set<String> KNOCK_OFF_MOVES = Set.of("knock off", "knock-off");
+
+    // === 命中规则特殊招式 ===
+    private static final Set<String> THUNDER_MOVES = Set.of("thunder");
+    private static final Set<String> HURRICANE_MOVES = Set.of("hurricane");
+    private static final Set<String> BLIZZARD_MOVES = Set.of("blizzard");
 
     /**
      * 检查是否为保护类招式
@@ -493,6 +517,18 @@ public final class MoveRegistry {
      */
     public static boolean isKnockOff(Map<String, Object> move) {
         return matchesAny(move, KNOCK_OFF_MOVES);
+    }
+
+    public static boolean isThunder(Map<String, Object> move) {
+        return matchesAny(move, THUNDER_MOVES);
+    }
+
+    public static boolean isHurricane(Map<String, Object> move) {
+        return matchesAny(move, HURRICANE_MOVES);
+    }
+
+    public static boolean isBlizzard(Map<String, Object> move) {
+        return matchesAny(move, BLIZZARD_MOVES);
     }
 
     /**

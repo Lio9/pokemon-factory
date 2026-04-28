@@ -1,3 +1,12 @@
+/*
+ * useBattleDerivedState 文件说明
+ * 所属模块：前端应用。
+ * 文件类型：前端组合式逻辑文件。
+ * 核心职责：负责抽离可复用状态、派生数据和副作用处理流程。
+ * 阅读建议：建议结合调用它的页面或组件一起理解数据流。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import { computed } from 'vue'
 import { formatPokemonTypes, getTierName, moveNeedsOpponentTarget } from '../../services/contracts/battleContract'
 import { translate } from '../useLocale'
@@ -96,17 +105,17 @@ export function useBattleDerivedState(state) {
 
   const actionHeadline = computed(() => {
     if (!currentBattleId.value) {
-      return factoryRun.value ? translate('准备进入下一轮', 'Prepare for the next round') : translate('选择一种开始方式', 'Choose how to start')
+      return factoryRun.value ? translate('准备进入下一轮', 'Prepare for the next round', '次のラウンドの準備') : translate('选择一种开始方式', 'Choose how to start', '開始方法を選択')
     }
-    if (isPreviewPhase.value) return translate('先完成 6 选 4 与首发', 'Finish 6v4 selection and leads first')
-    if (isReplacementPhase.value) return translate('需要补位 {count} 只', 'Need {count} replacements', { count: pendingReplacementCount.value })
+    if (isPreviewPhase.value) return translate('先完成 6 选 4 与首发', 'Finish 6v4 selection and leads first', '6体から4体と先発を選ぶ')
+    if (isReplacementPhase.value) return translate('需要补位 {count} 只', 'Need {count} replacements', { count: pendingReplacementCount.value }, '{count}体の交代が必要')
     if (summary.value?.status === 'completed') {
       return summary.value?.winner === 'player'
-        ? translate('本场获胜，检查结算与奖励', 'Battle won, review rewards and settlement')
-        : translate('本场结束，准备下一步', 'Battle finished, prepare for the next step')
+        ? translate('本场获胜，检查结算与奖励', 'Battle won, review rewards and settlement', '勝利！報酬を確認')
+        : translate('本场结束，准备下一步', 'Battle finished, prepare for the next step', '戦闘終了、次へ進む')
     }
-    if (pollingActive.value) return translate('等待异步模拟推进', 'Waiting for async simulation')
-    return translate('为当前回合配置动作', 'Set actions for this turn')
+    if (pollingActive.value) return translate('等待异步模拟推进', 'Waiting for async simulation', '非同期シミュレーション待機中')
+    return translate('为当前回合配置动作', 'Set actions for this turn', 'このターンの行動を設定')
   })
 
   const actionDescription = computed(() => {

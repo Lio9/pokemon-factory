@@ -1,5 +1,14 @@
 package com.lio9.battle.engine;
 
+/**
+ * TeamBalanceEvaluator 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 TeamBalanceEvaluator 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.lio9.common.util.BattleUtils;
 
 import java.util.*;
@@ -18,7 +27,8 @@ public class TeamBalanceEvaluator {
      * @return 战斗力分数 (越高越强)
      */
     public double evaluatePokemonStrength(Map<String, Object> pokemon) {
-        if (pokemon == null) return 0.0;
+        if (pokemon == null)
+            return 0.0;
 
         double score = 0.0;
 
@@ -65,8 +75,10 @@ public class TeamBalanceEvaluator {
 
         // 5. 速度层次加分 (高速宝可梦更有价值)
         int speed = BattleUtils.toInt(stats.get("speed"), 0);
-        if (speed >= 100) score += 20;
-        else if (speed >= 80) score += 10;
+        if (speed >= 100)
+            score += 20;
+        else if (speed >= 80)
+            score += 10;
 
         return score;
     }
@@ -83,8 +95,8 @@ public class TeamBalanceEvaluator {
 
         // 1. 总战斗力
         double totalStrength = team.stream()
-            .mapToDouble(this::evaluatePokemonStrength)
-            .sum();
+                .mapToDouble(this::evaluatePokemonStrength)
+                .sum();
         score.setTotalStrength(totalStrength);
         score.setAvgStrength(totalStrength / team.size());
 
@@ -102,18 +114,21 @@ public class TeamBalanceEvaluator {
 
         // 4. 速度层次
         List<Integer> speeds = team.stream()
-            .map(m -> BattleUtils.toInt(BattleUtils.toMap(m.get("stats")).get("speed"), 0))
-            .sorted()
-            .collect(Collectors.toList());
+                .map(m -> BattleUtils.toInt(BattleUtils.toMap(m.get("stats")).get("speed"), 0))
+                .sorted()
+                .collect(Collectors.toList());
         score.setSpeedLayers(speeds);
 
         // 计算速度多样性 (标准差)
         if (!speeds.isEmpty()) {
-            double avgSpeed = speeds.stream().mapToInt(Integer::intValue).average().orElse(0);
+            double avgSpeed = speeds.stream()
+                    .mapToInt(Integer::intValue)
+                    .average()
+                    .orElse(0);
             double variance = speeds.stream()
-                .mapToDouble(s -> Math.pow(s - avgSpeed, 2))
-                .average()
-                .orElse(0);
+                    .mapToDouble(s -> Math.pow(s.doubleValue() - avgSpeed, 2))
+                    .average()
+                    .orElse(0);
             score.setSpeedVariance(Math.sqrt(variance));
         }
 
@@ -134,8 +149,8 @@ public class TeamBalanceEvaluator {
     /**
      * 判断两个队伍的强度是否匹配
      *
-     * @param team1 队伍1
-     * @param team2 队伍2
+     * @param team1     队伍1
+     * @param team2     队伍2
      * @param tolerance 容差 (0.0-1.0)，越小要求越严格
      * @return 是否匹配
      */
@@ -146,7 +161,8 @@ public class TeamBalanceEvaluator {
         double maxStrength = Math.max(strength1, strength2);
         double minStrength = Math.min(strength1, strength2);
 
-        if (maxStrength == 0) return true;
+        if (maxStrength == 0)
+            return true;
 
         double ratio = minStrength / maxStrength;
         return ratio >= (1.0 - tolerance);
@@ -155,67 +171,70 @@ public class TeamBalanceEvaluator {
     // ==================== 私有方法 ====================
 
     private int calculateBST(Map<String, Object> stats) {
-        if (stats == null || stats.isEmpty()) return 0;
+        if (stats == null || stats.isEmpty())
+            return 0;
         return BattleUtils.toInt(stats.get("hp"), 0) +
-               BattleUtils.toInt(stats.get("attack"), 0) +
-               BattleUtils.toInt(stats.get("defense"), 0) +
-               BattleUtils.toInt(stats.get("specialAttack"), 0) +
-               BattleUtils.toInt(stats.get("specialDefense"), 0) +
-               BattleUtils.toInt(stats.get("speed"), 0);
+                BattleUtils.toInt(stats.get("attack"), 0) +
+                BattleUtils.toInt(stats.get("defense"), 0) +
+                BattleUtils.toInt(stats.get("specialAttack"), 0) +
+                BattleUtils.toInt(stats.get("specialDefense"), 0) +
+                BattleUtils.toInt(stats.get("speed"), 0);
     }
 
     private double calculateAverageMovePower(List<Map<String, Object>> moves) {
-        if (moves.isEmpty()) return 0.0;
+        if (moves.isEmpty())
+            return 0.0;
 
         long damagingMoves = moves.stream()
-            .filter(m -> !MoveRegistry.isStatusMove(m))
-            .count();
+                .filter(m -> !MoveRegistry.isStatusMove(m))
+                .count();
 
-        if (damagingMoves == 0) return 0.0;
+        if (damagingMoves == 0)
+            return 0.0;
 
         double totalPower = moves.stream()
-            .filter(m -> !MoveRegistry.isStatusMove(m))
-            .mapToDouble(m -> BattleUtils.toInt(m.get("power"), 0))
-            .sum();
+                .filter(m -> !MoveRegistry.isStatusMove(m))
+                .mapToDouble(m -> BattleUtils.toInt(m.get("power"), 0))
+                .sum();
 
         return totalPower / damagingMoves;
     }
 
     private Set<Integer> getCoveredTypes(List<Map<String, Object>> moves) {
         return moves.stream()
-            .filter(m -> !MoveRegistry.isStatusMove(m))
-            .map(m -> BattleUtils.toInt(m.get("type_id"), 0))
-            .filter(typeId -> typeId > 0)
-            .collect(Collectors.toSet());
+                .filter(m -> !MoveRegistry.isStatusMove(m))
+                .map(m -> BattleUtils.toInt(m.get("type_id"), 0))
+                .filter(typeId -> typeId > 0)
+                .collect(Collectors.toSet());
     }
 
     private Set<Integer> getPokemonTypes(Map<String, Object> pokemon) {
         List<Map<String, Object>> types = castList(pokemon.get("types"));
         return types.stream()
-            .map(t -> BattleUtils.toInt(t.get("type_id"), 0))
-            .filter(typeId -> typeId > 0)
-            .collect(Collectors.toSet());
+                .map(t -> BattleUtils.toInt(t.get("type_id"), 0))
+                .filter(typeId -> typeId > 0)
+                .collect(Collectors.toSet());
     }
 
     private boolean isSetupMove(Map<String, Object> move) {
         return MoveRegistry.isSwordsDance(move) ||
-               MoveRegistry.isNastyPlot(move) ||
-               MoveRegistry.isDragonDance(move) ||
-               MoveRegistry.isCalmMind(move) ||
-               MoveRegistry.isAgility(move) ||
-               MoveRegistry.isBulkUp(move) ||
-               MoveRegistry.isQuiverDance(move) ||
-               MoveRegistry.isCoil(move) ||
-               MoveRegistry.isShellSmash(move);
+                MoveRegistry.isNastyPlot(move) ||
+                MoveRegistry.isDragonDance(move) ||
+                MoveRegistry.isCalmMind(move) ||
+                MoveRegistry.isAgility(move) ||
+                MoveRegistry.isBulkUp(move) ||
+                MoveRegistry.isQuiverDance(move) ||
+                MoveRegistry.isCoil(move) ||
+                MoveRegistry.isShellSmash(move);
     }
 
     private boolean isRecoveryMove(Map<String, Object> move) {
         return MoveRegistry.isRecover(move) ||
-               MoveRegistry.isRoost(move) ||
-               MoveRegistry.isRest(move) ||
-               MoveRegistry.isSoftBoiled(move) ||
-               MoveRegistry.isSynthesis(move) ||
-               MoveRegistry.isMoonlight(move);
+                MoveRegistry.isRoost(move) ||
+                MoveRegistry.isRest(move) ||
+                MoveRegistry.isSoftBoiled(move) ||
+                MoveRegistry.isSynthesis(move) ||
+                MoveRegistry.isMoonlight(move);
     }
 
     private boolean isPriorityMove(Map<String, Object> move) {
@@ -223,61 +242,63 @@ public class TeamBalanceEvaluator {
     }
 
     private double evaluateAbilityQuality(String ability, List<Map<String, Object>> moves) {
-        if (ability == null || ability.isBlank()) return 0.0;
+        if (ability == null || ability.isBlank())
+            return 0.0;
 
         // S级特性
         Set<String> sTierAbilities = Set.of(
-            "adaptability", "aerilate", "pixilate", "refrigerate", "galvanize",
-            "dragons-maw", "transistor", "steely-spirit"
-        );
+                "adaptability", "aerilate", "pixilate", "refrigerate", "galvanize",
+                "dragons-maw", "transistor", "steely-spirit");
 
         // A级特性
         Set<String> aTierAbilities = Set.of(
-            "technician", "sheer-force", "iron-fist", "reckless", "guts",
-            "flare-boost", "toxic-boost", "tinted-lens", "analytic",
-            "levitate", "thick-fat", "water-absorb", "volt-absorb",
-            "flash-fire", "storm-drain", "sap-sipper"
-        );
+                "technician", "sheer-force", "iron-fist", "reckless", "guts",
+                "flare-boost", "toxic-boost", "tinted-lens", "analytic",
+                "levitate", "thick-fat", "water-absorb", "volt-absorb",
+                "flash-fire", "storm-drain", "sap-sipper");
 
         // B级特性
         Set<String> bTierAbilities = Set.of(
-            "hustle", "sand-force", "strong-jaw", "mega-launcher",
-            "punk-rock", "normalize", "super-luck", "sniper"
-        );
+                "hustle", "sand-force", "strong-jaw", "mega-launcher",
+                "punk-rock", "normalize", "super-luck", "sniper");
 
         String lowerAbility = ability.toLowerCase();
 
-        if (sTierAbilities.contains(lowerAbility)) return 25.0;
-        if (aTierAbilities.contains(lowerAbility)) return 18.0;
-        if (bTierAbilities.contains(lowerAbility)) return 12.0;
+        if (sTierAbilities.contains(lowerAbility))
+            return 25.0;
+        if (aTierAbilities.contains(lowerAbility))
+            return 18.0;
+        if (bTierAbilities.contains(lowerAbility))
+            return 12.0;
 
         return 5.0; // 普通特性
     }
 
     private double evaluateItemQuality(String item, Map<String, Object> pokemon, List<Map<String, Object>> moves) {
-        if (item == null || item.isBlank()) return 0.0;
+        if (item == null || item.isBlank())
+            return 0.0;
 
         // S级道具
         Set<String> sTierItems = Set.of(
-            "life-orb", "choice-band", "choice-specs", "choice-scarf"
-        );
+                "life-orb", "choice-band", "choice-specs", "choice-scarf");
 
         // A级道具
         Set<String> aTierItems = Set.of(
-            "assault-vest", "focus-sash", "leftovers", "expert-belt",
-            "weakness-policy", "muscle-band", "wise-glasses"
-        );
+                "assault-vest", "focus-sash", "leftovers", "expert-belt",
+                "weakness-policy", "muscle-band", "wise-glasses");
 
         // B级道具
         Set<String> bTierItems = Set.of(
-            "sitrus-berry", "lum-berry", "air-balloon", "heavy-duty-boots"
-        );
+                "sitrus-berry", "lum-berry", "air-balloon", "heavy-duty-boots");
 
         String lowerItem = item.toLowerCase().replace(" ", "-");
 
-        if (sTierItems.contains(lowerItem)) return 20.0;
-        if (aTierItems.contains(lowerItem)) return 15.0;
-        if (bTierItems.contains(lowerItem)) return 10.0;
+        if (sTierItems.contains(lowerItem))
+            return 20.0;
+        if (aTierItems.contains(lowerItem))
+            return 15.0;
+        if (bTierItems.contains(lowerItem))
+            return 10.0;
 
         return 5.0; // 其他道具
     }
@@ -291,7 +312,7 @@ public class TeamBalanceEvaluator {
 
         for (Map<String, Object> mon : team) {
             String role = determinePokemonRole(mon);
-            roles.merge(role, 1, Integer::sum);
+            roles.merge(role, 1, (a, b) -> a + b);
         }
 
         return roles;
@@ -312,7 +333,8 @@ public class TeamBalanceEvaluator {
         long statusMoves = moves.stream().filter(MoveRegistry::isStatusMove).count();
 
         // 辅助型
-        if (statusMoves >= 3) return "support";
+        if (statusMoves >= 3)
+            return "support";
 
         // 坦克型
         if ((def + spd) > (atk + spa) && (def + spd) > 180) {
@@ -332,12 +354,12 @@ public class TeamBalanceEvaluator {
 
     private boolean isPhysicalMove(Map<String, Object> move) {
         return BattleUtils.toInt(move.get("damage_class_id"), 0) == 1 &&
-               !MoveRegistry.isStatusMove(move);
+                !MoveRegistry.isStatusMove(move);
     }
 
     private boolean isSpecialMove(Map<String, Object> move) {
         return BattleUtils.toInt(move.get("damage_class_id"), 0) == 2 &&
-               !MoveRegistry.isStatusMove(move);
+                !MoveRegistry.isStatusMove(move);
     }
 
     private double calculateOverallScore(TeamBalanceScore score, int teamSize) {
@@ -358,9 +380,12 @@ public class TeamBalanceEvaluator {
         // 理想分布: 2 sweeper + 2 tank + 0-1 support (对于4人队)
         double roleScore = 0.0;
         if (teamSize == 4) {
-            if (sweepers >= 1 && sweepers <= 3) roleScore += 0.4;
-            if (tanks >= 1 && tanks <= 3) roleScore += 0.4;
-            if (supports <= 2) roleScore += 0.2;
+            if (sweepers >= 1 && sweepers <= 3)
+                roleScore += 0.4;
+            if (tanks >= 1 && tanks <= 3)
+                roleScore += 0.4;
+            if (supports <= 2)
+                roleScore += 0.2;
         }
         overall += roleScore * 20;
 
@@ -396,37 +421,92 @@ public class TeamBalanceEvaluator {
         private double overallScore;
 
         // Getters and Setters
-        public double getTotalStrength() { return totalStrength; }
-        public void setTotalStrength(double totalStrength) { this.totalStrength = totalStrength; }
+        public double getTotalStrength() {
+            return totalStrength;
+        }
 
-        public double getAvgStrength() { return avgStrength; }
-        public void setAvgStrength(double avgStrength) { this.avgStrength = avgStrength; }
+        public void setTotalStrength(double totalStrength) {
+            this.totalStrength = totalStrength;
+        }
 
-        public int getTypeCoverage() { return typeCoverage; }
-        public void setTypeCoverage(int typeCoverage) { this.typeCoverage = typeCoverage; }
+        public double getAvgStrength() {
+            return avgStrength;
+        }
 
-        public double getTypeDiversityRatio() { return typeDiversityRatio; }
-        public void setTypeDiversityRatio(double typeDiversityRatio) { this.typeDiversityRatio = typeDiversityRatio; }
+        public void setAvgStrength(double avgStrength) {
+            this.avgStrength = avgStrength;
+        }
 
-        public Map<String, Integer> getRoleDistribution() { return roleDistribution; }
-        public void setRoleDistribution(Map<String, Integer> roleDistribution) { this.roleDistribution = roleDistribution; }
+        public int getTypeCoverage() {
+            return typeCoverage;
+        }
 
-        public List<Integer> getSpeedLayers() { return speedLayers; }
-        public void setSpeedLayers(List<Integer> speedLayers) { this.speedLayers = speedLayers; }
+        public void setTypeCoverage(int typeCoverage) {
+            this.typeCoverage = typeCoverage;
+        }
 
-        public double getSpeedVariance() { return speedVariance; }
-        public void setSpeedVariance(double speedVariance) { this.speedVariance = speedVariance; }
+        public double getTypeDiversityRatio() {
+            return typeDiversityRatio;
+        }
 
-        public int getMegaCount() { return megaCount; }
-        public void setMegaCount(int megaCount) { this.megaCount = megaCount; }
+        public void setTypeDiversityRatio(double typeDiversityRatio) {
+            this.typeDiversityRatio = typeDiversityRatio;
+        }
 
-        public int getZMoveCount() { return zMoveCount; }
-        public void setZMoveCount(int zMoveCount) { this.zMoveCount = zMoveCount; }
+        public Map<String, Integer> getRoleDistribution() {
+            return roleDistribution;
+        }
 
-        public int getDynamaxCount() { return dynamaxCount; }
-        public void setDynamaxCount(int dynamaxCount) { this.dynamaxCount = dynamaxCount; }
+        public void setRoleDistribution(Map<String, Integer> roleDistribution) {
+            this.roleDistribution = roleDistribution;
+        }
 
-        public double getOverallScore() { return overallScore; }
-        public void setOverallScore(double overallScore) { this.overallScore = overallScore; }
+        public List<Integer> getSpeedLayers() {
+            return speedLayers;
+        }
+
+        public void setSpeedLayers(List<Integer> speedLayers) {
+            this.speedLayers = speedLayers;
+        }
+
+        public double getSpeedVariance() {
+            return speedVariance;
+        }
+
+        public void setSpeedVariance(double speedVariance) {
+            this.speedVariance = speedVariance;
+        }
+
+        public int getMegaCount() {
+            return megaCount;
+        }
+
+        public void setMegaCount(int megaCount) {
+            this.megaCount = megaCount;
+        }
+
+        public int getZMoveCount() {
+            return zMoveCount;
+        }
+
+        public void setZMoveCount(int zMoveCount) {
+            this.zMoveCount = zMoveCount;
+        }
+
+        public int getDynamaxCount() {
+            return dynamaxCount;
+        }
+
+        public void setDynamaxCount(int dynamaxCount) {
+            this.dynamaxCount = dynamaxCount;
+        }
+
+        public double getOverallScore() {
+            return overallScore;
+        }
+
+        public void setOverallScore(double overallScore) {
+            this.overallScore = overallScore;
+        }
     }
 }

@@ -1,5 +1,14 @@
 package com.lio9.battle.engine;
 
+/**
+ * BattleAiSwitchSupport 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 BattleAiSwitchSupport 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +22,7 @@ final class BattleAiSwitchSupport {
     }
 
     int chooseAISwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int activeTeamIndex,
-                       int fieldSlot, Random random, Map<String, Object> state) {
+            int fieldSlot, Random random, Map<String, Object> state) {
         Map<String, Object> mon = team.get(activeTeamIndex);
         int currentHp = engine.toInt(mon.get("currentHp"), 0);
         int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), Math.max(1, currentHp));
@@ -27,12 +36,12 @@ final class BattleAiSwitchSupport {
         boolean criticalHp = hpPercent <= 30;
         boolean lowHp = hpPercent <= 50;
         boolean superEffectiveVulnerable = currentVulnerabilityFactor > 1.0;
-        
+
         // Check for status conditions that might warrant switching
-        boolean badlyStatused = "toxic".equals(mon.get("condition")) || 
-                               "burn".equals(mon.get("condition"));
+        boolean badlyStatused = "toxic".equals(mon.get("condition")) ||
+                "burn".equals(mon.get("condition"));
         boolean trapped = Boolean.TRUE.equals(mon.get("trapped"));
-        
+
         // Check stat stages - negative stages might warrant switching
         int totalNegativeStages = countNegativeStatStages(mon);
         boolean heavilyDebuffed = totalNegativeStages <= -4;
@@ -56,6 +65,12 @@ final class BattleAiSwitchSupport {
         } else if (heavilyDebuffed) {
             // Heavily debuffed Pokemon should consider switching
             switchProbability = 0.35;
+        } else if (trapped && lowHp) {
+            // Trapped and low HP - try to escape if possible
+            switchProbability = 0.50;
+        } else if (trapped) {
+            // Just trapped - lower priority to switch
+            switchProbability = 0.20;
         } else {
             return -1;
         }
@@ -63,16 +78,20 @@ final class BattleAiSwitchSupport {
         if (random.nextDouble() >= switchProbability) {
             return -1;
         }
-        
+
         // Choose best switch based on situation
         if (superEffectiveVulnerable) {
             return findBestDefensiveSwitch(team, activeSlots, fieldSlot, playerMoveTypeIds(state, true));
         } else if (badlyStatused || heavilyDebuffed) {
             return findBestPivotSwitch(team, activeSlots, fieldSlot, mon);
+        } else if (trapped) {
+            // When trapped, prefer switching to a Pokemon with higher HP or better
+            // defensive typing
+            return findBestDefensiveSwitch(team, activeSlots, fieldSlot, playerMoveTypeIds(state, true));
         }
         return findBestDefensiveSwitch(team, activeSlots, fieldSlot, playerMoveTypeIds(state, true));
     }
-    
+
     /**
      * Count total negative stat stages
      */
@@ -89,7 +108,7 @@ final class BattleAiSwitchSupport {
         }
         return total;
     }
-    
+
     /**
      * Check if mon has a healing move
      */
@@ -101,79 +120,79 @@ final class BattleAiSwitchSupport {
         }
         return false;
     }
-    
+
     /**
      * Get all damaging move type IDs from a side
      */
     private List<Integer> playerMoveTypeIds(Map<String, Object> state, boolean playerSide) {
         return activeDamageTypeIds(state, playerSide);
     }
-    
+
     /**
      * Find best pivot switch - switch to maintain momentum
      * Prefer Pokemon that can set up or have good offensive presence
      */
-    private int findBestPivotSwitch(List<Map<String, Object>> team, List<Integer> activeSlots, 
-                                     int fieldSlot, Map<String, Object> currentMon) {
+    private int findBestPivotSwitch(List<Map<String, Object>> team, List<Integer> activeSlots,
+            int fieldSlot, Map<String, Object> currentMon) {
         int bestCandidate = -1;
         double bestScore = -1;
-        
+
         for (int candidate = 0; candidate < team.size(); candidate++) {
             if (!engine.canSwitch(team, activeSlots, fieldSlot, candidate)) {
                 continue;
             }
-            
+
             Map<String, Object> candidateMon = team.get(candidate);
             double score = evaluatePivotPotential(candidateMon);
-            
+
             if (score > bestScore) {
                 bestScore = score;
                 bestCandidate = candidate;
             }
         }
-        
+
         return bestCandidate;
     }
-    
+
     /**
      * Evaluate pivot potential of a Pokemon
      * Higher score = better pivot choice
      */
     private double evaluatePivotPotential(Map<String, Object> mon) {
         double score = 0.0;
-        
+
         // Prefer healthy Pokemon
         int currentHp = engine.toInt(mon.get("currentHp"), 0);
         int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
         double hpRatio = currentHp / (double) maxHp;
         score += hpRatio * 30; // Up to 30 points for full HP
-        
+
         // Prefer Pokemon with setup moves
         for (Map<String, Object> move : engine.moves(mon)) {
             String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
             if (nameEn.contains("swords dance") || nameEn.contains("nasty plot") ||
-                nameEn.contains("dragon dance") || nameEn.contains("calm mind") ||
-                nameEn.contains("bulk up") || nameEn.contains("quiver dance")) {
+                    nameEn.contains("dragon dance") || nameEn.contains("calm mind") ||
+                    nameEn.contains("bulk up") || nameEn.contains("quiver dance")) {
                 score += 20;
                 break;
             }
         }
-        
+
         // Prefer Pokemon with good offensive stats
         Map<String, Object> stats = engine.castMap(mon.get("stats"));
         int attack = engine.toInt(stats.get("attack"), 0);
         int spAttack = engine.toInt(stats.get("specialAttack"), 0);
         int speed = engine.toInt(stats.get("speed"), 0);
-        
+
         // Add offensive presence score
         score += Math.max(attack, spAttack) / 10.0;
         score += speed / 15.0; // Speed is valuable
-        
+
         // Prefer Pokemon without status
         if (mon.get("condition") == null || String.valueOf(mon.get("condition")).isBlank()) {
             score += 15;
         }
-        
+
         return score;
     }
 
@@ -209,7 +228,7 @@ final class BattleAiSwitchSupport {
     }
 
     private int findBestDefensiveSwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int fieldSlot,
-                                        List<Integer> playerMoveTypeIds) {
+            List<Integer> playerMoveTypeIds) {
         int bestCandidate = -1;
         double bestScore = Double.MAX_VALUE;
         int bestHp = -1;

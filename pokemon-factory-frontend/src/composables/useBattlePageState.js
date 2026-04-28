@@ -1,3 +1,12 @@
+/*
+ * useBattlePageState 文件说明
+ * 所属模块：前端应用。
+ * 文件类型：前端组合式逻辑文件。
+ * 核心职责：负责抽离可复用状态、派生数据和副作用处理流程。
+ * 阅读建议：建议结合调用它的页面或组件一起理解数据流。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import api from '../services/api'
 import { useAuth } from './useAuth'
@@ -235,6 +244,12 @@ export function useBattlePageState() {
     }
   }
 
+  /**
+   * 串行化页面动作，避免用户重复触发并发请求。
+   * @param {string} actionKey 当前动作标识
+   * @param {() => Promise<void>} handler 实际执行逻辑
+   * @returns {Promise<void>}
+   */
   async function runBusy(actionKey, handler) {
     if (busyAction.value) {
       return
@@ -321,6 +336,10 @@ export function useBattlePageState() {
     selectedSwitchTargets.value = switchNext
   }
 
+  /**
+   * 应用后端战斗响应，并驱动本地 UI 状态进入对应阶段。
+   * @param {any} payload battle 相关接口返回值
+   */
   function applyBattlePayload(payload) {
     const normalized = normalizeBattlePayload(payload)
     summary.value = normalized.summary
@@ -376,6 +395,11 @@ export function useBattlePageState() {
     })
   }
 
+  /**
+   * 刷新当前 battle 状态。
+   * @param {boolean} [silent=false] true 时不占用 busyAction（用于轮询）
+   * @returns {Promise<void>}
+   */
   async function refreshStatus(silent = false) {
     if (!currentBattleId.value) {
       resultText.value = translate('请先开始对战', 'Start a battle first')
@@ -432,6 +456,10 @@ export function useBattlePageState() {
     })
   }
 
+  /**
+   * 提交当前回合两只在场宝可梦的动作集合。
+   * @returns {Promise<void>}
+   */
   async function submitMove() {
     if (!canSubmitMove.value) {
       resultText.value = translate('请为两只在场宝可梦分别选择行动；若使用招式还需指定目标', 'Choose an action for both active Pokemon, and pick targets for targeted moves')
@@ -616,6 +644,10 @@ export function useBattlePageState() {
     await runBusy('open-leaderboard', loadLeaderboard)
   }
 
+  /**
+   * 开始或恢复工厂挑战，并尽量自动进入首场 battle。
+   * @returns {Promise<void>}
+   */
   async function startFactoryChallenge() {
     await runBusy('factory-start', async () => {
       stopPolling()
@@ -654,6 +686,10 @@ export function useBattlePageState() {
     })
   }
 
+  /**
+   * 推进到工厂挑战下一轮。
+   * @returns {Promise<void>}
+   */
   async function nextFactoryBattle() {
     if (!factoryRun.value?.id) return
     await runBusy('factory-next', async () => {
@@ -686,6 +722,10 @@ export function useBattlePageState() {
     })
   }
 
+  /**
+   * 当前 battle 认输并立即结算。
+   * @returns {Promise<void>}
+   */
   async function forfeitBattle() {
     if (!currentBattleId.value) return
     await runBusy('forfeit-battle', async () => {

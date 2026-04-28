@@ -1,5 +1,16 @@
 package com.lio9.battle.engine;
 
+
+
+/**
+ * BattleConditionSupportTest 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 BattleConditionSupportTest 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.mapper.SkillMapper;
 import com.lio9.battle.service.SkillService;
@@ -18,6 +29,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BattleConditionSupportTest {
+
+    /**
+     * 本测试类聚焦状态/特性/陷阱/控制类效果的边界行为。
+     * 当前新增关注点是：控制类状态在迁移到 volatile 访问器后，
+     * 是否仍与旧平铺字段保持双写一致，避免老逻辑读取到不同步的数据。
+     */
 
     @Test
     void applySleep_electricTerrainBlocksGroundedTargets() {
@@ -107,6 +124,40 @@ class BattleConditionSupportTest {
         assertEquals(0, healBlockTarget.get("healBlockTurns"));
         assertEquals(Boolean.TRUE, healBlockTarget.get("itemConsumed"));
         assertEquals(Boolean.TRUE, healBlockLog.get("mentalHerb"));
+    }
+
+    @Test
+    void controlMoves_areMirroredIntoVolatilesAccessor() {
+        BattleConditionSupport support = createSupport();
+        Map<String, Object> source = pokemon("Source-A", 220, 120, "", "", DamageCalculatorUtil.TYPE_NORMAL);
+        Map<String, Object> target = pokemon("Target-O", 220, 100, "", "", DamageCalculatorUtil.TYPE_NORMAL);
+        target.put("lastMoveUsed", "strike");
+
+        // 依次施加 5 类控制效果，覆盖“仅回合数”和“回合数 + 招式名”两种存储形态。
+        support.applyTaunt(source, target, new LinkedHashMap<>(), new ArrayList<>());
+        support.applyHealBlock(source, target, new LinkedHashMap<>(), new ArrayList<>());
+        support.applyTorment(source, target, new LinkedHashMap<>(), new ArrayList<>());
+        support.applyDisable(new LinkedHashMap<>(), source, target, new LinkedHashMap<>(), new ArrayList<>());
+        support.applyEncore(source, target, new LinkedHashMap<>(), new ArrayList<>());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> volatiles = (Map<String, Object>) target.get("volatiles");
+        assertEquals(3, volatiles.get("tauntTurns"));
+        assertEquals(4, volatiles.get("healBlockTurns"));
+        assertEquals(4, volatiles.get("tormentTurns"));
+        assertEquals(4, volatiles.get("disableTurns"));
+        assertEquals("strike", volatiles.get("disableMove"));
+        assertEquals(3, volatiles.get("encoreTurns"));
+        assertEquals("strike", volatiles.get("encoreMove"));
+
+        // 兼容校验：旧字段仍同步，避免历史代码路径行为变化。
+        assertEquals(volatiles.get("tauntTurns"), target.get("tauntTurns"));
+        assertEquals(volatiles.get("healBlockTurns"), target.get("healBlockTurns"));
+        assertEquals(volatiles.get("tormentTurns"), target.get("tormentTurns"));
+        assertEquals(volatiles.get("disableTurns"), target.get("disableTurns"));
+        assertEquals(volatiles.get("disableMove"), target.get("disableMove"));
+        assertEquals(volatiles.get("encoreTurns"), target.get("encoreTurns"));
+        assertEquals(volatiles.get("encoreMove"), target.get("encoreMove"));
     }
 
     @Test
@@ -227,6 +278,50 @@ class BattleConditionSupportTest {
         assertTrue(!blocked);
         assertTrue(actionLog.isEmpty());
         assertTrue(events.isEmpty());
+    }
+
+    @Test
+    void applyDefenderAbilityImmunity_wonderGuardBlocksNonSuperEffectiveMove() {
+        BattleConditionSupport support = createSupport();
+        Map<String, Object> attacker = pokemon("Attacker-A", 220, 120, "", "", DamageCalculatorUtil.TYPE_NORMAL);
+        Map<String, Object> target = pokemon("Wonder-Opp", 220, 120, "", "wonder-guard", DamageCalculatorUtil.TYPE_NORMAL);
+        Map<String, Object> actionLog = new LinkedHashMap<>();
+        List<String> events = new ArrayList<>();
+
+        boolean blocked = support.applyDefenderAbilityImmunity(
+                attacker,
+                target,
+                move("Strike", "strike", 80, 100, 0,
+                        DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL, DamageCalculatorUtil.TYPE_NORMAL, 10),
+                actionLog,
+                events
+        );
+
+        assertTrue(blocked);
+        assertEquals("ability-immune", actionLog.get("result"));
+        assertEquals("wonder-guard", actionLog.get("ability"));
+    }
+
+    @Test
+    void applyEntryHazards_magicGuardBlocksStealthRockAndSpikesDamage() {
+        BattleConditionSupport support = createSupport();
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("fieldEffects", new LinkedHashMap<>(Map.of(
+                "opponentStealthRock", true,
+                "opponentSpikesLayers", 2
+        )));
+        state.put("playerTeam", List.of());
+        state.put("playerActiveSlots", List.of());
+        state.put("opponentTeam", List.of());
+        state.put("opponentActiveSlots", List.of());
+
+        Map<String, Object> target = pokemon("Guard-A", 240, 90, "", "magic-guard", DamageCalculatorUtil.TYPE_NORMAL);
+        List<String> events = new ArrayList<>();
+
+        support.applyEntryHazards(state, true, target, events);
+
+        assertEquals(240, target.get("currentHp"));
+        assertTrue(events.stream().anyMatch(event -> event.contains("魔法防守")));
     }
 
     @Test
@@ -608,6 +703,9 @@ class BattleConditionSupportTest {
             public Integer selectDamageFactor(Integer damageTypeId, Integer targetTypeId) {
                 if (damageTypeId == null || targetTypeId == null) {
                     return 100;
+                }
+                if (damageTypeId == DamageCalculatorUtil.TYPE_FIRE && targetTypeId == DamageCalculatorUtil.TYPE_GRASS) {
+                    return 200;
                 }
                 if (damageTypeId == DamageCalculatorUtil.TYPE_NORMAL && targetTypeId == DamageCalculatorUtil.TYPE_GHOST) {
                     return 0;

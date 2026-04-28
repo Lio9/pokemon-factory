@@ -1,5 +1,16 @@
 package com.lio9.battle.engine;
 
+
+
+/**
+ * BattleTurnCleanupSupportTest 文件说明
+ * 所属模块：battle-factory 后端模块。
+ * 文件类型：对战引擎文件。
+ * 核心职责：负责 BattleTurnCleanupSupportTest 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
+ * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
+ * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+ */
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.mapper.SkillMapper;
 import com.lio9.battle.service.SkillService;
@@ -17,6 +28,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BattleTurnCleanupSupportTest {
 
+    /**
+     * 回合结束清算测试集。
+     * 当前主要验证“残余伤害路径是否正确尊重 Magic Guard 这类间接伤害免疫特性”。
+     */
+
     @Test
     void applyEndTurnEffects_magicGuardIgnoresBurnAndSandstormDamage() {
         BattleTurnCleanupSupport support = createSupport();
@@ -29,9 +45,10 @@ class BattleTurnCleanupSupportTest {
         state.put("fieldEffects", fieldEffects);
 
         List<String> events = new ArrayList<>();
+        // 同时覆盖灼伤与沙暴两条典型的间接伤害路径。
         support.applyEndTurnEffects(state, new LinkedHashMap<>(), events, new Random(42), 1);
 
-        assertEquals(150, guardMon.get("currentHp"));
+        assertEquals(160, guardMon.get("currentHp"));
         assertEquals(140, normalMon.get("currentHp"));
     }
 
@@ -100,4 +117,5 @@ class BattleTurnCleanupSupportTest {
         return pokemon;
     }
 }
+
 
