@@ -3,15 +3,6 @@ package com.lio9.battle.engine.effect;
 
 
 /**
- * StandardVolatile 文件说明
- * 所属模块：battle-factory 后端模块。
- * 文件类型：对战易失状态文件。
- * 核心职责：负责抽象 volatile 状态、状态规范或状态管理器能力。
- * 阅读建议：建议结合对战状态读写入口一起阅读。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
- */
-
-/**
  * 标准 Volatile 状态枚举
  * 定义了 Pokemon 中常见的临时状态
  */

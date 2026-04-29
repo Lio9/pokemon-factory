@@ -1,14 +1,5 @@
 package com.lio9.battle.engine;
 
-/**
- * BattleDamageSupport 文件说明
- * 所属模块：battle-factory 后端模块。
- * 文件类型：对战引擎文件。
- * 核心职责：负责 BattleDamageSupport 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
- * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
- */
-
 import com.lio9.pokedex.mapper.TypeEfficacyMapper;
 import com.lio9.pokedex.util.DamageCalculatorUtil;
 
@@ -157,8 +148,11 @@ final class BattleDamageSupport {
             critStage += 1;
         }
 
-        // Check for move crit stage
-        Integer moveCritStage = engine.toInt(move.get("crit_stage"), 0);
+        // Check for move crit stage (supports both crit_stage and crit_rate keys)
+        int moveCritStage = engine.toInt(move.get("crit_stage"), 0);
+        if (moveCritStage == 0) {
+            moveCritStage = engine.toInt(move.get("crit_rate"), 0);
+        }
         critStage += moveCritStage;
 
         // Calculate crit chance based on stage

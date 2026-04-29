@@ -1,14 +1,5 @@
 package com.lio9.battle.engine;
 
-/**
- * BattleConditionSupport 文件说明
- * 所属模块：battle-factory 后端模块。
- * 文件类型：对战引擎文件。
- * 核心职责：负责 BattleConditionSupport 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
- * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
- */
-
 import com.lio9.pokedex.util.DamageCalculatorUtil;
 
 import java.util.List;
@@ -1197,6 +1188,7 @@ final class BattleConditionSupport {
     }
 
     void applyIntimidate(Map<String, Object> state, boolean player, Map<String, Object> source, List<String> events) {
+        source.put("intimidateActivated", true);
         List<Map<String, Object>> opposingTeam = engine.team(state, !player);
         for (Integer targetSlot : engine.activeSlots(state, !player)) {
             if (targetSlot == null || targetSlot < 0 || targetSlot >= opposingTeam.size())
@@ -1222,6 +1214,8 @@ final class BattleConditionSupport {
             damageSupport.statStages(target).put("attack", nextStage);
             if (nextStage != previousStage) {
                 events.add(source.get("name") + " 的威吓使 " + target.get("name") + " 的攻击降低了");
+                triggerStatDropAbilities(target, events);
+                restoreLoweredStatsWithWhiteHerb(target, Map.of("attack", previousStage - nextStage), null, events);
             }
         }
     }

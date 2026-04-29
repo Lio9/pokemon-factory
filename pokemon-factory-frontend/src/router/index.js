@@ -15,7 +15,9 @@ import { translate } from '../composables/useLocale'
 const routes = [
   { 
     path: '/', 
-    redirect: '/pokemon' 
+    name: 'Home',
+    component: () => import('../views/Home.vue'),
+    meta: { title: { zh: '项目概览', en: 'Project Overview' } }
   },
   { 
     path: '/pokemon', 

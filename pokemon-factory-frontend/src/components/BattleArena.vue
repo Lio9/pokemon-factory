@@ -1,11 +1,4 @@
-<!--
-  BattleArena 文件说明
-  所属模块：前端应用。
-  文件类型：界面组件文件。
-  核心职责：负责局部交互、展示逻辑与对外事件抛出。
-  阅读建议：建议结合父组件传入的 props 与 emits 一起阅读。
-  项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
--->
+
 
 <template>
   <div class="battle-arena space-y-4 rounded-[24px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_24px_90px_-54px_rgba(15,23,42,0.5)] backdrop-blur sm:rounded-[28px] sm:p-6">

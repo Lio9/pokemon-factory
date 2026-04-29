@@ -1,36 +1,21 @@
 package com.lio9.common.config;
 
-/**
- * CommonCsvDataImporter 文件说明
- * 所属模块：common 公共模块。
- * 文件类型：后端配置文件。
- * 核心职责：负责模块启动时的 Bean、序列化、数据源或异常处理配置。
- * 阅读建议：建议优先关注对运行期行为有全局影响的配置项。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
- */
-
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
-import java.io.PushbackReader;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -43,13 +28,6 @@ import java.util.Optional;
 public class CommonCsvDataImporter {
     private static final Logger log = LoggerFactory.getLogger(CommonCsvDataImporter.class);
     private static final int BATCH_SIZE = 2000;
-    private static final Duration CSV_CONNECT_TIMEOUT = Duration.ofSeconds(15);
-    private static final Duration CSV_DOWNLOAD_TIMEOUT = Duration.ofSeconds(90);
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(CSV_CONNECT_TIMEOUT)
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build();
-    private static final Map<String, List<String>> REQUIRED_REMOTE_CSV_HEADERS = createRequiredRemoteCsvHeaders();
 
     private static final Map<Integer, String> LANGUAGE_MAP = Map.ofEntries(
             Map.entry(1, "ja"),
@@ -62,9 +40,11 @@ public class CommonCsvDataImporter {
             Map.entry(11, "ja"),
             Map.entry(12, "zh-hans"));
 
+    private final CsvDownloader csvDownloader;
     private final CommonDatabaseProperties properties;
 
-    public CommonCsvDataImporter(CommonDatabaseProperties properties) {
+    public CommonCsvDataImporter(CsvDownloader csvDownloader, CommonDatabaseProperties properties) {
+        this.csvDownloader = csvDownloader;
         this.properties = properties;
     }
 
@@ -78,7 +58,7 @@ public class CommonCsvDataImporter {
             return;
         }
 
-        Path csvDirectory = resolveCsvDirectory();
+        Path csvDirectory = csvDownloader.getCacheDirectory();
         log.info("开始执行远程 CSV 数据导入，缓存目录：{}", csvDirectory.toAbsolutePath().normalize());
 
         boolean originalAutoCommit = connection.getAutoCommit();
@@ -106,7 +86,6 @@ public class CommonCsvDataImporter {
             importItemCategories(connection, csvDirectory);
             importItemFlingEffects(connection, csvDirectory);
             importItems(connection, csvDirectory);
-            syncEffectSeeds(connection);
 
             importEvolutionChains(connection, csvDirectory);
             Map<Integer, Integer> evolvesFromMap = importPokemonSpecies(connection, csvDirectory);
@@ -127,28 +106,6 @@ public class CommonCsvDataImporter {
             throw exception;
         } finally {
             connection.setAutoCommit(originalAutoCommit);
-        }
-    }
-
-    public void syncEffectSeeds(Connection connection) throws Exception {
-        boolean originalAutoCommit = connection.getAutoCommit();
-        if (originalAutoCommit) {
-            connection.setAutoCommit(false);
-        }
-        try {
-            importEffectSeeds(connection);
-            if (originalAutoCommit) {
-                connection.commit();
-            }
-        } catch (Exception exception) {
-            if (originalAutoCommit) {
-                connection.rollback();
-            }
-            throw exception;
-        } finally {
-            if (originalAutoCommit) {
-                connection.setAutoCommit(true);
-            }
         }
     }
 
@@ -660,77 +617,6 @@ public class CommonCsvDataImporter {
         }
     }
 
-    private void importEffectSeeds(Connection connection) throws Exception {
-        try (PreparedStatement deleteAbility = connection.prepareStatement("DELETE FROM ability_effect");
-                PreparedStatement deleteItem = connection.prepareStatement("DELETE FROM item_effect");
-                PreparedStatement abilityStatement = connection.prepareStatement(
-                        "INSERT INTO ability_effect (ability_id, effect_type, effect_value, target, condition, description) VALUES (?, ?, ?, ?, ?, ?)");
-                PreparedStatement itemStatement = connection.prepareStatement(
-                        "INSERT INTO item_effect (item_id, effect_type, effect_value, target, condition, description) VALUES (?, ?, ?, ?, ?, ?)")) {
-            deleteAbility.executeUpdate();
-            deleteItem.executeUpdate();
-
-            Object[][] abilityEffects = {
-                    { 91, "stab_multiplier", "2.0", "attacker", "is_stab", "本系技能威力提升至2.0倍" },
-                    { 66, "damage_multiplier", "1.5", "attacker", "type_id=10 AND hp_percent<=33",
-                            "HP低于1/3时火系技能威力提升50%" },
-                    { 67, "damage_multiplier", "1.5", "attacker", "type_id=11 AND hp_percent<=33",
-                            "HP低于1/3时水系技能威力提升50%" },
-                    { 18, "damage_multiplier", "1.5", "attacker", "type_id=7 AND hp_percent<=33",
-                            "HP低于1/3时虫系技能威力提升50%" },
-                    { 65, "damage_multiplier", "1.5", "attacker", "type_id=12 AND hp_percent<=33",
-                            "HP低于1/3时草系技能威力提升50%" },
-                    { 152, "damage_multiplier", "1.3", "attacker", "is_contact", "接触技能威力提升30%" },
-                    { 232, "damage_multiplier", "1.2", "attacker", "is_punch", "拳类技能威力提升20%" },
-                    { 86, "damage_multiplier", "1.5", "attacker", "power<=60", "威力60以下技能提升50%" },
-                    { 62, "damage_multiplier", "0.5", "defender", "type_id IN (10, 14)", "火系和冰系伤害减半" },
-                    { 153, "damage_multiplier", "0.5", "defender", "hp_percent=100", "满HP时受到伤害减半" },
-                    { 216, "damage_multiplier", "0.5", "defender", "damage_class=physical", "物理伤害减半" },
-                    { 22, "stat_boost", "-1", "defender", "on_switch_in", "出场时降低对方攻击1级" },
-                    { 29, "status_immunity", "flinch", "always", "always", "免疫畏缩效果" },
-                    { 59, "weather_effect", null, "self", "always", "免疫天气效果" },
-                    { 31, "terrain_set", "electric", "self", "on_switch_in", "出场时设置电气场地" },
-                    { 229, "terrain_set", "grassy", "self", "on_switch_in", "出场时设置草地场地" },
-                    { 268, "terrain_set", "psychic", "self", "on_switch_in", "出场时设置超能力场地" },
-                    { 243, "terrain_set", "misty", "self", "on_switch_in", "出场时设置薄雾场地" }
-            };
-            int abilityCount = 0;
-            for (Object[] row : abilityEffects) {
-                bindSeedRow(abilityStatement, row);
-                abilityStatement.addBatch();
-                abilityCount = flushBatch(abilityStatement, abilityCount + 1);
-            }
-            flushBatch(abilityStatement, abilityCount, true);
-
-            Object[][] itemEffects = {
-                    { 130, "damage_multiplier", "1.3", "attacker", "always", "所有技能威力提升30%" },
-                    { 327, "damage_multiplier", "1.5", "attacker", "damage_class=special", "特攻技能威力提升50%" },
-                    { 299, "damage_multiplier", "1.5", "attacker", "damage_class=physical", "物理技能威力提升50%" },
-                    { 83, "damage_multiplier", "1.2", "attacker", "type_id=10", "火系技能威力提升20%" },
-                    { 171, "damage_multiplier", "1.2", "attacker", "type_id=13", "电系技能威力提升20%" },
-                    { 91, "damage_multiplier", "1.2", "attacker", "type_id=9", "钢系技能威力提升20%" },
-                    { 85, "damage_multiplier", "1.2", "attacker", "type_id=12", "草系技能威力提升20%" },
-                    { 82, "damage_multiplier", "1.2", "attacker", "type_id=11", "水系技能威力提升20%" },
-                    { 239, "damage_multiplier", "1.2", "attacker", "type_id=17", "恶系技能威力提升20%" },
-                    { 267, "damage_multiplier", "1.2", "attacker", "type_id=14", "超能力系技能威力提升20%" },
-                    { 89, "damage_multiplier", "1.2", "attacker", "type_id=5", "地面系技能威力提升20%" },
-                    { 88, "damage_multiplier", "1.2", "attacker", "type_id=6", "岩石系技能威力提升20%" },
-                    { 87, "damage_multiplier", "1.2", "attacker", "type_id=15", "冰系技能威力提升20%" },
-                    { 84, "damage_multiplier", "1.2", "attacker", "type_id=4", "毒系技能威力提升20%" },
-                    { 90, "damage_multiplier", "1.2", "attacker", "type_id=3", "飞行系技能威力提升20%" },
-                    { 279, "damage_multiplier", "1.2", "attacker", "type_id=8", "岩石系技能威力提升20%" },
-                    { 305, "recoil", "1/6", "attacker", "is_contact", "接触技能受到反伤1/6" }
-            };
-            int itemCount = 0;
-            for (Object[] row : itemEffects) {
-                bindSeedRow(itemStatement, row);
-                itemStatement.addBatch();
-                itemCount = flushBatch(itemStatement, itemCount + 1);
-            }
-            flushBatch(itemStatement, itemCount, true);
-            log.info("导入特性/道具效果种子数据：ability_effect={}，item_effect={}", abilityCount, itemCount);
-        }
-    }
 
     private void importEvolutionChains(Connection connection, Path csvDirectory) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement(
@@ -932,146 +818,38 @@ public class CommonCsvDataImporter {
         }
     }
 
-    private Path resolveCsvDirectory() {
-        if (StringUtils.hasText(properties.getCsvDirectory())) {
-            log.warn("检测到已配置本地 CSV 目录 {}，当前版本将忽略本地目录，统一改为使用远程 CSV 源。",
-                    Paths.get(properties.getCsvDirectory()).normalize());
-        }
-        return resolveRemoteCsvCacheDirectory();
-    }
-
-    private List<CSVRecord> records(Path csvFile) throws IOException {
-        csvFile = ensureRemoteCsvFile(csvFile);
-        List<List<String>> rows = parseCsvRows(csvFile);
-        if (rows.isEmpty()) {
-            throw new IllegalStateException("远程 CSV 文件为空: " + csvFile.getFileName());
-        }
-        List<String> headers = rows.get(0);
-        validateRequiredHeaders(csvFile, headers);
-        List<CSVRecord> records = new ArrayList<>();
-        for (int rowIndex = 1; rowIndex < rows.size(); rowIndex++) {
-            List<String> row = rows.get(rowIndex);
-            Map<String, String> values = new LinkedHashMap<>();
-            for (int columnIndex = 0; columnIndex < headers.size(); columnIndex++) {
-                String value = columnIndex < row.size() ? row.get(columnIndex) : "";
-                values.put(headers.get(columnIndex), value);
+    private List<CSVRecord> records(Path csvFile) throws IOException, CsvException {
+        Path cached = csvDownloader.ensureCached(csvFile);
+        try (CSVReader reader = new CSVReader(Files.newBufferedReader(cached, StandardCharsets.UTF_8))) {
+            List<String[]> allRows = reader.readAll();
+            if (allRows.isEmpty()) {
+                throw new IllegalStateException("远程 CSV 文件为空: " + cached.getFileName());
             }
-            records.add(new CSVRecord(values));
-        }
-        if (records.isEmpty()) {
-            throw new IllegalStateException("远程 CSV 文件缺少数据行: " + csvFile.getFileName());
-        }
-        return records;
-    }
-
-    private Path resolveRemoteCsvCacheDirectory() {
-        if (StringUtils.hasText(properties.getCsvCacheDirectory())) {
-            Path configured = Paths.get(properties.getCsvCacheDirectory());
-            if (!configured.isAbsolute()) {
-                configured = Paths.get(System.getProperty("user.dir")).resolve(configured).normalize();
+            String[] headerArray = allRows.get(0);
+            List<String> headers = List.of(headerArray);
+            List<String> expectedHeaders = CsvDownloader.KNOWN_CSV_HEADERS.get(cached.getFileName().toString());
+            if (expectedHeaders != null) {
+                List<String> missing = expectedHeaders.stream()
+                        .filter(h -> !headers.contains(h))
+                        .toList();
+                if (!missing.isEmpty()) {
+                    throw new IllegalStateException("远程 CSV 缺少必需表头: " + cached.getFileName() + " -> " + missing);
+                }
             }
-            ensureDirectory(configured);
-            return configured;
-        }
-
-        Path fallback = Paths.get(System.getProperty("java.io.tmpdir"), "pokemon-factory", "csv-cache")
-                .toAbsolutePath()
-                .normalize();
-        ensureDirectory(fallback);
-        return fallback;
-    }
-
-    private Path ensureRemoteCsvFile(Path csvFile) throws IOException {
-        if (!StringUtils.hasText(properties.getRemoteCsvBaseUrl())) {
-            throw new IllegalStateException("未配置远程 CSV 源，无法获取文件: " + csvFile.getFileName());
-        }
-
-        ensureDirectory(csvFile.getParent());
-        if (isUsableCachedCsv(csvFile)) {
-            log.info("复用已缓存的远程 CSV 文件：{}", csvFile.toAbsolutePath().normalize());
-            return csvFile;
-        }
-        String fileName = csvFile.getFileName().toString();
-        String baseUrl = properties.getRemoteCsvBaseUrl().replaceAll("/+$", "");
-        URI uri = URI.create(baseUrl + "/" + fileName);
-        Path tempFile = csvFile.resolveSibling(fileName + ".download");
-        Files.deleteIfExists(tempFile);
-        HttpRequest request = HttpRequest.newBuilder(uri)
-                .timeout(CSV_DOWNLOAD_TIMEOUT)
-                .GET()
-                .build();
-
-        try {
-            HttpResponse<Path> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(tempFile));
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                Files.deleteIfExists(tempFile);
-                throw new IllegalStateException(
-                        "下载远程 CSV 失败: " + fileName + " <- " + uri + "，HTTP 状态码=" + response.statusCode());
+            List<CSVRecord> result = new ArrayList<>();
+            for (int rowIndex = 1; rowIndex < allRows.size(); rowIndex++) {
+                String[] row = allRows.get(rowIndex);
+                Map<String, String> values = new LinkedHashMap<>();
+                for (int columnIndex = 0; columnIndex < headers.size(); columnIndex++) {
+                    String value = columnIndex < row.length ? row[columnIndex] : "";
+                    values.put(headers.get(columnIndex), value);
+                }
+                result.add(new CSVRecord(values));
             }
-            if (!Files.exists(tempFile) || Files.size(tempFile) == 0L) {
-                Files.deleteIfExists(tempFile);
-                throw new IllegalStateException("下载到空的远程 CSV 文件: " + fileName + " <- " + uri);
+            if (result.isEmpty()) {
+                throw new IllegalStateException("远程 CSV 文件缺少数据行: " + cached.getFileName());
             }
-            Files.move(tempFile, csvFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            log.info("已从远程 CSV 源下载 {} -> {}", uri, csvFile.toAbsolutePath().normalize());
-            return csvFile;
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("下载远程 CSV 被中断: " + uri, exception);
-        } finally {
-            Files.deleteIfExists(tempFile);
-        }
-    }
-
-    private boolean isUsableCachedCsv(Path csvFile) {
-        if (!Files.exists(csvFile)) {
-            return false;
-        }
-        try {
-            if (Files.size(csvFile) == 0L) {
-                Files.deleteIfExists(csvFile);
-                return false;
-            }
-            List<List<String>> rows = parseCsvRows(csvFile);
-            if (rows.size() <= 1) {
-                Files.deleteIfExists(csvFile);
-                return false;
-            }
-            validateRequiredHeaders(csvFile, rows.get(0));
-            return true;
-        } catch (Exception exception) {
-            try {
-                Files.deleteIfExists(csvFile);
-            } catch (IOException ignored) {
-                // ignore cleanup failure, caller will attempt re-download
-            }
-            log.warn("检测到损坏的缓存 CSV 文件，准备重新下载：{}，原因：{}",
-                    csvFile.toAbsolutePath().normalize(), exception.getMessage());
-            return false;
-        }
-    }
-
-    private void ensureDirectory(Path directory) {
-        if (directory == null) {
-            return;
-        }
-        try {
-            Files.createDirectories(directory);
-        } catch (IOException exception) {
-            throw new IllegalStateException("创建 CSV 缓存目录失败: " + directory.toAbsolutePath().normalize(), exception);
-        }
-    }
-
-    private void validateRequiredHeaders(Path csvFile, List<String> headers) {
-        List<String> requiredHeaders = REQUIRED_REMOTE_CSV_HEADERS.get(csvFile.getFileName().toString());
-        if (requiredHeaders == null || requiredHeaders.isEmpty()) {
-            return;
-        }
-        List<String> missingHeaders = requiredHeaders.stream()
-                .filter(required -> !headers.contains(required))
-                .toList();
-        if (!missingHeaders.isEmpty()) {
-            throw new IllegalStateException("远程 CSV 缺少必需表头: " + csvFile.getFileName() + " -> " + missingHeaders);
+            return result;
         }
     }
 
@@ -1122,59 +900,6 @@ public class CommonCsvDataImporter {
             }
         }
         return violations;
-    }
-
-    private List<List<String>> parseCsvRows(Path csvFile) throws IOException {
-        List<List<String>> rows = new ArrayList<>();
-        try (PushbackReader reader = new PushbackReader(Files.newBufferedReader(csvFile, StandardCharsets.UTF_8), 2)) {
-            List<String> currentRow = new ArrayList<>();
-            StringBuilder currentField = new StringBuilder();
-            boolean inQuotes = false;
-            int read;
-            while ((read = reader.read()) != -1) {
-                char current = (char) read;
-                if (current == '"') {
-                    if (inQuotes) {
-                        int next = reader.read();
-                        if (next == '"') {
-                            currentField.append('"');
-                        } else {
-                            inQuotes = false;
-                            if (next != -1) {
-                                reader.unread(next);
-                            }
-                        }
-                    } else {
-                        inQuotes = true;
-                    }
-                    continue;
-                }
-                if (!inQuotes && current == ',') {
-                    currentRow.add(currentField.toString());
-                    currentField.setLength(0);
-                    continue;
-                }
-                if (!inQuotes && (current == '\n' || current == '\r')) {
-                    if (current == '\r') {
-                        int next = reader.read();
-                        if (next != '\n' && next != -1) {
-                            reader.unread(next);
-                        }
-                    }
-                    currentRow.add(currentField.toString());
-                    currentField.setLength(0);
-                    rows.add(currentRow);
-                    currentRow = new ArrayList<>();
-                    continue;
-                }
-                currentField.append(current);
-            }
-            if (currentField.length() > 0 || !currentRow.isEmpty()) {
-                currentRow.add(currentField.toString());
-                rows.add(currentRow);
-            }
-        }
-        return rows;
     }
 
     private Map<Integer, List<CSVRecord>> groupByIntKey(List<CSVRecord> records, String key) {
@@ -1335,14 +1060,6 @@ public class CommonCsvDataImporter {
         statement.setDouble(index, value);
     }
 
-    private void bindSeedRow(PreparedStatement statement, Object[] values) throws SQLException {
-        statement.setInt(1, (Integer) values[0]);
-        statement.setString(2, (String) values[1]);
-        statement.setString(3, (String) values[2]);
-        statement.setString(4, (String) values[3]);
-        statement.setString(5, (String) values[4]);
-        statement.setString(6, (String) values[5]);
-    }
 
     private boolean tableExists(Connection connection, String tableName) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement(
@@ -1359,69 +1076,6 @@ public class CommonCsvDataImporter {
                 ResultSet resultSet = statement.executeQuery()) {
             return resultSet.next() ? resultSet.getInt(1) : 0;
         }
-    }
-
-    private static Map<String, List<String>> createRequiredRemoteCsvHeaders() {
-        Map<String, List<String>> headers = new LinkedHashMap<>();
-        headers.put("genders.csv", List.of("id", "identifier"));
-        headers.put("growth_rate_prose.csv", List.of("growth_rate_id", "local_language_id", "name"));
-        headers.put("growth_rates.csv", List.of("id", "identifier", "formula"));
-        headers.put("egg_group_prose.csv", List.of("egg_group_id", "local_language_id", "name"));
-        headers.put("egg_groups.csv", List.of("id"));
-        headers.put("nature_names.csv", List.of("nature_id", "local_language_id", "name"));
-        headers.put("natures.csv", List.of("id", "identifier"));
-        headers.put("pokemon_move_method_prose.csv",
-                List.of("pokemon_move_method_id", "local_language_id", "name", "description"));
-        headers.put("pokemon_move_methods.csv", List.of("id", "identifier"));
-        headers.put("evolution_triggers.csv", List.of("id", "identifier"));
-        headers.put("evolution_trigger_prose.csv", List.of("evolution_trigger_id", "local_language_id", "name"));
-        headers.put("move_targets.csv", List.of("id", "identifier"));
-        headers.put("move_target_prose.csv", List.of("move_target_id", "local_language_id", "name", "description"));
-        headers.put("move_meta_ailments.csv", List.of("id", "identifier"));
-        headers.put("move_meta_categories.csv", List.of("id", "identifier"));
-        headers.put("type_names.csv", List.of("type_id", "local_language_id", "name"));
-        headers.put("type_efficacy.csv", List.of("damage_type_id", "target_type_id", "damage_factor"));
-        headers.put("ability_names.csv", List.of("ability_id", "local_language_id", "name"));
-        headers.put("ability_prose.csv", List.of("ability_id", "local_language_id", "short_effect", "effect"));
-        headers.put("abilities.csv", List.of("id", "identifier", "generation_id", "is_main_series"));
-        headers.put("move_names.csv", List.of("move_id", "local_language_id", "name"));
-        headers.put("move_flavor_text.csv", List.of("move_id", "version_group_id", "language_id", "flavor_text"));
-        headers.put("moves.csv", List.of("id", "identifier", "type_id", "damage_class_id", "target_id", "power", "pp",
-                "accuracy", "priority", "effect_chance", "generation_id"));
-        headers.put("move_meta.csv", List.of("move_id", "min_hits", "max_hits", "min_turns", "max_turns", "drain",
-                "healing", "crit_rate", "ailment_id", "category_id", "ailment_chance", "flinch_chance", "stat_chance"));
-        headers.put("move_flags.csv", List.of("id", "identifier"));
-        headers.put("move_flag_map.csv", List.of("move_id", "move_flag_id"));
-        headers.put("move_meta_stat_changes.csv", List.of("move_id", "stat_id", "change"));
-        headers.put("version_groups.csv", List.of("id", "identifier", "generation_id", "order"));
-        headers.put("item_pockets.csv", List.of("id", "identifier"));
-        headers.put("item_categories.csv", List.of("id", "pocket_id", "identifier"));
-        headers.put("item_fling_effects.csv", List.of("id", "identifier"));
-        headers.put("item_names.csv", List.of("item_id", "local_language_id", "name"));
-        headers.put("item_flavor_text.csv", List.of("item_id", "version_group_id", "language_id", "flavor_text"));
-        headers.put("items.csv", List.of("id", "identifier", "category_id", "cost", "fling_power", "fling_effect_id"));
-        headers.put("evolution_chains.csv", List.of("id", "baby_trigger_item_id"));
-        headers.put("pokemon_species_names.csv", List.of("pokemon_species_id", "local_language_id", "name", "genus"));
-        headers.put("pokemon_species_flavor_text.csv",
-                List.of("species_id", "version_id", "language_id", "flavor_text"));
-        headers.put("pokemon_species.csv",
-                List.of("id", "identifier", "generation_id", "evolution_chain_id", "evolves_from_species_id",
-                        "gender_rate", "capture_rate", "base_happiness", "hatch_counter", "is_baby", "is_legendary",
-                        "is_mythical"));
-        headers.put("pokemon.csv", List.of("id", "species_id", "identifier", "is_default", "height", "weight",
-                "base_experience", "order"));
-        headers.put("pokemon_types.csv", List.of("pokemon_id", "type_id", "slot"));
-        headers.put("pokemon_abilities.csv", List.of("pokemon_id", "ability_id", "is_hidden", "slot"));
-        headers.put("pokemon_stats.csv", List.of("pokemon_id", "stat_id", "base_stat", "effort"));
-        headers.put("pokemon_egg_groups.csv", List.of("species_id", "egg_group_id"));
-        headers.put("pokemon_moves.csv",
-                List.of("pokemon_id", "move_id", "pokemon_move_method_id", "level", "version_group_id"));
-        headers.put("pokemon_evolution.csv",
-                List.of("evolved_species_id", "evolution_trigger_id", "minimum_level", "minimum_happiness",
-                        "minimum_affection", "time_of_day", "held_item_id", "trigger_item_id", "known_move_id",
-                        "known_move_type_id", "location_id", "party_species_id", "party_type_id", "trade_species_id",
-                        "needs_overworld_rain", "turn_upside_down", "relative_physical_stats", "gender_id"));
-        return Map.copyOf(headers);
     }
 
     private static final class CSVRecord {

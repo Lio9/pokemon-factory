@@ -2,15 +2,6 @@ package com.lio9.battle.engine;
 
 
 
-/**
- * BattleTargetSupport 文件说明
- * 所属模块：battle-factory 后端模块。
- * 文件类型：对战引擎文件。
- * 核心职责：负责 BattleTargetSupport 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
- * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
- */
-
 import com.lio9.pokedex.util.DamageCalculatorUtil;
 
 import java.util.ArrayList;
@@ -257,7 +248,13 @@ final class BattleTargetSupport {
 
     private int abilityRedirectedTargetIndex(Map<String, Object> state, boolean playerTarget,
                                              Map<String, Object> move, Map<String, Object> attacker) {
-        if (move == null || engine.isSpreadMove(move) || ignoresTargetAbility(attacker) || ignoresRedirection(attacker)) {
+        if (move == null || ignoresTargetAbility(attacker) || ignoresRedirection(attacker)) {
+            return -1;
+        }
+        int targetId = engine.toInt(move.get("target_id"), 10);
+        // Only redirect single-target moves (target_id 10, 8, 11, etc.), not spread
+        // moves (target_id 9) or field-wide moves (target_id 12, 14)
+        if (targetId == 9 || targetId == 12 || targetId == 14) {
             return -1;
         }
         int moveTypeId = engine.toInt(move.get("type_id"), 0);

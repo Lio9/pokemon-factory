@@ -1,14 +1,5 @@
 package com.lio9.battle.engine;
 
-/**
- * BattlePreviewSupport 文件说明
- * 所属模块：battle-factory 后端模块。
- * 文件类型：对战引擎文件。
- * 核心职责：负责 BattlePreviewSupport 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
- * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
- */
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
@@ -257,16 +248,10 @@ final class BattlePreviewSupport {
     }
 
     private void seedControlVolatiles(Map<String, Object> mon) {
-        Map<String, Object> volatiles = stateSupport.castMap(mon.get("volatiles"));
-        // 控制类状态统一放入 volatile，旧字段继续保留用于兼容。
-        // putIfAbsent 的意义是：如果上游已经显式传入了新的 volatile 值，就不再被旧字段覆盖。
-        volatiles.putIfAbsent("tauntTurns", toInt(mon.get("tauntTurns"), 0));
-        volatiles.putIfAbsent("healBlockTurns", toInt(mon.get("healBlockTurns"), 0));
-        volatiles.putIfAbsent("tormentTurns", toInt(mon.get("tormentTurns"), 0));
-        volatiles.putIfAbsent("disableTurns", toInt(mon.get("disableTurns"), 0));
-        volatiles.putIfAbsent("disableMove", mon.get("disableMove"));
-        volatiles.putIfAbsent("encoreTurns", toInt(mon.get("encoreTurns"), 0));
-        volatiles.putIfAbsent("encoreMove", mon.get("encoreMove"));
+        // 仅预创建 volatile 容器，不填充默认值。
+        // 默认值留在旧字段上，由 volatileValue 的 fallback 机制回退读取，这样外部直接更新旧字段
+        // （如测试中 mon.put("healBlockTurns", 2)）不会被 volatile 中预播种的默认值 0 遮蔽。
+        mon.putIfAbsent("volatiles", new LinkedHashMap<>());
     }
 
     List<Map<String, Object>> normalizeMoves(List<Map<String, Object>> moves) {

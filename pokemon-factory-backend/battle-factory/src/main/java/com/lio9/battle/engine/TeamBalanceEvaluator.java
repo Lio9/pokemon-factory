@@ -1,15 +1,8 @@
 package com.lio9.battle.engine;
 
-/**
- * TeamBalanceEvaluator 文件说明
- * 所属模块：battle-factory 后端模块。
- * 文件类型：对战引擎文件。
- * 核心职责：负责 TeamBalanceEvaluator 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
- * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
- */
-
 import com.lio9.common.util.BattleUtils;
+
+import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -18,6 +11,7 @@ import java.util.stream.Collectors;
  * 队伍平衡性评估器
  * 用于评估宝可梦和队伍的战斗力，确保生成的队伍更加平衡
  */
+@Component
 public class TeamBalanceEvaluator {
 
     /**

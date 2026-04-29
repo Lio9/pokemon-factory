@@ -2,15 +2,6 @@ package com.lio9.battle.engine;
 
 
 
-/**
- * BattleActionBuilder 文件说明
- * 所属模块：battle-factory 后端模块。
- * 文件类型：对战引擎文件。
- * 核心职责：负责 BattleActionBuilder 所在的对战规则拆分逻辑，用于从主引擎中拆出独立的规则处理职责。
- * 阅读建议：建议先理解该文件的入口方法，再回看 BattleEngine 中的调用位置。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
- */
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -72,7 +63,16 @@ final class BattleActionBuilder {
             }
             Map<String, Object> mon = opponentTeam.get(monIndex);
             Map<String, Object> move = engine.withEffectivePriority(mon, engine.selectAIMove(mon, random, state, false, currentRound));
-            int targetFieldSlot = random.nextBoolean() ? fieldSlot : (fieldSlot == 0 ? 1 : 0);
+            List<Integer> playerActive = engine.activeSlots(state, true);
+            int targetFieldSlot;
+            if (playerActive.size() <= 1) {
+                targetFieldSlot = 0;
+            } else {
+                targetFieldSlot = random.nextBoolean() ? fieldSlot : (fieldSlot == 0 ? 1 : 0);
+                if (targetFieldSlot >= playerActive.size()) {
+                    targetFieldSlot = 0;
+                }
+            }
             int targetTeamIndex = engine.targetIndex(state, true, targetFieldSlot);
             String specialSystemRequested = shouldAIUseSpecialSystem(state, mon, move, currentRound);
             actions.add(BattleEngine.Action.moveAction("opponent", monIndex, fieldSlot, targetTeamIndex,

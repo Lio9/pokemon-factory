@@ -2,15 +2,6 @@ package com.lio9.common;
 
 
 
-/**
- * CommonApplication 文件说明
- * 所属模块：common 公共模块。
- * 文件类型：模块启动入口文件。
- * 核心职责：负责 Spring Boot 应用启动与基础自动装配入口定义。
- * 阅读建议：建议把它当作模块运行的总入口理解。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
- */
-
 import com.lio9.common.config.CommonDatabaseInitializer;
 import com.lio9.common.config.CommonDataSourceConfig;
 import com.lio9.common.config.CommonDatabaseProperties;

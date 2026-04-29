@@ -1,0 +1,19 @@
+[
+  { "id": 130, "effect_type": "damage_multiplier", "effect_value": "1.3",   "target": "attacker", "condition": "always",                   "description": "所有技能威力提升30%" },
+  { "id": 327, "effect_type": "damage_multiplier", "effect_value": "1.5",   "target": "attacker", "condition": "damage_class=special",     "description": "特攻技能威力提升50%" },
+  { "id": 299, "effect_type": "damage_multiplier", "effect_value": "1.5",   "target": "attacker", "condition": "damage_class=physical",    "description": "物理技能威力提升50%" },
+  { "id": 83,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=10",              "description": "火系技能威力提升20%" },
+  { "id": 171, "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=13",              "description": "电系技能威力提升20%" },
+  { "id": 91,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=9",               "description": "钢系技能威力提升20%" },
+  { "id": 85,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=12",              "description": "草系技能威力提升20%" },
+  { "id": 82,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=11",              "description": "水系技能威力提升20%" },
+  { "id": 239, "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=17",              "description": "恶系技能威力提升20%" },
+  { "id": 267, "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=14",              "description": "超能力系技能威力提升20%" },
+  { "id": 89,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=5",               "description": "地面系技能威力提升20%" },
+  { "id": 88,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=6",               "description": "岩石系技能威力提升20%" },
+  { "id": 87,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=15",              "description": "冰系技能威力提升20%" },
+  { "id": 84,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=4",               "description": "毒系技能威力提升20%" },
+  { "id": 90,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=3",               "description": "飞行系技能威力提升20%" },
+  { "id": 279, "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=8",               "description": "岩石系技能威力提升20%" },
+  { "id": 305, "effect_type": "recoil",             "effect_value": "1/6",   "target": "attacker", "condition": "is_contact",             "description": "接触技能受到反伤1/6" }
+]
