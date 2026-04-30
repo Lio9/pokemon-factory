@@ -280,6 +280,19 @@ final class BattleRoundSupport {
                 continue;
             }
 
+            // Protean/Libero: change type to match move before using it
+            String proteanAbility = engine.abilityName(actor);
+            if (("protean".equalsIgnoreCase(proteanAbility) || "libero".equalsIgnoreCase(proteanAbility))
+                    && engine.toInt(move.get("power"), 0) > 0) {
+                int moveType = engine.toInt(move.get("type_id"), 0);
+                if (moveType > 0) {
+                    actor.put("proteanType", moveType);
+                    targetLog.put("proteanType", moveType);
+                    events.add(actor.get("name") + " 的" + (proteanAbility.contains("libero") ? "自由者" : "变隐龙")
+                            + "特性发动，变成了 " + moveType + " 属性");
+                }
+            }
+
             Map<String, Object> statusSource = actor;
             Map<String, Object> statusTarget = target;
             String statusActingSide = action.side();
