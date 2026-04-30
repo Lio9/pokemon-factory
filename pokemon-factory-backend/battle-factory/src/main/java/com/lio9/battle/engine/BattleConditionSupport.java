@@ -241,6 +241,11 @@ final class BattleConditionSupport {
         if (engine.toInt(target.get("currentHp"), 0) <= 0 || engine.toInt(move.get("power"), 0) <= 0) {
             return;
         }
+        // Covert Cloak: blocks all secondary effects from moves
+        if ("covert-cloak".equals(engine.heldItem(target)) || "covert cloak".equals(engine.heldItem(target))) {
+            targetLog.put("covertCloak", true);
+            return;
+        }
 
         // Max Moves Secondary Effects (100% chance)
         if (Boolean.TRUE.equals(actor.get("dynamaxed"))) {
@@ -1355,6 +1360,17 @@ final class BattleConditionSupport {
                 fieldEffectSupport.clearScreens(state, true);
                 fieldEffectSupport.clearScreens(state, false);
                 events.add(source.get("name") + " 的除障发动了，清除了双方的屏障");
+                continue;
+            }
+            // Supersweet Syrup: lowers opponent's evasiveness by 1 on switch-in
+            if ("supersweet-syrup".equalsIgnoreCase(ability) || "supersweet syrup".equalsIgnoreCase(ability)) {
+                for (Integer oppSlot : engine.activeSlots(state, !player)) {
+                    if (oppSlot == null || oppSlot < 0 || oppSlot >= engine.team(state, !player).size()) continue;
+                    Map<String, Object> opp = engine.team(state, !player).get(oppSlot);
+                    int stage = Math.max(-6, damageSupport.statStage(opp, "evasion") - 1);
+                    damageSupport.statStages(opp).put("evasion", stage);
+                    events.add(source.get("name") + " 的甜甜糖浆降低了 " + opp.get("name") + " 的闪避率");
+                }
                 continue;
             }
         }

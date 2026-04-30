@@ -104,7 +104,7 @@ final class BattleDamageSupport {
 
         // Other modifiers
         modifier *= fullHpDefenseModifier(attacker, defender);
-        modifier *= weatherDamageModifier(state, moveTypeId);
+        modifier *= weatherDamageModifier(attacker, state, moveTypeId);
         modifier *= terrainDamageModifier(state, attacker, defender, move, moveTypeId);
         modifier *= screenDamageModifier(state, defender, damageClassId);
 
@@ -903,7 +903,12 @@ final class BattleDamageSupport {
         return hasAbility(attacker, "mold-breaker", "mold breaker", "teravolt", "turboblaze");
     }
 
-    double weatherDamageModifier(Map<String, Object> state, int moveTypeId) {
+    double weatherDamageModifier(Map<String, Object> attacker, Map<String, Object> state, int moveTypeId) {
+        // Utility Umbrella: ignore weather effects
+        if ("utility-umbrella".equalsIgnoreCase(engine.heldItem(attacker))
+                || "utility umbrella".equalsIgnoreCase(engine.heldItem(attacker))) {
+            return 1.0d;
+        }
         if (fieldEffectSupport.rainTurns(state) > 0) {
             if (moveTypeId == DamageCalculatorUtil.TYPE_WATER) {
                 return 1.5d;
