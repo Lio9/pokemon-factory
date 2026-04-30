@@ -699,6 +699,11 @@ final class BattleDamageSupport {
             modifier *= 1.5d;
         }
 
+        // Punching Glove: punch moves get 1.1x boost
+        if ("punching-glove".equalsIgnoreCase(engine.heldItem(attacker)) && MoveRegistry.isPunchingMove(move)) {
+            modifier *= 1.1d;
+        }
+
         // Supreme Overlord: +10% per fainted ally (max +50%)
         if ("supreme-overlord".equalsIgnoreCase(attackerAbility) || "supreme overlord".equalsIgnoreCase(attackerAbility)) {
             int faintedCount = engine.toInt(attacker.get("faintedAllies"), 0);
@@ -843,6 +848,15 @@ final class BattleDamageSupport {
         // Unburden: doubles speed after the Pokemon loses/consumes its held item.
         if ("unburden".equalsIgnoreCase(ability) && Boolean.TRUE.equals(mon.get("unburdenActive"))) {
             speed *= 2;
+        }
+
+        // Room Service: -1 Speed stage in Trick Room
+        if ("room-service".equalsIgnoreCase(engine.heldItem(mon)) && state != null) {
+            Object fe = state.get("fieldEffects");
+            if (fe instanceof Map<?, ?> f) {
+                int trTurns = engine.toInt(((Map<String, Object>) f).get("trickRoomTurns"), 0);
+                if (trTurns > 0) speed = (int) (speed * 0.5d);
+            }
         }
 
         return speed;

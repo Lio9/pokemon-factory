@@ -279,6 +279,14 @@ final class BattleFieldEffectSupport {
         decrementFieldEffect(state, fieldSnapshot, "opponentSafeguardTurns", "对手神秘守护消失了", events);
     }
 
+    void clearScreens(Map<String, Object> state, boolean playerSide) {
+        String side = playerSide ? "player" : "opponent";
+        Map<String, Object> effects = fieldEffects(state);
+        effects.put(side + "ReflectTurns", 0);
+        effects.put(side + "LightScreenTurns", 0);
+        effects.put(side + "AuroraVeilTurns", 0);
+    }
+
     void clearSideHazards(Map<String, Object> state, boolean playerSide) {
         String side = playerSide ? "player" : "opponent";
         Map<String, Object> effects = fieldEffects(state);

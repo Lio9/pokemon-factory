@@ -1350,6 +1350,13 @@ final class BattleConditionSupport {
                 }
                 continue;
             }
+            // Screen Cleaner: clears screens on both sides on switch-in
+            if ("screen-cleaner".equalsIgnoreCase(ability) || "screen cleaner".equalsIgnoreCase(ability)) {
+                fieldEffectSupport.clearScreens(state, true);
+                fieldEffectSupport.clearScreens(state, false);
+                events.add(source.get("name") + " 的除障发动了，清除了双方的屏障");
+                continue;
+            }
         }
     }
 
