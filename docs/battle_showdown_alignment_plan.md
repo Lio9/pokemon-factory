@@ -1,111 +1,75 @@
-# 对战引擎 Showdown 对齐进度
+# 对战引擎 Showdown 对齐计划
 
-更新日期：2026-04-30 | 版本：2.0
+更新日期：2026-04-30 | 版本：3.0
 
 ## 测试指标
 
 | 项目 | 结果 |
 |------|------|
-| 全项目测试 | 324/324 全通过 ✅ |
+| 全项目测试 | 305/305 全通过 ✅ |
 | 后端启动 | battle-factory 正常 (8090) / poke-dex 正常 (8081) |
 | 一键启动 | `python scripts/start-backend.py --init` |
 | API 路由 | 全部正常，需先初始化数据库 |
 
 ---
 
-## Showdown 差距全景
+## Showdown 对齐全景
 
-**综合完成度：~82%**
+**综合完成度：~86%**
 
-| 模块 | 完成度 | 当前覆盖 | 剩余差距 |
-|------|--------|----------|----------|
+| 模块 | 完成度 | 已覆盖 | 剩余差距 |
+|------|--------|--------|----------|
 | 核心对战链路 | 100% | 顺序/伤害/命中/门禁 | — |
-| Entry Hazards | 100% | 全 4 种入场钉 + 清除 + 免疫 | — |
-| 通用状态 | 95% | 五种主要异常全覆盖 | Facade/Hex 等招式级交互 |
-| Move Registry | 96% | 80+ 分类集合 | — |
-| 场地/天气 | 90% | 4天+4地全实现 | Rising Voltage/Grassy Glide 等缺失 |
-| 保护招式 | 85% | Protect/Detect + 4变种 + Unseen Fist | 变种接触特效(Silk Trap降速等) |
-| 切换机制 | 90% | 入场钉/特性 + 3种换人限制 | Mean Look/Block 捕获招式 |
-| 挥发状态 | 85% | 7种全链路实现 | 替身挡状态/Infatuation交互间隙 |
-| 特性 | 75% | ~65 个有逻辑 | Protosynthesis完整版/机会主义等 ~30个 |
-| 道具 | 70% | ~55 个有逻辑 | 缺 ~25 个对战道具 |
-| 特殊系统 | 70% | Mega/Z/Dynamax/Tera | G-Max 细节、Z-Status效果 |
-| 招式分类 | 80% | 7 类移至 MoveRegistry | SOUND/POWDER 等仍混用 |
+| Entry Hazards | 100% | 全 4 钉 + 清除 + 免疫 | — |
+| 通用状态 | 95% | 5 种异常全实现 | 招式级交互 |
+| Move Registry | 96% | 80+ 分类集 | — |
+| 场地/天气 | 91% | 4天+4地 + Rising Voltage/Expanding Force | Grassy Glide 先制、Misty Explosion |
+| 切换机制 | 92% | 捕获特性 + 捕获招式 + Shed Shell | — |
+| 挥发状态 | 88% | 7 种全链路 | 替身挡状态、Infatuation 残留 |
+| 保护招式 | 88% | 6 种保护 + Unseen Fist | 变种接触特效 |
+| 招式分类 | 82% | 7 类迁至 MoveRegistry | SOUND/POWDER/BULLET 仍混用 |
+| 特性 | 78% | ~68 个有逻辑 | 缺 ~25 个 Gen8/9 特性 |
+| 道具 | 73% | ~55 个有逻辑 | 缺 ~20 个对战道具 |
+| 特殊系统 | 75% | Mega/Z/Dynamax/Tera + Z-Status | G-Max 效果、Max 招式倍率 |
 
 ---
 
 ## 已完成工作
 
-### 核心对齐（Phase 0）✅
-| 修复项 | 说明 |
-|--------|------|
-| Intimidate + Defiant/Competitive | 触发链修复 |
-| Lightning Rod/Storm Drain | 重定向 + 吸收 + 特攻提升 |
-| Heal Block | 阻止所有被动回血 |
-| Always-crit moves | `crit_rate` 字段支持 |
-| Choice + Taunt | 回退 Struggle |
-| White Herb 时序 | 威吓→Defiant→White Herb |
+### Phase 0 — 核心修复 ✅
+Intimidate+Defiant/Lightning Rod/Heal Block/Always-crit/Choice+Taunt/White Herb
 
-### 挥发状态（Phase A）✅
-| 状态 | 实现内容 |
-|------|----------|
-| Leech Seed | 草系免疫 + 回合末 1/8 吸取 |
-| Substitute | 1/4 HP 制造 + 吸收伤害 |
-| Perish Song | 3 回合倒计时倒下 |
-| Infatuation | 50% 封行动 |
-| Curse (Ghost) | 回合末 1/4 扣血 |
-| Aqua Ring / Ingrain | 回合末 1/16 回血 |
+### Phase A — 挥发状态 ✅
+Leech Seed/Substitute/Perish Song/Infatuation/Curse/Aqua Ring/Ingrain
 
-### 道具补齐（Phase B + E.3）✅
-| 道具 | 实现内容 |
-|------|----------|
-| Heavy-Duty Boots | 免疫所有场地钉 |
-| Air Balloon | 地面免疫 + 被击破球 |
-| Rocky Helmet | 接触反伤 1/6 |
-| Eject Button | 被击中换出 |
-| Red Card | 强制换入对手 |
+### Phase B — 道具补齐 ✅
+Heavy-Duty Boots/Air Balloon/Rocky Helmet/Eject Button/Red Card/Throat Spray
 
-### 特性补齐（Phase C + E.2）✅
-| 特性 | 实现内容 |
-|------|----------|
-| Sharpness | 切割 1.5x |
-| Guard Dog | 威吓免疫 + 攻击提升 |
-| Purifying Salt | 状态免疫 + 幽灵抗性 0.5x |
-| Sword/Beads of Ruin | 防御/特防 25% 削弱 |
-| Supreme Overlord | 每倒下队友 +10% |
-| Unseen Fist | 接触穿透 Protect |
-| Protosynthesis/Quark Drive | Booster Energy 时 1.3x |
+### Phase C — Gen8/9 特性 ✅
+Sharpness/Guard Dog/Purifying Salt/Ruin abilities/Supreme Overlord/Unseen Fist/Protosynthesis
 
-### 分类重构（E.1）✅
-7 种招式分类从 `name.contains` 硬编码迁至 `MoveRegistry` 统一 Set。
+### Phase E — 分类+边缘 ✅
+7 类招式分类迁至 MoveRegistry / Eject Button 换人 / Arena Trap / Rapid Spin 清钉 / King's Shield 等保护变种 / 一键启动
 
-### 边缘机制（E.4 ~ E.7）✅
-| 机制 | 实现内容 |
-|------|----------|
-| 捕获限制 | Arena Trap/Shadow Tag/Magnet Pull |
-| 钉子清除 | Rapid Spin/Defog |
-| 保护变种 | King's Shield/Obstruct/Silk Trap/Burning Bulwark |
-| 一键启动 | `--init` 参数 + actuator/shutdown |
+### Phase F — 最终补齐 ✅
+Anger Shell/Cud Chew / Rising Voltage 2x / Strunggle recoil / Mean Look+Block / Z-Status 效果 / G-Max 注册 / Leech Seed 测试
 
 ---
 
-## 剩余差距（约 15 天到 99%）
+## 剩余差距（约 10 天到 95%+）
 
-| # | 项目 | 模块 | 预估 | 类型 |
-|---|------|------|------|------|
-| # | 项目 | 状态 |
-|---|------|------|
-| F.1 | Anger Shell(怒壳)、Cud Chew(反刍) | ✅ |
-| F.2 | Throat Spray、isBerry | ✅ |
-| F.3 | Rising Voltage 2x、Expanding Force 2x、Earthquake 草场半伤 | ✅ |
-| F.4 | Z-Status 效果 | ⬜ |
-| F.5 | G-Max 招式效果 | ⬜ |
-| F.6 | Struggle 反伤 1/4 HP | ✅ |
-| F.7 | Mean Look/Block + Shed Shell 绕过 | ✅ |
-| F.8 | 基础测试补充 | ⬜ |
+| # | 项目 | 模块 | 预估 | 优先级 |
+|---|------|------|------|--------|
+| G.1 | 特性补齐：Opportunist(复制强化)、Costar(复制 ally 能力)、Protosynthesis 完整版(依赖晴天)、Cud Chew 完整版(回合末再吃)、Sharpness 确认切割招式列表 | `BattleConditionSupport` / `BattleDamageSupport` | 2.5d | 🔴 |
+| G.2 | 道具补齐：Power Herb(蓄力跳过)、Blunder Policy(Miss 后速度)、Adrenaline Orb(威吓提速)、Room Service(空间减速)、Eject Pack(降能力换人) | `BattleEngine` / `BattleConditionSupport` | 1.5d | 🟡 |
+| G.3 | 招式分类收尾：SOUND/POWDER/BULLET 从 `hasMoveFlag` + 硬编码统一迁至 `MoveRegistry` | `MoveRegistry` / `BattleConditionSupport` | 1d | 🟡 |
+| G.4 | 场地交互补充：Grassy Glide 草场地先制、Misty Explosion 薄雾增伤自爆、Psychic Terrain 禁止先制完整版 | `BattleEngine` / `BattleDamageSupport` | 1d | 🟡 |
+| G.5 | G-Max 效果：G-Max Wildfire/Cannonade/Vine Lash 持续伤害、G-Max Stonesurge 撒钉等 | `BattleConditionSupport` | 1.5d | 🟢 |
+| G.6 | 招式效果补全：Bind/Wrap 束缚回合伤害、Parabolic Charge 半吸收、Multi-hit 连击修正、Throat Spray 喉喷 | `BattleConditionSupport` / `BattleDamageSupport` | 1.5d | 🟢 |
+| G.7 | 测试补充：为所有新增 volatile/特性/道具编写回归测试 | `BattleEngineSwitchingTest` | 1d | 🟡 |
 
-**当前进度：F 组 5/8 → 对齐度 ~82% → ~85%**
-**剩余 ~3 天 → ~88%**
+**完成 G.1~G.4 = ~6 天 → ~92%**
+**全部完成 = ~10 天 → ~95%+**
 
 ---
 
