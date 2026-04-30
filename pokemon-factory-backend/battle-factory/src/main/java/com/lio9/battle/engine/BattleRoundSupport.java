@@ -297,6 +297,15 @@ final class BattleRoundSupport {
                 actionLogs.add(targetLog);
                 continue;
             }
+            // Substitute blocks status moves targeting the defender
+            if (engine.isStatusMove(move) && actor != target
+                    && isSubstituteActive(statusTarget) && !MoveRegistry.isSoundMove(move)) {
+                targetLog.put("result", "blocked");
+                targetLog.put("damage", 0);
+                actionLogs.add(targetLog);
+                events.add(statusTarget.get("name") + " 的替身挡住了变化招式");
+                continue;
+            }
             if (engine.isStatusMove(move)
                     && handleStatusMove(state, action, statusSource, statusTarget, move, targetLog, events, random, round, actionLogs)) {
                 continue;
@@ -657,6 +666,11 @@ final class BattleRoundSupport {
             return true;
         }
         return false;
+    }
+
+    private boolean isSubstituteActive(Map<String, Object> mon) {
+        Object sub = engine.volatileValue(mon, "substitute", null);
+        return sub instanceof Integer i && i > 0;
     }
 
     private boolean isStruggleMove(Map<String, Object> move) {
