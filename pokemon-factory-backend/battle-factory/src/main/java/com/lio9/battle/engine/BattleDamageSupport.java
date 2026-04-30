@@ -72,6 +72,11 @@ final class BattleDamageSupport {
 
         // Type effectiveness
         double typeModifier = typeModifier(defender, moveTypeId);
+        // Scrappy & Mind's Eye: Normal-type moves hit Ghost types
+        if (typeModifier <= 0.0d && moveTypeId == DamageCalculatorUtil.TYPE_NORMAL
+                && (hasAbility(attacker, "scrappy", "mind's-eye", "mind's eye"))) {
+            typeModifier = 1.0d;
+        }
         modifier *= typeModifier;
         if (typeModifier <= 0.0d) {
             return 0;

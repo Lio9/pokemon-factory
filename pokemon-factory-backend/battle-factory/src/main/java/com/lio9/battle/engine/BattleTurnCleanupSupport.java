@@ -34,8 +34,8 @@ final class BattleTurnCleanupSupport {
         applyEndTurnStatusEffects(engine.team(state, false), events);
         applyEndTurnHealing(engine.team(state, true), events);
         applyEndTurnHealing(engine.team(state, false), events);
-        applyEndTurnAbilityEffects(state, true, events);
-        applyEndTurnAbilityEffects(state, false, events);
+        applyEndTurnAbilityEffects(state, true, events, random);
+        applyEndTurnAbilityEffects(state, false, events, random);
         applyEndTurnFieldEffects(state, events);
         decrementDynamax(engine.team(state, true), events);
         decrementDynamax(engine.team(state, false), events);
@@ -386,7 +386,8 @@ final class BattleTurnCleanupSupport {
         events.add(mon.get("name") + msg + " " + heal + " 点 HP");
     }
 
-    private void applyEndTurnAbilityEffects(Map<String, Object> state, boolean playerSide, List<String> events) {
+    private void applyEndTurnAbilityEffects(Map<String, Object> state, boolean playerSide, List<String> events,
+                                            Random random) {
         for (Integer slot : engine.activeSlots(state, playerSide)) {
             if (slot == null || slot < 0 || slot >= engine.team(state, playerSide).size()) {
                 continue;
@@ -399,7 +400,24 @@ final class BattleTurnCleanupSupport {
             if ("speed-boost".equalsIgnoreCase(ability) || "speed boost".equalsIgnoreCase(ability)) {
                 applySpeedBoost(mon, events);
             }
+            if ("moody".equalsIgnoreCase(ability)) {
+                applyModyBoost(mon, events, random);
+            }
         }
+    }
+
+    private void applyModyBoost(Map<String, Object> mon, List<String> events, Random random) {
+        String[] stats = {"attack", "defense", "specialAttack", "specialDefense", "speed"};
+        // Randomly pick one to boost by 2
+        int boostIdx = random.nextInt(stats.length);
+        int dropIdx = random.nextInt(stats.length - 1);
+        if (dropIdx >= boostIdx) dropIdx++;
+        Map<String, Object> stages = engine.castMap(mon.get("statStages"));
+        int curBoost = engine.toInt(stages.get(stats[boostIdx]), 0);
+        stages.put(stats[boostIdx], Math.min(6, curBoost + 2));
+        int curDrop = engine.toInt(stages.get(stats[dropIdx]), 0);
+        stages.put(stats[dropIdx], Math.max(-6, curDrop - 1));
+        events.add(mon.get("name") + " 的随手变发动了，" + stats[boostIdx] + " 大幅提升，" + stats[dropIdx] + " 降低");
     }
 
     private void applySpeedBoost(Map<String, Object> mon, List<String> events) {
