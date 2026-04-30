@@ -81,7 +81,7 @@ final class BattleDamageSupport {
         modifier *= itemDamageModifier(attacker, defender, moveTypeId, move, state);
 
         // Ability modifiers
-        modifier *= abilityDamageModifier(attacker, defender, move, moveTypeId);
+        modifier *= abilityDamageModifier(attacker, defender, move, moveTypeId, state);
 
         // Helping Hand boost
         if (Boolean.TRUE.equals(helpingHandBoosts.get(attacker))) {
@@ -474,7 +474,7 @@ final class BattleDamageSupport {
      * Ability-based damage modifiers (Pokemon Showdown standard)
      */
     double abilityDamageModifier(Map<String, Object> attacker, Map<String, Object> defender,
-            Map<String, Object> move, int moveTypeId) {
+            Map<String, Object> move, int moveTypeId, Map<String, Object> state) {
         double modifier = 1.0d;
         String attackerAbility = engine.abilityName(attacker);
         String defenderAbility = engine.abilityName(defender);
@@ -705,10 +705,25 @@ final class BattleDamageSupport {
             modifier *= (1.0d + faintedCount * 0.1d);
         }
 
-        // Protosynthesis/Quark Drive: 1.3x when holding Booster Energy (full implementation also checks sun/electric terrain)
-        if (("protosynthesis".equalsIgnoreCase(attackerAbility) || "quark-drive".equalsIgnoreCase(attackerAbility))
-                && "booster-energy".equals(engine.heldItem(attacker))) {
-            modifier *= 1.3d;
+        // Protosynthesis/Quark Drive: 1.3x with Booster Energy, sun (Protosynthesis), or Electric Terrain (Quark Drive)
+        if ("protosynthesis".equalsIgnoreCase(attackerAbility) || "quark-drive".equalsIgnoreCase(attackerAbility)) {
+            boolean active = "booster-energy".equals(engine.heldItem(attacker));
+            if (!active && state != null) {
+                Object fe = state.get("fieldEffects");
+                if (fe instanceof Map<?, ?> f) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> fieldEffects = (Map<String, Object>) f;
+                    if ("protosynthesis".equalsIgnoreCase(attackerAbility)
+                            && engine.toInt(fieldEffects.get("sunTurns"), 0) > 0) {
+                        active = true;
+                    }
+                    if ("quark-drive".equalsIgnoreCase(attackerAbility)
+                            && engine.toInt(fieldEffects.get("electricTerrainTurns"), 0) > 0) {
+                        active = true;
+                    }
+                }
+            }
+            if (active) modifier *= 1.3d;
         }
 
         // Purifying Salt: Ghost resistance (takes 1/2 damage from Ghost)
