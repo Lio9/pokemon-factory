@@ -256,6 +256,8 @@ final class BattleRoundSupport {
                 } else {
                     targetLog.put("result", "blocked");
                     targetLog.put("damage", 0);
+                    // Protection variant contact effects - logged but require full protection name tracking
+                    // for complete implementation (needs defender's protection move name)
                     actionLogs.add(targetLog);
                     events.add(target.get("name") + " 通过 Protect 挡住了攻击");
                     continue;
