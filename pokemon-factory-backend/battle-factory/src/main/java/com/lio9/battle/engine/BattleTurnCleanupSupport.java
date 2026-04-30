@@ -77,6 +77,9 @@ final class BattleTurnCleanupSupport {
             applyGrassyTerrainHealing(state, true, events);
             applyGrassyTerrainHealing(state, false, events);
         }
+        // G-Max 持续伤害
+        applyGMaxPersistentDamage(state, true, events);
+        applyGMaxPersistentDamage(state, false, events);
     }
 
     private void applyWeatherDamage(Map<String, Object> state, boolean playerSide, String weatherType,
@@ -139,6 +142,41 @@ final class BattleTurnCleanupSupport {
             mon.put("currentHp", Math.min(maxHp, currentHp + heal));
             events.add(mon.get("name") + " 受青草场地影响回复了 " + heal + " 点 HP");
         }
+    }
+
+    private void applyGMaxPersistentDamage(Map<String, Object> state, boolean playerSide, List<String> events) {
+        String[] gmaxTypes = {"gmaxWildfireTurns", "gmaxCannonadeTurns", "gmaxVineLashTurns"};
+        String[] immuneTypes = {"fire", "water", "grass"};
+        String[] msg = {"烈火燎原", "水炮轰射", "藤蔓鞭打"};
+        for (int i = 0; i < 3; i++) {
+            int turns = engine.toInt(fieldEffectSupport.fieldEffects(state).get(gmaxTypes[i]), 0);
+            if (turns <= 0) continue;
+            fieldEffectSupport.fieldEffects(state).put(gmaxTypes[i], turns - 1);
+            for (Integer slot : engine.activeSlots(state, playerSide)) {
+                if (slot == null || slot < 0) continue;
+                Map<String, Object> mon = engine.team(state, playerSide).get(slot);
+                if (engine.toInt(mon.get("currentHp"), 0) <= 0) continue;
+                if (engine.targetHasType(mon, typeIdForName(immuneTypes[i]))) continue;
+                int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+                int dmg = Math.max(1, maxHp / 6);
+                int cur = engine.toInt(mon.get("currentHp"), 0);
+                mon.put("currentHp", Math.max(0, cur - dmg));
+                events.add(mon.get("name") + " 受到 G-Max " + msg[i] + "影响，损失了 " + dmg + " 点 HP");
+                if (cur - dmg <= 0) {
+                    mon.put("status", "fainted");
+                    events.add(mon.get("name") + " 倒下了");
+                }
+            }
+        }
+    }
+
+    private int typeIdForName(String name) {
+        return switch (name) {
+            case "fire" -> DamageCalculatorUtil.TYPE_FIRE;
+            case "water" -> DamageCalculatorUtil.TYPE_WATER;
+            case "grass" -> DamageCalculatorUtil.TYPE_GRASS;
+            default -> 0;
+        };
     }
 
     private void decrementTauntEffects(List<Map<String, Object>> team, List<String> events) {

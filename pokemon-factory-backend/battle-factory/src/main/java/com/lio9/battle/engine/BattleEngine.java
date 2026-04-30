@@ -723,6 +723,11 @@ public class BattleEngine {
             priority += 3;
         }
 
+        // Mycelium Might: status moves go last in priority bracket
+        if ("mycelium-might".equalsIgnoreCase(abilityName(mon)) || "mycelium might".equalsIgnoreCase(abilityName(mon))) {
+            if (isStatusMove(move)) priority -= 1;
+        }
+
         // Grassy Glide: +1 priority in Grassy Terrain (requires state; handled in buildPlayerActions)
         // Note: full implementation needs grassy terrain check which requires state
 

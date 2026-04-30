@@ -277,6 +277,15 @@ final class BattleConditionSupport {
                 fieldEffectSupport.setStealthRock(state, !isPlayerSide, actor, targetLog, events);
             } else if (nameEn.startsWith("g-max-steelsurge") || nameEn.startsWith("g max steelsurge")) {
                 fieldEffectSupport.setStealthRock(state, !isPlayerSide, actor, targetLog, events);
+            } else if (nameEn.startsWith("g-max-wildfire") || nameEn.startsWith("g max wildfire")) {
+                fieldEffectSupport.setGMaxWildfire(state, !isPlayerSide);
+                events.add(actor.get("name") + " 的 G-Max 烈火燎原烧起来了！");
+            } else if (nameEn.startsWith("g-max-cannonade") || nameEn.startsWith("g max cannonade")) {
+                fieldEffectSupport.setGMaxCannonade(state, !isPlayerSide);
+                events.add(actor.get("name") + " 的 G-Max 水炮轰射开始了！");
+            } else if (nameEn.startsWith("g-max-vine-lash") || nameEn.startsWith("g max vine lash")) {
+                fieldEffectSupport.setGMaxVineLash(state, !isPlayerSide);
+                events.add(actor.get("name") + " 的 G-Max 藤蔓鞭打开始了！");
             } else if (nameEn.contains("g-max") || nameEn.contains("g-max-") || nameEn.contains("g max ")) {
                 events.add(actor.get("name") + " 释放了 G-Max 招式！");
             }
@@ -810,6 +819,10 @@ final class BattleConditionSupport {
     boolean isStatusMoveBlockedByAbility(Map<String, Object> state, String actingSide,
             Map<String, Object> actor, Map<String, Object> target, Map<String, Object> move,
             Map<String, Object> actionLog, List<String> events) {
+        // Mycelium Might: status moves ignore target abilities
+        if (isStatusMove(move) && (hasAbility(actor, "mycelium-might", "mycelium might"))) {
+            return false;
+        }
         if (applySharedMoveBlockers(actor, target, move, actionLog, events)) {
             return true;
         }

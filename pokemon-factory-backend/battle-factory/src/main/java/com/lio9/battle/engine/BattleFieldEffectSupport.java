@@ -38,7 +38,11 @@ final class BattleFieldEffectSupport {
         effects.put("opponentToxicSpikesLayers", 0);
         effects.put("playerStickyWeb", false);
         effects.put("opponentStickyWeb", false);
-        
+        // G-Max persistent damage turns (Wildfire/Cannonade/Vine Lash)
+        effects.put("gmaxWildfireTurns", 0);
+        effects.put("gmaxCannonadeTurns", 0);
+        effects.put("gmaxVineLashTurns", 0);
+
         return effects;
     }
 
@@ -285,6 +289,16 @@ final class BattleFieldEffectSupport {
         effects.put(side + "ReflectTurns", 0);
         effects.put(side + "LightScreenTurns", 0);
         effects.put(side + "AuroraVeilTurns", 0);
+    }
+
+    void setGMaxWildfire(Map<String, Object> state, boolean playerSide) {
+        fieldEffects(state).put("gmaxWildfireTurns", 4);
+    }
+    void setGMaxCannonade(Map<String, Object> state, boolean playerSide) {
+        fieldEffects(state).put("gmaxCannonadeTurns", 4);
+    }
+    void setGMaxVineLash(Map<String, Object> state, boolean playerSide) {
+        fieldEffects(state).put("gmaxVineLashTurns", 4);
     }
 
     void clearSideHazards(Map<String, Object> state, boolean playerSide) {
