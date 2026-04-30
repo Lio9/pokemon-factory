@@ -91,11 +91,11 @@
 | ✅ King's Shield/Obstruct/Silk Trap/Burning Bulwark 注册 | | | | |
 | **E.6** 钉子清除逻辑 | Entry Hazards 98%→100% | `BattleFieldEffectSupport` + `BattleRoundSupport` | 1d | 🟢 低 |
 | ✅ Rapid Spin/Defog 实际清除场地钉 | | | | |
-| **E.7** 一键启动整合 | 基础设施 | `scripts/start-backend.py` + `docker-compose` | 0.5d | 🟢 低 |
-| 数据库初始化 + 模块启动一步到位 | | | | |
+| **E.7** 一键启动整合 | 基础设施 | `scripts/start-backend.py` + `application-common.yml` | 0.5d | 🟢 低 |
+| ✅ `python scripts/start-backend.py --init` 一步完成建表+导数据+启动 | | | | |
+| ✅ actuator/shutdown 已启用，开发调试方便 | | | | |
 
-**完成 E.1~E.6 = ~8 天 → ~93%**
-**全部完成 E.1~E.7 = ~8.5 天 → ~95%**
+**全部完成 = ~8.5 天 → ~95%**
 
 ### 交付标准
 
