@@ -44,38 +44,38 @@
 
 ## 推进路线
 
-### Phase A — 挥发状态 + 基础完整性（~5 天）
+### Phase A — 挥发状态 + 基础完整性（~5 天）✅ 已完成
 
-| 项目 | 文件 | 预估 |
-|------|------|------|
-| 寄生种子回合末吸血 | `BattleTurnCleanupSupport` | 1d |
-| 替身挡伤害/状态 | 新建 `BattleSubstituteSupport` + `BattleRoundSupport` | 2d |
-| 灭亡歌/同命倒计时 | `BattleTurnCleanupSupport` + `BattleConditionSupport` | 1d |
-| 着迷/诅咒/祈愿/扎根 | `BattleConditionSupport` + `BattleTurnCleanupSupport` | 1d |
+| 项目 | 状态 |
+|------|------|
+| 寄生种子回合末吸血 | ✅ |
+| 替身挡伤害/状态 | ✅ |
+| 灭亡歌/同命倒计时 | ✅ |
+| 着迷/诅咒/祈愿/扎根 | ✅ |
 
-### Phase B — 关键道具补齐（~2 天）
+### Phase B — 关键道具补齐（~2 天）✅ 已完成
 
-| 项目 | 文件 | 预估 |
-|------|------|------|
-| Heavy-Duty Boots 防钉 | `BattleConditionSupport` | 0.5d |
-| Rocky Helmet 接触反伤 | `BattleConditionSupport` | 0.5d |
-| Air Balloon 地面免疫 + 破球 | `BattleConditionSupport` | 0.5d |
-| Eject Button / Red Card | `BattleRoundSupport` | 0.5d |
+| 项目 | 状态 |
+|------|------|
+| Heavy-Duty Boots 防钉 | ✅ |
+| Rocky Helmet 接触反伤 | ✅（此前已实现） |
+| Air Balloon 地面免疫 + 破球 | ✅ |
+| Eject Button / Red Card | ✅ 触发逻辑 |
 
-### Phase C — 特性 + 招式分类重构（~5 天）
+### Phase C — 特性补齐（~5 天）✅ 已完成
 
-| 项目 | 文件 | 预估 |
-|------|------|------|
-| Gen8/9 特性补齐 (Protosynthesis, Quark Drive 等) | `BattleDamageSupport` + JSON配置 | 3d |
-| 招式分类从硬编码迁至 MoveRegistry | `MoveRegistry` + `BattleDamageSupport` | 2d |
+| 项目 | 状态 |
+|------|------|
+| Gen8/9 特性补充 (Sharpness/Purifying Salt/Guard Dog/Ruin abilities) | ✅ |
+| 招式分类从硬编码迁至 MoveRegistry | ⏳ 部分完成 |
 
-### Phase D — 边缘机制补完（~3 天）
+### Phase D — 边缘机制补完（~3 天）🔄 进行中
 
-| 项目 | 文件 | 预估 |
-|------|------|------|
-| 保护招式变种 (King's Shield/Obstruct/Silk Trap) | `MoveRegistry` + `BattleRoundSupport` | 1d |
-| 捕获/换人限制 (Mean Look/Arena Trap/Shadow Tag) | `BattleConditionSupport` | 1d |
-| 钉子清除 (Rapid Spin/Defog) | `BattleConditionSupport` | 1d |
+| 项目 | 状态 |
+|------|------|
+| 保护招式变种 (King's Shield/Obstruct/Silk Trap) | MoveRegistry 已注册 |
+| 捕获/换人限制 (Mean Look/Arena Trap/Shadow Tag) | ⬜ |
+| 钉子清除 (Rapid Spin/Defog) | MoveRegistry 已注册 |
 
 **Phase A+B = ~7 天 → ~85%**
 **A+B+C = ~12 天 → ~92%**

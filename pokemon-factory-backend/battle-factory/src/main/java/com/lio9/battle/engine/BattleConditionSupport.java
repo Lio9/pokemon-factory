@@ -807,6 +807,10 @@ final class BattleConditionSupport {
             blockMoveByAbility(actionLog, events, "good-as-gold", target.get("name") + " 的黄金之躯挡住了 " + move.get("name"));
             return true;
         }
+        if (isStatusMove(move) && actor != target && hasAbility(target, "purifying-salt", "purifying salt")) {
+            blockMoveByAbility(actionLog, events, "purifying-salt", target.get("name") + " 的洁净之盐阻挡了变化招式");
+            return true;
+        }
         return pranksterBlockedByDarkType(state, actingSide, actor, target, move, actionLog, events);
     }
 
@@ -1250,9 +1254,9 @@ final class BattleConditionSupport {
                 continue;
 
             // Intimidate fails against Clear Body, White Smoke, Full Metal Body, Inner
-            // Focus, Oblivious, Own Tempo, and Scrappy
+            // Focus, Oblivious, Own Tempo, Scrappy, and Guard Dog
             if (engine.hasAbility(target, "clear-body", "white-smoke", "full-metal-body", "inner-focus", "oblivious",
-                    "own-tempo", "scrappy")) {
+                    "own-tempo", "scrappy", "guard-dog", "guard dog")) {
                 events.add(target.get("name") + " 的特性挡住了威吓");
                 continue;
             }
@@ -1697,6 +1701,15 @@ final class BattleConditionSupport {
             damageSupport.statStages(target).put("specialAttack", nextStage);
             if (nextStage != previousStage) {
                 events.add(target.get("name") + " 因好胜触发，特攻大幅提升了");
+            }
+            return;
+        }
+        if ("guard-dog".equalsIgnoreCase(ability) || "guard dog".equalsIgnoreCase(ability)) {
+            int previousStage = damageSupport.statStage(target, "attack");
+            int nextStage = Math.min(6, previousStage + 1);
+            damageSupport.statStages(target).put("attack", nextStage);
+            if (nextStage != previousStage) {
+                events.add(target.get("name") + " 的看门狗特性触发，攻击提升了");
             }
         }
     }

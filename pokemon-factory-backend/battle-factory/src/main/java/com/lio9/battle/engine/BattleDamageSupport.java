@@ -694,6 +694,29 @@ final class BattleDamageSupport {
             return 0.0d; // Immune
         }
 
+        // Sharpness: slicing moves get 1.5x boost
+        if ("sharpness".equalsIgnoreCase(attackerAbility) && isSlicingMove(move)) {
+            modifier *= 1.5d;
+        }
+
+        // Purifying Salt: Ghost resistance (takes 1/2 damage from Ghost)
+        if (("purifying-salt".equalsIgnoreCase(defenderAbility) || "purifying salt".equalsIgnoreCase(defenderAbility))
+                && moveTypeId == DamageCalculatorUtil.TYPE_GHOST) {
+            modifier *= 0.5d;
+        }
+
+        // Sword of Ruin: Defender's Defense reduced by 25%
+        if (("sword-of-ruin".equalsIgnoreCase(defenderAbility) || "sword of ruin".equalsIgnoreCase(defenderAbility))
+                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
+            modifier /= 0.75d; // reverse the actual 0.75x def multiplier
+        }
+
+        // Beads of Ruin: Defender's SpD reduced by 25%
+        if (("beads-of-ruin".equalsIgnoreCase(defenderAbility) || "beads of ruin".equalsIgnoreCase(defenderAbility))
+                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
+            modifier /= 0.75d;
+        }
+
         return modifier;
     }
 
@@ -731,6 +754,14 @@ final class BattleDamageSupport {
         String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
         return nameEn.contains("boomburst") || nameEn.contains("hypervoice") || nameEn.contains("bug buzz") ||
                 nameEn.contains("snarl") || nameEn.contains("overdrive") || nameEn.contains("clang");
+    }
+
+    private boolean isSlicingMove(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
+        return nameEn.contains("slash") || nameEn.contains("cut") || nameEn.contains("blade")
+                || nameEn.contains("razor") || nameEn.contains("claw") || nameEn.contains("axe")
+                || nameEn.contains("leaf") || nameEn.contains("night") || nameEn.contains("psycho")
+                || nameEn.contains("cross") || nameEn.contains("slic") || nameEn.contains("karate");
     }
 
     private boolean isWindMove(Map<String, Object> move) {

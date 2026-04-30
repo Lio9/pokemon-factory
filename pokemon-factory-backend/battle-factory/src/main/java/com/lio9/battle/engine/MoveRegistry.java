@@ -121,6 +121,8 @@ public final class MoveRegistry {
     private static final Set<String> SPIKES_MOVES = Set.of("spikes");
     private static final Set<String> TOXIC_SPIKES_MOVES = Set.of("toxic spikes", "toxic-spikes");
     private static final Set<String> STICKY_WEB_MOVES = Set.of("sticky web", "sticky-web");
+    private static final Set<String> RAPID_SPIN_MOVES = Set.of("rapid spin", "rapid-spin");
+    private static final Set<String> DEFOG_MOVES = Set.of("defog");
 
     // === 回复类招式 ===
     private static final Set<String> LEECH_SEED_MOVES = Set.of("leech seed", "leech-seed");
@@ -450,6 +452,14 @@ public final class MoveRegistry {
 
     public static boolean isStickyWeb(Map<String, Object> move) {
         return matchesAny(move, STICKY_WEB_MOVES);
+    }
+
+    public static boolean isRapidSpin(Map<String, Object> move) {
+        return matchesAny(move, RAPID_SPIN_MOVES);
+    }
+
+    public static boolean isDefog(Map<String, Object> move) {
+        return matchesAny(move, DEFOG_MOVES);
     }
 
     /**
