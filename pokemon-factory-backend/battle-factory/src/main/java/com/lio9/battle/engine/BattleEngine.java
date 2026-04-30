@@ -585,6 +585,10 @@ public class BattleEngine {
         return MoveRegistry.isHealBlock(move);
     }
 
+    boolean isTrappingMove(Map<String, Object> move) {
+        return MoveRegistry.isTrappingMove(move);
+    }
+
     // Delegating to MoveRegistry for Encore (used by other components)
     boolean isEncore(Map<String, Object> move) {
         return MoveRegistry.isEncore(move);

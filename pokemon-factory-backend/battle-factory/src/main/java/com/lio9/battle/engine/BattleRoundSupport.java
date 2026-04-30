@@ -639,8 +639,16 @@ final class BattleRoundSupport {
     private void handleSwitch(Map<String, Object> state, BattleEngine.Action action, List<Map<String, Object>> actingTeam,
                               Map<String, Object> actor, boolean playerSide, List<Map<String, Object>> actionLogs,
                               List<String> events, Map<String, Object> actionLog) {
+        // Shed Shell 绕过所有捕获效果
+        boolean hasShedShell = "shed-shell".equalsIgnoreCase(engine.heldItem(actor));
+        // 捕获招式检查（Mean Look/Block 等）
+        if (!hasShedShell && Boolean.TRUE.equals(actor.get("trapped"))) {
+            actionLog.put("result", "trapped");
+            events.add(actor.get("name") + " 被困住了，无法换人");
+            return;
+        }
         // 捕获特性检查
-        if (isBlockedByTrappingAbility(state, playerSide, actor)) {
+        if (!hasShedShell && isBlockedByTrappingAbility(state, playerSide, actor)) {
             actionLog.put("result", "trapped");
             events.add(actor.get("name") + " 被对手的特性困住了，无法换人");
             return;
@@ -822,6 +830,13 @@ final class BattleRoundSupport {
         if (engine.isConfuseRay(move)) {
             conditionSupport.applyConfusion(actor, target, targetLog, events, random);
             actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isTrappingMove(move)) {
+            engine.setVolatile(target, "trapped", true);
+            targetLog.put("result", "trap");
+            actionLogs.add(targetLog);
+            events.add(actor.get("name") + " 困住了 " + target.get("name"));
             return true;
         }
         if (engine.isLeechSeed(move)) {

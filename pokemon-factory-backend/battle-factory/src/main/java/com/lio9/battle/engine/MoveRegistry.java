@@ -88,6 +88,15 @@ public final class MoveRegistry {
     private static final Set<String> TORMENT_MOVES = Set.of("torment");
     private static final Set<String> HEAL_BLOCK_MOVES = Set.of("heal block", "heal-block");
 
+    // === 捕获类招式 ===
+    private static final Set<String> TRAPPING_MOVES = Set.of(
+        "mean look", "mean-look", "block", "spider web", "spider-web",
+        "anchor shot", "anchor-shot", "spirit shackle", "spirit-shackle",
+        "sand tomb", "sand-tomb", "whirlpool", "fire spin", "fire-spin",
+        "infestation", "magma storm", "magma-storm", "snap trap", "snap-trap",
+        "thousand waves", "thousand-waves", "bind", "wrap"
+    );
+
     // === 先制攻击类招式 ===
     private static final Set<String> FAKE_OUT_MOVES = Set.of("fake out", "fake-out");
     private static final Set<String> SUCKER_PUNCH_MOVES = Set.of("sucker punch", "sucker-punch");
@@ -381,6 +390,10 @@ public final class MoveRegistry {
 
     public static boolean isHealBlock(Map<String, Object> move) {
         return matchesAny(move, HEAL_BLOCK_MOVES);
+    }
+
+    public static boolean isTrappingMove(Map<String, Object> move) {
+        return matchesAny(move, TRAPPING_MOVES);
     }
 
     /**
