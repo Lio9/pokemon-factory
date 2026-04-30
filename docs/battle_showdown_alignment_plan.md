@@ -93,16 +93,19 @@
 
 | # | 项目 | 模块 | 预估 | 类型 |
 |---|------|------|------|------|
-| F.1 | 特性补齐：Protosynthesis完整(依赖晴天)、Opportunist(复制强化)、Cud Chew(二次果)、Anger Shell(怒壳)、Costar(复制 ally 能力) 等 ~15 个 VGC 热门特性 | `BattleDamageSupport` + `BattleConditionSupport` | 3d | 🔴 |
-| F.2 | 道具补齐：Heavy-Duty Boots → Rocky Helmet → 已实现；剩余 Eject Button 实际逻辑已加；还缺 Air Balloon pop → 已实现。剩余 Power Herb(一回合蓄力)、Throat Spray(声音招式后提升特攻)、Blunder Policy(miss后速度)等 | `BattleEngine` + `BattleConditionSupport` | 2d | 🟡 |
-| F.3 | 招式-场地交互：Rising Voltage(电场地 2x)、Expanding Force(超能场地 2x)、Grassy Glide(草场地先制)、Misty Explosion(薄雾场地自爆)、Earthquake 半伤(草场地) | `BattleDamageSupport` + `BattleConditionSupport` | 2d | 🟡 |
-| F.4 | Z-Status 效果：Z-变化招式特有增益（如 Z-睡觉直接满血、Z-强化全属性 +1） | `BattleConditionSupport` | 2d | 🟡 |
-| F.5 | G-Max 招式效果：G-Max 专属附加效果（G-Max Wildfire、G-Max Cannonade 等） | `BattleConditionSupport` | 2d | 🟢 |
-| F.6 | 招式效果补全：半吸收(Parabolic Charge)、连续招式(Multi-hit moves)、束缚类(Bind/Wrap)、反伤类(Struggle recoil) | `BattleConditionSupport` + `BattleDamageSupport` | 2d | 🟢 |
-| F.7 | 捕获招式：Mean Look、Block、Spider Web 等 + Shed Shell 绕过 | `BattleConditionSupport` | 1d | 🟢 |
-| F.8 | 基础测试补充：为新 volatile 状态 + 新特性 + 新道具编写测试用例 | `BattleEngineTest` | 2d | 🟡 |
+| # | 项目 | 状态 |
+|---|------|------|
+| F.1 | Anger Shell(怒壳)、Cud Chew(反刍) | ✅ |
+| F.2 | Throat Spray、isBerry | ✅ |
+| F.3 | Rising Voltage 2x、Expanding Force 2x、Earthquake 草场半伤 | ✅ |
+| F.4 | Z-Status 效果 | ⬜ |
+| F.5 | G-Max 招式效果 | ⬜ |
+| F.6 | Struggle 反伤 1/4 HP | ✅ |
+| F.7 | Mean Look/Block + Shed Shell 绕过 | ✅ |
+| F.8 | 基础测试补充 | ⬜ |
 
-**预计时间：~15 天 → 对齐度 99%+**
+**当前进度：F 组 5/8 → 对齐度 ~82% → ~85%**
+**剩余 ~3 天 → ~88%**
 
 ---
 
