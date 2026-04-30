@@ -29,8 +29,8 @@ services:
       context: ./pokemon-factory-backend
       dockerfile: Dockerfile.module
       args:
-        MODULE_PATH: pokeDex
-        JAR_PATTERN: pokeDex-*.jar
+        MODULE_PATH: poke-dex
+        JAR_PATTERN: poke-dex-*.jar
     depends_on:
       common-init:
         condition: service_completed_successfully
@@ -46,8 +46,8 @@ services:
       context: ./pokemon-factory-backend
       dockerfile: Dockerfile.module
       args:
-        MODULE_PATH: battleFactory
-        JAR_PATTERN: battleFactory-*.jar
+        MODULE_PATH: battle-factory
+        JAR_PATTERN: battle-factory-*.jar
     depends_on:
       common-init:
         condition: service_completed_successfully
@@ -65,6 +65,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_BASE: http://localhost:8081/api/pokedex
+        VITE_BATTLE_API_BASE: http://localhost:8090/api
         VITE_DAMAGE_API_BASE: http://localhost:8090/api/damage
         VITE_SPRITES_BASE: http://localhost:8081
     depends_on:
