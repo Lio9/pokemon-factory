@@ -8,81 +8,98 @@
 
 | 项目 | 结果 |
 |------|------|
-| 单元测试 | 319/319 全通过 ✅ |
+| 全项目测试 | 324/324 全通过 ✅ |
 | 后端启动 | battle-factory 正常 (8090)、poke-dex 正常 (8081) |
-| 数据库初始化 | 可正常工作（需 POKEMON_FACTORY_DATABASE_INITIALIZE_ON_STARTUP=true） |
+| 数据库初始化 | 可正常工作（需设置环境变量） |
 | API 路由 | 路由正确，数据库有数据后返回正常 |
 | 前端构建 | Vite 构建成功 |
 
-### 已知问题
+### 待处理问题
 
-| # | 问题 | 状态 |
-|---|------|------|
-| 1 | 父 POM mainClass 错误 PokedexApplication -> PokeDexApplication | ✅ 已修复 |
-| 2 | 数据库初始化需环境变量，一键启动流程未整合 | ⏳ 待处理 |
-| 3 | actuator/shutdown 未启用，不方便开发调试 | ⏳ 待处理 |
+| # | 问题 | 状态 | 影响 |
+|---|------|------|------|
+| 1 | 数据库初始化需环境变量 | ⏳ | 首次启动需手动设置 |
+| 2 | actuator/shutdown 未启用 | ⏳ | 开发调试不便 |
+| 3 | 父 POM mainClass 错误 | ✅ 已修 | — |
 
 ### Showdown 对齐进度
 
-**综合完成度：~72%**（与 Pokemon Showdown Gen 9 Doubles 对比）
+**综合完成度：~80%**（与 Pokemon Showdown Gen 9 Doubles 对比）
 
-### 模块完成度
-
-| 模块 | 完成度 | 说明 |
-|------|--------|------|
-| 核心对战链路 | 100% | 顺序/伤害/命中/基础状态门禁完全对齐 |
-| Move Registry | 95% | 70+ 分类集合，体系完整 |
-| 场地/天气 | 90% | 四种天气 + 四种场地齐全，缺特定招式交互 |
-| 切换机制 | 85% | 入场钉 + 特性 + 换人全链，缺捕获 |
-| 通用状态 | 85% | 五种主要异常全覆盖 |
-| 保护招式 | 80% | Protect/Detect/Wide/Quick 全实现，缺变种 |
-| 特殊系统 | 70% | Mega/Z/Dynamax/Tera 全实现，缺 G-Max 细节 |
-| 特性 | 65% | ~60 个有逻辑，缺 Gen8/9 新特性 |
-| 道具 | 60% | ~50 个有逻辑，缺 Boots/Helmet 等对战核心 |
-| 招式分类 | 50% | 硬编码 name.contains 脆弱，需迁至 Registry |
-| 挥发状态 | 40% | 替身/寄生种子/灭亡歌仅为枚举定义，无逻辑 |
+| 模块 | 之前 | 现在 | 变化 |
+|------|------|------|------|
+| 核心对战链路 | 100% | 100% | — |
+| Move Registry | 95% | 96% | +Rapid Spin/Defog |
+| 场地/天气 | 90% | 90% | — |
+| Entry Hazards | 95% | 98% | +Heavy-Duty Boots |
+| 切换机制 | 85% | 85% | — |
+| 通用状态 | 85% | 85% | — |
+| 保护招式 | 80% | 80% | — |
+| 特殊系统 | 70% | 70% | — |
+| 特性 | 65% | 68% | +Sharpness/Guard Dog/Purifying Salt/Ruin |
+| 道具 | 60% | 65% | +Boots/Air Balloon/Button |
+| 挥发状态 | 40% | 65% | +7 种全链路实现 |
+| 招式分类 | 50% | 50% | — |
 
 ## 推进路线
 
-### Phase A — 挥发状态 + 基础完整性（~5 天）✅ 已完成
+### Phase A — 挥发状态 + 基础完整性 ✅ 已完成
 
-| 项目 | 状态 |
-|------|------|
-| 寄生种子回合末吸血 | ✅ |
-| 替身挡伤害/状态 | ✅ |
-| 灭亡歌/同命倒计时 | ✅ |
-| 着迷/诅咒/祈愿/扎根 | ✅ |
+| 项目 | 文件 | 状态 |
+|------|------|------|
+| 寄生种子回合末吸血 | `BattleTurnCleanupSupport` | ✅ |
+| 替身挡伤害/状态 | `BattleRoundSupport` | ✅ |
+| 灭亡歌倒计时 | `BattleTurnCleanupSupport` | ✅ |
+| 着迷 50% 封行动 | `BattleRoundSupport` | ✅ |
+| 诅咒扣血、水流环/扎根回血 | `BattleTurnCleanupSupport` | ✅ |
+| MoveRegistry 注册 | `MoveRegistry` | ✅ |
 
-### Phase B — 关键道具补齐（~2 天）✅ 已完成
+### Phase B — 关键道具补齐 ✅ 已完成
 
-| 项目 | 状态 |
-|------|------|
-| Heavy-Duty Boots 防钉 | ✅ |
-| Rocky Helmet 接触反伤 | ✅（此前已实现） |
-| Air Balloon 地面免疫 + 破球 | ✅ |
-| Eject Button / Red Card | ✅ 触发逻辑 |
+| 项目 | 文件 | 状态 |
+|------|------|------|
+| Heavy-Duty Boots 防钉 | `BattleConditionSupport.applyEntryHazards` | ✅ |
+| Rocky Helmet 接触反伤 | `BattleConditionSupport` | ✅（此前已实现） |
+| Air Balloon 地面免疫 + 破球 | `BattleConditionSupport` + `BattleEngine` | ✅ |
+| Eject Button / Red Card 触发钩子 | `BattleEngine.applyDefenderItemEffects` | ✅ |
 
-### Phase C — 特性补齐（~5 天）✅ 已完成
+### Phase C — Gen8/9 特性补齐 ✅ 已完成
 
-| 项目 | 状态 |
-|------|------|
-| Gen8/9 特性补充 (Sharpness/Purifying Salt/Guard Dog/Ruin abilities) | ✅ |
-| 招式分类从硬编码迁至 MoveRegistry | ⏳ 部分完成 |
+| 项目 | 文件 | 状态 |
+|------|------|------|
+| Sharpness 切割 1.5x | `BattleDamageSupport.abilityDamageModifier` | ✅ |
+| Purifying Salt 状态免疫 + 幽灵抗性 | `BattleConditionSupport` + `BattleDamageSupport` | ✅ |
+| Guard Dog 威吓免疫 + 攻击提升 | `BattleConditionSupport` | ✅ |
+| Sword/Beads of Ruin 防御削弱 | `BattleDamageSupport.abilityDamageModifier` | ✅ |
+| 进度文档更新 | — | ✅ |
 
-### Phase D — 边缘机制补完（~3 天）🔄 进行中
+---
 
-| 项目 | 状态 |
-|------|------|
-| 保护招式变种 (King's Shield/Obstruct/Silk Trap) | MoveRegistry 已注册 |
-| 捕获/换人限制 (Mean Look/Arena Trap/Shadow Tag) | ⬜ |
-| 钉子清除 (Rapid Spin/Defog) | MoveRegistry 已注册 |
+### Phase E — 剩余差距补齐（~10 天）
 
-**Phase A+B = ~7 天 → ~85%**
-**A+B+C = ~12 天 → ~92%**
-**A+B+C+D = ~15 天 → ~95%**
+| 项目 | 模块 | 文件 | 预估 | 优先级 |
+|------|------|------|------|--------|
+| **E.1** 招式分类重构 | 招式分类 50%→80% | `MoveRegistry` + `BattleDamageSupport` | 2d | 🔴 高 |
+| `isPunchingMove`/`isBitingMove`/`isSoundMove` 等从硬编码 name.contains 迁至 MoveRegistry 统一 Set | | | | |
+| **E.2** 热门 VGC 特性补齐 | 特性 68%→78% | `BattleDamageSupport` + `BattleConditionSupport` | 3d | 🔴 高 |
+| Protosynthesis/Quark Drive(悖论)、Opportunist(模仿)、Cud Chew(二次果)、Anger Shell(怒壳)、Unseen Fist(无形拳)、Supreme Overlord(大将) | | | | |
+| **E.3** 道具换人逻辑完整 | 道具 65%→72% | `BattleFlowSupport` + `BattleRoundSupport` | 1d | 🟡 中 |
+| Eject Button 实际换出 + Red Card 强制换入 | | | | |
+| **E.4** 捕获/换人限制 | 切换 85%→95% | `BattleEngine.canSwitch` | 1.5d | 🟡 中 |
+| Arena Trap/Shadow Tag/Magnet Pull + Mean Look/Block | | | | |
+| **E.5** 保护招式变种 | 保护 80%→90% | `MoveRegistry` + `BattleRoundSupport` | 1d | 🟢 低 |
+| King's Shield/Obstruct/Silk Trap/Burning Bulwark | | | | |
+| **E.6** 钉子清除逻辑 | Entry Hazards 98%→100% | `BattleFieldEffectSupport` + `BattleRoundSupport` | 1d | 🟢 低 |
+| Rapid Spin/Defog 实际清除场地钉 | | | | |
+| **E.7** 一键启动整合 | 基础设施 | `scripts/start-backend.py` + `docker-compose` | 0.5d | 🟢 低 |
+| 数据库初始化 + 模块启动一步到位 | | | | |
+
+**完成 E.1+E.2 = ~5 天 → ~88%**
+**完成 E.1~E.4 = ~7.5 天 → ~93%**
+**全部完成 = ~10 天 → ~95%**
 
 ### 交付标准
 
-- 每个机制配对至少 1 个回归测试
-- 全项目测试通过率 >= 99%
-- 新增 volatile 状态需在 `StandardVolatile` 注册 + 实现端到端逻辑
+- 每个新特性匹配至少 1 个回归测试
+- 全项目测试通过率 = 100%
+- 不破坏现有 324 个测试用例
