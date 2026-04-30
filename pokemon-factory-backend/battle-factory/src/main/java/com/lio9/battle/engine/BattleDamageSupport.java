@@ -105,7 +105,7 @@ final class BattleDamageSupport {
         // Other modifiers
         modifier *= fullHpDefenseModifier(attacker, defender);
         modifier *= weatherDamageModifier(state, moveTypeId);
-        modifier *= terrainDamageModifier(state, attacker, defender, moveTypeId);
+        modifier *= terrainDamageModifier(state, attacker, defender, move, moveTypeId);
         modifier *= screenDamageModifier(state, defender, damageClassId);
 
         // 群攻修正必须在最终乘区统一处理，才能和 Helping Hand、天气、屏障等倍率保持同一链路。
@@ -732,6 +732,21 @@ final class BattleDamageSupport {
         return modifier;
     }
 
+    private boolean isRisingVoltage(Map<String, Object> move) {
+        return "rising-voltage".equals(String.valueOf(move.get("name_en")))
+                || "rising voltage".equals(String.valueOf(move.get("name_en")));
+    }
+
+    private boolean isExpandingForce(Map<String, Object> move) {
+        return "expanding-force".equals(String.valueOf(move.get("name_en")))
+                || "expanding force".equals(String.valueOf(move.get("name_en")));
+    }
+
+    private boolean isEarthquake(Map<String, Object> move) {
+        String name = String.valueOf(move.get("name_en"));
+        return "earthquake".equals(name) || "bulldoze".equals(name) || "magnitude".equals(name);
+    }
+
     private boolean hasSecondaryEffect(Map<String, Object> move) {
         // Check if move has additional effects (status, stat changes, etc.)
         Integer effectChance = engine.toInt(move.get("effect_chance"), 0);
@@ -848,7 +863,7 @@ final class BattleDamageSupport {
     }
 
     double terrainDamageModifier(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> defender,
-            int moveTypeId) {
+            Map<String, Object> move, int moveTypeId) {
         if (!isGrounded(attacker)) {
             return fieldEffectSupport.mistyTerrainTurns(state) > 0
                     && moveTypeId == DamageCalculatorUtil.TYPE_DRAGON
@@ -857,12 +872,13 @@ final class BattleDamageSupport {
                             : 1.0d;
         }
         if (fieldEffectSupport.electricTerrainTurns(state) > 0 && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
-            return 1.3d;
+            return isRisingVoltage(move) ? 2.0d : 1.3d;
         }
         if (fieldEffectSupport.psychicTerrainTurns(state) > 0 && moveTypeId == DamageCalculatorUtil.TYPE_PSYCHIC) {
-            return 1.3d;
+            return isExpandingForce(move) ? 2.0d : 1.3d;
         }
         if (fieldEffectSupport.grassyTerrainTurns(state) > 0 && moveTypeId == DamageCalculatorUtil.TYPE_GRASS) {
+            if (isEarthquake(move)) return 0.5d;
             return 1.3d;
         }
         if (fieldEffectSupport.mistyTerrainTurns(state) > 0 && moveTypeId == DamageCalculatorUtil.TYPE_DRAGON

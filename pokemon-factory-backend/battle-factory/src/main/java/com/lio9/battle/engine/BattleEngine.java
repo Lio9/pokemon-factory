@@ -412,6 +412,11 @@ public class BattleEngine {
         return MoveRegistry.isRapidSpin(move);
     }
 
+    boolean isGrassyGlide(Map<String, Object> move) {
+        return "grassy-glide".equalsIgnoreCase(String.valueOf(move.get("name_en")))
+                || "grassy glide".equalsIgnoreCase(String.valueOf(move.get("name_en")));
+    }
+
     boolean isDefog(Map<String, Object> move) {
         return MoveRegistry.isDefog(move);
     }
@@ -713,6 +718,9 @@ public class BattleEngine {
         if ("triage".equalsIgnoreCase(abilityName(mon)) && isHealingMove(move) && priority >= 0) {
             priority += 3;
         }
+
+        // Grassy Glide: +1 priority in Grassy Terrain (requires state; handled in buildPlayerActions)
+        // Note: full implementation needs grassy terrain check which requires state
 
         // Note: Quick Claw and Custap Berry provide random priority boosts
         // They are handled separately in action building, not here
