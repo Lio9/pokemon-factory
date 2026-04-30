@@ -849,6 +849,26 @@ public class BattleEngine {
 
         String item = heldItem(target);
 
+        // Air Balloon pops when holder takes damage
+        if ("air-balloon".equals(item) && actualDamage > 0) {
+            consumeItem(target);
+            actionLog.put("airBalloonPopped", true);
+            events.add(target.get("name") + " 的气球被打破了");
+        }
+
+        // Eject Button: holder switches out when hit
+        if ("eject-button".equals(item) && actualDamage > 0 && !itemConsumed(target)) {
+            actionLog.put("ejectButton", true);
+            events.add(target.get("name") + " 的逃脱按钮被触发");
+        }
+
+        // Red Card: forces attacker to switch when holder is hit
+        if ("red-card".equals(item) && actualDamage > 0 && !itemConsumed(target)) {
+            consumeItem(target);
+            actionLog.put("redCard", true);
+            events.add(target.get("name") + " 的红牌迫使对方交换宝可梦");
+        }
+
         // Weakness Policy
         if ("weakness-policy".equals(item) && !itemConsumed(target) && actualDamage > 0
                 && typeModifier(target, toInt(move.get("type_id"), 0)) > 1.0d) {

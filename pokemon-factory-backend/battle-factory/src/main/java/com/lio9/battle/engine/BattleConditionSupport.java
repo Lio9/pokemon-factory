@@ -719,6 +719,10 @@ final class BattleConditionSupport {
             blockMoveByAbility(actionLog, events, "levitate", target.get("name") + " 的漂浮让地面属性招式失效了");
             return true;
         }
+        if ("air-balloon".equals(engine.heldItem(target)) && moveTypeId == DamageCalculatorUtil.TYPE_GROUND) {
+            blockMoveByAbility(actionLog, events, "air-balloon", target.get("name") + " 的气球让地面属性招式失效了");
+            return true;
+        }
         if (("flash-fire".equalsIgnoreCase(ability) || "flash fire".equalsIgnoreCase(ability))
                 && moveTypeId == DamageCalculatorUtil.TYPE_FIRE) {
             target.put("flashFireBoost", true);
@@ -1380,6 +1384,11 @@ final class BattleConditionSupport {
     void applyEntryHazards(Map<String, Object> state, boolean playerSide, Map<String, Object> mon,
             List<String> events) {
         if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
+            return;
+        }
+        // Heavy-Duty Boots 让携带者完全免疫所有场地钉伤害
+        if ("heavy-duty-boots".equals(engine.heldItem(mon))) {
+            events.add(mon.get("name") + " 的厚底靴免疫了场地钉伤害");
             return;
         }
         boolean hasMagicGuard = engine.isMagicGuard(mon);
