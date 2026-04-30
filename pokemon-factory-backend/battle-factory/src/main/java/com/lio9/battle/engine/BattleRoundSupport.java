@@ -267,6 +267,12 @@ final class BattleRoundSupport {
             if (random.nextInt(100) + 1 > accuracy) {
                 targetLog.put("result", "miss");
                 targetLog.put("damage", 0);
+                // Blunder Policy: miss triggers Speed +2
+                if ("blunder-policy".equalsIgnoreCase(engine.heldItem(actor)) && !engine.itemConsumed(actor)) {
+                    engine.consumeItem(actor);
+                    targetLog.put("blunderPolicy", true);
+                    events.add(actor.get("name") + " 的打空保险触发了，速度大幅提升");
+                }
                 actionLogs.add(targetLog);
                 events.add(engine.sideName(action.side()) + " 的 " + actor.get("name") + " 攻击落空");
                 continue;
