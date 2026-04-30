@@ -1148,6 +1148,8 @@ public class BattleEngine {
 			mon.put("cursed", Boolean.TRUE.equals(value));
 		} else if ("trapped".equals(key)) {
 			mon.put("trapped", Boolean.TRUE.equals(value));
+		} else if ("bound".equals(key)) {
+			mon.put("bound", Boolean.TRUE.equals(value));
         }
     }
 

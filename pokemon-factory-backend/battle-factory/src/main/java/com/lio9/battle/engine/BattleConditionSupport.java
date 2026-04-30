@@ -1257,6 +1257,27 @@ final class BattleConditionSupport {
                 applyDownload(state, player, source, events);
                 continue;
             }
+
+            // Costar: Copy ally's stat stages on switch-in
+            if ("costar".equalsIgnoreCase(ability)) {
+                List<Integer> sideSlots = engine.activeSlots(state, player);
+                for (Integer otherSlot : sideSlots) {
+                    if (otherSlot.equals(slot) || otherSlot < 0 || otherSlot >= enteringTeam.size())
+                        continue;
+                    Map<String, Object> ally = enteringTeam.get(otherSlot);
+                    Map<String, Object> allyStages = damageSupport.statStages(ally);
+                    Map<String, Object> myStages = damageSupport.statStages(source);
+                    for (String statKey : List.of("attack", "defense", "specialAttack", "specialDefense", "speed")) {
+                        int allyStage = engine.toInt(allyStages.get(statKey), 0);
+                        if (allyStage != 0) {
+                            myStages.put(statKey, Math.min(6, Math.max(-6, allyStage)));
+                        }
+                    }
+                    events.add(source.get("name") + " 的同台共演发动了，复制了 " + ally.get("name") + " 的能力变化");
+                    break;
+                }
+                continue;
+            }
         }
     }
 

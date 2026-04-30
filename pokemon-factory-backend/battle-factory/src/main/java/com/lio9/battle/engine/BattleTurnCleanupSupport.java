@@ -307,6 +307,10 @@ final class BattleTurnCleanupSupport {
             if (Boolean.TRUE.equals(mon.get("leechSeed"))) {
                 applyLeechSeedDamage(mon, events);
             }
+            // 束缚招式（火焰旋涡/潮旋/绑紧等）：每回合 1/8 最大 HP
+            if (Boolean.TRUE.equals(mon.get("bound"))) {
+                applyFractionalDamage(mon, 8, events, "因束缚招式损失了");
+            }
             // 灭亡之歌：倒计时归零时直接倒下
             int perishTurns = engine.toInt(mon.get("perishSongTurns"), 0);
             if (perishTurns > 0) {
@@ -352,6 +356,20 @@ final class BattleTurnCleanupSupport {
         mon.put("currentHp", currentHp - actualDamage);
         events.add(mon.get("name") + " 因寄生种子损失了 " + actualDamage + " 点 HP");
         if (currentHp - actualDamage <= 0) {
+            mon.put("status", "fainted");
+            events.add(mon.get("name") + " 倒下了");
+        }
+    }
+
+    private void applyFractionalDamage(Map<String, Object> mon, int denominator, List<String> events, String msg) {
+        int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+        int damage = Math.max(1, maxHp / denominator);
+        int curHp = engine.toInt(mon.get("currentHp"), 0);
+        if (curHp <= 0) return;
+        int actual = Math.min(damage, curHp);
+        mon.put("currentHp", curHp - actual);
+        events.add(mon.get("name") + " " + msg + " " + actual + " 点 HP");
+        if (curHp - actual <= 0) {
             mon.put("status", "fainted");
             events.add(mon.get("name") + " 倒下了");
         }
