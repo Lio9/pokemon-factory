@@ -318,6 +318,26 @@ final class BattleTurnCleanupSupport {
                     events.add(mon.get("name") + " 被灭亡之歌带走了");
                 }
             }
+            // 水流环：回复 1/16 最大 HP
+            if (Boolean.TRUE.equals(mon.get("aquaRing"))) {
+                applyFractionalHeal(mon, 16, events, "的水流环回复了");
+            }
+            // 扎根：回复 1/16 最大 HP
+            if (Boolean.TRUE.equals(mon.get("ingrain"))) {
+                applyFractionalHeal(mon, 16, events, "的扎根回复了");
+            }
+            // 诅咒（幽灵）：每回合损失 1/4 最大 HP
+            if (Boolean.TRUE.equals(mon.get("cursed"))) {
+                int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+                int curseDmg = Math.max(1, maxHp / 4);
+                int curHp = engine.toInt(mon.get("currentHp"), 0);
+                mon.put("currentHp", Math.max(0, curHp - curseDmg));
+                events.add(mon.get("name") + " 受到诅咒，损失了 " + curseDmg + " 点 HP");
+                if (curHp - curseDmg <= 0) {
+                    mon.put("status", "fainted");
+                    events.add(mon.get("name") + " 倒下了");
+                }
+            }
         }
     }
 
@@ -335,6 +355,17 @@ final class BattleTurnCleanupSupport {
             mon.put("status", "fainted");
             events.add(mon.get("name") + " 倒下了");
         }
+    }
+
+    private void applyFractionalHeal(Map<String, Object> mon, int denominator, List<String> events, String msg) {
+        int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+        int curHp = engine.toInt(mon.get("currentHp"), 0);
+        if (curHp >= maxHp || curHp <= 0) {
+            return;
+        }
+        int heal = Math.max(1, maxHp / denominator);
+        mon.put("currentHp", Math.min(maxHp, curHp + heal));
+        events.add(mon.get("name") + msg + " " + heal + " 点 HP");
     }
 
     private void applyEndTurnAbilityEffects(Map<String, Object> state, boolean playerSide, List<String> events) {

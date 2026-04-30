@@ -100,6 +100,10 @@ final class BattleRoundSupport {
             return;
         }
 
+        if (isInfatuatedAndBlocked(actor, actionLogs, events, random)) {
+            return;
+        }
+
         Map<String, Object> actionLog = new LinkedHashMap<>();
         actionLog.put("side", action.side());
         actionLog.put("actor", actor.get("name"));
@@ -292,6 +296,10 @@ final class BattleRoundSupport {
                 continue;
             }
 
+            // Substitute: 替身在场时，伤害先扣替身 HP，替身消失后剩余伤害继续
+            Object subHpObj = engine.volatileValue(target, "substitute", null);
+            int subHp = subHpObj instanceof Integer ? (Integer) subHpObj : 0;
+
             int hitCount = resolveHitCount(actor, move, random);
             int totalActualDamage = 0;
             int criticalHits = 0;
@@ -313,6 +321,21 @@ final class BattleRoundSupport {
                     criticalHits += 1;
                 }
                 int damage = engine.calculateDamage(actor, target, resolvedMove, random, helpingHandBoosts, state);
+
+                // Substitute absorbs damage
+                if (subHp > 0 && damage > 0) {
+                    int absorbed = Math.min(subHp, damage);
+                    subHp -= absorbed;
+                    damage -= absorbed;
+                    targetLog.put("subHp", subHp);
+                    if (subHp <= 0) {
+                        engine.setVolatile(target, "substitute", 0);
+                        events.add(target.get("name") + " 的替身消失了");
+                    } else {
+                        engine.setVolatile(target, "substitute", subHp);
+                    }
+                }
+
                 remainingHp = engine.applyIncomingDamage(actor, target, damage, targetLog, events);
                 int actualDamage = engine.toInt(targetLog.get("damage"), damage);
                 target.put("currentHp", remainingHp);
@@ -528,6 +551,20 @@ final class BattleRoundSupport {
 
     private boolean resolveCriticalHit(Map<String, Object> actor, Map<String, Object> move, Random random) {
         return engine.rollCriticalHit(actor, move, random);
+    }
+
+    private boolean isInfatuatedAndBlocked(Map<String, Object> actor, List<Map<String, Object>> actionLogs,
+                                           List<String> events, Random random) {
+        if (Boolean.TRUE.equals(actor.get("infatuated")) && random.nextInt(2) == 0) {
+            Map<String, Object> log = new LinkedHashMap<>();
+            log.put("actor", actor.get("name"));
+            log.put("actionType", "infatuation");
+            log.put("result", "infatuated");
+            actionLogs.add(log);
+            events.add(actor.get("name") + " 因着迷而无法行动");
+            return true;
+        }
+        return false;
     }
 
     private boolean matches(String value, String... names) {
