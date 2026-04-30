@@ -27,11 +27,34 @@ export default defineConfig({
         target: 'http://localhost:8090',
         changeOrigin: true
       },
-      // pokeDex (8081): 图鉴数据，后端路由不含 /api 前缀
-      '/api': {
+      // pokeDex (8081): 图鉴数据
+      '/api/pokedex': {
         target: 'http://localhost:8081',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        changeOrigin: true
+      },
+      '/api/pokemon': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      },
+      '/api/moves': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      },
+      '/api/abilities': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      },
+      '/api/items': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      },
+      '/api/damage': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      },
+      '/api/types': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
       }
     }
   },

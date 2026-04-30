@@ -136,10 +136,23 @@ public class PokedexController {
             @RequestParam(defaultValue = "20") Integer size,
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) String keyword) {
-        
+
         try {
             Page<ItemVO> page = pokedexService.getItemList(current, size, categoryId, keyword);
             return ResultResponse.buildPageSuccess(page);
+        } catch (Exception e) {
+            return ResultResponse.buildError("获取失败", e.getMessage());
+        }
+    }
+
+    /**
+     * 获取图鉴数据统计摘要
+     */
+    @GetMapping("/summary")
+    public Map<String, Object> getSummary() {
+        try {
+            Map<String, Object> summary = pokedexService.getSummary();
+            return ResultResponse.buildSuccess(summary);
         } catch (Exception e) {
             return ResultResponse.buildError("获取失败", e.getMessage());
         }

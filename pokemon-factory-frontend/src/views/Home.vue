@@ -41,6 +41,7 @@
 
 <script setup>
 import { useLocale } from '../composables/useLocale'
+import { API_BASE } from '../services/httpClient'
 import { onMounted, ref } from 'vue'
 
 const { translate: tr } = useLocale()
@@ -63,7 +64,7 @@ const stats = ref([
 
 onMounted(async () => {
   try {
-    const res = await fetch('/api/pokedex/summary')
+    const res = await fetch(`${API_BASE}/summary`)
     if (res.ok) {
       const data = await res.json()
       stats.value = [

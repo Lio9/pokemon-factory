@@ -11,6 +11,7 @@ import { appEnv } from '../config/env'
 import { getToken } from './sessionStorage'
 
 export const API_BASE = appEnv.apiBase
+export const BATTLE_API_BASE = appEnv.battleApiBase
 export const DAMAGE_API_BASE = appEnv.damageApiBase
 export const SPRITES_BASE = appEnv.spritesBase
 export const API_ROOT = API_BASE.replace(/\/api\/pokedex$/, '/api')
