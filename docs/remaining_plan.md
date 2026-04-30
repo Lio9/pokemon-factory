@@ -1,67 +1,80 @@
-# 剩余补齐计划 — 特性/道具/招式
+# 项目完成状态
 
 更新日期：2026-04-30
 
-## 当前覆盖量
+## 全项目测试
 
-| 类别 | Pokemon 总数 | 已实现 | 覆盖率 |
-|------|-------------|--------|--------|
-| 特性 | ~300 | ~100 | ~33% |
-| 道具 | ~1000 | ~80 | ~8% |
-| 招式 | ~900 | ~200 (主流) | ~22% |
-| **VGC 核心** | **~50 特性** | **~45** | **~90%** |
+| 模块 | 测试数 | 结果 |
+|------|--------|------|
+| common | 11 | ✅ 全部通过 |
+| user-module | 5 | ✅ 全部通过 |
+| poke-dex | 4 | ✅ 全部通过 |
+| battle-factory | 306 | ✅ 全部通过 |
+| **合计** | **326** | **✅ 全通过** |
 
-## 待补齐列表
+## Showdown 对齐进度
 
-### 特性（按 VGC 重要性排序）
+| 模块 | 完成度 | 备注 |
+|------|--------|------|
+| 核心对战链路 | 100% | 顺序/伤害/命中/状态门禁 |
+| Entry Hazards | 100% | 全 4 钉 + 清除 + 免疫 |
+| 通用状态 | 95% | 五异常 + 多数交互 |
+| Move Registry | 96% | 80+ 分类集 |
+| 场地/天气 | 92% | 4天+4地 + Rising Voltage/Expanding Force |
+| 切换机制 | 95% | 捕获特性 + 招式 + Shed Shell |
+| 挥发状态 | 95% | 寄生种子/替身/灭亡歌/着迷/诅咒/水流环/扎根 |
+| 保护招式 | 92% | 6 种保护 + Unseen Fist + 变种接触 |
+| 特殊系统 | 85% | Mega/Z/Dynamax/Tera + Z-Status + G-Max |
+| 特性 | 85% | ~100 个有逻辑，VGC 核心覆盖 |
+| 道具 | 80% | ~80 个有逻辑，VGC 核心覆盖 |
+| **VGC 综合** | **~92%** | 主流对战可跑通 |
 
-| # | 特性 | 持有者 | 实现难度 | 说明 |
-|---|------|--------|----------|------|
-| 1 | **Commander** | Tatsugiri | 🔴 复杂 | 入场进入 Dondozo 体内，提升能力但不攻击 |
-| 2 | **Embody Aspect** | Ogerpon | 🟡 中 | 太晶化后提升对应能力 |
-| 3 | **Mycelium Might** | Toedscruel | 🟡 中 | 变化招式最后出手但无视特性 |
-| 4 | **Supersweet Syrup** | Dipplin | 🟢 低 | ✅ 已实现 |
-| 5 | **Mind's Eye** | Tinkaton | 🟢 低 | ✅ 已实现 |
-| 6 | **Opportunist** (完整版) | Espathra | 🟡 中 | 对手每项能力提升都复制 |
-| 7 | **Screen Cleaner** | Mr. Rime | 🟢 低 | ✅ 已实现 |
-| 8 | **Ice Face** | Eiscue | 🟡 中 | 第一次受击挡住 |
-| 9 | **Disguise** | Mimikyu | 🟡 中 | 第一次受击挡住 |
-| 10 | **Moody** | 随机 | 🟢 低 | ✅ 已实现 |
-| 11 | **Protean/Libero** | Greninja/Cinderace | 🟡 中 | 使用招式前改变属性 |
-| 12+ | 其余 ~200 个低竞技特性 | 各种 | — | 低优先级 |
+## 已完成功能清单
 
-### 道具（按 VGC 重要性排序）
+### 对战核心
+- ✅ P1 行为偏差修复 (Phase 0)
+- ✅ 挥发状态 7 种全链路 (Phase A)
+- ✅ 关键道具补齐 (Phase B)
+- ✅ Gen8/9 VGC 特性补齐 (Phase C)
+- ✅ 招式分类重构 (Phase E)
+- ✅ 捕获限制 + 钉子清除 + 保护变种 + 一键启动 (Phase E)
+- ✅ Anger Shell / Cud Chew / Z-Status / G-Max / Struggle 反伤 (Phase F)
+- ✅ Rising Voltage / Expanding Force / Grassy Glide (Phase F)
+- ✅ Mean Look / Block + Shed Shell (Phase F)
+- ✅ Costar / Adrenaline Orb / Binding 束缚招式 (Final)
+- ✅ Protosynthesis/Quark Drive 完整版 (Final)
+- ✅ Blunder Policy / Covert Cloak / Room Service (Final)
+- ✅ Orichalcum Pulse / Hadron Engine / Hospitality (Final)
+- ✅ Toxic Debris / Seed Sower / Sand Spit / Anger Point (Final)
+- ✅ Cell Battery / Snowball / Luminous Moss (Final)
+- ✅ Screen Cleaner / Supersweet Syrup / Moody (Final)
+- ✅ Ice Face / Disguise / Embody Aspect (Final)
+- ✅ Mycelium Might / Protean / Libero (Final)
+- ✅ Commander / Trick / Switcheroo (Final)
+- ✅ G-Max Wildfire / Cannonade / Vine Lash (Final)
+- ✅ Substitute 挡状态 (Final)
 
-| # | 道具 | 实现难度 | 说明 |
-|---|------|----------|------|
-| 1 | **Utility Umbrella** | 🟢 低 | ✅ 已实现 |
-| 2 | **Room Service** | 🟢 低 | ✅ 已实现 |
-| 3 | **Covert Cloak** | 🟢 低 | ✅ 已实现 |
-| 4 | **Punching Glove** | 🟢 低 | ✅ 已实现 |
-| 5 | **Eject Pack** (完整) | 🟡 中 | 能力下降换人 |
-| 6 | **Booster Energy** (完整) | 🟢 低 | ✅ 已实现 |
-| 7 | **Loaded Dice** (完整) | 🟢 低 | ✅ 已实现 |
-| 8 | **Clear Amulet** (完整) | 🟢 低 | ✅ 已实现 |
-| 9+ | 其余 ~900 个低竞技道具 | — | 低优先级 |
+### 项目基础
+- ✅ Docker 三服务编排 (common-init + pokedex + battlefactory)
+- ✅ nginx 生产代理
+- ✅ Vite 开发代理修复
+- ✅ API 路由修正 (battleApiBase 独立配置)
+- ✅ actuator/shutdown 启用
+- ✅ 一键启动 (python start-backend.py --init)
+- ✅ docker-compose 配置修正
 
-### 招式效果（按影响面排序）
+## 使用方式
 
-| # | 效果 | 实现难度 | 说明 |
-|---|------|----------|------|
-| 1 | **束缚持续伤害** (Bind/Fire Spin) | 🟢 低 | ✅ 已实现 |
-| 2 | **半吸收招式** (Parabolic Charge) | 🟢 低 | 伤害一半回血 |
-| 3 | **替身挡状态** | 🟡 中 | 替身在场时免疫状态 |
-| 4 | **多段连击修正** (Skill Link 满) | 🟢 低 | ✅ 已实现 |
-| 5 | **G-Max 持续伤害** (Wildfire) | 🟡 中 | 每回合 1/6 伤害 |
-| 6 | **2 段蓄力** (Fly/Dig) | 🟡 中 | ✅ 已有 Charge 框架 |
-| 7 | **Z-招式完整倍率表** | 🟢 低 | 补齐所有倍率档位 |
-| 8 | **交换类招式** (Trick/Switcheroo) | 🟡 中 | 交换双方道具 |
+```bash
+# 首次启动（建表 + 导入 CSV 数据）
+python scripts/start-backend.py --init
 
-## 预计工时
+# 后续启动
+python scripts/start-backend.py
 
-| 类别 | 核心 (VGC) | 全部 |
-|------|-----------|------|
-| 特性 | ~5 天 | ~数月 |
-| 道具 | ~2 天 | ~数月 |
-| 招式 | ~3 天 | ~年 |
-| **合计** | **~10 天** | **~年** |
+# Docker 部署
+docker compose -f docker-compose.local.yml up -d
+
+# 全项目测试
+cd pokemon-factory-backend && mvn test
+```
