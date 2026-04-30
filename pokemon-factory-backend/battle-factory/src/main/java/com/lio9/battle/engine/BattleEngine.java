@@ -1148,6 +1148,10 @@ public class BattleEngine {
 			mon.put("cursed", Boolean.TRUE.equals(value));
 		} else if ("trapped".equals(key)) {
 			mon.put("trapped", Boolean.TRUE.equals(value));
+		} else if ("iceFaceActive".equals(key)) {
+			mon.put("iceFaceActive", Boolean.TRUE.equals(value));
+		} else if ("disguiseActive".equals(key)) {
+			mon.put("disguiseActive", Boolean.TRUE.equals(value));
 		} else if ("bound".equals(key)) {
 			mon.put("bound", Boolean.TRUE.equals(value));
         }
@@ -1235,6 +1239,18 @@ public class BattleEngine {
         actionLog.put("terastallized", true);
         actionLog.put("teraTypeId", toInt(teraType.get("type_id"), 0));
         String teraName = String.valueOf(teraType.getOrDefault("name", teraType.getOrDefault("name_en", "未知属性")));
+        // Embody Aspect: Ogerpon's mask triggers stat boost on tera
+        String maskItem = heldItem(mon);
+        if ("wellspring-mask".equals(maskItem) || "wellspring mask".equals(maskItem)) {
+            statStages(mon).put("specialDefense", Math.min(6, statStage(mon, "specialDefense") + 1));
+            events.add(mon.get("name") + " 的面具提升了特防");
+        } else if ("hearthflame-mask".equals(maskItem) || "hearthflame mask".equals(maskItem)) {
+            statStages(mon).put("attack", Math.min(6, statStage(mon, "attack") + 1));
+            events.add(mon.get("name") + " 的面具提升了攻击");
+        } else if ("cornerstone-mask".equals(maskItem) || "cornerstone mask".equals(maskItem)) {
+            statStages(mon).put("defense", Math.min(6, statStage(mon, "defense") + 1));
+            events.add(mon.get("name") + " 的面具提升了防御");
+        }
         events.add(mon.get("name") + " 太晶化为了 " + teraName + " 属性");
     }
 

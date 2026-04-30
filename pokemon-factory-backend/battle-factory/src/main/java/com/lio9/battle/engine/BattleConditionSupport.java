@@ -1373,6 +1373,14 @@ final class BattleConditionSupport {
                 }
                 continue;
             }
+            // Ice Face / Disguise: reset block flag on switch-in
+            String switchAbility = engine.abilityName(source);
+            if ("ice-face".equalsIgnoreCase(switchAbility) || "ice face".equalsIgnoreCase(switchAbility)) {
+                source.put("iceFaceActive", true);
+            }
+            if ("disguise".equalsIgnoreCase(switchAbility)) {
+                source.put("disguiseActive", true);
+            }
         }
     }
 

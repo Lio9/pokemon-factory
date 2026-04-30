@@ -334,6 +334,27 @@ final class BattleRoundSupport {
                 }
                 int damage = engine.calculateDamage(actor, target, resolvedMove, random, helpingHandBoosts, state);
 
+                // Ice Face / Disguise: block first hit per switch-in
+                if (damage > 0) {
+                    String blockAbility = engine.abilityName(target);
+                    if (("ice-face".equalsIgnoreCase(blockAbility) || "ice face".equalsIgnoreCase(blockAbility))
+                            && target.get("iceFaceActive") != Boolean.FALSE) {
+                        target.put("iceFaceActive", false);
+                        targetLog.put("result", "blocked");
+                        targetLog.put("damage", 0);
+                        events.add(target.get("name") + " 的冰鳞粉挡住了攻击");
+                        continue;
+                    }
+                    if ("disguise".equalsIgnoreCase(blockAbility)
+                            && target.get("disguiseActive") != Boolean.FALSE) {
+                        target.put("disguiseActive", false);
+                        targetLog.put("result", "blocked");
+                        targetLog.put("damage", 0);
+                        events.add(target.get("name") + " 的画皮挡住了攻击");
+                        continue;
+                    }
+                }
+
                 // Substitute absorbs damage
                 if (subHp > 0 && damage > 0) {
                     int absorbed = Math.min(subHp, damage);
