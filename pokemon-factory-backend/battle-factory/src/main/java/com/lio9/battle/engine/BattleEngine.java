@@ -624,6 +624,10 @@ public class BattleEngine {
         return MoveRegistry.isKnockOff(move);
     }
 
+    boolean isContactMove(Map<String, Object> move) {
+        return MoveRegistry.isContactMove(move);
+    }
+
     boolean canUseMove(Map<String, Object> mon, Map<String, Object> move, int currentRound) {
         String item = heldItem(mon);
         // 统一通过 volatile 访问器读取控制类状态，确保与旧字段保持同步。

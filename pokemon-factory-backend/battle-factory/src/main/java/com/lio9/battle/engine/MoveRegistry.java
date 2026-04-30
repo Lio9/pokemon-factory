@@ -168,6 +168,56 @@ public final class MoveRegistry {
     private static final Set<String> HURRICANE_MOVES = Set.of("hurricane");
     private static final Set<String> BLIZZARD_MOVES = Set.of("blizzard");
 
+    // ==== 招式分类（替换 BattleDamageSupport 硬编码 name.contains）====
+    private static final Set<String> PUNCHING_MOVES = Set.of(
+        "punch", "hammer arm", "hammer-arm", "comet punch", "comet-punch",
+        "bullet punch", "bullet-punch", "mach punch", "mach-punch", "dizzy punch", "dizzy-punch",
+        "drain punch", "drain-punch", "focus punch", "focus-punch", "fire punch", "fire-punch",
+        "ice punch", "ice-punch", "thunder punch", "thunder-punch", "mega punch", "mega-punch",
+        "sky uppercut", "sky-uppercut", "shadow punch", "shadow-punch", "power-up punch", "power-up-punch",
+        "close combat", "close-combat", "superpower", "cross chop", "cross-chop", "dynamic punch", "dynamic-punch"
+    );
+    private static final Set<String> BITING_MOVES = Set.of(
+        "bite", "crunch", "fire fang", "fire-fang", "ice fang", "ice-fang",
+        "thunder fang", "thunder-fang", "poison fang", "poison-fang", "psychic fangs", "psychic-fangs",
+        "hyper fang", "hyper-fang"
+    );
+    private static final Set<String> PULSE_MOVES = Set.of(
+        "pulse", "aura sphere", "aura-sphere", "dragon pulse", "dragon-pulse",
+        "dark pulse", "dark-pulse", "water pulse", "water-pulse"
+    );
+    private static final Set<String> SOUND_MOVES = Set.of(
+        "boomburst", "hypervoice", "hyper voice", "bug buzz", "bug-buzz",
+        "snarl", "overdrive", "clang", "clanging scales", "clanging-scales",
+        "clangorous soul", "clangorous-soul", "sparkling aria", "sparkling-aria",
+        "sing", "growl", "roar", "screech", "supersonic", "metal sound", "metal-sound",
+        "uproar", "howl", "noble roar", "noble-roar", "confide", "parting shot", "parting-shot",
+        "round", "echoed voice", "echoed-voice", "relic song", "relic-song",
+        "snore", "perish song", "perish-song"
+    );
+    private static final Set<String> SLICING_MOVES = Set.of(
+        "slash", "cut", "blade", "razor", "claw", "axe",
+        "night slash", "night-slash", "psycho cut", "psycho-cut",
+        "cross", "slic", "karate", "leaf blade", "leaf-blade",
+        "x-scissor", "sacred sword", "sacred-sword", "swords dance", "swords-dance",
+        "fury cutter", "fury-cutter", "aerial ace", "aerial-ace",
+        "air cutter", "air-cutter", "crabhammer"
+    );
+    private static final Set<String> WIND_MOVES = Set.of(
+        "gust", "twister", "hurricane", "bleakwind", "bleakwind storm", "bleakwind-storm",
+        "springtide storm", "springtide-storm", "wildbolt storm", "wildbolt-storm",
+        "icy wind", "icy-wind", "heat wave", "heat-wave", "tailwind",
+        "air slash", "air-slash", "defog", "fairy wind", "fairy-wind", "ominous wind", "ominous-wind"
+    );
+    private static final Set<String> RECOIL_MOVES = Set.of(
+        "double-edge", "flare blitz", "flare-blitz", "wood hammer", "wood-hammer",
+        "head smash", "head-smash", "brave bird", "brave-bird", "take down", "take-down",
+        "wild charge", "wild-charge", "volt tackle", "volt-tackle",
+        "submission", "jump kick", "jump-kick", "high jump kick", "high-jump-kick",
+        "head charge", "head-charge", "light of ruin", "light-of-ruin",
+        "shadow rush", "shadow-rush"
+    );
+
     /**
      * 检查是否为保护类招式
      */
@@ -535,6 +585,24 @@ public final class MoveRegistry {
 
     public static boolean isBlizzard(Map<String, Object> move) {
         return matchesAny(move, BLIZZARD_MOVES);
+    }
+
+    public static boolean isPunchingMove(Map<String, Object> move) { return matchesAny(move, PUNCHING_MOVES); }
+    public static boolean isBitingMove(Map<String, Object> move) { return matchesAny(move, BITING_MOVES); }
+    public static boolean isPulseMove(Map<String, Object> move) { return matchesAny(move, PULSE_MOVES); }
+    public static boolean isSoundMove(Map<String, Object> move) { return matchesAny(move, SOUND_MOVES); }
+    public static boolean isSlicingMove(Map<String, Object> move) { return matchesAny(move, SLICING_MOVES); }
+    public static boolean isWindMove(Map<String, Object> move) { return matchesAny(move, WIND_MOVES); }
+    public static boolean hasRecoil(Map<String, Object> move) { return matchesAny(move, RECOIL_MOVES); }
+
+    /**
+     * 检查是否为接触技能（通过 flags 或 power 判断）
+     */
+    public static boolean isContactMove(Map<String, Object> move) {
+        Object contact = move.get("contact");
+        if (contact instanceof Boolean bool) return bool;
+        int power = BattleUtils.toInt(move.get("power"), 0);
+        return power > 0;
     }
 
     public static boolean isLeechSeed(Map<String, Object> move) {

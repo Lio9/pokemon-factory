@@ -243,9 +243,13 @@ final class BattleRoundSupport {
                 continue;
             }
 
+            // Unseen Fist: contact moves bypass Protect
+            boolean unseenFistBreak = "unseen-fist".equalsIgnoreCase(engine.abilityName(actor))
+                    && engine.isContactMove(move);
+
             String protectionKey = engine.protectionKey(targetRef.side(), targetRef.teamIndex());
             if (protectedTargets.getOrDefault(protectionKey, false)) {
-                if (engine.isFeint(move)) {
+                if (engine.isFeint(move) || unseenFistBreak) {
                     protectedTargets.put(protectionKey, false);
                     targetLog.put("protectionBroken", true);
                     events.add(target.get("name") + " 的守护被佯攻击破了");

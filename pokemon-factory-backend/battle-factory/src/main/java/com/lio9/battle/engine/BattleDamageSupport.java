@@ -494,12 +494,12 @@ final class BattleDamageSupport {
         }
 
         // Iron Fist: 1.2x for punching moves
-        if ("iron-fist".equalsIgnoreCase(attackerAbility) && isPunchingMove(move)) {
+        if ("iron-fist".equalsIgnoreCase(attackerAbility) && MoveRegistry.isPunchingMove(move)) {
             modifier *= 1.2d;
         }
 
         // Reckless: 1.2x for recoil/crash moves
-        if ("reckless".equalsIgnoreCase(attackerAbility) && hasRecoil(move)) {
+        if ("reckless".equalsIgnoreCase(attackerAbility) && MoveRegistry.hasRecoil(move)) {
             modifier *= 1.2d;
         }
 
@@ -564,12 +564,12 @@ final class BattleDamageSupport {
         }
 
         // Strong Jaw: 1.5x for biting moves
-        if ("strong-jaw".equalsIgnoreCase(attackerAbility) && isBitingMove(move)) {
+        if ("strong-jaw".equalsIgnoreCase(attackerAbility) && MoveRegistry.isBitingMove(move)) {
             modifier *= 1.5d;
         }
 
         // Mega Launcher: 1.5x for aura/pulse moves
-        if ("mega-launcher".equalsIgnoreCase(attackerAbility) && isPulseMove(move)) {
+        if ("mega-launcher".equalsIgnoreCase(attackerAbility) && MoveRegistry.isPulseMove(move)) {
             modifier *= 1.5d;
         }
 
@@ -579,7 +579,7 @@ final class BattleDamageSupport {
         }
 
         // Punk Rock: 1.3x for sound-based moves
-        if ("punk-rock".equalsIgnoreCase(attackerAbility) && isSoundMove(move)) {
+        if ("punk-rock".equalsIgnoreCase(attackerAbility) && MoveRegistry.isSoundMove(move)) {
             modifier *= 1.3d;
         }
 
@@ -690,13 +690,25 @@ final class BattleDamageSupport {
         }
 
         // Wind Rider: Immune to wind moves, boosts Attack
-        if ("wind-rider".equalsIgnoreCase(defenderAbility) && isWindMove(move)) {
+        if ("wind-rider".equalsIgnoreCase(defenderAbility) && MoveRegistry.isWindMove(move)) {
             return 0.0d; // Immune
         }
 
         // Sharpness: slicing moves get 1.5x boost
-        if ("sharpness".equalsIgnoreCase(attackerAbility) && isSlicingMove(move)) {
+        if ("sharpness".equalsIgnoreCase(attackerAbility) && MoveRegistry.isSlicingMove(move)) {
             modifier *= 1.5d;
+        }
+
+        // Supreme Overlord: +10% per fainted ally (max +50%)
+        if ("supreme-overlord".equalsIgnoreCase(attackerAbility) || "supreme overlord".equalsIgnoreCase(attackerAbility)) {
+            int faintedCount = engine.toInt(attacker.get("faintedAllies"), 0);
+            modifier *= (1.0d + faintedCount * 0.1d);
+        }
+
+        // Protosynthesis/Quark Drive: 1.3x when holding Booster Energy (full implementation also checks sun/electric terrain)
+        if (("protosynthesis".equalsIgnoreCase(attackerAbility) || "quark-drive".equalsIgnoreCase(attackerAbility))
+                && "booster-energy".equals(engine.heldItem(attacker))) {
+            modifier *= 1.3d;
         }
 
         // Purifying Salt: Ghost resistance (takes 1/2 damage from Ghost)
@@ -724,50 +736,6 @@ final class BattleDamageSupport {
         // Check if move has additional effects (status, stat changes, etc.)
         Integer effectChance = engine.toInt(move.get("effect_chance"), 0);
         return effectChance > 0;
-    }
-
-    private boolean isPunchingMove(Map<String, Object> move) {
-        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
-        return nameEn.contains("punch") || nameEn.contains("hammer");
-    }
-
-    private boolean hasRecoil(Map<String, Object> move) {
-        // Check for recoil moves (would check move flags in full implementation)
-        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
-        return nameEn.contains("double-edge") || nameEn.contains("flare blitz") ||
-                nameEn.contains("wood hammer") || nameEn.contains("head smash") ||
-                nameEn.contains("brave bird") || nameEn.contains("take down");
-    }
-
-    private boolean isBitingMove(Map<String, Object> move) {
-        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
-        return nameEn.contains("bite") || nameEn.contains("crunch") || nameEn.contains("fire fang") ||
-                nameEn.contains("ice fang") || nameEn.contains("thunder fang") || nameEn.contains("poison fang");
-    }
-
-    private boolean isPulseMove(Map<String, Object> move) {
-        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
-        return nameEn.contains("pulse") || nameEn.contains("aura sphere") || nameEn.contains("dragon pulse");
-    }
-
-    private boolean isSoundMove(Map<String, Object> move) {
-        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
-        return nameEn.contains("boomburst") || nameEn.contains("hypervoice") || nameEn.contains("bug buzz") ||
-                nameEn.contains("snarl") || nameEn.contains("overdrive") || nameEn.contains("clang");
-    }
-
-    private boolean isSlicingMove(Map<String, Object> move) {
-        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
-        return nameEn.contains("slash") || nameEn.contains("cut") || nameEn.contains("blade")
-                || nameEn.contains("razor") || nameEn.contains("claw") || nameEn.contains("axe")
-                || nameEn.contains("leaf") || nameEn.contains("night") || nameEn.contains("psycho")
-                || nameEn.contains("cross") || nameEn.contains("slic") || nameEn.contains("karate");
-    }
-
-    private boolean isWindMove(Map<String, Object> move) {
-        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
-        return nameEn.contains("gust") || nameEn.contains("twister") || nameEn.contains("hurricane") ||
-                nameEn.contains("bleakwind") || nameEn.contains("springtide") || nameEn.contains("wildbolt");
     }
 
     int speedValue(Map<String, Object> mon, Map<String, Object> state, boolean playerSide) {
