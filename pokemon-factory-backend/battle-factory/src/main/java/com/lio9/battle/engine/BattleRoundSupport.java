@@ -358,6 +358,17 @@ final class BattleRoundSupport {
                         && engine.toInt(actor.get("currentHp"), 0) > 0) {
                     autoSwitchAfterMove(state, action, actor, move, "red-card", events, actionLogs);
                 }
+                // Struggle recoil: 1/4 max HP
+                if (isStruggleMove(move) && actualDamage > 0) {
+                    int struggleRecoil = Math.max(1, engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1) / 4);
+                    int actorHp = engine.toInt(actor.get("currentHp"), 0);
+                    actor.put("currentHp", Math.max(0, actorHp - struggleRecoil));
+                    targetLog.put("struggleRecoil", struggleRecoil);
+                    events.add(actor.get("name") + " 因挣扎受到了 " + struggleRecoil + " 点反伤");
+                    if (actorHp - struggleRecoil <= 0) {
+                        actor.put("status", "fainted");
+                    }
+                }
                 conditionSupport.applyReactiveContactEffects(state, actor, target, move, targetLog, events, random);
                 if (remainingHp == 0) {
                     target.put("status", "fainted");
@@ -610,6 +621,10 @@ final class BattleRoundSupport {
             return true;
         }
         return false;
+    }
+
+    private boolean isStruggleMove(Map<String, Object> move) {
+        return "struggle".equalsIgnoreCase(String.valueOf(move.get("name_en")));
     }
 
     private boolean matches(String value, String... names) {
