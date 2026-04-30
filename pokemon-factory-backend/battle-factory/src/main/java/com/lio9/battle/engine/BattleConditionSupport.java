@@ -1693,6 +1693,18 @@ final class BattleConditionSupport {
         return false;
     }
 
+    void triggerStatBoostAbilities(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
+                                    List<String> events, String statKey, int stages) {
+        if (engine.hasAbility(target, "opportunist")) {
+            int prev = damageSupport.statStage(target, statKey);
+            int next = Math.min(6, prev + stages);
+            if (next != prev) {
+                damageSupport.statStages(target).put(statKey, next);
+                events.add(target.get("name") + " 的机会主义发动了，" + statKey + "提升了 " + stages + " 级");
+            }
+        }
+    }
+
     void triggerStatDropAbilities(Map<String, Object> target, List<String> events) {
         String ability = engine.abilityName(target);
         if ("defiant".equalsIgnoreCase(ability)) {

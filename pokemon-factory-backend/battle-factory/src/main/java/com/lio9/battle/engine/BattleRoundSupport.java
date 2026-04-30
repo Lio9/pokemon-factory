@@ -356,6 +356,13 @@ final class BattleRoundSupport {
                 hitDamages.add(actualDamage);
                 totalActualDamage += actualDamage;
                 conditionSupport.applyReactiveDamageAbilities(actor, target, move, hpBeforeDamage, remainingHp, actualDamage, targetLog, events);
+                // Throat Spray: sound move boosts SpA
+                if ("throat-spray".equalsIgnoreCase(engine.heldItem(actor)) && !engine.itemConsumed(actor)
+                        && actualDamage > 0 && MoveRegistry.isSoundMove(move)) {
+                    engine.consumeItem(actor);
+                    targetLog.put("throatSpray", true);
+                    events.add(actor.get("name") + " 的喉喷触发了，特攻提升");
+                }
                 engine.applyDefenderItemEffects(target, move, actualDamage, targetLog, events);
                 // Eject Button / Red Card 触发换人标记
                 if (Boolean.TRUE.equals(targetLog.get("ejectButton"))) {
