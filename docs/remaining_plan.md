@@ -21,12 +21,12 @@
 | 2 | **Embody Aspect** | Ogerpon | 🟡 中 | 太晶化后提升对应能力 |
 | 3 | **Mycelium Might** | Toedscruel | 🟡 中 | 变化招式最后出手但无视特性 |
 | 4 | **Supersweet Syrup** | Dipplin | 🟢 低 | ✅ 已实现 |
-| 5 | **Mind's Eye** | Tinkaton | 🟢 低 | 普通招式打幽灵，无视闪避 |
+| 5 | **Mind's Eye** | Tinkaton | 🟢 低 | ✅ 已实现 |
 | 6 | **Opportunist** (完整版) | Espathra | 🟡 中 | 对手每项能力提升都复制 |
 | 7 | **Screen Cleaner** | Mr. Rime | 🟢 低 | ✅ 已实现 |
 | 8 | **Ice Face** | Eiscue | 🟡 中 | 第一次受击挡住 |
 | 9 | **Disguise** | Mimikyu | 🟡 中 | 第一次受击挡住 |
-| 10 | **Moody** | 随机 | 🟢 低 | 每回合随机 ±2 能力 |
+| 10 | **Moody** | 随机 | 🟢 低 | ✅ 已实现 |
 | 11 | **Protean/Libero** | Greninja/Cinderace | 🟡 中 | 使用招式前改变属性 |
 | 12+ | 其余 ~200 个低竞技特性 | 各种 | — | 低优先级 |
 
