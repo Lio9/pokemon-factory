@@ -903,7 +903,7 @@ final class BattleConditionSupport {
         applyReactiveContactStatusAbility(state, attacker, target, actionLog, events, random);
     }
 
-    void applyReactiveDamageAbilities(Map<String, Object> attacker, Map<String, Object> target,
+    void applyReactiveDamageAbilities(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> target,
             Map<String, Object> move,
             int hpBeforeDamage, int hpAfterDamage, int actualDamage,
             Map<String, Object> actionLog, List<String> events) {
@@ -946,6 +946,48 @@ final class BattleConditionSupport {
             applyAbilityStageChange(target, 4, 1, actionLog, events, "怒壳");  // SpA
             applyAbilityStageChange(target, 6, 1, actionLog, events, "怒壳");  // Speed
             applyAbilityStageChange(target, 3, -1, actionLog, events, "怒壳"); // Def
+        }
+        // Toxic Debris: physical hit sets Toxic Spikes on attacker's side
+        if (hasAbility(target, "toxic-debris", "toxic debris")
+                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
+                && state != null) {
+            fieldEffectSupport.addToxicSpikesLayer(state, !engine.isOnSide(state, target, true), attacker, actionLog, events);
+        }
+        // Seed Sower: hit sets Grassy Terrain
+        if (hasAbility(target, "seed-sower", "seed sower") && state != null) {
+            fieldEffectSupport.activateTerrain(state, "grassy", target, null, events);
+        }
+        // Sand Spit: hit sets Sandstorm
+        if (hasAbility(target, "sand-spit", "sand spit") && state != null) {
+            fieldEffectSupport.activateWeather(state, "sand", target, null, events);
+        }
+        // Items triggered by type: Cell Battery (Electric +1 Atk), Luminous Moss (Water +1 SpD)
+        // Snowball (Ice +1 Atk), Absorb Bulb (Water +1 SpA)
+        String heldItem = engine.heldItem(target);
+        if (!engine.itemConsumed(target)) {
+            if (("cell-battery".equals(heldItem) || "cell battery".equals(heldItem))
+                    && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
+                engine.consumeItem(target);
+                applyAbilityStageChange(target, 2, 1, actionLog, events, "充电池");
+            } else if (("luminous-moss".equals(heldItem) || "luminous moss".equals(heldItem))
+                    && moveTypeId == DamageCalculatorUtil.TYPE_WATER) {
+                engine.consumeItem(target);
+                applyAbilityStageChange(target, 5, 1, actionLog, events, "光苔");
+            } else if (("snowball".equals(heldItem))
+                    && moveTypeId == DamageCalculatorUtil.TYPE_ICE) {
+                engine.consumeItem(target);
+                applyAbilityStageChange(target, 2, 1, actionLog, events, "雪球");
+            } else if (("absorb-bulb".equals(heldItem) || "absorb bulb".equals(heldItem))
+                    && moveTypeId == DamageCalculatorUtil.TYPE_WATER) {
+                engine.consumeItem(target);
+                applyAbilityStageChange(target, 4, 1, actionLog, events, "球根");
+            }
+        }
+
+        // Anger Point: critical hit → max Attack
+        if (hasAbility(target, "anger-point", "anger point")
+                && Boolean.TRUE.equals(move.get("criticalHit"))) {
+            applyAbilityStageChange(target, 2, 6, actionLog, events, "愤怒穴位");
         }
     }
 

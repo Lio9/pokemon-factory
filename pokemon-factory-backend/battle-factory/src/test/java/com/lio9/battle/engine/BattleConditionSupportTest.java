@@ -554,7 +554,7 @@ class BattleConditionSupportTest {
         Map<String, Object> weakArmor = pokemon("WeakArmor-A", 240, 100, "", "weak-armor", DamageCalculatorUtil.TYPE_NORMAL);
         Map<String, Object> weakArmorLog = new LinkedHashMap<>();
         List<String> weakArmorEvents = new ArrayList<>();
-        support.applyReactiveDamageAbilities(
+        support.applyReactiveDamageAbilities(null, 
                 pokemon("Attacker", 240, 100, "", "", DamageCalculatorUtil.TYPE_NORMAL),
                 weakArmor,
                 move("Contact Strike", "contact-strike", 70, 100, 0, DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL, DamageCalculatorUtil.TYPE_NORMAL, 10),
@@ -571,7 +571,7 @@ class BattleConditionSupportTest {
 
         Map<String, Object> amuletWeakArmor = pokemon("Amulet-A", 240, 100, "clear-amulet", "weak-armor", DamageCalculatorUtil.TYPE_NORMAL);
         Map<String, Object> amuletLog = new LinkedHashMap<>();
-        support.applyReactiveDamageAbilities(
+        support.applyReactiveDamageAbilities(null, 
                 pokemon("Attacker", 240, 100, "", "", DamageCalculatorUtil.TYPE_NORMAL),
                 amuletWeakArmor,
                 move("Contact Strike", "contact-strike", 70, 100, 0, DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL, DamageCalculatorUtil.TYPE_NORMAL, 10),
@@ -587,7 +587,7 @@ class BattleConditionSupportTest {
         assertEquals(2, amuletStages.get("speed"));
 
         Map<String, Object> stamina = pokemon("Stamina-A", 240, 100, "", "stamina", DamageCalculatorUtil.TYPE_NORMAL);
-        support.applyReactiveDamageAbilities(
+        support.applyReactiveDamageAbilities(null, 
                 pokemon("Attacker", 240, 100, "", "", DamageCalculatorUtil.TYPE_NORMAL),
                 stamina,
                 move("Water Pulse", "water-pulse", 60, 100, 0, DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL, DamageCalculatorUtil.TYPE_WATER, 10),
@@ -602,7 +602,7 @@ class BattleConditionSupportTest {
         assertEquals(1, staminaStages.get("defense"));
 
         Map<String, Object> justified = pokemon("Justified-A", 240, 100, "", "justified", DamageCalculatorUtil.TYPE_NORMAL);
-        support.applyReactiveDamageAbilities(
+        support.applyReactiveDamageAbilities(null, 
                 pokemon("Attacker", 240, 100, "", "", DamageCalculatorUtil.TYPE_NORMAL),
                 justified,
                 move("Snarl", "snarl", 55, 100, 0, DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL, DamageCalculatorUtil.TYPE_DARK, 11),
@@ -617,7 +617,7 @@ class BattleConditionSupportTest {
         assertEquals(1, justifiedStages.get("attack"));
 
         Map<String, Object> rattled = pokemon("Rattled-A", 240, 100, "", "rattled", DamageCalculatorUtil.TYPE_NORMAL);
-        support.applyReactiveDamageAbilities(
+        support.applyReactiveDamageAbilities(null, 
                 pokemon("Attacker", 240, 100, "", "", DamageCalculatorUtil.TYPE_NORMAL),
                 rattled,
                 move("Shadow Ball", "shadow-ball", 80, 100, 0, DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL, DamageCalculatorUtil.TYPE_GHOST, 10),
@@ -632,7 +632,7 @@ class BattleConditionSupportTest {
         assertEquals(1, rattledStages.get("speed"));
 
         Map<String, Object> steamEngine = pokemon("Steam-A", 240, 100, "", "steam-engine", DamageCalculatorUtil.TYPE_NORMAL);
-        support.applyReactiveDamageAbilities(
+        support.applyReactiveDamageAbilities(null, 
                 pokemon("Attacker", 240, 100, "", "", DamageCalculatorUtil.TYPE_NORMAL),
                 steamEngine,
                 move("Scald", "scald", 80, 100, 0, DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL, DamageCalculatorUtil.TYPE_WATER, 10),
@@ -647,7 +647,7 @@ class BattleConditionSupportTest {
         assertEquals(6, steamStages.get("speed"));
 
         Map<String, Object> berserk = pokemon("Berserk-A", 240, 100, "", "berserk", DamageCalculatorUtil.TYPE_NORMAL);
-        support.applyReactiveDamageAbilities(
+        support.applyReactiveDamageAbilities(null, 
                 pokemon("Attacker", 240, 100, "", "", DamageCalculatorUtil.TYPE_NORMAL),
                 berserk,
                 move("Water Pulse", "water-pulse", 60, 100, 0, DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL, DamageCalculatorUtil.TYPE_WATER, 10),

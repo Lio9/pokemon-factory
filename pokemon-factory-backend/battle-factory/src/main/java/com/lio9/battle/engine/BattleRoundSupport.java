@@ -357,7 +357,7 @@ final class BattleRoundSupport {
                 }
                 hitDamages.add(actualDamage);
                 totalActualDamage += actualDamage;
-                conditionSupport.applyReactiveDamageAbilities(actor, target, move, hpBeforeDamage, remainingHp, actualDamage, targetLog, events);
+                conditionSupport.applyReactiveDamageAbilities(state, actor, target, move, hpBeforeDamage, remainingHp, actualDamage, targetLog, events);
                 // Throat Spray: sound move boosts SpA
                 if ("throat-spray".equalsIgnoreCase(engine.heldItem(actor)) && !engine.itemConsumed(actor)
                         && actualDamage > 0 && MoveRegistry.isSoundMove(move)) {
