@@ -36,6 +36,7 @@ final class BattleActionBuilder {
             }
             Map<String, Object> mon = playerTeam.get(monIndex);
             Map<String, Object> move = engine.withEffectivePriority(mon, engine.selectPlayerMove(mon, playerMoveMap, fieldSlot, currentRound));
+            move = boostGrassyGlide(state, move);
             int targetFieldSlot = selectTargetFieldSlot(playerMoveMap, fieldSlot);
             int targetTeamIndex = engine.targetIndex(state, false, targetFieldSlot);
             String specialSystemRequested = selectedSpecialSystem(playerMoveMap, fieldSlot);
@@ -63,6 +64,7 @@ final class BattleActionBuilder {
             }
             Map<String, Object> mon = opponentTeam.get(monIndex);
             Map<String, Object> move = engine.withEffectivePriority(mon, engine.selectAIMove(mon, random, state, false, currentRound));
+            move = boostGrassyGlide(state, move);
             List<Integer> playerActive = engine.activeSlots(state, true);
             int targetFieldSlot;
             if (playerActive.size() <= 1) {
@@ -79,6 +81,28 @@ final class BattleActionBuilder {
                     targetFieldSlot, move, engine.speedValue(mon, state, false), specialSystemRequested));
         }
         return actions;
+    }
+
+    private Map<String, Object> boostGrassyGlide(Map<String, Object> state, Map<String, Object> move) {
+        if (isGrassyGlide(move) && grassyTerrainActive(state)) {
+            Map<String, Object> boosted = new java.util.LinkedHashMap<>(move);
+            boosted.put("priority", engine.toInt(move.get("priority"), 0) + 1);
+            return boosted;
+        }
+        return move;
+    }
+
+    private boolean isGrassyGlide(Map<String, Object> move) {
+        String name = String.valueOf(move.get("name_en"));
+        return "grassy-glide".equalsIgnoreCase(name) || "grassy glide".equalsIgnoreCase(name);
+    }
+
+    private boolean grassyTerrainActive(Map<String, Object> state) {
+        Object fe = state.get("fieldEffects");
+        if (fe instanceof Map<?, ?> effects) {
+            return engine.toInt(((Map<String, Object>) effects).get("grassyTerrainTurns"), 0) > 0;
+        }
+        return false;
     }
 
     private boolean isSwitchRequested(Map<String, String> playerMoveMap, int fieldSlot) {

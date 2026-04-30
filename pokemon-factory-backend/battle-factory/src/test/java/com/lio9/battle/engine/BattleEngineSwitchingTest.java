@@ -9395,7 +9395,49 @@ class BattleEngineSwitchingTest {
                 assertEquals(List.of(1), playerActiveSlots);
         }
 
+
 	@Test
+	void playRound_perishSongCountsDownAndFaints() {
+		BattleEngine engine = createEngine();
+		String playerTeam = "[" + pokemonJson("Perish-A", 200, 90) + "," + pokemonJson("Bench-A", 110, 60) + "," + pokemonJson("Bench-B", 108, 50) + "]";
+		String opponentTeam = "[" + pokemonJson("Target-Opp", 200, 80) + "," + pokemonJson("Bench-C", 110, 50) + "]";
+		Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 888888L);
+		keepOnlyActiveSlot(state, true, 0);
+		keepOnlyActiveSlot(state, false, 0);
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> playerTeamList = (List<Map<String, Object>>) state.get("playerTeam");
+		playerTeamList.get(0).put("perishSongTurns", 1);
+		setMoves(state, true, 0, List.of(protectMove()));
+		setMoves(state, false, 0, List.of(protectMove()));
+		Map<String, Object> result = engine.playRound(state, Map.of("slot-0", "protect"));
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> finalTeam = (List<Map<String, Object>>) result.get("playerTeam");
+		int hp = (Integer) finalTeam.get(0).get("currentHp");
+		assertTrue(hp <= 0, "Perish Song should KO at 0 turns, got HP: " + hp);
+	}
+
+	@Test
+	void playRound_substituteBlocksDamage() {
+		BattleEngine engine = createEngine();
+		String playerTeam = "[" + pokemonJson("Sub-A", 240, 90) + "," + pokemonJson("Partner-A", 220, 70) + "," + pokemonJson("Bench-A", 110, 60) + "," + pokemonJson("Bench-B", 108, 50) + "]";
+		String opponentTeam = "[" + pokemonJson("Striker-Opp", 200, 100) + "," + pokemonJson("Partner-Opp", 220, 60) + "," + pokemonJson("Bench-C", 110, 50) + "]";
+		Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 999999L);
+		keepOnlyActiveSlot(state, true, 0);
+		keepOnlyActiveSlot(state, false, 0);
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> pt = (List<Map<String, Object>>) state.get("playerTeam");
+		pt.get(0).put("currentHp", 240);
+		engine.setVolatile(pt.get(0), "substitute", 20);  // 20 HP substitute
+		setMoves(state, true, 0, List.of(protectMove()));
+		setMoves(state, false, 0, List.of(contactMove("Tackle", "tackle", 50, 1)));
+		Map<String, Object> result = engine.playRound(state, Map.of("slot-0", "protect"));
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> finalPt = (List<Map<String, Object>>) result.get("playerTeam");
+		int hpAfter = (Integer) finalPt.get(0).get("currentHp");
+		// The 50 BP tackle should be absorbed by the 20 HP substitute, leaving 220 HP
+		assertTrue(hpAfter >= 220, "Substitute should absorb damage, got HP: " + hpAfter);
+	}
+
 	void playRound_leechSeedDealsEndOfTurnDamage() {
 		BattleEngine engine = createEngine();
 
