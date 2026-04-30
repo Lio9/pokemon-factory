@@ -267,6 +267,14 @@ final class BattleConditionSupport {
             } else if (nameEn.startsWith("max-starfall")) {
                 fieldEffectSupport.activateTerrain(state, "misty", actor, null, events);
             }
+            // G-Max specific effects
+            if (nameEn.startsWith("g-max-stonesurge") || nameEn.startsWith("g max stonesurge")) {
+                fieldEffectSupport.setStealthRock(state, !isPlayerSide, actor, targetLog, events);
+            } else if (nameEn.startsWith("g-max-steelsurge") || nameEn.startsWith("g max steelsurge")) {
+                fieldEffectSupport.setStealthRock(state, !isPlayerSide, actor, targetLog, events);
+            } else if (nameEn.contains("g-max") || nameEn.contains("g-max-") || nameEn.contains("g max ")) {
+                events.add(actor.get("name") + " 释放了 G-Max 招式！");
+            }
             return;
         }
 
