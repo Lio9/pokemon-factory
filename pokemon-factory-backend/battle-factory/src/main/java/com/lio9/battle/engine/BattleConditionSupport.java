@@ -1768,6 +1768,12 @@ final class BattleConditionSupport {
                 events.add(target.get("name") + " 的看门狗特性触发，攻击提升了");
             }
         }
+        // Eject Pack: stat drop triggers switch-out flag
+        if ("eject-pack".equals(engine.heldItem(target)) && !engine.itemConsumed(target)) {
+            engine.consumeItem(target);
+            target.put("ejectPackTriggered", true);
+            events.add(target.get("name") + " 的逃脱背包触发");
+        }
     }
 
     void resetBattleStages(Map<String, Object> mon) {
