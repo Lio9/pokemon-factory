@@ -930,6 +930,15 @@ final class BattleConditionSupport {
                 && hpAfterDamage * 2 <= maxHp) {
             applyAbilityStageChange(target, 4, 1, actionLog, events, "怒火中烧");
         }
+        // Anger Shell: HP < 50% → +1 Atk/SpA/Speed, -1 Def
+        if (hasAbility(target, "anger-shell", "anger shell")
+                && hpBeforeDamage * 2 > maxHp
+                && hpAfterDamage * 2 <= maxHp) {
+            applyAbilityStageChange(target, 2, 1, actionLog, events, "怒壳");  // Atk
+            applyAbilityStageChange(target, 4, 1, actionLog, events, "怒壳");  // SpA
+            applyAbilityStageChange(target, 6, 1, actionLog, events, "怒壳");  // Speed
+            applyAbilityStageChange(target, 3, -1, actionLog, events, "怒壳"); // Def
+        }
     }
 
     private boolean applyDisableEffect(Map<String, Object> state, Map<String, Object> target, String disabledMoveName,

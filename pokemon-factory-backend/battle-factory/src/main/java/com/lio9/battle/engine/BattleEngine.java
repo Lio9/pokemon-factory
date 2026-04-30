@@ -825,10 +825,25 @@ public class BattleEngine {
 
     void consumeItem(Map<String, Object> mon) {
         String previousItem = heldItem(mon);
+        if (Boolean.TRUE.equals(mon.get("itemConsumed"))) {
+            return; // already consumed
+        }
         mon.put("itemConsumed", true);
+        // Cud Chew: berry will be consumed again at end of next turn
+        if (hasAbility(mon, "cud-chew", "cud chew") && isBerry(previousItem)) {
+            mon.put("cudChewPending", true);
+        }
         if (!previousItem.isBlank() && hasAbility(mon, "unburden")) {
             mon.put("unburdenActive", true);
         }
+    }
+
+    boolean isCudChewPending(Map<String, Object> mon) {
+        return Boolean.TRUE.equals(mon.get("cudChewPending"));
+    }
+
+    boolean isBerry(String item) {
+        return item != null && item.endsWith("-berry");
     }
 
     void removeHeldItem(Map<String, Object> mon) {
