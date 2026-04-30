@@ -39,6 +39,8 @@ final class BattleTurnCleanupSupport {
         applyEndTurnFieldEffects(state, events);
         decrementDynamax(engine.team(state, true), events);
         decrementDynamax(engine.team(state, false), events);
+        applyVolatileEndTurnEffects(engine.team(state, true), events);
+        applyVolatileEndTurnEffects(engine.team(state, false), events);
         decrementTauntEffects(engine.team(state, true), events);
         decrementTauntEffects(engine.team(state, false), events);
         decrementHealBlockEffects(engine.team(state, true), events);
@@ -293,6 +295,45 @@ final class BattleTurnCleanupSupport {
             int heal = Math.max(1, maxHp / 16);
             mon.put("currentHp", Math.min(maxHp, currentHp + heal));
             events.add(mon.get("name") + " 通过剩饭回复了 " + heal + " 点 HP");
+        }
+    }
+
+    private void applyVolatileEndTurnEffects(List<Map<String, Object>> team, List<String> events) {
+        for (Map<String, Object> mon : team) {
+            if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
+                continue;
+            }
+            // 寄生种子：吸取 1/8 最大 HP，对手回复等量 HP
+            if (Boolean.TRUE.equals(mon.get("leechSeed"))) {
+                applyLeechSeedDamage(mon, events);
+            }
+            // 灭亡之歌：倒计时归零时直接倒下
+            int perishTurns = engine.toInt(mon.get("perishSongTurns"), 0);
+            if (perishTurns > 0) {
+                int next = perishTurns - 1;
+                engine.setVolatile(mon, "perishSongTurns", next);
+                if (next <= 0) {
+                    mon.put("currentHp", 0);
+                    mon.put("status", "fainted");
+                    events.add(mon.get("name") + " 被灭亡之歌带走了");
+                }
+            }
+        }
+    }
+
+    private void applyLeechSeedDamage(Map<String, Object> mon, List<String> events) {
+        int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+        int damage = Math.max(1, maxHp / 8);
+        int currentHp = engine.toInt(mon.get("currentHp"), 0);
+        if (currentHp <= 0) {
+            return;
+        }
+        int actualDamage = Math.min(damage, currentHp);
+        mon.put("currentHp", currentHp - actualDamage);
+        events.add(mon.get("name") + " 因寄生种子损失了 " + actualDamage + " 点 HP");
+        if (currentHp - actualDamage <= 0) {
+            mon.put("status", "fainted");
+            events.add(mon.get("name") + " 倒下了");
         }
     }
 

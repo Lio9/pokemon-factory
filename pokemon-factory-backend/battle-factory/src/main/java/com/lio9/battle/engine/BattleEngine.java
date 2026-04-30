@@ -392,6 +392,22 @@ public class BattleEngine {
         return MoveRegistry.isFakeTears(move);
     }
 
+    boolean isLeechSeed(Map<String, Object> move) {
+        return MoveRegistry.isLeechSeed(move);
+    }
+
+    boolean isSubstitute(Map<String, Object> move) {
+        return MoveRegistry.isSubstitute(move);
+    }
+
+    boolean isAttract(Map<String, Object> move) {
+        return MoveRegistry.isAttract(move);
+    }
+
+    boolean isPerishSong(Map<String, Object> move) {
+        return MoveRegistry.isPerishSong(move);
+    }
+
     // Delegating to MoveRegistry for pivot/switch moves
     boolean isPartingShot(Map<String, Object> move) {
         return MoveRegistry.isPartingShot(move);

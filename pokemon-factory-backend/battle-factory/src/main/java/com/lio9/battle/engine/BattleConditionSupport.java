@@ -568,6 +568,54 @@ final class BattleConditionSupport {
         return hasRemovableHeldItem(target) && !hasAbility(target, "sticky-hold", "sticky hold");
     }
 
+    void applyLeechSeed(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
+                        List<String> events) {
+        if (engine.targetHasType(target, DamageCalculatorUtil.TYPE_GRASS)) {
+            actionLog.put("result", "failed");
+            events.add(target.get("name") + " 是草属性，寄生种子无效");
+            return;
+        }
+        engine.setVolatile(target, "leechSeed", true);
+        actionLog.put("result", "leech-seed");
+        events.add(source.get("name") + " 在 " + target.get("name") + " 身上种下了寄生种子");
+    }
+
+    void applySubstitute(Map<String, Object> actor, Map<String, Object> target, Map<String, Object> move,
+                         Map<String, Object> actionLog, List<String> events) {
+        int maxHp = engine.toInt(engine.castMap(target.get("stats")).get("hp"), 1);
+        int currentHp = engine.toInt(target.get("currentHp"), 0);
+        int cost = Math.max(1, maxHp / 4);
+        if (currentHp <= cost) {
+            actionLog.put("result", "failed");
+            events.add(target.get("name") + " 的 HP 不足以制造替身");
+            return;
+        }
+        target.put("currentHp", currentHp - cost);
+        engine.setVolatile(target, "substitute", currentHp - cost);
+        actionLog.put("substituteHp", currentHp - cost);
+        actionLog.put("result", "substitute");
+        events.add(target.get("name") + " 制造了一个替身");
+    }
+
+    void applyAttract(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
+                      List<String> events) {
+        if (hasAbility(target, "oblivious", "oblivious") || hasAbility(target, "aroma-veil", "aroma veil")) {
+            actionLog.put("result", "failed");
+            events.add(target.get("name") + " 的特性阻止了着迷");
+            return;
+        }
+        engine.setVolatile(target, "infatuated", true);
+        actionLog.put("result", "attract");
+        events.add(source.get("name") + " 使 " + target.get("name") + " 陷入了着迷状态");
+    }
+
+    void applyPerishSong(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> target,
+                         Map<String, Object> actionLog, List<String> events) {
+        engine.setVolatile(target, "perishSongTurns", 3);
+        actionLog.put("result", "perish-song");
+        events.add(target.get("name") + " 听到了灭亡之歌");
+    }
+
     void applyKnockOff(Map<String, Object> target, Map<String, Object> actionLog, List<String> events) {
         if (engine.toInt(target.get("currentHp"), 0) <= 0 || !hasRemovableHeldItem(target)) {
             return;

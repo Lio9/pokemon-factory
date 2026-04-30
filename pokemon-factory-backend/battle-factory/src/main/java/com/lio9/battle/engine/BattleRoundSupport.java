@@ -721,6 +721,26 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
+        if (engine.isLeechSeed(move)) {
+            conditionSupport.applyLeechSeed(actor, target, targetLog, events);
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isSubstitute(move)) {
+            conditionSupport.applySubstitute(actor, target, move, targetLog, events);
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isAttract(move)) {
+            conditionSupport.applyAttract(actor, target, targetLog, events);
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isPerishSong(move)) {
+            conditionSupport.applyPerishSong(state, actor, target, targetLog, events);
+            actionLogs.add(targetLog);
+            return true;
+        }
         if (engine.isPartingShot(move)) {
             boolean succeeded = conditionSupport.applyAttackAndSpecialAttackDrop(actor, target, targetLog, events);
             targetLog.put("result", succeeded ? "parting-shot" : "failed");

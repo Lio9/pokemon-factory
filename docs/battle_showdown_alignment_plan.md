@@ -1,8 +1,28 @@
 # 对战引擎 Showdown 对齐计划
 
-更新日期：2026-04-29
+更新日期：2026-04-30
 
 ## 当前状态
+
+### 测试指标
+
+| 项目 | 结果 |
+|------|------|
+| 单元测试 | 319/319 全通过 ✅ |
+| 后端启动 | battle-factory 正常 (8090)、poke-dex 正常 (8081) |
+| 数据库初始化 | 可正常工作（需 POKEMON_FACTORY_DATABASE_INITIALIZE_ON_STARTUP=true） |
+| API 路由 | 路由正确，数据库有数据后返回正常 |
+| 前端构建 | Vite 构建成功 |
+
+### 已知问题
+
+| # | 问题 | 状态 |
+|---|------|------|
+| 1 | 父 POM mainClass 错误 PokedexApplication -> PokeDexApplication | ✅ 已修复 |
+| 2 | 数据库初始化需环境变量，一键启动流程未整合 | ⏳ 待处理 |
+| 3 | actuator/shutdown 未启用，不方便开发调试 | ⏳ 待处理 |
+
+### Showdown 对齐进度
 
 **综合完成度：~72%**（与 Pokemon Showdown Gen 9 Doubles 对比）
 

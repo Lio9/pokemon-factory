@@ -123,6 +123,11 @@ public final class MoveRegistry {
     private static final Set<String> STICKY_WEB_MOVES = Set.of("sticky web", "sticky-web");
 
     // === 回复类招式 ===
+    private static final Set<String> LEECH_SEED_MOVES = Set.of("leech seed", "leech-seed");
+    private static final Set<String> SUBSTITUTE_MOVES = Set.of("substitute");
+    private static final Set<String> ATTRACT_MOVES = Set.of("attract");
+    private static final Set<String> PERISH_SONG_MOVES = Set.of("perish song", "perish-song");
+
     private static final Set<String> RECOVER_MOVES = Set.of("recover");
     private static final Set<String> ROOST_MOVES = Set.of("roost");
     private static final Set<String> REST_MOVES = Set.of("rest");
@@ -520,6 +525,22 @@ public final class MoveRegistry {
 
     public static boolean isBlizzard(Map<String, Object> move) {
         return matchesAny(move, BLIZZARD_MOVES);
+    }
+
+    public static boolean isLeechSeed(Map<String, Object> move) {
+        return matchesAny(move, LEECH_SEED_MOVES);
+    }
+
+    public static boolean isSubstitute(Map<String, Object> move) {
+        return matchesAny(move, SUBSTITUTE_MOVES);
+    }
+
+    public static boolean isAttract(Map<String, Object> move) {
+        return matchesAny(move, ATTRACT_MOVES);
+    }
+
+    public static boolean isPerishSong(Map<String, Object> move) {
+        return matchesAny(move, PERISH_SONG_MOVES);
     }
 
     /**
