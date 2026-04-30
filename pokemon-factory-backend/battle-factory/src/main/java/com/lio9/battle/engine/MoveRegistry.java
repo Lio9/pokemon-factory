@@ -620,6 +620,11 @@ public final class MoveRegistry {
         return power > 0;
     }
 
+    public static boolean isGMaxMove(Map<String, Object> move) {
+        String name = String.valueOf(move.get("name_en")).toLowerCase();
+        return name.startsWith("g-max") || name.startsWith("gmax");
+    }
+
     public static boolean isLeechSeed(Map<String, Object> move) {
         return matchesAny(move, LEECH_SEED_MOVES);
     }

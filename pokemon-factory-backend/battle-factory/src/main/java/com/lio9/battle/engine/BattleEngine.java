@@ -1136,6 +1136,18 @@ public class BattleEngine {
             mon.put("encoreTurns", toInt(value, 0));
         } else if ("encoreMove".equals(key)) {
             mon.put("encoreMove", value);
+		} else if ("leechSeed".equals(key)) {
+			mon.put("leechSeed", Boolean.TRUE.equals(value));
+		} else if ("infatuated".equals(key)) {
+			mon.put("infatuated", Boolean.TRUE.equals(value));
+		} else if ("aquaRing".equals(key)) {
+			mon.put("aquaRing", Boolean.TRUE.equals(value));
+		} else if ("ingrain".equals(key)) {
+			mon.put("ingrain", Boolean.TRUE.equals(value));
+		} else if ("cursed".equals(key)) {
+			mon.put("cursed", Boolean.TRUE.equals(value));
+		} else if ("trapped".equals(key)) {
+			mon.put("trapped", Boolean.TRUE.equals(value));
         }
     }
 
@@ -1328,6 +1340,25 @@ public class BattleEngine {
             zPower = 130;
         else if (basePower >= 60)
             zPower = 120;
+
+        // Z-Status effect: for status moves, apply special Z-Move bonus
+        if (move != null && isStatusMove(move)) {
+            int heal = toInt(move.get("healing"), 0);
+            if (heal > 0) {
+                int maxHp = toInt(castMap(mon.get("stats")).get("hp"), 1);
+                mon.put("currentHp", maxHp);
+                actionLog.put("zStatusHeal", true);
+                events.add(mon.get("name") + " 的 Z 力量完全回复了 HP！");
+            } else {
+                statStages(mon).put("attack", Math.min(6, statStage(mon, "attack") + 1));
+                statStages(mon).put("defense", Math.min(6, statStage(mon, "defense") + 1));
+                statStages(mon).put("specialAttack", Math.min(6, statStage(mon, "specialAttack") + 1));
+                statStages(mon).put("specialDefense", Math.min(6, statStage(mon, "specialDefense") + 1));
+                statStages(mon).put("speed", Math.min(6, statStage(mon, "speed") + 1));
+                actionLog.put("zStatusBoost", true);
+                events.add(mon.get("name") + " 的 Z 力量让全能力提升了！");
+            }
+        }
 
         actionLog.put("zMove", true);
         actionLog.put("zPower", zPower);

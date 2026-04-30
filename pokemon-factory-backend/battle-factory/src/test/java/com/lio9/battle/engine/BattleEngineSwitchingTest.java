@@ -9395,6 +9395,44 @@ class BattleEngineSwitchingTest {
                 assertEquals(List.of(1), playerActiveSlots);
         }
 
+	@Test
+	void playRound_leechSeedDealsEndOfTurnDamage() {
+		BattleEngine engine = createEngine();
+
+		String playerTeam = "[" +
+				pokemonJson("Seed-A", 200, 90, "", 60) + "," +
+				pokemonJson("Partner-A", 220, 70) + "," +
+				pokemonJson("Bench-A", 110, 60) + "," +
+				pokemonJson("Bench-B", 108, 50) +
+				"]";
+		String opponentTeam = "[" +
+				pokemonJson("Target-Opp", 200, 80) + "," +
+				pokemonJson("Partner-Opp", 220, 60) + "," +
+				pokemonJson("Bench-C", 110, 50) + "," +
+				pokemonJson("Bench-D", 108, 40) +
+				"]";
+
+		Map<String, Object> state = engine.createBattleState(playerTeam, opponentTeam, 12, 777777L);
+		setMoves(state, true, 0, List.of(
+				move("Leech Seed", "leech-seed", 0, 100, 0, 3,
+						DamageCalculatorUtil.TYPE_GRASS, 10),
+				protectMove()));
+		setMoves(state, true, 1, List.of(protectMove()));
+		setMoves(state, false, 0, List.of(move("Strike", "strike", 20, 100, 0, 1, 1, 10)));
+		setMoves(state, false, 1, List.of(protectMove()));
+
+		Map<String, Object> round1 = engine.playRound(state, Map.of(
+				"slot-0", "leech-seed",
+				"target-slot-0", "0",
+				"slot-1", "protect"));
+
+		@SuppressWarnings("unchecked")
+		List<Map<String, Object>> opponentTeamAfter = (List<Map<String, Object>>) round1.get("opponentTeam");
+		int hpAfterLeech = (Integer) opponentTeamAfter.get(0).get("currentHp");
+		assertTrue(hpAfterLeech < 200,
+				"Leech Seed should damage opponent, got HP: " + hpAfterLeech);
+	}
+
         private static String buildPlayerTeamForSwitchTestJson() {
                 // Player team uses normal-type damaging moves (type_id=1)
                 return "[" +
