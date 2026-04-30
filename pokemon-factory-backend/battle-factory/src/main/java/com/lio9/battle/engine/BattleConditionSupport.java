@@ -1281,6 +1281,12 @@ final class BattleConditionSupport {
                 events.add(target.get("name") + " 的清净护符挡住了威吓");
                 continue;
             }
+            // Adrenaline Orb: Speed +1 when Intimidated
+            if ("adrenaline-orb".equals(engine.heldItem(target)) && !engine.itemConsumed(target)) {
+                engine.consumeItem(target);
+                applyAbilityStageChange(target, 6, 1, null, events, "替代");
+                events.add(target.get("name") + " 的替代发动了，速度提升");
+            }
 
             int previousStage = damageSupport.statStage(target, "attack");
             int nextStage = Math.max(-6, previousStage - 1);
