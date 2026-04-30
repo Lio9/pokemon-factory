@@ -738,6 +738,38 @@ final class BattleDamageSupport {
             modifier /= 0.75d; // reverse the actual 0.75x def multiplier
         }
 
+        // Vessel of Ruin: Defender's SpA reduced by 25% (damage dealt by SpA is lower)
+        if (("vessel-of-ruin".equalsIgnoreCase(defenderAbility) || "vessel of ruin".equalsIgnoreCase(defenderAbility))
+                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
+            modifier /= 0.75d;
+        }
+
+        // Tablets of Ruin: Defender's Atk reduced by 25% (damage dealt by physical is lower)
+        if (("tablets-of-ruin".equalsIgnoreCase(defenderAbility) || "tablets of ruin".equalsIgnoreCase(defenderAbility))
+                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
+            modifier /= 0.75d;
+        }
+
+        // Orichalcum Pulse: +1.3x Atk in sun
+        if ("orichalcum-pulse".equalsIgnoreCase(attackerAbility) || "orichalcum pulse".equalsIgnoreCase(attackerAbility)) {
+            if (state != null) {
+                Object fe = state.get("fieldEffects");
+                if (fe instanceof Map<?, ?> f && engine.toInt(((Map<String, Object>) f).get("sunTurns"), 0) > 0) {
+                    modifier *= 1.3d;
+                }
+            }
+        }
+
+        // Hadron Engine: +1.3x SpA in Electric Terrain
+        if ("hadron-engine".equalsIgnoreCase(attackerAbility) || "hadron engine".equalsIgnoreCase(attackerAbility)) {
+            if (state != null) {
+                Object fe = state.get("fieldEffects");
+                if (fe instanceof Map<?, ?> f && engine.toInt(((Map<String, Object>) f).get("electricTerrainTurns"), 0) > 0) {
+                    modifier *= 1.3d;
+                }
+            }
+        }
+
         // Beads of Ruin: Defender's SpD reduced by 25%
         if (("beads-of-ruin".equalsIgnoreCase(defenderAbility) || "beads of ruin".equalsIgnoreCase(defenderAbility))
                 && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {

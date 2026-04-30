@@ -961,6 +961,12 @@ final class BattleConditionSupport {
         if (hasAbility(target, "sand-spit", "sand spit") && state != null) {
             fieldEffectSupport.activateWeather(state, "sand", target, null, events);
         }
+        // Electromorphosis: hit by Electric move → charged state (+1 priority or power next Electric move)
+        if (hasAbility(target, "electromorphosis") && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
+            engine.setVolatile(target, "chargingTurn", 2); // charged for 2 turns
+            actionLog.put("electromorphosis", true);
+            events.add(target.get("name") + " 的电力转换特性发动了，进入了充电状态");
+        }
         // Items triggered by type: Cell Battery (Electric +1 Atk), Luminous Moss (Water +1 SpD)
         // Snowball (Ice +1 Atk), Absorb Bulb (Water +1 SpA)
         String heldItem = engine.heldItem(target);
@@ -1275,6 +1281,16 @@ final class BattleConditionSupport {
                 fieldEffectSupport.activateWeather(state, "snow", source, null, events);
                 continue;
             }
+            if ("orichalcum-pulse".equalsIgnoreCase(ability) || "orichalcum pulse".equalsIgnoreCase(ability)) {
+                fieldEffectSupport.activateWeather(state, "sun", source, null, events);
+                events.add(source.get("name") + " 的绯红脉动引发了大日照");
+                continue;
+            }
+            if ("hadron-engine".equalsIgnoreCase(ability) || "hadron engine".equalsIgnoreCase(ability)) {
+                fieldEffectSupport.activateTerrain(state, "electric", source, null, events);
+                events.add(source.get("name") + " 的强子引擎发动了");
+                continue;
+            }
 
             // Terrain starters
             if ("electric-surge".equalsIgnoreCase(ability) || "electric surge".equalsIgnoreCase(ability)) {
@@ -1317,6 +1333,20 @@ final class BattleConditionSupport {
                     }
                     events.add(source.get("name") + " 的同台共演发动了，复制了 " + ally.get("name") + " 的能力变化");
                     break;
+                }
+                continue;
+            }
+            // Hospitality: heals ally 1/4 max HP on switch-in
+            if ("hospitality".equalsIgnoreCase(ability)) {
+                List<Integer> sideSlots = engine.activeSlots(state, player);
+                for (Integer otherSlot : sideSlots) {
+                    if (otherSlot.equals(slot) || otherSlot < 0 || otherSlot >= enteringTeam.size()) continue;
+                    Map<String, Object> ally = enteringTeam.get(otherSlot);
+                    int maxHp = engine.toInt(engine.castMap(ally.get("stats")).get("hp"), 1);
+                    int curHp = engine.toInt(ally.get("currentHp"), 0);
+                    int heal = Math.max(1, maxHp / 4);
+                    ally.put("currentHp", Math.min(maxHp, curHp + heal));
+                    events.add(source.get("name") + " 的热款待回复了 " + ally.get("name") + " " + heal + " 点 HP");
                 }
                 continue;
             }
