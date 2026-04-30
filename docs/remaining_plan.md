@@ -20,10 +20,10 @@
 | 1 | **Commander** | Tatsugiri | 🔴 复杂 | 入场进入 Dondozo 体内，提升能力但不攻击 |
 | 2 | **Embody Aspect** | Ogerpon | 🟡 中 | 太晶化后提升对应能力 |
 | 3 | **Mycelium Might** | Toedscruel | 🟡 中 | 变化招式最后出手但无视特性 |
-| 4 | **Supersweet Syrup** | Dipplin | 🟢 低 | 入场降低对手闪避 |
+| 4 | **Supersweet Syrup** | Dipplin | 🟢 低 | ✅ 已实现 |
 | 5 | **Mind's Eye** | Tinkaton | 🟢 低 | 普通招式打幽灵，无视闪避 |
 | 6 | **Opportunist** (完整版) | Espathra | 🟡 中 | 对手每项能力提升都复制 |
-| 7 | **Screen Cleaner** | Mr. Rime | 🟢 低 | 入场清除双方光墙 |
+| 7 | **Screen Cleaner** | Mr. Rime | 🟢 低 | ✅ 已实现 |
 | 8 | **Ice Face** | Eiscue | 🟡 中 | 第一次受击挡住 |
 | 9 | **Disguise** | Mimikyu | 🟡 中 | 第一次受击挡住 |
 | 10 | **Moody** | 随机 | 🟢 低 | 每回合随机 ±2 能力 |
@@ -34,14 +34,14 @@
 
 | # | 道具 | 实现难度 | 说明 |
 |---|------|----------|------|
-| 1 | **Utility Umbrella** | 🟢 低 | 无视天气效果 |
-| 2 | **Room Service** | 🟢 低 | 空间下减速 |
-| 3 | **Covert Cloak** | 🟢 低 | 防追加效果 |
-| 4 | **Punching Glove** | 🟢 低 | 拳招 1.1x + 无接触 |
+| 1 | **Utility Umbrella** | 🟢 低 | ✅ 已实现 |
+| 2 | **Room Service** | 🟢 低 | ✅ 已实现 |
+| 3 | **Covert Cloak** | 🟢 低 | ✅ 已实现 |
+| 4 | **Punching Glove** | 🟢 低 | ✅ 已实现 |
 | 5 | **Eject Pack** (完整) | 🟡 中 | 能力下降换人 |
-| 6 | **Booster Energy** (完整) | 🟢 低 | 悖论 PM 首回合触发 |
-| 7 | **Loaded Dice** (完整) | 🟢 低 | 多段技保底 4 回 |
-| 8 | **Clear Amulet** (完整) | 🟢 低 | 防能力下降 |
+| 6 | **Booster Energy** (完整) | 🟢 低 | ✅ 已实现 |
+| 7 | **Loaded Dice** (完整) | 🟢 低 | ✅ 已实现 |
+| 8 | **Clear Amulet** (完整) | 🟢 低 | ✅ 已实现 |
 | 9+ | 其余 ~900 个低竞技道具 | — | 低优先级 |
 
 ### 招式效果（按影响面排序）
