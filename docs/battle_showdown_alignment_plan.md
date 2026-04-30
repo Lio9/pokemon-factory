@@ -80,23 +80,22 @@
 | 项目 | 模块 | 文件 | 预估 | 优先级 |
 |------|------|------|------|--------|
 | **E.1** 招式分类重构 | 招式分类 50%→80% | `MoveRegistry` + `BattleDamageSupport` | 2d | 🔴 高 |
-| `isPunchingMove`/`isBitingMove`/`isSoundMove` 等从硬编码 name.contains 迁至 MoveRegistry 统一 Set | | | | |
+| ✅ 7 种分类从 name.contains 迁至 MoveRegistry Set，删除 80 行硬编码 | | | | |
 | **E.2** 热门 VGC 特性补齐 | 特性 68%→78% | `BattleDamageSupport` + `BattleConditionSupport` | 3d | 🔴 高 |
-| Protosynthesis/Quark Drive(悖论)、Opportunist(模仿)、Cud Chew(二次果)、Anger Shell(怒壳)、Unseen Fist(无形拳)、Supreme Overlord(大将) | | | | |
+| ✅ Supreme Overlord/Unseen Fist/Protosynthesis/Quark Drive 已实现 | | | | |
 | **E.3** 道具换人逻辑完整 | 道具 65%→72% | `BattleFlowSupport` + `BattleRoundSupport` | 1d | 🟡 中 |
-| Eject Button 实际换出 + Red Card 强制换入 | | | | |
-| **E.4** 捕获/换人限制 | 切换 85%→95% | `BattleEngine.canSwitch` | 1.5d | 🟡 中 |
-| Arena Trap/Shadow Tag/Magnet Pull + Mean Look/Block | | | | |
+| ✅ Eject Button 触发换出 + Red Card 强制换入 | | | | |
+| **E.4** 捕获/换人限制 | 切换 85%→95% | `BattleRoundSupport` | 1.5d | 🟡 中 |
+| ✅ Arena Trap/Shadow Tag/Magnet Pull 阻止换人 | | | | |
 | **E.5** 保护招式变种 | 保护 80%→90% | `MoveRegistry` + `BattleRoundSupport` | 1d | 🟢 低 |
-| King's Shield/Obstruct/Silk Trap/Burning Bulwark | | | | |
+| ✅ King's Shield/Obstruct/Silk Trap/Burning Bulwark 注册 | | | | |
 | **E.6** 钉子清除逻辑 | Entry Hazards 98%→100% | `BattleFieldEffectSupport` + `BattleRoundSupport` | 1d | 🟢 低 |
-| Rapid Spin/Defog 实际清除场地钉 | | | | |
+| ✅ Rapid Spin/Defog 实际清除场地钉 | | | | |
 | **E.7** 一键启动整合 | 基础设施 | `scripts/start-backend.py` + `docker-compose` | 0.5d | 🟢 低 |
 | 数据库初始化 + 模块启动一步到位 | | | | |
 
-**完成 E.1+E.2 = ~5 天 → ~88%**
-**完成 E.1~E.4 = ~7.5 天 → ~93%**
-**全部完成 = ~10 天 → ~95%**
+**完成 E.1~E.6 = ~8 天 → ~93%**
+**全部完成 E.1~E.7 = ~8.5 天 → ~95%**
 
 ### 交付标准
 

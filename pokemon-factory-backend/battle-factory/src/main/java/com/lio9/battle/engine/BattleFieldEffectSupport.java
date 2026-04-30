@@ -279,6 +279,15 @@ final class BattleFieldEffectSupport {
         decrementFieldEffect(state, fieldSnapshot, "opponentSafeguardTurns", "对手神秘守护消失了", events);
     }
 
+    void clearSideHazards(Map<String, Object> state, boolean playerSide) {
+        String side = playerSide ? "player" : "opponent";
+        Map<String, Object> effects = fieldEffects(state);
+        effects.put(side + "StealthRock", false);
+        effects.put(side + "SpikesLayers", 0);
+        effects.put(side + "ToxicSpikesLayers", 0);
+        effects.put(side + "StickyWeb", false);
+    }
+
     private void decrementFieldEffect(Map<String, Object> state, Map<String, Object> fieldSnapshot, String key, String endMessage, List<String> events) {
         int before = toInt(fieldSnapshot.get(key), 0);
         if (before <= 0) {

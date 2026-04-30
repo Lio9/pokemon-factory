@@ -23,7 +23,9 @@ public final class MoveRegistry {
 
     // === 保护类招式 ===
     private static final Set<String> PROTECT_MOVES = Set.of(
-        "protect", "detect"
+        "protect", "detect", "king's shield", "kings-shield",
+        "obstruct", "silk trap", "silk-trap",
+        "burning bulwark", "burning-bulwark"
     );
 
     private static final Set<String> WIDE_GUARD_MOVES = Set.of(

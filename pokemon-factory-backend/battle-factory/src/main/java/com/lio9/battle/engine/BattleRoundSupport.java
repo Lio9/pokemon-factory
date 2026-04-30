@@ -351,6 +351,13 @@ final class BattleRoundSupport {
                 totalActualDamage += actualDamage;
                 conditionSupport.applyReactiveDamageAbilities(actor, target, move, hpBeforeDamage, remainingHp, actualDamage, targetLog, events);
                 engine.applyDefenderItemEffects(target, move, actualDamage, targetLog, events);
+                // Eject Button / Red Card 触发换人标记
+                if (Boolean.TRUE.equals(targetLog.get("ejectButton"))) {
+                    autoSwitchAfterMove(state, action, target, move, "eject-button", events, actionLogs);
+                } else if (Boolean.TRUE.equals(targetLog.get("redCard")) && actualDamage > 0
+                        && engine.toInt(actor.get("currentHp"), 0) > 0) {
+                    autoSwitchAfterMove(state, action, actor, move, "red-card", events, actionLogs);
+                }
                 conditionSupport.applyReactiveContactEffects(state, actor, target, move, targetLog, events, random);
                 if (remainingHp == 0) {
                     target.put("status", "fainted");
@@ -367,6 +374,17 @@ final class BattleRoundSupport {
             targetLog.put("critical", criticalHits > 0);
             targetLog.put("criticalHits", criticalHits);
             targetLog.put("targetHpAfter", remainingHp);
+            // Rapid Spin: 清除己方场地钉
+            if (MoveRegistry.isRapidSpin(move) && totalActualDamage > 0) {
+                engine.clearSideHazards(state, "player".equals(action.side()));
+                events.add(actor.get("name") + " 用高速旋转清除了场地钉");
+            }
+            // Defog: 清除双方场地钉
+            if (MoveRegistry.isDefog(move) && totalActualDamage > 0) {
+                engine.clearSideHazards(state, true);
+                engine.clearSideHazards(state, false);
+                events.add(actor.get("name") + " 用清除浓雾清除了双方的场地钉");
+            }
             actionLogs.add(targetLog);
             events.add(engine.sideName(action.side()) + " 的 " + actor.get("name") + " 使用 " + move.get("name")
                     + " 对 " + target.get("name") + " 造成了 " + totalActualDamage + " 点伤害");
@@ -557,6 +575,29 @@ final class BattleRoundSupport {
         return engine.rollCriticalHit(actor, move, random);
     }
 
+    private boolean isBlockedByTrappingAbility(Map<String, Object> state, boolean playerSide, Map<String, Object> actor) {
+        if (engine.hasAbility(actor, "shadow-tag", "shadow tag")) {
+            return false; // trapper can switch freely
+        }
+        boolean isFlying = engine.targetHasType(actor, DamageCalculatorUtil.TYPE_FLYING);
+        boolean isGhost = engine.targetHasType(actor, DamageCalculatorUtil.TYPE_GHOST);
+        for (Map<String, Object> opp : engine.team(state, !playerSide)) {
+            if (engine.toInt(opp.get("currentHp"), 0) <= 0) continue;
+            String ab = engine.abilityName(opp);
+            if ("shadow-tag".equalsIgnoreCase(ab) || "shadow tag".equalsIgnoreCase(ab)) {
+                return true; // Shadow Tag traps everything except Ghost
+            }
+            if (("arena-trap".equalsIgnoreCase(ab) || "arena trap".equalsIgnoreCase(ab)) && !isFlying) {
+                return true;
+            }
+            if (("magnet-pull".equalsIgnoreCase(ab) || "magnet pull".equalsIgnoreCase(ab))
+                    && engine.targetHasType(actor, DamageCalculatorUtil.TYPE_STEEL)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean isInfatuatedAndBlocked(Map<String, Object> actor, List<Map<String, Object>> actionLogs,
                                            List<String> events, Random random) {
         if (Boolean.TRUE.equals(actor.get("infatuated")) && random.nextInt(2) == 0) {
@@ -583,6 +624,12 @@ final class BattleRoundSupport {
     private void handleSwitch(Map<String, Object> state, BattleEngine.Action action, List<Map<String, Object>> actingTeam,
                               Map<String, Object> actor, boolean playerSide, List<Map<String, Object>> actionLogs,
                               List<String> events, Map<String, Object> actionLog) {
+        // 捕获特性检查
+        if (isBlockedByTrappingAbility(state, playerSide, actor)) {
+            actionLog.put("result", "trapped");
+            events.add(actor.get("name") + " 被对手的特性困住了，无法换人");
+            return;
+        }
         if (!engine.canSwitch(actingTeam, engine.activeSlots(state, playerSide), action.actorFieldSlot(), action.switchToTeamIndex())) {
             return;
         }

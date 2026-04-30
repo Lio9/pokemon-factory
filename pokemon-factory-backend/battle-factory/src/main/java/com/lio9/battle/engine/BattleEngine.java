@@ -408,6 +408,14 @@ public class BattleEngine {
         return MoveRegistry.isPerishSong(move);
     }
 
+    boolean isRapidSpin(Map<String, Object> move) {
+        return MoveRegistry.isRapidSpin(move);
+    }
+
+    boolean isDefog(Map<String, Object> move) {
+        return MoveRegistry.isDefog(move);
+    }
+
     // Delegating to MoveRegistry for pivot/switch moves
     boolean isPartingShot(Map<String, Object> move) {
         return MoveRegistry.isPartingShot(move);
@@ -1444,6 +1452,10 @@ public class BattleEngine {
     void setStickyWeb(Map<String, Object> state, boolean playerSide, Map<String, Object> actor,
             Map<String, Object> actionLog, List<String> events) {
         fieldEffectSupport.setStickyWeb(state, playerSide, actor, actionLog, events);
+    }
+
+    void clearSideHazards(Map<String, Object> state, boolean playerSide) {
+        fieldEffectSupport.clearSideHazards(state, playerSide);
     }
 
     void activateScreen(Map<String, Object> state, String screen, boolean playerSide, Map<String, Object> actor,
