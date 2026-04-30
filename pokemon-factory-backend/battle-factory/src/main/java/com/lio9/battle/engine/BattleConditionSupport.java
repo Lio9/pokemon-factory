@@ -1394,6 +1394,27 @@ final class BattleConditionSupport {
             if ("disguise".equalsIgnoreCase(switchAbility)) {
                 source.put("disguiseActive", true);
             }
+            // Commander: Tatsugiri enters Dondozo, giving +2 all stats
+            if ("commander".equalsIgnoreCase(switchAbility)) {
+                String monName = String.valueOf(source.get("name")).toLowerCase();
+                if (monName.contains("tatsugiri")) {
+                    List<Integer> active = engine.activeSlots(state, player);
+                    for (Integer other : active) {
+                        if (other.equals(slot) || other < 0) continue;
+                        Map<String, Object> ally = enteringTeam.get(other);
+                        if (String.valueOf(ally.get("name")).toLowerCase().contains("dondozo")) {
+                            source.put("commandActive", true);
+                            String[] stats = {"attack", "defense", "specialAttack", "specialDefense", "speed"};
+                            Map<String, Object> stages = engine.castMap(ally.get("statStages"));
+                            for (String s : stats) {
+                                stages.put(s, Math.min(6, engine.toInt(stages.get(s), 0) + 2));
+                            }
+                            events.add(source.get("name") + " 使用指挥官特性，进入了 " + ally.get("name") + " 体内！全能力提升！");
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 

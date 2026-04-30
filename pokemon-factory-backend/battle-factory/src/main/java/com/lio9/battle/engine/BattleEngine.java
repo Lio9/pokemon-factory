@@ -585,6 +585,10 @@ public class BattleEngine {
         return MoveRegistry.isHealBlock(move);
     }
 
+    boolean isTrickMove(Map<String, Object> move) {
+        return MoveRegistry.isTrickMove(move);
+    }
+
     boolean isTrappingMove(Map<String, Object> move) {
         return MoveRegistry.isTrappingMove(move);
     }

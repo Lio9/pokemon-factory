@@ -135,6 +135,9 @@ public final class MoveRegistry {
     private static final Set<String> RAPID_SPIN_MOVES = Set.of("rapid spin", "rapid-spin");
     private static final Set<String> DEFOG_MOVES = Set.of("defog");
 
+    // === 交换道具类招式 ===
+    private static final Set<String> TRICK_MOVES = Set.of("trick", "switcheroo");
+
     // === 回复类招式 ===
     private static final Set<String> LEECH_SEED_MOVES = Set.of("leech seed", "leech-seed");
     private static final Set<String> SUBSTITUTE_MOVES = Set.of("substitute");
@@ -624,6 +627,8 @@ public final class MoveRegistry {
         String name = String.valueOf(move.get("name_en")).toLowerCase();
         return name.startsWith("g-max") || name.startsWith("gmax");
     }
+
+    public static boolean isTrickMove(Map<String, Object> move) { return matchesAny(move, TRICK_MOVES); }
 
     public static boolean isLeechSeed(Map<String, Object> move) {
         return matchesAny(move, LEECH_SEED_MOVES);

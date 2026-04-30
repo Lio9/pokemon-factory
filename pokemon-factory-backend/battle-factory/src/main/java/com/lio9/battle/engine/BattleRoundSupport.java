@@ -902,6 +902,21 @@ final class BattleRoundSupport {
             events.add(actor.get("name") + " 困住了 " + target.get("name"));
             return true;
         }
+        if (engine.isTrickMove(move)) {
+            String actorItem = engine.heldItem(actor);
+            String targetItem = engine.heldItem(target);
+            if (actorItem.isBlank() && targetItem.isBlank()) {
+                targetLog.put("result", "failed");
+                events.add(actor.get("name") + " 使用了交换道具，但双方都没有道具");
+            } else {
+                actor.put("heldItem", targetItem);
+                target.put("heldItem", actorItem);
+                targetLog.put("result", "trick");
+                events.add(actor.get("name") + " 与 " + target.get("name") + " 交换了道具");
+            }
+            actionLogs.add(targetLog);
+            return true;
+        }
         if (engine.isLeechSeed(move)) {
             conditionSupport.applyLeechSeed(actor, target, targetLog, events);
             actionLogs.add(targetLog);
