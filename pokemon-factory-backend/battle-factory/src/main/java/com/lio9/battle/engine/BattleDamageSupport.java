@@ -50,22 +50,51 @@ final class BattleDamageSupport {
         Map<String, Object> attackerStats = engine.castMap(attacker.get("stats"));
         Map<String, Object> defenderStats = engine.castMap(defender.get("stats"));
 
-        int attackStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
-                ? modifiedAttackStat(attacker, defender, engine.toInt(attackerStats.get("attack"), 100), damageClassId,
-                        criticalHit)
-                : modifiedAttackStat(attacker, defender, engine.toInt(attackerStats.get("specialAttack"), 100),
-                        damageClassId, criticalHit);
+        int attackStat;
+        if (MoveRegistry.isBodyPress(move)) {
+            // 扑击：使用攻击者的防御代替攻击
+            int bodyPressDef = engine.toInt(attackerStats.get("defense"), 100);
+            attackStat = modifiedDefenseStat(defender, attacker, bodyPressDef, damageClassId, state, criticalHit);
+        } else if (MoveRegistry.isFoulPlay(move)) {
+            // 欺诈：使用目标的攻击属性
+            int targetAtk = engine.toInt(defenderStats.get("attack"), 100);
+            attackStat = modifiedAttackStat(defender, attacker, targetAtk, damageClassId, criticalHit);
+        } else {
+            attackStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
+                    ? modifiedAttackStat(attacker, defender, engine.toInt(attackerStats.get("attack"), 100), damageClassId,
+                            criticalHit)
+                    : modifiedAttackStat(attacker, defender, engine.toInt(attackerStats.get("specialAttack"), 100),
+                            damageClassId, criticalHit);
+        }
         int baseDefenseStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
                 ? engine.toInt(defenderStats.get("defense"), 100)
                 : engine.toInt(defenderStats.get("specialDefense"), 100);
         int defenseStat = Math.max(1,
                 modifiedDefenseStat(attacker, defender, baseDefenseStat, damageClassId, state, criticalHit));
 
-        int power = Math.max(1, engine.toInt(move.get("power"), 1));
+        int power = Math.max(1, calculateMovePower(move, attacker, defender, state));
         int baseDamage = DamageCalculatorUtil.calculateBaseDamage(level, power, attackStat, defenseStat);
 
         double modifier = 1.0d;
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
+
+        // -ate 特性：将一般系招式转为对应属性（在 STAB 前转换，使 STAB 正确生效），1.3x 增伤
+        if (moveTypeId == DamageCalculatorUtil.TYPE_NORMAL) {
+            String atkAbility = engine.abilityName(attacker);
+            if ("aerilate".equalsIgnoreCase(atkAbility)) {
+                moveTypeId = DamageCalculatorUtil.TYPE_FLYING;
+                modifier *= 1.3d;
+            } else if ("pixilate".equalsIgnoreCase(atkAbility)) {
+                moveTypeId = DamageCalculatorUtil.TYPE_FAIRY;
+                modifier *= 1.3d;
+            } else if ("refrigerate".equalsIgnoreCase(atkAbility)) {
+                moveTypeId = DamageCalculatorUtil.TYPE_ICE;
+                modifier *= 1.3d;
+            } else if ("galvanize".equalsIgnoreCase(atkAbility)) {
+                moveTypeId = DamageCalculatorUtil.TYPE_ELECTRIC;
+                modifier *= 1.3d;
+            }
+        }
 
         // STAB (Same Type Attack Bonus) - Pokemon Showdown standard
         modifier *= stabModifier(attacker, moveTypeId);
@@ -126,6 +155,38 @@ final class BattleDamageSupport {
     }
 
     /**
+     * 计算招式威力（支持 Electro Ball / Gyro Ball 等基于速度的动态威力）。
+     */
+    int calculateMovePower(Map<String, Object> move, Map<String, Object> attacker, Map<String, Object> defender,
+            Map<String, Object> state) {
+        int basePower = engine.toInt(move.get("power"), 0);
+        if (basePower <= 0) return basePower;
+
+        if (MoveRegistry.isElectroBall(move)) {
+            // 电球：威力取决于攻击方速度 / 防御方速度的比值
+            boolean attackerPlayerSide = engine.isOnSide(state, attacker, true);
+            int atkSpeed = speedValue(attacker, state, attackerPlayerSide);
+            int defSpeed = speedValue(defender, state, !attackerPlayerSide);
+            double ratio = (double) atkSpeed / Math.max(1, defSpeed);
+            if (ratio >= 4.0d) return 150;
+            if (ratio >= 3.0d) return 120;
+            if (ratio >= 2.0d) return 80;
+            if (ratio >= 1.0d) return 60;
+            return 40; // 慢于对方时威力最低（PS 中实际会失败，但保留保底）
+        }
+
+        if (MoveRegistry.isGyroBall(move)) {
+            // 陀螺球：威力 = 25 * 防御方速度 / 攻击方速度，上限 150
+            boolean attackerPlayerSide = engine.isOnSide(state, attacker, true);
+            int atkSpeed = speedValue(attacker, state, attackerPlayerSide);
+            int defSpeed = speedValue(defender, state, !attackerPlayerSide);
+            return Math.min(150, (25 * defSpeed) / Math.max(1, atkSpeed));
+        }
+
+        return basePower;
+    }
+
+    /**
      * Calculate critical hit chance (Pokemon Showdown standard)
      * Base rate: 1/24 (Gen 6+)
      * Stages: +1 = 1/8, +2 = 1/2, +3 = 1/1 (guaranteed)
@@ -145,6 +206,15 @@ final class BattleDamageSupport {
         String item = heldItem(attacker);
         if ("razor-claw".equals(item) || "scope-lens".equals(item)) {
             critStage += 1;
+        }
+        // 大葱（大葱鸭/葱游兵）：CT +2
+        String species = String.valueOf(attacker.get("name_en"));
+        if ("leek".equals(item) && ("farfetchd".equalsIgnoreCase(species) || "sirfetchd".equalsIgnoreCase(species))) {
+            critStage += 2;
+        }
+        // 吉利拳（吉利蛋）：CT +2
+        if ("lucky-punch".equals(item) && "chansey".equalsIgnoreCase(species)) {
+            critStage += 2;
         }
 
         // Check for abilities
@@ -207,11 +277,36 @@ final class BattleDamageSupport {
         }
 
         String item = heldItem(mon);
-        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL && "choice-band".equals(item)) {
-            return (int) Math.floor(baseStat * 1.5d);
+        String species = String.valueOf(mon.get("name_en"));
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
+            if ("choice-band".equals(item)) {
+                return (int) Math.floor(baseStat * 1.5d);
+            }
+            // 电气球（皮卡丘）：物攻 2 倍
+            if ("light-ball".equals(item) && "pikachu".equalsIgnoreCase(species)) {
+                baseStat = (int) Math.floor(baseStat * 2.0d);
+            }
+            // 粗骨头（卡拉卡拉/嘎啦嘎啦）：物攻 2 倍
+            if ("thick-club".equals(item) && ("cubone".equalsIgnoreCase(species) || "marowak".equalsIgnoreCase(species))) {
+                baseStat = (int) Math.floor(baseStat * 2.0d);
+            }
         }
-        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL && "choice-specs".equals(item)) {
-            baseStat = (int) Math.floor(baseStat * 1.5d);
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
+            if ("choice-specs".equals(item)) {
+                baseStat = (int) Math.floor(baseStat * 1.5d);
+            }
+            // 电气球（皮卡丘）：特攻 2 倍
+            if ("light-ball".equals(item) && "pikachu".equalsIgnoreCase(species)) {
+                baseStat = (int) Math.floor(baseStat * 2.0d);
+            }
+            // 深海之牙（珍珠贝）：特攻 2 倍
+            if ("deep-sea-tooth".equals(item) && "clamperl".equalsIgnoreCase(species)) {
+                baseStat = (int) Math.floor(baseStat * 2.0d);
+            }
+            // 心之水滴（拉帝亚斯/拉帝欧斯）：特攻 1.5 倍
+            if ("soul-dew".equals(item) && ("latias".equalsIgnoreCase(species) || "latios".equalsIgnoreCase(species))) {
+                baseStat = (int) Math.floor(baseStat * 1.5d);
+            }
         }
 
         // Flash Fire boost
@@ -246,7 +341,35 @@ final class BattleDamageSupport {
             }
             baseStat = applyStageModifier(baseStat, specialDefenseStage);
         }
-        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL && "assault-vest".equals(heldItem(mon))) {
+        String speciesDef = String.valueOf(mon.get("name_en"));
+        String itemDef = heldItem(mon);
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
+                && "metal-powder".equals(itemDef) && "ditto".equalsIgnoreCase(speciesDef)) {
+            baseStat = (int) Math.floor(baseStat * 2.0d);
+        }
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
+            if ("assault-vest".equals(itemDef)) {
+                baseStat = (int) Math.floor(baseStat * 1.5d);
+            }
+            // 深海鳞片（珍珠贝）：特防 2 倍
+            if ("deep-sea-scale".equals(itemDef) && "clamperl".equalsIgnoreCase(speciesDef)) {
+                baseStat = (int) Math.floor(baseStat * 2.0d);
+            }
+            // 心之水滴（拉帝亚斯/拉帝欧斯）：特防 1.5 倍
+            if ("soul-dew".equals(itemDef) && ("latias".equalsIgnoreCase(speciesDef) || "latios".equalsIgnoreCase(speciesDef))) {
+                baseStat = (int) Math.floor(baseStat * 1.5d);
+            }
+        }
+        // 进化奇石：未进化的宝可梦双防 1.5 倍（notFullyEvolved 由上游数据准备层设置）
+        if ("eviolite".equalsIgnoreCase(itemDef)
+                && Boolean.TRUE.equals(mon.get("notFullyEvolved"))) {
+            baseStat = (int) Math.floor(baseStat * 1.5d);
+        }
+        // 神奇鳞片：异常状态时物防 1.5 倍
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
+                && hasAbility(mon, "marvel-scale", "marvel scale")
+                && mon.get("condition") != null && !String.valueOf(mon.get("condition")).isBlank()
+                && !"ready".equals(mon.get("condition")) && !"fainted".equals(mon.get("condition"))) {
             baseStat = (int) Math.floor(baseStat * 1.5d);
         }
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL
@@ -422,6 +545,29 @@ final class BattleDamageSupport {
             }
         }
 
+        // 物种限定属性增强道具
+        String species = String.valueOf(attacker.get("name_en"));
+        if ("adamant-orb".equals(item) && "dialga".equalsIgnoreCase(species)) {
+            if (moveTypeId == DamageCalculatorUtil.TYPE_STEEL || moveTypeId == DamageCalculatorUtil.TYPE_DRAGON)
+                modifier *= 1.2d;
+        }
+        if ("lustrous-orb".equals(item) && "palkia".equalsIgnoreCase(species)) {
+            if (moveTypeId == DamageCalculatorUtil.TYPE_WATER || moveTypeId == DamageCalculatorUtil.TYPE_DRAGON)
+                modifier *= 1.2d;
+        }
+        if ("griseous-orb".equals(item) && "giratina".equalsIgnoreCase(species)) {
+            if (moveTypeId == DamageCalculatorUtil.TYPE_GHOST || moveTypeId == DamageCalculatorUtil.TYPE_DRAGON)
+                modifier *= 1.2d;
+        }
+
+        // 节拍器：连续使用同一招式，每回合叠加 0.2x，最高 2.0x
+        if ("metronome".equals(item)) {
+            int count = engine.toInt(attacker.get("metronomeCount"), 0);
+            if (count > 0) {
+                modifier *= (1.0d + count * 0.2d);
+            }
+        }
+
         return modifier;
     }
 
@@ -557,14 +703,6 @@ final class BattleDamageSupport {
 
         // Normalize: All moves become Normal-type and get 1.2x boost
         if ("normalize".equalsIgnoreCase(attackerAbility) && moveTypeId != DamageCalculatorUtil.TYPE_NORMAL) {
-            modifier *= 1.2d;
-        }
-
-        // Aerilate/Pixilate/Refrigerate/Galvanize: -1 type moves get boosted
-        if (("aerilate".equalsIgnoreCase(attackerAbility) && moveTypeId == DamageCalculatorUtil.TYPE_NORMAL) ||
-                ("pixilate".equalsIgnoreCase(attackerAbility) && moveTypeId == DamageCalculatorUtil.TYPE_NORMAL) ||
-                ("refrigerate".equalsIgnoreCase(attackerAbility) && moveTypeId == DamageCalculatorUtil.TYPE_NORMAL) ||
-                ("galvanize".equalsIgnoreCase(attackerAbility) && moveTypeId == DamageCalculatorUtil.TYPE_NORMAL)) {
             modifier *= 1.2d;
         }
 
@@ -820,9 +958,26 @@ final class BattleDamageSupport {
             speed = Math.max(1, speed / 2);
         }
 
+        // 飞毛腿：异常状态时速度 1.5 倍（麻痹时先减半再乘 1.5 = 0.75 倍）
+        if (hasAbility(mon, "quick-feet", "quick feet")
+                && mon.get("condition") != null && !String.valueOf(mon.get("condition")).isBlank()
+                && !"ready".equals(mon.get("condition")) && !"fainted".equals(mon.get("condition"))) {
+            speed = (int) Math.floor(speed * 1.5d);
+        }
+
         // Choice Scarf: 1.5x speed
         if ("choice-scarf".equals(heldItem(mon))) {
             speed = (int) Math.floor(speed * 1.5d);
+        }
+
+        // 黑铁球：速度减半
+        if ("iron-ball".equals(heldItem(mon)) || "iron ball".equals(heldItem(mon))) {
+            speed = Math.max(1, speed / 2);
+        }
+
+        // 速度粉末（百变怪）：速度 2 倍
+        if ("quick-powder".equals(heldItem(mon)) && "ditto".equalsIgnoreCase(String.valueOf(mon.get("name_en")))) {
+            speed = speed * 2;
         }
 
         // Tailwind: 2x speed
@@ -1023,6 +1178,27 @@ final class BattleDamageSupport {
         mon.put("heldItem", "");
     }
 
+    /**
+     * 获取宝可梦的当前重量（已考虑重金属/轻金属/浮石修正）。
+     * 用于重磅冲撞/高温重压等依赖重量的招式伤害计算。
+     */
+    int getWeight(Map<String, Object> mon) {
+        int baseWeight = engine.toInt(mon.get("weight"), engine.toInt(mon.get("weight_kg"), 100));
+        // 重金属：重量翻倍
+        if (hasAbility(mon, "heavy-metal", "heavy metal")) {
+            baseWeight *= 2;
+        }
+        // 轻金属：重量减半
+        if (hasAbility(mon, "light-metal", "light metal")) {
+            baseWeight /= 2;
+        }
+        // 浮石：重量减半
+        if ("float-stone".equalsIgnoreCase(heldItem(mon))) {
+            baseWeight /= 2;
+        }
+        return Math.max(1, baseWeight);
+    }
+
     private boolean targetHasType(Map<String, Object> target, int typeId) {
         for (Map<String, Object> type : engine.activeTypes(target)) {
             if (engine.toInt(type.get("type_id"), 0) == typeId) {
@@ -1103,6 +1279,28 @@ final class BattleDamageSupport {
                 if ("battery".equalsIgnoreCase(partnerAbility) &&
                         damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
                     modifier *= 1.3d;
+                }
+                // Power Spot: Boosts ally's attacks by 10%
+                if ("power-spot".equalsIgnoreCase(partnerAbility) || "power spot".equalsIgnoreCase(partnerAbility)) {
+                    modifier *= 1.1d;
+                }
+            }
+        }
+
+        // Plus/Minus: 队友有对应特性时特攻 x1.5
+        String aa = engine.abilityName(attacker);
+        if (("plus".equalsIgnoreCase(aa) || "minus".equalsIgnoreCase(aa))
+                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
+            boolean attackerIsPlus = "plus".equalsIgnoreCase(aa);
+            for (Integer slot : attackerActiveSlots) {
+                if (slot != null && slot >= 0 && slot < attackerTeam.size() && slot != attackerIndex) {
+                    Map<String, Object> partner = attackerTeam.get(slot);
+                    String pa = engine.abilityName(partner).toLowerCase();
+                    if ((attackerIsPlus && "minus".equalsIgnoreCase(pa))
+                            || (!attackerIsPlus && "plus".equalsIgnoreCase(pa))) {
+                        modifier *= 1.5d;
+                        break;
+                    }
                 }
             }
         }

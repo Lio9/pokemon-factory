@@ -43,6 +43,15 @@ final class BattleFieldEffectSupport {
         effects.put("gmaxCannonadeTurns", 0);
         effects.put("gmaxVineLashTurns", 0);
 
+        // Future Sight / Doom Desire delayed attack data (stored as nested Map when active)
+        effects.put("playerFutureSight", null);
+        effects.put("opponentFutureSight", null);
+
+        // Gravity 场地效果
+        effects.put("gravityTurns", 0);
+        // Magic Room 场地效果
+        effects.put("magicRoomTurns", 0);
+
         return effects;
     }
 
@@ -281,6 +290,8 @@ final class BattleFieldEffectSupport {
         decrementFieldEffect(state, fieldSnapshot, "opponentAuroraVeilTurns", "对手极光幕消失了", events);
         decrementFieldEffect(state, fieldSnapshot, "playerSafeguardTurns", "我方神秘守护消失了", events);
         decrementFieldEffect(state, fieldSnapshot, "opponentSafeguardTurns", "对手神秘守护消失了", events);
+        decrementFieldEffect(state, fieldSnapshot, "gravityTurns", "重力的效果消失了", events);
+        decrementFieldEffect(state, fieldSnapshot, "magicRoomTurns", "魔法空间的效果消失了", events);
     }
 
     void clearScreens(Map<String, Object> state, boolean playerSide) {
@@ -299,6 +310,20 @@ final class BattleFieldEffectSupport {
     }
     void setGMaxVineLash(Map<String, Object> state, boolean playerSide) {
         fieldEffects(state).put("gmaxVineLashTurns", 4);
+    }
+
+    int gravityTurns(Map<String, Object> state) {
+        return toInt(fieldEffects(state).get("gravityTurns"), 0);
+    }
+
+    int magicRoomTurns(Map<String, Object> state) {
+        return toInt(fieldEffects(state).get("magicRoomTurns"), 0);
+    }
+
+    void activateGravity(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+        fieldEffects(state).put("gravityTurns", 5);
+        actionLog.put("result", "gravity");
+        events.add(actor.get("name") + " 使用了重力！");
     }
 
     void clearSideHazards(Map<String, Object> state, boolean playerSide) {
@@ -409,5 +434,91 @@ final class BattleFieldEffectSupport {
         fieldEffects(state).put(playerSide ? "playerStickyWeb" : "opponentStickyWeb", true);
         actionLog.put("result", "sticky-web");
         events.add(actor.get("name") + " 布下了黏黏网！");
+    }
+
+    // === Future Sight / Doom Desire ===
+
+    /**
+     * 设置延迟攻击（Future Sight / Doom Desire）。
+     * data 包含：turns（倒计时）, damage（已计算的伤害）, moveName, moveNameEn, attackerName, typeId
+     */
+    void setFutureSight(Map<String, Object> state, boolean playerSide, Map<String, Object> data) {
+        fieldEffects(state).put(playerSide ? "playerFutureSight" : "opponentFutureSight", data);
+    }
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> getFutureSight(Map<String, Object> state, boolean playerSide) {
+        Object fs = fieldEffects(state).get(playerSide ? "playerFutureSight" : "opponentFutureSight");
+        return fs instanceof Map ? (Map<String, Object>) fs : null;
+    }
+
+    /**
+     * 处理延迟攻击倒计时和伤害触发。
+     * 在回合末调用，当倒计时归零时对目标方造成伤害。
+     * @return true 如果触发了伤害
+     */
+    @SuppressWarnings("unchecked")
+    boolean processFutureSightDamage(Map<String, Object> state, boolean playerSide, List<String> events) {
+        Map<String, Object> fs = getFutureSight(state, playerSide);
+        if (fs == null) return false;
+
+        int turns = toInt(fs.get("turns"), 0);
+        if (turns <= 0) return false;
+
+        turns--;
+        fs.put("turns", turns);
+
+        if (turns > 0) return false;
+
+        // 倒计时归零，对目标方活跃位置造成伤害
+        String targetSide = playerSide ? "opponent" : "player";
+        boolean hitAny = false;
+        for (Integer slot : activeSlotsFromState(state, targetSide)) {
+            if (slot == null || slot < 0) continue;
+            Map<String, Object> target = teamFromState(state, targetSide).get(slot);
+            if (target == null || toInt(target.get("currentHp"), 0) <= 0) continue;
+
+            int damage = toInt(fs.get("damage"), 0);
+            if (damage <= 0) {
+                int maxHp = toInt(castMap(target.get("stats")).get("hp"), 1);
+                damage = maxHp / 4; // fallback
+            }
+            int curHp = toInt(target.get("currentHp"), 0);
+            int remaining = Math.max(0, curHp - damage);
+            target.put("currentHp", remaining);
+            hitAny = true;
+            String moveName = String.valueOf(fs.getOrDefault("moveName", "预知未来"));
+            String attackerName = String.valueOf(fs.getOrDefault("attackerName", "???"));
+            events.add(attackerName + " 的 " + moveName + " 击中了 " + target.get("name") + "！");
+            if (remaining <= 0) {
+                target.put("status", "fainted");
+                events.add(target.get("name") + " 倒下了");
+            }
+        }
+
+        // 清除已触发的延迟攻击
+        fieldEffects(state).put(playerSide ? "playerFutureSight" : "opponentFutureSight", null);
+        return hitAny;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> castMap(Object obj) {
+        return obj instanceof Map ? (Map<String, Object>) obj : new java.util.LinkedHashMap<>();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Integer> activeSlotsFromState(Map<String, Object> state, String side) {
+        Object slots = state.get(side + "ActiveSlots");
+        if (slots instanceof List) return (List<Integer>) slots;
+        // fallback: build from team
+        List<Map<String, Object>> team = teamFromState(state, side);
+        if (team.isEmpty()) return List.of();
+        return List.of(0); // single slot default
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> teamFromState(Map<String, Object> state, String side) {
+        Object t = state.get(side + "Team");
+        return t instanceof List ? (List<Map<String, Object>>) t : List.of();
     }
 }

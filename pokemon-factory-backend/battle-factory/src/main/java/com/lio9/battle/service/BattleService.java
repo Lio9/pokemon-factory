@@ -101,8 +101,10 @@ public class BattleService {
                 : ((Number) opponentTeam.get("teamId")).intValue();
 
         Map<String, String> playerMoveMap = parsePlayerMoveMap(req.get("playerMoveMap"));
+        // 读取格式参数，默认为双打
+        String format = req.get("format") instanceof String f ? f : "vgc-doubles";
         Map<String, Object> state = battleEngine.createPreviewState(playerTeamJson, opponentTeamJson,
-                FACTORY_ROUND_LIMIT, seed);
+                FACTORY_ROUND_LIMIT, seed, format);
         enrichStateMetadata(state, "manual", username, playerRank, String.valueOf(opponentTeam.get("source")));
 
         Integer factoryRunId = req.get("factoryRunId") instanceof Number n ? n.intValue() : null;
@@ -193,7 +195,7 @@ public class BattleService {
                 return Map.of("status", "completed", "summary", existingState);
             }
             if ("preview".equals(existingState.get("status")) || "team-preview".equals(existingState.get("phase"))) {
-                return Map.of("error", "preview_required", "summary", existingState, "message", "请先确认 6 选 4 和 2 只首发。");
+                return Map.of("error", "preview_required", "summary", existingState, "message", "请先完成队伍预览和首发选择。");
             }
             if ("replacement".equals(existingState.get("phase"))) {
                 return Map.of("error", "replacement_required", "summary", existingState, "message", "请先为倒下的宝可梦选择替补。");

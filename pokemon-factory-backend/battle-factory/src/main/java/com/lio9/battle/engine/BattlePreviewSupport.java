@@ -33,6 +33,10 @@ final class BattlePreviewSupport {
     }
 
     Map<String, Object> autoSelect(List<Map<String, Object>> roster, long seed) {
+        return autoSelect(roster, seed, battleTeamSize, activeSlots);
+    }
+
+    Map<String, Object> autoSelect(List<Map<String, Object>> roster, long seed, int battleTeamSize, int activeSlots) {
         List<Integer> picked = new ArrayList<>();
         List<Map<String, Object>> sorted = new ArrayList<>();
         for (int index = 0; index < roster.size(); index++) {
@@ -76,6 +80,11 @@ final class BattlePreviewSupport {
 
     Map<String, Object> normalizeSelection(Map<String, Object> rawSelection, List<Map<String, Object>> roster,
             long seed) {
+        return normalizeSelection(rawSelection, roster, seed, battleTeamSize, activeSlots);
+    }
+
+    Map<String, Object> normalizeSelection(Map<String, Object> rawSelection, List<Map<String, Object>> roster,
+            long seed, int battleTeamSize, int activeSlots) {
         List<Integer> picked = uniqueIndexes(rawSelection == null ? null : rawSelection.get("pickedRosterIndexes"));
         List<Integer> leads = uniqueIndexes(rawSelection == null ? null : rawSelection.get("leadRosterIndexes"));
 
@@ -155,6 +164,10 @@ final class BattlePreviewSupport {
     }
 
     List<Integer> initialActiveSlots(List<Map<String, Object>> team) {
+        return initialActiveSlots(team, activeSlots);
+    }
+
+    List<Integer> initialActiveSlots(List<Map<String, Object>> team, int activeSlots) {
         List<Integer> slots = new ArrayList<>();
         for (int index = 0; index < team.size() && slots.size() < activeSlots; index++) {
             if (toInt(team.get(index).get("currentHp"), 0) > 0) {
@@ -276,6 +289,13 @@ final class BattlePreviewSupport {
             copied.put("ailment_name_en", copied.getOrDefault("ailment_name_en", ""));
             copied.put("category_name_en", copied.getOrDefault("category_name_en", ""));
             copied.put("effect_short", copied.getOrDefault("effect_short", ""));
+            // 初始化 PP：优先读取 pp 字段，若无则用 maxPp，默认 99（兼容无 PP 数据的测试招式）
+            int rawPp = toInt(copied.get("pp"), -1);
+            if (rawPp < 0) {
+                rawPp = toInt(copied.get("maxPp"), 99);
+            }
+            copied.put("maxPp", Math.max(0, rawPp));
+            copied.put("currentPp", Math.max(0, rawPp));
             copied.put("flags", normalizeFlags(copied.get("flags")));
             copied.put("metaStatChanges",
                     normalizeStatChanges(copied.get("metaStatChanges"), copied.get("stat_changes")));

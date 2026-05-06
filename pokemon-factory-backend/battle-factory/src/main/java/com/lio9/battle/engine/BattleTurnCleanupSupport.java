@@ -34,6 +34,8 @@ final class BattleTurnCleanupSupport {
         applyEndTurnStatusEffects(engine.team(state, false), events);
         applyEndTurnHealing(engine.team(state, true), events);
         applyEndTurnHealing(engine.team(state, false), events);
+        applyEndTurnItemEffects(engine.team(state, true), events);
+        applyEndTurnItemEffects(engine.team(state, false), events);
         applyEndTurnAbilityEffects(state, true, events, random);
         applyEndTurnAbilityEffects(state, false, events, random);
         applyEndTurnFieldEffects(state, events);
@@ -80,6 +82,10 @@ final class BattleTurnCleanupSupport {
         // G-Max 持续伤害
         applyGMaxPersistentDamage(state, true, events);
         applyGMaxPersistentDamage(state, false, events);
+
+        // Future Sight / Doom Desire 延迟攻击结算
+        fieldEffectSupport.processFutureSightDamage(state, true, events);
+        fieldEffectSupport.processFutureSightDamage(state, false, events);
     }
 
     private void applyWeatherDamage(Map<String, Object> state, boolean playerSide, String weatherType,
@@ -345,9 +351,22 @@ final class BattleTurnCleanupSupport {
             if (Boolean.TRUE.equals(mon.get("leechSeed"))) {
                 applyLeechSeedDamage(mon, events);
             }
-            // 束缚招式（火焰旋涡/潮旋/绑紧等）：每回合 1/8 最大 HP
+            // 束缚招式（火焰旋涡/潮旋/绑紧等）：每回合伤害，且递减持续回合
             if (Boolean.TRUE.equals(mon.get("bound"))) {
-                applyFractionalDamage(mon, 8, events, "因束缚招式损失了");
+                int divisor = engine.toInt(engine.volatileValue(mon, "boundDivisor", 8), 8);
+                applyFractionalDamage(mon, divisor, events, "因束缚招式损失了");
+                // 递减束缚回合数，归零时解除
+                int boundTurns = engine.toInt(engine.volatileValue(mon, "boundTurns", mon.get("boundTurns")), 0);
+                if (boundTurns > 0) {
+                    boundTurns--;
+                    engine.setVolatile(mon, "boundTurns", boundTurns);
+                    if (boundTurns <= 0) {
+                        engine.setVolatile(mon, "bound", false);
+                        if (engine.toInt(mon.get("currentHp"), 0) > 0) {
+                            events.add(mon.get("name") + " 摆脱了束缚");
+                        }
+                    }
+                }
             }
             // 灭亡之歌：倒计时归零时直接倒下
             int perishTurns = engine.toInt(mon.get("perishSongTurns"), 0);
@@ -424,6 +443,73 @@ final class BattleTurnCleanupSupport {
         events.add(mon.get("name") + msg + " " + heal + " 点 HP");
     }
 
+    /**
+     * 回合末道具效果：火焰宝珠/剧毒宝珠/黑色污泥
+     */
+    private void applyEndTurnItemEffects(List<Map<String, Object>> team, List<String> events) {
+        for (Map<String, Object> mon : team) {
+            if (engine.toInt(mon.get("currentHp"), 0) <= 0) continue;
+            String item = engine.heldItem(mon);
+            if (item.isBlank()) continue;
+
+            // 火焰宝珠：回合末有 100% 概率灼伤
+            if ("flame-orb".equalsIgnoreCase(item) || "flame orb".equalsIgnoreCase(item)) {
+                if (mon.get("condition") == null || String.valueOf(mon.get("condition")).isBlank()) {
+                    mon.put("condition", "burn");
+                    events.add(mon.get("name") + " 被火焰宝珠灼伤了");
+                }
+                continue;
+            }
+            // 剧毒宝珠：回合末有 100% 概率陷入剧毒
+            if ("toxic-orb".equalsIgnoreCase(item) || "toxic orb".equalsIgnoreCase(item)) {
+                if (mon.get("condition") == null || String.valueOf(mon.get("condition")).isBlank()) {
+                    mon.put("condition", "toxic");
+                    mon.put("toxicCounter", 1);
+                    events.add(mon.get("name") + " 被剧毒宝珠感染了剧毒");
+                }
+                continue;
+            }
+            // 黑色污泥：毒属性回复 1/16 HP，非毒属性损失 1/8 HP
+            if ("black-sludge".equalsIgnoreCase(item) || "black sludge".equalsIgnoreCase(item)) {
+                int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+                boolean isPoison = engine.targetHasType(mon, DamageCalculatorUtil.TYPE_POISON);
+                if (isPoison) {
+                    int heal = Math.max(1, maxHp / 16);
+                    int curHp = engine.toInt(mon.get("currentHp"), 0);
+                    mon.put("currentHp", Math.min(maxHp, curHp + heal));
+                    events.add(mon.get("name") + " 通过黑色污泥回复了 " + heal + " 点 HP");
+                } else {
+                    int dmg = Math.max(1, maxHp / 8);
+                    int curHp = engine.toInt(mon.get("currentHp"), 0);
+                    int remaining = Math.max(0, curHp - dmg);
+                    mon.put("currentHp", remaining);
+                    events.add(mon.get("name") + " 受到黑色污泥影响损失了 " + dmg + " 点 HP");
+                    if (remaining <= 0) {
+                        mon.put("status", "fainted");
+                        events.add(mon.get("name") + " 因黑色污泥倒下了");
+                    }
+                }
+                continue;
+            }
+            // 毒针：回合末损失 1/8 最大 HP
+            if ("sticky-barb".equalsIgnoreCase(item) || "sticky barb".equalsIgnoreCase(item)) {
+                int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+                int dmg = Math.max(1, maxHp / 8);
+                int curHp = engine.toInt(mon.get("currentHp"), 0);
+                int remaining = Math.max(0, curHp - dmg);
+                mon.put("currentHp", remaining);
+                events.add(mon.get("name") + " 受到毒针伤害，损失了 " + dmg + " 点 HP");
+                if (remaining <= 0) {
+                    mon.put("status", "fainted");
+                    events.add(mon.get("name") + " 因毒针倒下了");
+                }
+                continue;
+            }
+            // 状态回复树果：回合末检查并消费对应的树果治愈异常状态
+            conditionSupport.tryConsumeStatusBerry(mon, events);
+        }
+    }
+
     private void applyEndTurnAbilityEffects(Map<String, Object> state, boolean playerSide, List<String> events,
                                             Random random) {
         for (Integer slot : engine.activeSlots(state, playerSide)) {
@@ -440,6 +526,61 @@ final class BattleTurnCleanupSupport {
             }
             if ("moody".equalsIgnoreCase(ability)) {
                 applyModyBoost(mon, events, random);
+            }
+
+            // 雨天/雪天回合末回复
+            Map<String, Object> fieldEffects = engine.castMap(state.get("fieldEffects"));
+            int rainTurns = engine.toInt(fieldEffects.get("rainTurns"), 0);
+            int snowTurns = engine.toInt(fieldEffects.get("snowTurns"), 0);
+            if (("rain-dish".equalsIgnoreCase(ability) || "rain dish".equalsIgnoreCase(ability))
+                    && rainTurns > 0 && engine.healBlockTurns(mon) <= 0) {
+                applyFractionalHeal(mon, 16, events, "的雨盘回复了");
+            }
+            if (("ice-body".equalsIgnoreCase(ability) || "ice body".equalsIgnoreCase(ability))
+                    && snowTurns > 0 && engine.healBlockTurns(mon) <= 0) {
+                applyFractionalHeal(mon, 16, events, "的冰鳞粉回复了");
+            }
+            // 湿润身躯：雨天解除异常状态
+            if ("hydration".equalsIgnoreCase(ability) && rainTurns > 0) {
+                if (mon.get("condition") != null && !String.valueOf(mon.get("condition")).isBlank()) {
+                    mon.put("condition", null);
+                    events.add(mon.get("name") + " 的湿润身躯特性回复了异常状态");
+                }
+            }
+            // 蜕皮：30% 概率解除异常状态
+            if ("shed-skin".equalsIgnoreCase(ability) || "shed skin".equalsIgnoreCase(ability)) {
+                if (mon.get("condition") != null && !String.valueOf(mon.get("condition")).isBlank()
+                        && random.nextInt(100) < 30) {
+                    mon.put("condition", null);
+                    events.add(mon.get("name") + " 的蜕皮特性回复了异常状态");
+                }
+            }
+            // 治愈之心：30% 概率治愈队友异常状态
+            if ("healer".equalsIgnoreCase(ability) && random.nextInt(100) < 30) {
+                for (Integer allySlot : engine.activeSlots(state, playerSide)) {
+                    if (allySlot == null || allySlot == slot) continue;
+                    Map<String, Object> ally = engine.team(state, playerSide).get(allySlot);
+                    if (engine.toInt(ally.get("currentHp"), 0) > 0
+                            && ally.get("condition") != null && !String.valueOf(ally.get("condition")).isBlank()) {
+                        ally.put("condition", null);
+                        events.add(mon.get("name") + " 的治愈之心特性回复了 " + ally.get("name") + " 的异常状态");
+                        break;
+                    }
+                }
+            }
+            // 收获：50% 概率回收树果（晴天 100%）
+            if ("harvest".equalsIgnoreCase(ability)) {
+                int sunTurns = engine.toInt(fieldEffects.get("sunTurns"), 0);
+                boolean shouldHarvest = sunTurns > 0 || random.nextBoolean();
+                if (shouldHarvest) {
+                    // 检查 mon 是否消耗了树果
+                    String consumedItem = String.valueOf(mon.getOrDefault("consumedItem", ""));
+                    if (!consumedItem.isBlank() && consumedItem.endsWith("-berry")) {
+                        mon.put("heldItem", consumedItem);
+                        mon.put("consumedItem", null);
+                        events.add(mon.get("name") + " 的收获特性回收了 " + consumedItem);
+                    }
+                }
             }
         }
     }

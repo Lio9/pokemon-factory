@@ -84,7 +84,7 @@
 					<artifactId>spring-boot-maven-plugin</artifactId>
 					<version>4.0.5</version>
 					<configuration>
-						<mainClass>com.lio9.pokedex.PokedexApplication</mainClass>
+						<mainClass>com.lio9.pokedex.PokeDexApplication</mainClass>
 					</configuration>
 					<executions>
 						<execution>

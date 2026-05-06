@@ -89,7 +89,8 @@ final class BattleFlowSupport {
 
     int replacementNeededCount(Map<String, Object> state, boolean player) {
         List<Map<String, Object>> sideTeam = engine.team(state, player);
-        int targetActiveCount = Math.min(activeSlotsLimit, aliveCount(sideTeam));
+        int limit = engine.toInt(state.get("activeSlotsLimit"), activeSlotsLimit);
+        int targetActiveCount = Math.min(limit, aliveCount(sideTeam));
         return Math.max(0, targetActiveCount - engine.activeSlots(state, player).size());
     }
 
@@ -127,7 +128,8 @@ final class BattleFlowSupport {
 
     private void autoFillSideActiveSlotsWithEvents(Map<String, Object> state, boolean player, List<String> events) {
         List<Integer> previousSlots = new ArrayList<>(engine.activeSlots(state, player));
-        List<Integer> refreshed = fillSideActiveSlots(engine.team(state, player), previousSlots);
+        int limit = engine.toInt(state.get("activeSlotsLimit"), activeSlotsLimit);
+        List<Integer> refreshed = fillSideActiveSlots(engine.team(state, player), previousSlots, limit);
         state.put(player ? "playerActiveSlots" : "opponentActiveSlots", refreshed);
         for (Integer slot : refreshed) {
             if (slot != null && !previousSlots.contains(slot) && slot >= 0 && slot < engine.team(state, player).size()) {
@@ -151,7 +153,7 @@ final class BattleFlowSupport {
         return refreshed;
     }
 
-    private List<Integer> fillSideActiveSlots(List<Map<String, Object>> team, List<Integer> currentSlots) {
+    private List<Integer> fillSideActiveSlots(List<Map<String, Object>> team, List<Integer> currentSlots, int activeSlotsLimit) {
         List<Integer> refreshed = pruneSideActiveSlots(team, currentSlots);
         for (int index = 0; index < team.size() && refreshed.size() < activeSlotsLimit; index++) {
             if (engine.isAvailableMon(team, index) && !refreshed.contains(index)) {

@@ -29,6 +29,19 @@ final class BattleSetupSupport {
     }
 
     Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
+        return createPreviewState(playerTeamJson, opponentTeamJson, maxRounds, seed, "vgc-doubles");
+    }
+
+    Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed,
+            String format) {
+        int activeSlotsLimit = switch (format.toLowerCase()) {
+            case "gen9singles", "vgc-singles", "vgc63" -> 1;
+            default -> 2;
+        };
+        int battleTeamSizeVal = switch (format.toLowerCase()) {
+            case "gen9singles", "vgc-singles", "vgc63" -> 3;
+            default -> 4;
+        };
         Map<String, Object> state = new LinkedHashMap<>();
         List<Map<String, Object>> playerRoster = previewSupport
                 .normalizeRoster(previewSupport.parseTeam(playerTeamJson));
@@ -37,11 +50,12 @@ final class BattleSetupSupport {
 
         state.put("status", "preview");
         state.put("phase", "team-preview");
-        state.put("format", "vgc-doubles");
+        state.put("format", format);
         state.put("seed", seed);
         state.put("level", level);
         state.put("teamSize", 6);
-        state.put("battleTeamSize", battleTeamSize);
+        state.put("battleTeamSize", battleTeamSizeVal);
+        state.put("activeSlotsLimit", activeSlotsLimit);
         state.put("currentRound", 0);
         state.put("roundLimit", Math.max(1, maxRounds));
         state.put("roundsCount", 0);
@@ -71,11 +85,18 @@ final class BattleSetupSupport {
     }
 
     Map<String, Object> createBattleState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
-        Map<String, Object> preview = createPreviewState(playerTeamJson, opponentTeamJson, maxRounds, seed);
+        return createBattleState(playerTeamJson, opponentTeamJson, maxRounds, seed, "vgc-doubles");
+    }
+
+    Map<String, Object> createBattleState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed,
+            String format) {
+        Map<String, Object> preview = createPreviewState(playerTeamJson, opponentTeamJson, maxRounds, seed, format);
+        int activeSlotsLimit = toInt(preview.get("activeSlotsLimit"), 2);
+        int battleTeamSizeVal = toInt(preview.get("battleTeamSize"), 4);
         return applyTeamPreviewSelection(
                 preview,
-                previewSupport.autoSelect(stateSupport.roster(preview, true), seed),
-                previewSupport.autoSelect(stateSupport.roster(preview, false), seed + 31L));
+                previewSupport.autoSelect(stateSupport.roster(preview, true), seed, battleTeamSizeVal, activeSlotsLimit),
+                previewSupport.autoSelect(stateSupport.roster(preview, false), seed + 31L, battleTeamSizeVal, activeSlotsLimit));
     }
 
     Map<String, Object> applyTeamPreviewSelection(Map<String, Object> rawState,
@@ -85,18 +106,20 @@ final class BattleSetupSupport {
         List<Map<String, Object>> playerRoster = stateSupport.roster(state, true);
         List<Map<String, Object>> opponentRoster = stateSupport.roster(state, false);
         long seed = toLong(state.get("seed"), System.currentTimeMillis());
+        int activeSlotsLimit = toInt(state.get("activeSlotsLimit"), 2);
+        int battleTeamSizeVal = toInt(state.get("battleTeamSize"), 4);
 
         Map<String, Object> playerSelection = previewSupport.normalizeSelection(playerSelectionInput, playerRoster,
-                seed);
+                seed, battleTeamSizeVal, activeSlotsLimit);
         Map<String, Object> opponentSelection = previewSupport.normalizeSelection(opponentSelectionInput,
-                opponentRoster, seed + 31L);
+                opponentRoster, seed + 31L, battleTeamSizeVal, activeSlotsLimit);
 
         state.put("playerSelection", playerSelection);
         state.put("opponentSelection", opponentSelection);
         state.put("playerTeam", previewSupport.buildBattleTeam(playerRoster, playerSelection));
         state.put("opponentTeam", previewSupport.buildBattleTeam(opponentRoster, opponentSelection));
-        state.put("playerActiveSlots", previewSupport.initialActiveSlots(stateSupport.team(state, true)));
-        state.put("opponentActiveSlots", previewSupport.initialActiveSlots(stateSupport.team(state, false)));
+        state.put("playerActiveSlots", previewSupport.initialActiveSlots(stateSupport.team(state, true), activeSlotsLimit));
+        state.put("opponentActiveSlots", previewSupport.initialActiveSlots(stateSupport.team(state, false), activeSlotsLimit));
         state.put("status", "running");
         state.put("phase", "battle");
         state.put("currentRound", 0);
@@ -206,7 +229,8 @@ final class BattleSetupSupport {
                         playerRoster,
                         selection.isEmpty() ? previewSupport.autoSelect(playerRoster, toLong(state.get("seed"), 0L))
                                 : selection));
-        state.put("playerActiveSlots", previewSupport.initialActiveSlots(stateSupport.team(state, true)));
+        state.put("playerActiveSlots", previewSupport.initialActiveSlots(stateSupport.team(state, true),
+                toInt(state.get("activeSlotsLimit"), 2)));
         state.put("exchangeUsed", true);
         state.put("exchangeAvailable", false);
         flowSupport.refreshDerivedState(state);

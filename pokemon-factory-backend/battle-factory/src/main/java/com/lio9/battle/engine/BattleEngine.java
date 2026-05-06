@@ -27,6 +27,19 @@ public class BattleEngine {
     private static final int BATTLE_TEAM_SIZE = 4;
     private static final int ACTIVE_SLOTS = 2;
 
+    // 格式配置：根据 format 字符串返回对应的活跃槽位数和队伍大小
+    static int activeSlotsForFormat(String format) {
+        if ("gen9singles".equalsIgnoreCase(format) || "vgc-singles".equalsIgnoreCase(format) || "vgc63".equalsIgnoreCase(format))
+            return 1;
+        return ACTIVE_SLOTS;
+    }
+
+    static int battleTeamSizeForFormat(String format) {
+        if ("gen9singles".equalsIgnoreCase(format) || "vgc-singles".equalsIgnoreCase(format) || "vgc63".equalsIgnoreCase(format))
+            return 3;
+        return BATTLE_TEAM_SIZE;
+    }
+
     private final SkillService skillService;
     private final BattleStateSupport stateSupport;
     private final BattlePreviewSupport previewSupport;
@@ -75,7 +88,17 @@ public class BattleEngine {
      */
     public Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds,
             long seed) {
-        return setupSupport.createPreviewState(playerTeamJson, opponentTeamJson, maxRounds, seed);
+        return createPreviewState(playerTeamJson, opponentTeamJson, maxRounds, seed, "vgc-doubles");
+    }
+
+    /**
+     * 创建指定格式的"队伍预览阶段"初始状态。
+     *
+     * @param format 格式名："vgc-doubles"(默认)、"vgc63"/"vgc-singles"/"gen9singles"
+     */
+    public Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds,
+            long seed, String format) {
+        return setupSupport.createPreviewState(playerTeamJson, opponentTeamJson, maxRounds, seed, format);
     }
 
     /**
@@ -93,7 +116,17 @@ public class BattleEngine {
      */
     public Map<String, Object> createBattleState(String playerTeamJson, String opponentTeamJson, int maxRounds,
             long seed) {
-        return setupSupport.createBattleState(playerTeamJson, opponentTeamJson, maxRounds, seed);
+        return createBattleState(playerTeamJson, opponentTeamJson, maxRounds, seed, "vgc-doubles");
+    }
+
+    /**
+     * 创建指定格式的可进入战斗的状态。
+     *
+     * @param format 格式名
+     */
+    public Map<String, Object> createBattleState(String playerTeamJson, String opponentTeamJson, int maxRounds,
+            long seed, String format) {
+        return setupSupport.createBattleState(playerTeamJson, opponentTeamJson, maxRounds, seed, format);
     }
 
     /**
@@ -125,6 +158,9 @@ public class BattleEngine {
         decrementCooldowns(team(state, true));
         decrementCooldowns(team(state, false));
         flowSupport.pruneActiveSlots(state);
+
+        // 清除 Counter / Mirror Coat 等反伤招式所需的本回合受击记录
+        clearRoundDamageTracking(state);
 
         int round = toInt(state.get("currentRound"), 0) + 1;
         state.put("currentRound", round);
@@ -289,6 +325,11 @@ public class BattleEngine {
     }
 
     void applyCooldown(Map<String, Object> mon, Map<String, Object> move) {
+        // 使用招式后扣除 1 PP（Struggle 无 PP 字段，currentPp=0 自动跳过）
+        int currentPp = toInt(move.get("currentPp"), 0);
+        if (currentPp > 0) {
+            move.put("currentPp", currentPp - 1);
+        }
         if (MoveRegistry.isProtectionMove(move)) {
             return;
         }
@@ -593,6 +634,10 @@ public class BattleEngine {
         return MoveRegistry.isTrappingMove(move);
     }
 
+    boolean isBindingMove(Map<String, Object> move) {
+        return MoveRegistry.isBindingMove(move);
+    }
+
     // Delegating to MoveRegistry for Encore (used by other components)
     boolean isEncore(Map<String, Object> move) {
         return MoveRegistry.isEncore(move);
@@ -686,6 +731,12 @@ public class BattleEngine {
             return false;
         }
         if (isFakeOut(move) && toInt(mon.get("entryRound"), 1) != currentRound) {
+            return false;
+        }
+        // PP 检查：仅当招式显式携带 currentPp（即已被 normalizeMoves 标准化过）时才做耗尽判断，
+        // 跳过未经标准化的测试/遗留数据（它们的 currentPp 为 null，toInt 默认为 0）
+        if (move.containsKey("currentPp") && toInt(move.get("currentPp"), 0) <= 0
+                && !"struggle".equalsIgnoreCase(String.valueOf(move.get("name_en")))) {
             return false;
         }
         return true;
@@ -790,6 +841,29 @@ public class BattleEngine {
         return stateSupport.activeSlots(state, player);
     }
 
+    /** 清除本回合受击记录，供 Counter / Mirror Coat / Metal Burst 使用 */
+    private void clearRoundDamageTracking(Map<String, Object> state) {
+        clearRoundDamageTrackingForTeam(state, true);
+        clearRoundDamageTrackingForTeam(state, false);
+    }
+
+    private void clearRoundDamageTrackingForTeam(Map<String, Object> state, boolean playerSide) {
+        for (Map<String, Object> mon : team(state, playerSide)) {
+            setVolatile(mon, "lastTakenPhysDmg", null);
+            setVolatile(mon, "lastTakenSpecDmg", null);
+        }
+    }
+
+    /** 从 state 中读取当前格式的活跃槽位数，默认 2（双打） */
+    int activeSlotsCount(Map<String, Object> state) {
+        return toInt(state.get("activeSlotsLimit"), ACTIVE_SLOTS);
+    }
+
+    /** 从 state 中读取当前格式的战斗队伍大小（选出数），默认 4 */
+    int battleTeamSizeValue(Map<String, Object> state) {
+        return toInt(state.get("battleTeamSize"), BATTLE_TEAM_SIZE);
+    }
+
     List<Map<String, Object>> moves(Map<String, Object> mon) {
         return stateSupport.moves(mon);
     }
@@ -891,7 +965,7 @@ public class BattleEngine {
     }
 
     void applyDefenderItemEffects(Map<String, Object> target, Map<String, Object> move, int actualDamage,
-            Map<String, Object> actionLog, List<String> events) {
+            Map<String, Object> actionLog, List<String> events, Random random) {
         if (toInt(target.get("currentHp"), 0) <= 0)
             return;
 
@@ -929,7 +1003,7 @@ public class BattleEngine {
             events.add(target.get("name") + " 的弱点保险发动了，攻击和特攻大幅提升");
         }
 
-        // Berries (Sitrus, Type-resist)
+        // Berries (Sitrus, Oran, Pinch, Type-resist)
         if (!itemConsumed(target)) {
             int maxHp = toInt(castMap(target.get("stats")).get("hp"), 1);
             int currentHp = toInt(target.get("currentHp"), 0);
@@ -948,11 +1022,53 @@ public class BattleEngine {
                 events.add(target.get("name") + " 食用了文柚果，回复了 " + heal + " 点 HP");
             }
 
+            // Oran Berry: Heal 10 HP when HP drops to 50% or below
+            if ("oran-berry".equals(item) && currentHp * 2 <= maxHp && !itemConsumed(target)) {
+                int heal = Math.min(10, maxHp - currentHp);
+                target.put("currentHp", currentHp + heal);
+                consumeItem(target);
+                events.add(target.get("name") + " 食用了橙橙果，回复了 " + heal + " 点 HP");
+            }
+
+            // Pinch Berries: Raise a stat by +1 when HP drops to 25% or below
+            if (currentHp * 4 <= maxHp && !itemConsumed(target)) {
+                String stageKey = null;
+                String berryName = null;
+                if ("liechi-berry".equals(item)) {
+                    stageKey = "attack"; berryName = "枝荔果";
+                } else if ("ganlon-berry".equals(item)) {
+                    stageKey = "defense"; berryName = "龙睛果";
+                } else if ("salac-berry".equals(item)) {
+                    stageKey = "speed"; berryName = "沙鳞果";
+                } else if ("petaya-berry".equals(item)) {
+                    stageKey = "specialAttack"; berryName = "龙火果";
+                } else if ("apicot-berry".equals(item)) {
+                    stageKey = "specialDefense"; berryName = "杏仔果";
+                }
+                if (stageKey != null) {
+                    int currentStage = statStage(target, stageKey);
+                    if (currentStage < 6) {
+                        statStages(target).put(stageKey, currentStage + 1);
+                        consumeItem(target);
+                        actionLog.put("pinchBerry", stageKey);
+                        events.add(target.get("name") + " 的 " + berryName + "发动了，" + stageKey + "提升 1 级");
+                    }
+                }
+                // Starf Berry: Random stat sharply +2 when HP < 25%
+                if ("starf-berry".equals(item)) {
+                    String[] statChoices = {"attack", "defense", "specialAttack", "specialDefense", "speed"};
+                    String chosen = statChoices[random.nextInt(statChoices.length)];
+                    int currentStage = statStage(target, chosen);
+                    statStages(target).put(chosen, Math.min(6, currentStage + 2));
+                    consumeItem(target);
+                    actionLog.put("starfBerry", chosen);
+                    events.add(target.get("name") + " 的星桃果发动了，" + chosen + "大幅提升 2 级");
+                }
+            }
+
             // Resist Berries (e.g., Babiri Berry for Steel)
             double resistFactor = getBerryResistFactor(item, toInt(move.get("type_id"), 0));
-            if (resistFactor < 1.0 && actualDamage > 0) {
-                // Note: In a real engine, we'd need to retroactively adjust the damage taken.
-                // For now, we just log the trigger and consume the berry.
+            if (resistFactor < 1.0 && actualDamage > 0 && !itemConsumed(target)) {
                 consumeItem(target);
                 actionLog.put("berryResist", item);
                 events.add(target.get("name") + " 的 " + item + " 削弱了受到的伤害");
@@ -961,10 +1077,8 @@ public class BattleEngine {
     }
 
     private double getBerryResistFactor(String item, int moveTypeId) {
-        // Mapping of berries to their corresponding types
-        if (moveTypeId == DamageCalculatorUtil.TYPE_STEEL && "babiri-berry".equals(item))
-            return 0.5;
-        if (moveTypeId == DamageCalculatorUtil.TYPE_FIRE && "charti-berry".equals(item))
+        // 抗性树果：受到对应属性招式伤害时减半（17 种属性，Normal 无弱点树果）
+        if (moveTypeId == DamageCalculatorUtil.TYPE_FIRE && "occa-berry".equals(item))
             return 0.5;
         if (moveTypeId == DamageCalculatorUtil.TYPE_WATER && "passho-berry".equals(item))
             return 0.5;
@@ -978,21 +1092,23 @@ public class BattleEngine {
             return 0.5;
         if (moveTypeId == DamageCalculatorUtil.TYPE_POISON && "kebia-berry".equals(item))
             return 0.5;
-        if (moveTypeId == DamageCalculatorUtil.TYPE_GROUND && "tanga-berry".equals(item))
+        if (moveTypeId == DamageCalculatorUtil.TYPE_GROUND && "shuca-berry".equals(item))
             return 0.5;
-        if (moveTypeId == DamageCalculatorUtil.TYPE_FLYING && "colbur-berry".equals(item))
-            return 0.5; // Actually Colbur is Dark, but placeholder
+        if (moveTypeId == DamageCalculatorUtil.TYPE_FLYING && "coba-berry".equals(item))
+            return 0.5;
         if (moveTypeId == DamageCalculatorUtil.TYPE_PSYCHIC && "payapa-berry".equals(item))
             return 0.5;
-        if (moveTypeId == DamageCalculatorUtil.TYPE_BUG && "tangia-berry".equals(item))
+        if (moveTypeId == DamageCalculatorUtil.TYPE_BUG && "tanga-berry".equals(item))
             return 0.5;
-        if (moveTypeId == DamageCalculatorUtil.TYPE_ROCK && "haban-berry".equals(item))
+        if (moveTypeId == DamageCalculatorUtil.TYPE_ROCK && "charti-berry".equals(item))
             return 0.5;
         if (moveTypeId == DamageCalculatorUtil.TYPE_GHOST && "kasib-berry".equals(item))
             return 0.5;
         if (moveTypeId == DamageCalculatorUtil.TYPE_DRAGON && "haban-berry".equals(item))
-            return 0.5; // Haban is Dragon
+            return 0.5;
         if (moveTypeId == DamageCalculatorUtil.TYPE_DARK && "colbur-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_STEEL && "babiri-berry".equals(item))
             return 0.5;
         if (moveTypeId == DamageCalculatorUtil.TYPE_FAIRY && "roseli-berry".equals(item))
             return 0.5;
@@ -1001,6 +1117,21 @@ public class BattleEngine {
 
     void applyAttackerItemEffects(Map<String, Object> attacker, int damage, Map<String, Object> actionLog,
             List<String> events) {
+        // 空贝铃铛：回复造成伤害的 1/8
+        String item = heldItem(attacker);
+        if (damage > 0 && toInt(attacker.get("currentHp"), 0) > 0
+                && ("shell-bell".equalsIgnoreCase(item) || "shell bell".equalsIgnoreCase(item))) {
+            int maxHp = toInt(castMap(attacker.get("stats")).get("hp"), 1);
+            int currentHp = toInt(attacker.get("currentHp"), 0);
+            if (currentHp < maxHp) {
+                int heal = Math.max(1, damage / 8);
+                int actualHeal = Math.min(heal, maxHp - currentHp);
+                attacker.put("currentHp", currentHp + actualHeal);
+                actionLog.put("shellBellHeal", actualHeal);
+                events.add(attacker.get("name") + " 通过空贝铃铛回复了 " + actualHeal + " 点 HP");
+            }
+        }
+
         if (!"life-orb".equals(heldItem(attacker)) || damage <= 0 || toInt(attacker.get("currentHp"), 0) <= 0) {
             return;
         }
@@ -1029,7 +1160,18 @@ public class BattleEngine {
     }
 
     void rememberLastMove(Map<String, Object> mon, Map<String, Object> move) {
-        mon.put("lastMoveUsed", move.get("name_en"));
+        String lastMove = String.valueOf(mon.get("lastMoveUsed"));
+        String currentMove = String.valueOf(move.get("name_en"));
+        mon.put("lastMoveUsed", currentMove);
+        // 节拍器追踪连续使用同一招式的次数
+        if ("metronome".equals(heldItem(mon))) {
+            if (currentMove.equalsIgnoreCase(lastMove) && !lastMove.isBlank()) {
+                int consecutive = toInt(mon.get("metronomeCount"), 1);
+                mon.put("metronomeCount", Math.min(6, consecutive + 1));
+            } else {
+                mon.put("metronomeCount", 0);
+            }
+        }
     }
 
     Map<String, Object> lockedChoiceMove(Map<String, Object> mon, int currentRound) {
@@ -1163,7 +1305,9 @@ public class BattleEngine {
 			mon.put("disguiseActive", Boolean.TRUE.equals(value));
 		} else if ("bound".equals(key)) {
 			mon.put("bound", Boolean.TRUE.equals(value));
-        }
+		} else if ("boundTurns".equals(key)) {
+			mon.put("boundTurns", toInt(value, 0));
+		}
     }
 
     void clearVolatile(Map<String, Object> mon, String key) {
@@ -1541,6 +1685,19 @@ public class BattleEngine {
 
     void clearSideHazards(Map<String, Object> state, boolean playerSide) {
         fieldEffectSupport.clearSideHazards(state, playerSide);
+    }
+
+    int gravityTurns(Map<String, Object> state) {
+        return fieldEffectSupport.gravityTurns(state);
+    }
+
+    void activateGravity(Map<String, Object> state, Map<String, Object> actor,
+                         Map<String, Object> actionLog, List<String> events) {
+        fieldEffectSupport.activateGravity(state, actor, actionLog, events);
+    }
+
+    void setFutureSight(Map<String, Object> state, boolean playerSide, Map<String, Object> data) {
+        fieldEffectSupport.setFutureSight(state, playerSide, data);
     }
 
     void activateScreen(Map<String, Object> state, String screen, boolean playerSide, Map<String, Object> actor,

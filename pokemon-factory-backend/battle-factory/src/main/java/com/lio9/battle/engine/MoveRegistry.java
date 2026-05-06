@@ -94,7 +94,15 @@ public final class MoveRegistry {
         "anchor shot", "anchor-shot", "spirit shackle", "spirit-shackle",
         "sand tomb", "sand-tomb", "whirlpool", "fire spin", "fire-spin",
         "infestation", "magma storm", "magma-storm", "snap trap", "snap-trap",
-        "thousand waves", "thousand-waves", "bind", "wrap"
+        "thousand waves", "thousand-waves", "bind", "wrap",
+        "fairy lock", "fairy-lock"
+    );
+
+    // === 束缚持续伤害类招式（每回合造成 1/8 最大 HP 伤害）===
+    private static final Set<String> BINDING_MOVES = Set.of(
+        "bind", "wrap", "fire spin", "fire-spin", "whirlpool",
+        "sand tomb", "sand-tomb", "clamp", "infestation",
+        "magma storm", "magma-storm", "snap trap", "snap-trap"
     );
 
     // === 先制攻击类招式 ===
@@ -159,7 +167,16 @@ public final class MoveRegistry {
         "sky attack", "sky-attack", "meteor beam", "meteor-beam",
         "skull bash", "skull-bash", "razor wind", "razor-wind",
         "freeze shock", "freeze-shock", "ice burn", "ice-burn",
-        "geomancy"
+        "geomancy",
+        // 半无敌二回合招式
+        "fly", "dig", "dive", "bounce",
+        "phantom force", "phantom-force", "shadow force", "shadow-force"
+    );
+
+    /** 蓄力期间进入半无敌状态的招式 */
+    private static final Set<String> SEMI_INVULNERABLE_CHARGE_MOVES = Set.of(
+        "fly", "dig", "dive", "bounce",
+        "phantom force", "phantom-force", "shadow force", "shadow-force"
     );
 
     // === 硬直类招式 ===
@@ -174,8 +191,35 @@ public final class MoveRegistry {
     // === 太晶爆发 ===
     private static final Set<String> TERA_BLAST_MOVES = Set.of("tera blast", "tera-blast");
 
+    // === 延迟攻击类招式 ===
+    private static final Set<String> FUTURE_SIGHT_MOVES = Set.of("future sight", "future-sight");
+    private static final Set<String> DOOM_DESIRE_MOVES = Set.of("doom desire", "doom-desire");
+
+    // === 接力类招式 ===
+    private static final Set<String> BATON_PASS_MOVES = Set.of("baton pass", "baton-pass");
+
     // === 击落类招式 ===
     private static final Set<String> KNOCK_OFF_MOVES = Set.of("knock off", "knock-off");
+
+    // === 使用防御属性计算伤害的招式 ===
+    private static final Set<String> BODY_PRESS_MOVES = Set.of("body press", "body-press");
+
+    // === 使用目标攻击属性的招式 ===
+    private static final Set<String> FOUL_PLAY_MOVES = Set.of("foul play", "foul-play");
+
+    // === 基于速度比计算威力的招式 ===
+    private static final Set<String> ELECTRO_BALL_MOVES = Set.of("electro ball", "electro-ball");
+    private static final Set<String> GYRO_BALL_MOVES = Set.of("gyro ball", "gyro-ball");
+
+    // === 反伤类招式 ===
+    private static final Set<String> COUNTER_MOVES = Set.of("counter");
+    private static final Set<String> MIRROR_COAT_MOVES = Set.of("mirror coat", "mirror-coat");
+    private static final Set<String> METAL_BURST_MOVES = Set.of("metal burst", "metal-burst");
+
+    // === 场地改变类招式 ===
+    private static final Set<String> GRAVITY_MOVES = Set.of("gravity");
+    private static final Set<String> MAGIC_ROOM_MOVES = Set.of("magic room", "magic-room");
+    private static final Set<String> WONDER_ROOM_MOVES = Set.of("wonder room", "wonder-room");
 
     // === 命中规则特殊招式 ===
     private static final Set<String> THUNDER_MOVES = Set.of("thunder");
@@ -399,6 +443,10 @@ public final class MoveRegistry {
         return matchesAny(move, TRAPPING_MOVES);
     }
 
+    public static boolean isBindingMove(Map<String, Object> move) {
+        return matchesAny(move, BINDING_MOVES);
+    }
+
     /**
      * 检查是否为先制攻击类招式
      */
@@ -572,6 +620,35 @@ public final class MoveRegistry {
         return matchesAny(move, CHARGE_MOVES);
     }
 
+    /** 判断是否为蓄力期间半无敌的招式（飞空/挖洞/潜水/弹跳/暗影潜袭等） */
+    public static boolean isSemiInvulnerableChargeMove(Map<String, Object> move) {
+        return matchesAny(move, SEMI_INVULNERABLE_CHARGE_MOVES);
+    }
+
+    /** 判断招式能否命中半无敌状态的目标 */
+    public static boolean canHitSemiInvulnerable(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
+        String name = String.valueOf(move.get("name")).toLowerCase();
+        // Gust/Twister/Thunder/Hurricane/Smack Down/Thousand Arrows/Sky Uppercut → 命中飞行/弹跳
+        if (Set.of("gust", "twister", "thunder", "hurricane", "smack-down", "smack down",
+                "thousand-arrows", "thousand arrows", "sky-uppercut", "sky uppercut")
+                .contains(nameEn) || Set.of("gust", "twister", "thunder", "hurricane",
+                "smack-down", "smack down", "thousand arrows", "sky uppercut").contains(name)) {
+            return true;
+        }
+        // Earthquake/Magnitude/Fissure → 命中挖洞
+        if (Set.of("earthquake", "magnitude", "fissure")
+                .contains(nameEn) || Set.of("earthquake", "magnitude", "fissure").contains(name)) {
+            return true;
+        }
+        // Surf/Whirlpool → 命中潜水
+        if (Set.of("surf", "whirlpool")
+                .contains(nameEn) || Set.of("surf", "whirlpool").contains(name)) {
+            return true;
+        }
+        return false;
+    }
+
     /**
      * 检查是否为硬直类招式
      */
@@ -592,6 +669,53 @@ public final class MoveRegistry {
     public static boolean isKnockOff(Map<String, Object> move) {
         return matchesAny(move, KNOCK_OFF_MOVES);
     }
+
+    public static boolean isBodyPress(Map<String, Object> move) {
+        return matchesAny(move, BODY_PRESS_MOVES);
+    }
+
+    public static boolean isFoulPlay(Map<String, Object> move) {
+        return matchesAny(move, FOUL_PLAY_MOVES);
+    }
+
+    public static boolean isElectroBall(Map<String, Object> move) {
+        return matchesAny(move, ELECTRO_BALL_MOVES);
+    }
+
+    public static boolean isGyroBall(Map<String, Object> move) {
+        return matchesAny(move, GYRO_BALL_MOVES);
+    }
+
+    public static boolean isSpeedBasedPowerMove(Map<String, Object> move) {
+        return isElectroBall(move) || isGyroBall(move);
+    }
+
+    public static boolean isFutureSight(Map<String, Object> move) {
+        return matchesAny(move, FUTURE_SIGHT_MOVES);
+    }
+
+    public static boolean isDoomDesire(Map<String, Object> move) {
+        return matchesAny(move, DOOM_DESIRE_MOVES);
+    }
+
+    public static boolean isDelayedAttackMove(Map<String, Object> move) {
+        return isFutureSight(move) || isDoomDesire(move);
+    }
+
+    public static boolean isBatonPass(Map<String, Object> move) {
+        return matchesAny(move, BATON_PASS_MOVES);
+    }
+
+    public static boolean isCounter(Map<String, Object> move) { return matchesAny(move, COUNTER_MOVES); }
+    public static boolean isMirrorCoat(Map<String, Object> move) { return matchesAny(move, MIRROR_COAT_MOVES); }
+    public static boolean isMetalBurst(Map<String, Object> move) { return matchesAny(move, METAL_BURST_MOVES); }
+    public static boolean isReverseDamageMove(Map<String, Object> move) {
+        return isCounter(move) || isMirrorCoat(move) || isMetalBurst(move);
+    }
+
+    public static boolean isGravity(Map<String, Object> move) { return matchesAny(move, GRAVITY_MOVES); }
+    public static boolean isMagicRoom(Map<String, Object> move) { return matchesAny(move, MAGIC_ROOM_MOVES); }
+    public static boolean isWonderRoom(Map<String, Object> move) { return matchesAny(move, WONDER_ROOM_MOVES); }
 
     public static boolean isThunder(Map<String, Object> move) {
         return matchesAny(move, THUNDER_MOVES);
