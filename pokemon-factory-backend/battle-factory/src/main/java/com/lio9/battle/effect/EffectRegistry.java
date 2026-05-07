@@ -274,6 +274,13 @@ public final class EffectRegistry {
                 return ctx.damageClassId == PHYSICAL ? mod * 1.5 : mod;
             }
         });
+        // Gorilla Tactics: 物理攻击 x1.5 + 锁定招式（锁定逻辑在 rememberChoiceMove 中）
+        regAbility(new Ab() {
+            public String id() { return "gorilla-tactics"; }
+            public int onSourceModifyAttackStat(AttackContext ctx, int stat) {
+                return ctx.damageClassId == PHYSICAL ? (int) Math.floor(stat * 1.5) : stat;
+            }
+        });
         // Strong Jaw: 咬类 x1.5
         regAbility(new Ab() {
             public String id() { return "strong-jaw"; }
@@ -351,6 +358,19 @@ public final class EffectRegistry {
             public String id() { return "guts"; }
             public double onSourceModifyDamage(AttackContext ctx, double mod) {
                 return hasStatus(ctx.attackerCondition()) && ctx.damageClassId == PHYSICAL ? mod * 1.5 : mod;
+            }
+        });
+        // Huge Power / Pure Power: 物理攻击 x2
+        regAbility(new Ab() {
+            public String id() { return "huge-power"; }
+            public int onSourceModifyAttackStat(AttackContext ctx, int stat) {
+                return ctx.damageClassId == PHYSICAL ? stat * 2 : stat;
+            }
+        });
+        regAbility(new Ab() {
+            public String id() { return "pure-power"; }
+            public int onSourceModifyAttackStat(AttackContext ctx, int stat) {
+                return ctx.damageClassId == PHYSICAL ? stat * 2 : stat;
             }
         });
         // Flare Boost: 灼伤时特殊 x1.5
@@ -1212,6 +1232,15 @@ public final class EffectRegistry {
                 }
             }
         });
+        // 风力发电：受到风系招式 → 充电状态
+        regAbility(new Ab() {
+            public String id() { return "wind-power"; }
+            public void onDamageReceived(DamageReceivedContext ctx) {
+                if (isWindMove(ctx.move)) {
+                    ctx.result.put("windPower", true);
+                }
+            }
+        });
         // 愤怒穴位：击中要害 → 攻击 +6
         regAbility(new Ab() {
             public String id() { return "anger-point"; }
@@ -1344,11 +1373,11 @@ public final class EffectRegistry {
         // (name_en, typeId)
         String[][] typeItems = {
             {"mystic-water", "sea-incense"},    // 水
-            {"charcoal", "heat-rock"},           // 火
+            {"charcoal"},                         // 火（heat-rock 只延长日照，不增伤）
             {"miracle-seed", "rose-incense"},    // 草
             {"never-melt-ice"},                  // 冰
             {"black-belt", "fighting-gem"},      // 格斗
-            {"poison-barb", "black-sludge"},     // 毒
+            {"poison-barb"},                      // 毒（black-sludge 是回合末效果，不增伤）
             {"soft-sand"},                       // 地
             {"sharp-beak"},                      // 飞
             {"twisted-spoon", "odd-incense"},    // 超

@@ -184,6 +184,11 @@ final class BattleDamageSupport {
             modifier *= 1.5d;
         }
 
+        // Wind Power: 充电状态下电系招式伤害 x2
+        if (engine.volatileFlag(attacker, "windPowerCharged") && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
+            modifier *= 2.0d;
+        }
+
         // Critical hit multiplier
         if (criticalHit) {
             // Sniper ability increases crit multiplier from 1.5x to 2.25x
@@ -194,7 +199,7 @@ final class BattleDamageSupport {
         modifier *= fullHpDefenseModifier(attacker, defender, move);
         modifier *= weatherDamageModifier(attacker, state, moveTypeId);
         modifier *= terrainDamageModifier(state, attacker, defender, move, moveTypeId);
-        modifier *= screenDamageModifier(state, defender, damageClassId);
+        modifier *= screenDamageModifier(state, attacker, defender, damageClassId);
 
         // 群攻修正必须在最终乘区统一处理，才能和 Helping Hand、天气、屏障等倍率保持同一链路。
         modifier *= spreadMoveModifier(move, state);
@@ -334,6 +339,11 @@ final class BattleDamageSupport {
         String ability = engine.abilityName(attacker);
         if ("super-luck".equalsIgnoreCase(ability)) {
             critStage += 1;
+        }
+
+        // Lansat Berry: 会心一击率 +2 阶级（HP < 1/4 时已消耗）
+        if (engine.volatileFlag(attacker, "lansatBerryBoosted")) {
+            critStage += 2;
         }
 
         // Check for move crit stage (supports both crit_stage and crit_rate keys)
@@ -777,7 +787,12 @@ final class BattleDamageSupport {
         return 1.0d;
     }
 
-    double screenDamageModifier(Map<String, Object> state, Map<String, Object> defender, int damageClassId) {
+    double screenDamageModifier(Map<String, Object> state, Map<String, Object> attacker,
+            Map<String, Object> defender, int damageClassId) {
+        // Infiltrator: 无视反射壁/光墙/极光幕
+        if (hasAbility(attacker, "infiltrator")) {
+            return 1.0d;
+        }
         boolean playerSide = isOnSide(state, defender, true);
         if (fieldEffectSupport.auroraVeilTurns(state, playerSide) > 0) {
             return 2.0d / 3.0d;

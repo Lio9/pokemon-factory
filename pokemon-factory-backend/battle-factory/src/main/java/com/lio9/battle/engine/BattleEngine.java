@@ -68,7 +68,7 @@ public class BattleEngine {
         this.skillService = skillService;
         this.stateSupport = new BattleStateSupport();
         this.previewSupport = new BattlePreviewSupport(mapper, stateSupport, BATTLE_TEAM_SIZE, ACTIVE_SLOTS);
-        this.fieldEffectSupport = new BattleFieldEffectSupport();
+        this.fieldEffectSupport = new BattleFieldEffectSupport(this);
         this.analysisSupport = new BattleAnalysisSupport(this);
         this.aiSupport = new BattleAISupport(this, analysisSupport);
         this.aiSwitchSupport = new BattleAiSwitchSupport(this);
@@ -1070,8 +1070,10 @@ public class BattleEngine {
                 events.add(target.get("name") + " 食用了橙橙果，回复了 " + heal + " 点 HP");
             }
 
-            // Pinch Berries: Raise a stat by +1 when HP drops to 25% or below
-            if (currentHp * 4 <= maxHp && !itemConsumed(target)) {
+            // Pinch Berries: Raise a stat by +1 when HP drops to 25% or below (50% with Gluttony)
+            boolean isGluttony = "gluttony".equalsIgnoreCase(abilityName(target));
+            int pinchThreshold = isGluttony ? 2 : 4;
+            if (currentHp * pinchThreshold <= maxHp && !itemConsumed(target)) {
                 String stageKey = null;
                 String berryName = null;
                 if ("liechi-berry".equals(item)) {
@@ -1084,6 +1086,12 @@ public class BattleEngine {
                     stageKey = "specialAttack"; berryName = "龙火果";
                 } else if ("apicot-berry".equals(item)) {
                     stageKey = "specialDefense"; berryName = "杏仔果";
+                } else if ("lansat-berry".equals(item)) {
+                    // Lansat Berry: 会心一击率 +2 阶级
+                    consumeItem(target);
+                    setVolatile(target, "lansatBerryBoosted", true);
+                    actionLog.put("lansatBerry", true);
+                    events.add(target.get("name") + " 的兰萨果发动了，会心一击率大幅提升");
                 }
                 if (stageKey != null) {
                     int currentStage = statStage(target, stageKey);
@@ -1195,6 +1203,12 @@ public class BattleEngine {
     void rememberChoiceMove(Map<String, Object> mon, Map<String, Object> move) {
         String item = heldItem(mon);
         if ("choice-band".equals(item) || "choice-specs".equals(item) || "choice-scarf".equals(item)) {
+            mon.put("choiceLockedMove", move.get("name_en"));
+            return;
+        }
+        // Gorilla Tactics: 效果等同围巾系列，锁定首次使用招式
+        String ability = abilityName(mon);
+        if ("gorilla-tactics".equalsIgnoreCase(ability) || "gorilla tactics".equalsIgnoreCase(ability)) {
             mon.put("choiceLockedMove", move.get("name_en"));
         }
     }
@@ -1409,6 +1423,27 @@ public class BattleEngine {
         }
         return !targetHasType(mon, DamageCalculatorUtil.TYPE_FLYING)
                 && !"levitate".equalsIgnoreCase(abilityName(mon));
+    }
+
+    /** Cloud Nine / Air Lock：场上存在该特性的宝可梦时，天气效果被抑制 */
+    boolean weatherSuppressed(Map<String, Object> state) {
+        for (boolean side : new boolean[]{true, false}) {
+            List<Integer> slots = activeSlots(state, side);
+            List<Map<String, Object>> team = team(state, side);
+            for (int slot : slots) {
+                if (slot < team.size()) {
+                    Map<String, Object> mon = team.get(slot);
+                    if (mon != null) {
+                        String ab = abilityName(mon);
+                        if ("cloud-nine".equalsIgnoreCase(ab) || "cloud nine".equalsIgnoreCase(ab)
+                                || "air-lock".equalsIgnoreCase(ab) || "air lock".equalsIgnoreCase(ab)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     List<Map<String, Object>> activeTypes(Map<String, Object> mon) {

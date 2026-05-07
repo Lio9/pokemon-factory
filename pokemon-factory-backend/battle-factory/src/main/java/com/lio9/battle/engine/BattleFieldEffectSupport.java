@@ -7,6 +7,17 @@ import java.util.List;
 import java.util.Map;
 
 final class BattleFieldEffectSupport {
+    private final BattleEngine engine;
+
+    BattleFieldEffectSupport(BattleEngine engine) {
+        this.engine = engine;
+    }
+
+    // 测试专用：weatherSuppressed 返回 false
+    BattleFieldEffectSupport() {
+        this.engine = null;
+    }
+
     Map<String, Object> defaultFieldEffects() {
         Map<String, Object> effects = new LinkedHashMap<>();
         effects.put("playerTailwindTurns", 0);
@@ -75,18 +86,23 @@ final class BattleFieldEffectSupport {
     }
 
     int rainTurns(Map<String, Object> state) {
+        // Cloud Nine / Air Lock 抑制天气效果（engine 为 null 时表示测试环境）
+        if (state != null && engine != null && engine.weatherSuppressed(state)) return 0;
         return toInt(fieldEffects(state).get("rainTurns"), 0);
     }
 
     int sunTurns(Map<String, Object> state) {
+        if (state != null && engine != null && engine.weatherSuppressed(state)) return 0;
         return toInt(fieldEffects(state).get("sunTurns"), 0);
     }
 
     int sandTurns(Map<String, Object> state) {
+        if (state != null && engine != null && engine.weatherSuppressed(state)) return 0;
         return toInt(fieldEffects(state).get("sandTurns"), 0);
     }
 
     int snowTurns(Map<String, Object> state) {
+        if (state != null && engine != null && engine.weatherSuppressed(state)) return 0;
         return toInt(fieldEffects(state).get("snowTurns"), 0);
     }
 

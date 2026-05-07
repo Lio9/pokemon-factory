@@ -666,6 +666,7 @@ final class BattleRoundSupport {
                         engine.setVolatile(target, "flinch", true);
                         targetLog.put("flinch", true);
                         events.add(target.get("name") + " 因为" + heldItem + "畏缩了");
+                        conditionSupport.checkSteadfast(target, targetLog, events);
                     }
                 }
                 // 多段攻击：每段独立判定恶臭特性畏缩
@@ -675,6 +676,7 @@ final class BattleRoundSupport {
                     engine.setVolatile(target, "flinch", true);
                     targetLog.put("flinch", true);
                     events.add(target.get("name") + " 因为" + engine.abilityName(actor) + "特性而畏缩了");
+                    conditionSupport.checkSteadfast(target, targetLog, events);
                 }
                 if (remainingHp == 0) {
                     target.put("status", "fainted");
@@ -741,6 +743,7 @@ final class BattleRoundSupport {
                     engine.setVolatile(target, "flinch", true);
                     targetLog.put("flinch", true);
                     events.add(target.get("name") + " 畏缩了");
+                    conditionSupport.checkSteadfast(target, targetLog, events);
                 }
             }
             if ((engine.isIcyWind(move) || engine.isElectroweb(move)) && remainingHp > 0) {

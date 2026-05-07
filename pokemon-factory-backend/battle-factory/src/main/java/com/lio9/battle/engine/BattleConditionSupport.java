@@ -1279,6 +1279,11 @@ final class BattleConditionSupport {
             actionLog.put("electromorphosis", true);
             events.add(target.get("name") + " 的电力转换特性发动了，进入了充电状态");
         }
+        if (ctx.result.containsKey("windPower")) {
+            engine.setVolatile(target, "windPowerCharged", true);
+            actionLog.put("windPower", true);
+            events.add(target.get("name") + " 的风力发电特性发动了，进入了充电状态");
+        }
         if (ctx.result.containsKey("angerPoint")) {
             applyAbilityStageChange(ctx.state, target, 2, 6, actionLog, events, "愤怒穴位");
         }
@@ -2172,6 +2177,18 @@ final class BattleConditionSupport {
         }
     }
 
+    /** Steadfast：畏缩时速度 +1 */
+    void checkSteadfast(Map<String, Object> mon, Map<String, Object> actionLog, List<String> events) {
+        if (engine.hasAbility(mon, "steadfast")) {
+            int currentStage = damageSupport.statStage(mon, "speed");
+            if (currentStage < 6) {
+                damageSupport.statStages(mon).put("speed", currentStage + 1);
+                actionLog.put("steadfast", true);
+                events.add(mon.get("name") + " 的不屈之心特性发动了，速度提升");
+            }
+        }
+    }
+
     boolean applySpecialAttackDrop(Map<String, Object> source, Map<String, Object> target, int stages,
             Map<String, Object> actionLog, List<String> events) {
         if (isStatDropBlocked(null, target, actionLog, events, "specialAttackDropBlocked", "特攻下降")) {
@@ -2995,10 +3012,17 @@ final class BattleConditionSupport {
                 continue;
             }
             Map<String, Object> mon = team.get(activeSlot);
-            if (!hasAbility(mon, "wind-rider", "wind rider") || engine.toInt(mon.get("currentHp"), 0) <= 0) {
+            if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
                 continue;
             }
-            applyWindRiderBoost(mon, actionLog, events, "顺风");
+            if (hasAbility(mon, "wind-rider", "wind rider")) {
+                applyWindRiderBoost(mon, actionLog, events, "顺风");
+            }
+            if (hasAbility(mon, "wind-power", "wind power")) {
+                engine.setVolatile(mon, "windPowerCharged", true);
+                actionLog.put("tailwindWindPower", true);
+                events.add(mon.get("name") + " 的风力发电特性因顺风发动了，进入了充电状态");
+            }
         }
     }
 

@@ -20,14 +20,14 @@
 | Entry Hazards | 100% | 全 4 钉 + 清除 + 免疫 |
 | 通用状态 | 98% | 五异常 + 多数交互 + Heal Bell/Refresh/Nightmare/Dream Eater/Sleep Talk + Worry Seed/Gastro Acid/Heart Swap/Psycho Shift |
 | Move Registry | 97% | 85+ 分类集 |
-| 场地/天气 | 92% | 4天+4地 + Rising Voltage/Expanding Force |
+| 场地/天气 | 95% | 4天+4地 + Rising Voltage/Expanding Force + Cloud Nine/Air Lock |
 | 切换机制 | 95% | 捕获特性 + 招式 + Shed Shell |
 | 挥发状态 | 98% | Throat Chop/Smack Down/Octolock/Jaw Lock/No Retreat/Tar Shot + 原有 7 种 |
 | 保护招式 | 92% | 6 种保护 + Unseen Fist + 变种接触 |
 | 特殊系统 | 85% | Mega/Z/Dynamax/Tera + Z-Status + G-Max |
-| 特性 | 85% | ~100 个有逻辑，VGC 核心覆盖 |
-| 道具 | 85% | ~85 个有逻辑，VGC 核心覆盖 + P0 保护垫/模仿香草 |
-| **VGC 综合** | **~93%** | 主流对战可跑通 |
+| 特性 | 88% | ~138 个有逻辑，VGC 核心覆盖 + Huge Power/Gorilla Tactics/Wind Power/Cloud Nine/Gluttony/Infiltrator/Steadfast |
+| 道具 | 87% | ~90 个有逻辑，VGC 核心覆盖 + Lansat Berry + 语义修正(heat-rock/black-sludge) |
+| **VGC 综合** | **~95%** | 主流对战可跑通 |
 
 ## 已完成功能清单
 
@@ -83,6 +83,15 @@
 - ✅ Gastro Acid — 胃酸抑制目标特性 (Phase 4.2)
 - ✅ Heart Swap — 心灵互换交换能力阶级 (Phase 4.2)
 - ✅ Psycho Shift — 精神转移自身异常状态 (Phase 4.2)
+- ✅ heat-rock/black-sludge 语义修正 — 不再误作为属性增伤道具 (Phase 5)
+- ✅ Lansat Berry — 兰萨果，HP<25%时会心一击率+2阶级 (Phase 5)
+- ✅ Gorilla Tactics — 大猩猩战术，物攻x1.5+锁定招式 (Phase 5)
+- ✅ Cloud Nine / Air Lock — 天气抑制特性 (Phase 5)
+- ✅ Wind Power — 风力发电，受风系招式/顺风进入充电状态，电系伤害x2 (Phase 5)
+- ✅ Huge Power / Pure Power — 物攻x2，大力士/瑜伽之力 (Phase 5)
+- ✅ Gluttony — 贪吃特性，HP<50%触发树果 (Phase 5)
+- ✅ Infiltrator — 穿透特性，无视反射壁/光墙/神秘守护 (Phase 5)
+- ✅ Steadfast — 不屈之心，畏缩时速度+1 (Phase 5)
 
 ### 项目基础
 - ✅ Docker 三服务编排 (common-init + pokedex + battlefactory)
