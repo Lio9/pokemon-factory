@@ -1,5 +1,6 @@
 package com.lio9.battle.engine;
 
+import com.lio9.battle.engine.event.*;
 import com.lio9.pokedex.util.DamageCalculatorUtil;
 
 import java.util.List;
@@ -29,6 +30,15 @@ final class BattleTurnCleanupSupport {
 
     void applyEndTurnEffects(Map<String, Object> state, Map<String, Object> fieldSnapshot, List<String> events,
             Random random, int currentRound) {
+        // Fire ON_TURN_END — 回合结束，允许特性/道具响应
+        engine.getEventBus().fireEvent(BattleEventType.ON_TURN_END,
+            new BattleEvent(BattleEventType.ON_TURN_END) {},
+            Map.of("state", state, "currentRound", currentRound));
+
+        // 清除"本回合换入"标记（用于 Stakeout 等特性）
+        clearJustSwitchedIn(engine.team(state, true));
+        clearJustSwitchedIn(engine.team(state, false));
+
         // 结算顺序尽量保持稳定：先状态伤害/回复，再能力与场地，再递减各种倒计时。
         applyEndTurnStatusEffects(engine.team(state, true), events);
         applyEndTurnStatusEffects(engine.team(state, false), events);
@@ -61,6 +71,30 @@ final class BattleTurnCleanupSupport {
     void clearFlinch(Map<String, Object> state) {
         clearFlinch(engine.team(state, true));
         clearFlinch(engine.team(state, false));
+    }
+
+    void clearEndured(Map<String, Object> state) {
+        for (Map<String, Object> mon : engine.team(state, true)) {
+            engine.setVolatile(mon, "endured", false);
+        }
+        for (Map<String, Object> mon : engine.team(state, false)) {
+            engine.setVolatile(mon, "endured", false);
+        }
+    }
+
+    void clearDestinyBond(Map<String, Object> state) {
+        for (Map<String, Object> mon : engine.team(state, true)) {
+            engine.setVolatile(mon, "destinyBond", false);
+        }
+        for (Map<String, Object> mon : engine.team(state, false)) {
+            engine.setVolatile(mon, "destinyBond", false);
+        }
+    }
+
+    private void clearJustSwitchedIn(List<Map<String, Object>> team) {
+        for (Map<String, Object> mon : team) {
+            mon.remove("justSwitchedIn");
+        }
     }
 
     private void applyEndTurnFieldEffects(Map<String, Object> state, List<String> events) {
@@ -387,6 +421,19 @@ final class BattleTurnCleanupSupport {
             if (Boolean.TRUE.equals(mon.get("ingrain"))) {
                 applyFractionalHeal(mon, 16, events, "的扎根回复了");
             }
+            // 恶梦：睡眠中每回合损失 1/8 最大 HP
+            if (Boolean.TRUE.equals(engine.volatileValue(mon, "nightmare", false))
+                    && "sleep".equals(String.valueOf(mon.get("condition")))) {
+                int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+                int dmg = Math.max(1, maxHp / 8);
+                int curHp = engine.toInt(mon.get("currentHp"), 0);
+                mon.put("currentHp", Math.max(0, curHp - dmg));
+                events.add(mon.get("name") + " 受到恶梦影响，损失了 " + dmg + " 点 HP");
+                if (curHp - dmg <= 0) {
+                    mon.put("status", "fainted");
+                    events.add(mon.get("name") + " 被恶梦带走了");
+                }
+            }
             // 诅咒（幽灵）：每回合损失 1/4 最大 HP
             if (Boolean.TRUE.equals(mon.get("cursed"))) {
                 int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
@@ -527,6 +574,23 @@ final class BattleTurnCleanupSupport {
             if ("moody".equalsIgnoreCase(ability)) {
                 applyModyBoost(mon, events, random);
             }
+            // 恶梦：回合末对睡眠状态的对手造成 1/8 伤害
+            if ("bad-dreams".equalsIgnoreCase(ability) || "bad dreams".equalsIgnoreCase(ability)) {
+                for (Integer oppSlot : engine.activeSlots(state, !playerSide)) {
+                    if (oppSlot == null || oppSlot < 0 || oppSlot >= engine.team(state, !playerSide).size()) continue;
+                    Map<String, Object> opp = engine.team(state, !playerSide).get(oppSlot);
+                    if (engine.toInt(opp.get("currentHp"), 0) <= 0) continue;
+                    if ("sleep".equals(String.valueOf(opp.get("condition")))) {
+                        int maxHp = engine.toInt(engine.castMap(opp.get("stats")).get("hp"), 1);
+                        int dmg = Math.max(1, maxHp / 8);
+                        int curHp = engine.toInt(opp.get("currentHp"), 0);
+                        int remaining = Math.max(0, curHp - dmg);
+                        opp.put("currentHp", remaining);
+                        events.add(opp.get("name") + " 受到" + mon.get("name") + "的恶梦影响，损失了 " + dmg + " 点 HP");
+                        if (remaining <= 0) opp.put("status", "fainted");
+                    }
+                }
+            }
 
             // 雨天/雪天回合末回复
             Map<String, Object> fieldEffects = engine.castMap(state.get("fieldEffects"));
@@ -539,6 +603,13 @@ final class BattleTurnCleanupSupport {
             if (("ice-body".equalsIgnoreCase(ability) || "ice body".equalsIgnoreCase(ability))
                     && snowTurns > 0 && engine.healBlockTurns(mon) <= 0) {
                 applyFractionalHeal(mon, 16, events, "的冰鳞粉回复了");
+            }
+            // 毒疗：中毒/剧毒时每回合回复 1/8 HP
+            if ("poison-heal".equalsIgnoreCase(ability) || "poison heal".equalsIgnoreCase(ability)) {
+                String condition = String.valueOf(mon.getOrDefault("condition", ""));
+                if (("poison".equals(condition) || "toxic".equals(condition)) && engine.healBlockTurns(mon) <= 0) {
+                    applyFractionalHeal(mon, 8, events, "的毒疗特性回复了");
+                }
             }
             // 湿润身躯：雨天解除异常状态
             if ("hydration".equalsIgnoreCase(ability) && rainTurns > 0) {

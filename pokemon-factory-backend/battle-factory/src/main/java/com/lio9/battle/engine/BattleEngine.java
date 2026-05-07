@@ -3,6 +3,11 @@ package com.lio9.battle.engine;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.service.SkillService;
 import com.lio9.pokedex.mapper.TypeEfficacyMapper;
+import com.lio9.battle.effect.EffectRegistry;
+import com.lio9.battle.engine.event.BattleEvent;
+import com.lio9.battle.engine.event.BattleEventBus;
+import com.lio9.battle.engine.event.BattleEventType;
+import com.lio9.battle.engine.event.EventRegistryBridge;
 import com.lio9.pokedex.util.DamageCalculatorUtil;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +17,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Random;
 
 /**
@@ -56,6 +62,7 @@ public class BattleEngine {
     private final BattleSetupSupport setupSupport;
     private final BattleRoundSupport roundSupport;
     private final BattleTurnCleanupSupport turnCleanupSupport;
+    private final BattleEventBus eventBus;
 
     public BattleEngine(SkillService skillService, TypeEfficacyMapper typeEfficacyMapper, ObjectMapper mapper) {
         this.skillService = skillService;
@@ -75,7 +82,14 @@ public class BattleEngine {
                 flowSupport, LEVEL, BATTLE_TEAM_SIZE);
         this.roundSupport = new BattleRoundSupport(this, conditionSupport, targetSupport);
         this.turnCleanupSupport = new BattleTurnCleanupSupport(this, fieldEffectSupport, conditionSupport);
+
+        // 初始化事件总线，注册所有 EffectRegistry handler 为事件监听器
+        this.eventBus = new BattleEventBus();
+        EventRegistryBridge.registerHandlers(eventBus);
+        this.eventBus.freeze();
     }
+
+    public BattleEventBus getEventBus() { return eventBus; }
 
     /**
      * 创建“队伍预览阶段”的初始状态。
@@ -165,6 +179,12 @@ public class BattleEngine {
         int round = toInt(state.get("currentRound"), 0) + 1;
         state.put("currentRound", round);
         Random random = new Random(toLong(state.get("seed"), 0L) + (round * 97L));
+
+        // Fire ON_TURN_START — 回合开始，允许特性/道具响应
+        eventBus.fireEvent(BattleEventType.ON_TURN_START,
+            new BattleEvent(BattleEventType.ON_TURN_START) {},
+            Map.of("state", state, "currentRound", round));
+
         Map<String, Object> fieldSnapshot = cloneMap(fieldEffects(state));
 
         Map<String, Boolean> protectedTargets = new HashMap<>();
@@ -198,6 +218,8 @@ public class BattleEngine {
         turnCleanupSupport.applyEndTurnEffects(state, fieldSnapshot, events, random, round);
         flowSupport.prepareReplacementPhase(state, events);
         turnCleanupSupport.clearFlinch(state);
+        turnCleanupSupport.clearEndured(state);
+        turnCleanupSupport.clearDestinyBond(state);
         roundLog.put("actions", actionLogs);
         roundLog.put("events", events);
         roundLog.put("playerActive", flowSupport.activeNames(state, true));
@@ -320,7 +342,7 @@ public class BattleEngine {
         return damageSupport.typeFactor(attackingTypeId, defendingTypeId);
     }
 
-    private double typeModifier(Map<String, Object> defender, int moveTypeId) {
+    double typeModifier(Map<String, Object> defender, int moveTypeId) {
         return damageSupport.typeModifier(defender, moveTypeId);
     }
 
@@ -586,6 +608,15 @@ public class BattleEngine {
     boolean isMorningSun(Map<String, Object> move) {
         return MoveRegistry.isMorningSun(move);
     }
+
+    // Delegating to MoveRegistry for status-healing moves
+    boolean isHealBell(Map<String, Object> move) { return MoveRegistry.isHealBell(move); }
+    boolean isAromatherapy(Map<String, Object> move) { return MoveRegistry.isAromatherapy(move); }
+    boolean isRefresh(Map<String, Object> move) { return MoveRegistry.isRefresh(move); }
+    boolean isSleepTalk(Map<String, Object> move) { return MoveRegistry.isSleepTalk(move); }
+    boolean isSnore(Map<String, Object> move) { return MoveRegistry.isSnore(move); }
+    boolean isNightmare(Map<String, Object> move) { return MoveRegistry.isNightmare(move); }
+    boolean isDreamEater(Map<String, Object> move) { return MoveRegistry.isDreamEater(move); }
 
     // Delegating to MoveRegistry for recharge/charge moves
     boolean isRechargeMove(Map<String, Object> move) {
@@ -960,6 +991,11 @@ public class BattleEngine {
         return damageSupport.applyIncomingDamage(attacker, target, damage, actionLog, events);
     }
 
+    int applyIncomingDamage(Map<String, Object> attacker, Map<String, Object> target, int damage,
+            Map<String, Object> actionLog, List<String> events, Map<String, Object> move) {
+        return damageSupport.applyIncomingDamage(attacker, target, damage, actionLog, events, move);
+    }
+
     boolean rollCriticalHit(Map<String, Object> attacker, Map<String, Object> move, Random random) {
         return damageSupport.calculateCriticalHitChance(attacker, move, random);
     }
@@ -1163,6 +1199,13 @@ public class BattleEngine {
         String lastMove = String.valueOf(mon.get("lastMoveUsed"));
         String currentMove = String.valueOf(move.get("name_en"));
         mon.put("lastMoveUsed", currentMove);
+        // 记录已使用的招式（用于最终手段等需要追踪所有已用招式的效果）
+        @SuppressWarnings("unchecked")
+        Set<String> usedMoves = (Set<String>) mon.computeIfAbsent("usedMoves", k -> new java.util.LinkedHashSet<>());
+        String moveName = String.valueOf(move.get("name_en")).toLowerCase();
+        if (!moveName.isBlank()) {
+            usedMoves.add(moveName);
+        }
         // 节拍器追踪连续使用同一招式的次数
         if ("metronome".equals(heldItem(mon))) {
             if (currentMove.equalsIgnoreCase(lastMove) && !lastMove.isBlank()) {

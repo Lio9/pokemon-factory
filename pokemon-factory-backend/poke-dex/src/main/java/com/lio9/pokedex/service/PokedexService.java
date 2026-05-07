@@ -10,6 +10,7 @@ import com.lio9.pokedex.vo.PokemonDetailVO;
 import com.lio9.pokedex.vo.PokemonListVO;
 import com.lio9.pokedex.vo.TypeVO;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 图鉴服务接口
@@ -50,4 +51,9 @@ public interface PokedexService {
      * 获取物品列表
      */
     Page<ItemVO> getItemList(int current, int size, Integer categoryId, String keyword);
+
+    /**
+     * 获取图鉴数据摘要（各表计数统计）
+     */
+    Map<String, Object> getSummary();
 }

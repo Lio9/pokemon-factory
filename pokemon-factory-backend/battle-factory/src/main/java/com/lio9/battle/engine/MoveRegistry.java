@@ -211,10 +211,82 @@ public final class MoveRegistry {
     private static final Set<String> ELECTRO_BALL_MOVES = Set.of("electro ball", "electro-ball");
     private static final Set<String> GYRO_BALL_MOVES = Set.of("gyro ball", "gyro-ball");
 
+    // === 体重相关威力招式 ===
+    private static final Set<String> WEIGHT_BASED_MOVES = Set.of(
+        "grass knot", "grass-knot", "low kick", "low-kick",
+        "heavy slam", "heavy-slam", "heat crash", "heat-crash"
+    );
+
+    // === HP 比例威力招式 ===
+    private static final Set<String> HP_RATIO_MOVES = Set.of(
+        "eruption", "water spout", "water-spout"
+    );
+
+    // === 反比 HP 威力招式（HP 越少威力越大） ===
+    private static final Set<String> REVERSAL_MOVES = Set.of(
+        "reversal", "flail"
+    );
+
+    // === 后手增伤招式 ===
+    private static final Set<String> PAYBACK_MOVES = Set.of("payback");
+    private static final Set<String> AVALANCHE_MOVES = Set.of("avalanche");
+
+    // === 无视防御阶级招式 ===
+    private static final Set<String> SACRED_SWORD_MOVES = Set.of(
+        "sacred sword", "sacred-sword"
+    );
+
+    // === 吸取力量类招式 ===
+    private static final Set<String> STRENGTH_SAP_MOVES = Set.of(
+        "strength sap", "strength-sap"
+    );
+
+    // === 妖精之吻（参考，已有 drain 字段支持）===
+    private static final Set<String> DRAINING_KISS_MOVES = Set.of(
+        "draining kiss", "draining-kiss"
+    );
+
+    // === 能力平分/互换类 ===
+    private static final Set<String> GUARD_SPLIT_MOVES = Set.of(
+        "guard split", "guard-split"
+    );
+    private static final Set<String> POWER_SPLIT_MOVES = Set.of(
+        "power split", "power-split"
+    );
+    private static final Set<String> GUARD_SWAP_MOVES = Set.of(
+        "guard swap", "guard-swap"
+    );
+    private static final Set<String> POWER_SWAP_MOVES = Set.of(
+        "power swap", "power-swap"
+    );
+
     // === 反伤类招式 ===
     private static final Set<String> COUNTER_MOVES = Set.of("counter");
     private static final Set<String> MIRROR_COAT_MOVES = Set.of("mirror coat", "mirror-coat");
     private static final Set<String> METAL_BURST_MOVES = Set.of("metal burst", "metal-burst");
+
+    // === 挺住类招式 ===
+    private static final Set<String> ENDURE_MOVES = Set.of("endure");
+
+    // === 治愈类招式 ===
+    private static final Set<String> HEAL_BELL_MOVES = Set.of("heal bell", "heal-bell");
+    private static final Set<String> AROMATHERAPY_MOVES = Set.of("aromatherapy");
+    private static final Set<String> REFRESH_MOVES = Set.of("refresh");
+
+    // === 睡眠相关招式 ===
+    private static final Set<String> SLEEP_TALK_MOVES = Set.of("sleep talk", "sleep-talk");
+    private static final Set<String> SNORE_MOVES = Set.of("snore");
+    private static final Set<String> NIGHTMARE_MOVES = Set.of("nightmare");
+    private static final Set<String> DREAM_EATER_MOVES = Set.of("dream eater", "dream-eater");
+
+    // === 清除能力变化类招式 ===
+    private static final Set<String> HAZE_MOVES = Set.of("haze");
+
+    // === 同命类招式 ===
+    private static final Set<String> DESTINY_BOND_MOVES = Set.of("destiny bond", "destiny-bond");
+
+    // === 分担痛楚类招式 ===
+    private static final Set<String> PAIN_SPLIT_MOVES = Set.of("pain split", "pain-split");
 
     // === 场地改变类招式 ===
     private static final Set<String> GRAVITY_MOVES = Set.of("gravity");
@@ -251,7 +323,8 @@ public final class MoveRegistry {
         "sing", "growl", "roar", "screech", "supersonic", "metal sound", "metal-sound",
         "uproar", "howl", "noble roar", "noble-roar", "confide", "parting shot", "parting-shot",
         "round", "echoed voice", "echoed-voice", "relic song", "relic-song",
-        "snore", "perish song", "perish-song"
+        "snore", "perish song", "perish-song",
+        "heal bell", "heal-bell"
     );
     private static final Set<String> SLICING_MOVES = Set.of(
         "slash", "cut", "blade", "razor", "claw", "axe",
@@ -297,6 +370,30 @@ public final class MoveRegistry {
 
     public static boolean isProtectionMove(Map<String, Object> move) {
         return isProtect(move) || isDetect(move) || isWideGuard(move) || isQuickGuard(move);
+    }
+
+    public static boolean isEndure(Map<String, Object> move) {
+        return matchesAny(move, ENDURE_MOVES);
+    }
+
+    public static boolean isHaze(Map<String, Object> move) {
+        return matchesAny(move, HAZE_MOVES);
+    }
+
+    public static boolean isHealBell(Map<String, Object> move) { return matchesAny(move, HEAL_BELL_MOVES); }
+    public static boolean isAromatherapy(Map<String, Object> move) { return matchesAny(move, AROMATHERAPY_MOVES); }
+    public static boolean isRefresh(Map<String, Object> move) { return matchesAny(move, REFRESH_MOVES); }
+    public static boolean isSleepTalk(Map<String, Object> move) { return matchesAny(move, SLEEP_TALK_MOVES); }
+    public static boolean isSnore(Map<String, Object> move) { return matchesAny(move, SNORE_MOVES); }
+    public static boolean isNightmare(Map<String, Object> move) { return matchesAny(move, NIGHTMARE_MOVES); }
+    public static boolean isDreamEater(Map<String, Object> move) { return matchesAny(move, DREAM_EATER_MOVES); }
+
+    public static boolean isDestinyBond(Map<String, Object> move) {
+        return matchesAny(move, DESTINY_BOND_MOVES);
+    }
+
+    public static boolean isPainSplit(Map<String, Object> move) {
+        return matchesAny(move, PAIN_SPLIT_MOVES);
     }
 
     /**
@@ -689,6 +786,121 @@ public final class MoveRegistry {
     public static boolean isSpeedBasedPowerMove(Map<String, Object> move) {
         return isElectroBall(move) || isGyroBall(move);
     }
+
+    public static boolean isWeightBasedMove(Map<String, Object> move) {
+        return matchesAny(move, WEIGHT_BASED_MOVES);
+    }
+
+    public static boolean isHpRatioMove(Map<String, Object> move) {
+        return matchesAny(move, HP_RATIO_MOVES);
+    }
+
+    public static boolean isReversalMove(Map<String, Object> move) {
+        return matchesAny(move, REVERSAL_MOVES);
+    }
+
+    public static boolean isPayback(Map<String, Object> move) {
+        return matchesAny(move, PAYBACK_MOVES);
+    }
+
+    public static boolean isAvalanche(Map<String, Object> move) {
+        return matchesAny(move, AVALANCHE_MOVES);
+    }
+
+    public static boolean isSacredSword(Map<String, Object> move) {
+        return matchesAny(move, SACRED_SWORD_MOVES);
+    }
+
+    public static boolean isStrengthSap(Map<String, Object> move) {
+        return matchesAny(move, STRENGTH_SAP_MOVES);
+    }
+
+    public static boolean isDrainingKiss(Map<String, Object> move) {
+        return matchesAny(move, DRAINING_KISS_MOVES);
+    }
+
+    public static boolean isGuardSplit(Map<String, Object> move) {
+        return matchesAny(move, GUARD_SPLIT_MOVES);
+    }
+
+    public static boolean isPowerSplit(Map<String, Object> move) {
+        return matchesAny(move, POWER_SPLIT_MOVES);
+    }
+
+    public static boolean isGuardSwap(Map<String, Object> move) {
+        return matchesAny(move, GUARD_SWAP_MOVES);
+    }
+
+    public static boolean isPowerSwap(Map<String, Object> move) {
+        return matchesAny(move, POWER_SWAP_MOVES);
+    }
+
+    public static boolean isWeatherBall(Map<String, Object> move) {
+        return matchesAny(move, WEATHER_BALL_MOVES);
+    }
+
+    public static boolean isTerrainPulse(Map<String, Object> move) {
+        return matchesAny(move, TERRAIN_PULSE_MOVES);
+    }
+
+    public static boolean isEndeavor(Map<String, Object> move) {
+        return matchesAny(move, ENDEAVOR_MOVES);
+    }
+
+    public static boolean isLastResort(Map<String, Object> move) {
+        return matchesAny(move, LAST_RESORT_MOVES);
+    }
+
+    public static boolean isJudgment(Map<String, Object> move) {
+        return matchesAny(move, JUDGMENT_MOVES);
+    }
+
+    public static boolean isMultiAttack(Map<String, Object> move) {
+        return matchesAny(move, MULTI_ATTACK_MOVES);
+    }
+
+    public static boolean isPhotonGeyser(Map<String, Object> move) {
+        return matchesAny(move, PHOTON_GEYSER_MOVES);
+    }
+
+    public static boolean isMoongeistBeam(Map<String, Object> move) {
+        return matchesAny(move, MOONGEIST_BEAM_MOVES);
+    }
+
+    /** 无视防御方特性的招式（破格类） */
+    public static boolean isUnignorableMove(Map<String, Object> move) {
+        return isMoongeistBeam(move) || isPhotonGeyser(move);
+    }
+
+    // === 气象球/地形球 ===
+    private static final Set<String> WEATHER_BALL_MOVES = Set.of(
+        "weather ball", "weather-ball"
+    );
+    private static final Set<String> TERRAIN_PULSE_MOVES = Set.of(
+        "terrain pulse", "terrain-pulse"
+    );
+
+    // === 垂死挣扎 ===
+    private static final Set<String> ENDEAVOR_MOVES = Set.of("endeavor");
+
+    // === 最终手段 ===
+    private static final Set<String> LAST_RESORT_MOVES = Set.of(
+        "last resort", "last-resort"
+    );
+
+    // === 制裁光砾/多属性攻击 ===
+    private static final Set<String> JUDGMENT_MOVES = Set.of("judgment");
+    private static final Set<String> MULTI_ATTACK_MOVES = Set.of(
+        "multi-attack", "multi attack"
+    );
+
+    // === 光子喷涌/暗影之光 ===
+    private static final Set<String> PHOTON_GEYSER_MOVES = Set.of(
+        "photon geyser", "photon-geyser"
+    );
+    private static final Set<String> MOONGEIST_BEAM_MOVES = Set.of(
+        "moongeist beam", "moongeist-beam"
+    );
 
     public static boolean isFutureSight(Map<String, Object> move) {
         return matchesAny(move, FUTURE_SIGHT_MOVES);

@@ -80,7 +80,10 @@ export function useBattleDerivedState(state) {
     selectedSwitchTargets,
     selectedTargets,
     settlement,
-    summary
+    summary,
+    battleFormat,
+    rosterLimit,
+    leadLimit
   } = state
 
   const currentUser = computed(() => displayName.value)
@@ -107,7 +110,11 @@ export function useBattleDerivedState(state) {
     if (!currentBattleId.value) {
       return factoryRun.value ? translate('准备进入下一轮', 'Prepare for the next round', '次のラウンドの準備') : translate('选择一种开始方式', 'Choose how to start', '開始方法を選択')
     }
-    if (isPreviewPhase.value) return translate('先完成 6 选 4 与首发', 'Finish 6v4 selection and leads first', '6体から4体と先発を選ぶ')
+    if (isPreviewPhase.value) {
+      const rl = rosterLimit?.value ?? 4
+      const ll = leadLimit?.value ?? 2
+      return translate(`先完成 6 选 ${rl} 与首发`, `Finish 6v${rl} selection and ${ll} lead(s)`)
+    }
     if (isReplacementPhase.value) return translate('需要补位 {count} 只', 'Need {count} replacements', { count: pendingReplacementCount.value }, '{count}体の交代が必要')
     if (summary.value?.status === 'completed') {
       return summary.value?.winner === 'player'
@@ -125,7 +132,9 @@ export function useBattleDerivedState(state) {
         : translate('如果你想完整体验工厂流程，直接开始 9 连战；如果只是验证战斗逻辑，单场手动或异步模拟更快。', 'Start the 9-battle run if you want the full factory flow. If you only want to verify battle logic, a single manual battle or async simulation is faster.')
     }
     if (isPreviewPhase.value) {
-      return translate('从你的 6 只宝可梦中选 4 只参战，再从中指定 2 只作为首发。只有完成这一阶段后，回合操作区才会解锁。', 'Pick 4 Pokemon from your roster of 6, then assign 2 of them as leads. The action panel unlocks only after this step is complete.')
+      const rl = rosterLimit?.value ?? 4
+      const ll = leadLimit?.value ?? 2
+      return translate(`从你的 6 只宝可梦中选 ${rl} 只参战，再从中指定 ${ll} 只作为首发。只有完成这一阶段后，回合操作区才会解锁。`, `Pick ${rl} Pokemon from your roster of 6, then assign ${ll} of them as leads. The action panel unlocks only after this step is complete.`)
     }
     if (isReplacementPhase.value) {
       return translate('当前场上有宝可梦倒下，必须先补位才能继续推进战斗。前端已经按后端允许列表限制了可选替补。', 'A Pokemon has fainted on the field. You must send in replacements before the battle can continue. The UI already limits choices to the backend-approved bench list.')
@@ -248,8 +257,10 @@ export function useBattleDerivedState(state) {
   })
 
   const canConfirmPreview = computed(() => {
-    return selectedRosterIndexes.value.length === 4
-      && leadRosterIndexes.value.length === 2
+    const rl = rosterLimit?.value ?? 4
+    const ll = leadLimit?.value ?? 2
+    return selectedRosterIndexes.value.length === rl
+      && leadRosterIndexes.value.length === ll
       && leadRosterIndexes.value.every((index) => selectedRosterIndexes.value.includes(index))
   })
 
@@ -394,9 +405,11 @@ export function useBattleDerivedState(state) {
   const availableActionDescription = computed(() => {
     if (!currentBattleId.value) return translate('开始、继续、放弃、查看排行榜都在当前面板可直接完成。', 'Start, continue, abandon, and leaderboard actions are all available from this panel.')
     if (isPreviewPhase.value) {
+      const rl = rosterLimit?.value ?? 4
+      const ll = leadLimit?.value ?? 2
       return canConfirmPreview.value
         ? translate('阵容已满足条件，可以直接确认。', 'The preview setup is complete and ready to confirm.')
-        : translate('还未满足 4 只参战与 2 只首发的条件。', 'You still need 4 selected Pokemon and 2 leads.')
+        : translate(`还未满足 ${rl} 只参战与 ${ll} 只首发的条件。`, `You still need ${rl} selected Pokemon and ${ll} leads.`)
     }
     if (isReplacementPhase.value) {
       return canConfirmReplacement.value

@@ -1,5 +1,9 @@
 package com.lio9.battle.engine;
 
+import com.lio9.battle.effect.AttackContext;
+import com.lio9.battle.effect.EffectRegistry;
+import com.lio9.battle.effect.SpeedContext;
+import com.lio9.battle.effect.WeightContext;
 import com.lio9.pokedex.mapper.TypeEfficacyMapper;
 import com.lio9.pokedex.util.DamageCalculatorUtil;
 
@@ -47,6 +51,15 @@ final class BattleDamageSupport {
                 ? (Boolean) preResolvedCritical
                 : calculateCriticalHitChance(attacker, move, random);
 
+        // Battle Armor / Shell Armor: 阻挡会心一击（光子喷涌/暗影之光无视）
+        if (criticalHit && !ignoresTargetAbility(attacker, move)) {
+            String defAbility = engine.abilityName(defender);
+            if ("battle-armor".equalsIgnoreCase(defAbility) || "battle armor".equalsIgnoreCase(defAbility)
+                    || "shell-armor".equalsIgnoreCase(defAbility) || "shell armor".equalsIgnoreCase(defAbility)) {
+                criticalHit = false;
+            }
+        }
+
         Map<String, Object> attackerStats = engine.castMap(attacker.get("stats"));
         Map<String, Object> defenderStats = engine.castMap(defender.get("stats"));
 
@@ -54,29 +67,29 @@ final class BattleDamageSupport {
         if (MoveRegistry.isBodyPress(move)) {
             // 扑击：使用攻击者的防御代替攻击
             int bodyPressDef = engine.toInt(attackerStats.get("defense"), 100);
-            attackStat = modifiedDefenseStat(defender, attacker, bodyPressDef, damageClassId, state, criticalHit);
+            attackStat = modifiedDefenseStat(defender, attacker, bodyPressDef, damageClassId, state, criticalHit, move);
         } else if (MoveRegistry.isFoulPlay(move)) {
             // 欺诈：使用目标的攻击属性
             int targetAtk = engine.toInt(defenderStats.get("attack"), 100);
-            attackStat = modifiedAttackStat(defender, attacker, targetAtk, damageClassId, criticalHit);
+            attackStat = modifiedAttackStat(defender, attacker, targetAtk, damageClassId, criticalHit, move, state);
         } else {
             attackStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
                     ? modifiedAttackStat(attacker, defender, engine.toInt(attackerStats.get("attack"), 100), damageClassId,
-                            criticalHit)
+                            criticalHit, move, state)
                     : modifiedAttackStat(attacker, defender, engine.toInt(attackerStats.get("specialAttack"), 100),
-                            damageClassId, criticalHit);
+                            damageClassId, criticalHit, move, state);
         }
         int baseDefenseStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
                 ? engine.toInt(defenderStats.get("defense"), 100)
                 : engine.toInt(defenderStats.get("specialDefense"), 100);
+        int moveTypeId = engine.toInt(move.get("type_id"), 0);
         int defenseStat = Math.max(1,
-                modifiedDefenseStat(attacker, defender, baseDefenseStat, damageClassId, state, criticalHit));
+                modifiedDefenseStat(attacker, defender, baseDefenseStat, damageClassId, state, criticalHit, move));
 
         int power = Math.max(1, calculateMovePower(move, attacker, defender, state));
         int baseDamage = DamageCalculatorUtil.calculateBaseDamage(level, power, attackStat, defenseStat);
 
         double modifier = 1.0d;
-        int moveTypeId = engine.toInt(move.get("type_id"), 0);
 
         // -ate 特性：将一般系招式转为对应属性（在 STAB 前转换，使 STAB 正确生效），1.3x 增伤
         if (moveTypeId == DamageCalculatorUtil.TYPE_NORMAL) {
@@ -94,6 +107,42 @@ final class BattleDamageSupport {
                 moveTypeId = DamageCalculatorUtil.TYPE_ELECTRIC;
                 modifier *= 1.3d;
             }
+        }
+
+        // 气象球：有天气时属性随天气变化
+        if (MoveRegistry.isWeatherBall(move) && fieldEffectSupport.weatherTurns(state) > 0) {
+            if (fieldEffectSupport.rainTurns(state) > 0) {
+                moveTypeId = DamageCalculatorUtil.TYPE_WATER;
+            } else if (fieldEffectSupport.sunTurns(state) > 0) {
+                moveTypeId = DamageCalculatorUtil.TYPE_FIRE;
+            } else if (fieldEffectSupport.snowTurns(state) > 0) {
+                moveTypeId = DamageCalculatorUtil.TYPE_ICE;
+            } else if (fieldEffectSupport.sandTurns(state) > 0) {
+                moveTypeId = DamageCalculatorUtil.TYPE_ROCK;
+            }
+        }
+        // 地形脉冲：有场地时属性随场地变化
+        if (MoveRegistry.isTerrainPulse(move) && fieldEffectSupport.terrainTurns(state) > 0) {
+            if (fieldEffectSupport.electricTerrainTurns(state) > 0) {
+                moveTypeId = DamageCalculatorUtil.TYPE_ELECTRIC;
+            } else if (fieldEffectSupport.psychicTerrainTurns(state) > 0) {
+                moveTypeId = DamageCalculatorUtil.TYPE_PSYCHIC;
+            } else if (fieldEffectSupport.grassyTerrainTurns(state) > 0) {
+                moveTypeId = DamageCalculatorUtil.TYPE_GRASS;
+            } else if (fieldEffectSupport.mistyTerrainTurns(state) > 0) {
+                moveTypeId = DamageCalculatorUtil.TYPE_FAIRY;
+            }
+        }
+
+        // 制裁光砾：根据 Arceus 携带的石板改变属性
+        if (MoveRegistry.isJudgment(move)) {
+            int plateType = typeIdFromPlate(heldItem(attacker));
+            if (plateType > 0) moveTypeId = plateType;
+        }
+        // 多属性攻击：根据 Silvally 携带的记忆改变属性
+        if (MoveRegistry.isMultiAttack(move)) {
+            int memoryType = typeIdFromMemory(heldItem(attacker));
+            if (memoryType > 0) moveTypeId = memoryType;
         }
 
         // STAB (Same Type Attack Bonus) - Pokemon Showdown standard
@@ -137,7 +186,7 @@ final class BattleDamageSupport {
         }
 
         // Other modifiers
-        modifier *= fullHpDefenseModifier(attacker, defender);
+        modifier *= fullHpDefenseModifier(attacker, defender, move);
         modifier *= weatherDamageModifier(attacker, state, moveTypeId);
         modifier *= terrainDamageModifier(state, attacker, defender, move, moveTypeId);
         modifier *= screenDamageModifier(state, defender, damageClassId);
@@ -181,6 +230,65 @@ final class BattleDamageSupport {
             int atkSpeed = speedValue(attacker, state, attackerPlayerSide);
             int defSpeed = speedValue(defender, state, !attackerPlayerSide);
             return Math.min(150, (25 * defSpeed) / Math.max(1, atkSpeed));
+        }
+
+        // 体重相关威力（打草结/踢倒/重磅冲撞/高温重压）
+        if (MoveRegistry.isWeightBasedMove(move)) {
+            int targetWeight = getWeight(defender);
+            String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
+            if (nameEn.equals("heavy slam") || nameEn.equals("heavy-slam") || nameEn.equals("heat crash") || nameEn.equals("heat-crash")) {
+                // 重磅冲撞/高温重压：基于攻击方/防御方体重比
+                int atkWeight = getWeight(attacker);
+                double ratio = (double) atkWeight / Math.max(1, targetWeight);
+                if (ratio >= 5.0d) return 120;
+                if (ratio >= 4.0d) return 100;
+                if (ratio >= 3.0d) return 80;
+                if (ratio >= 2.0d) return 60;
+                return 40;
+            } else {
+                // 打草结/踢倒：目标体重决定威力
+                if (targetWeight >= 2000) return 120;  // 200kg+
+                if (targetWeight >= 1000) return 100;  // 100-199.9kg
+                if (targetWeight >= 500)  return 80;   // 50-99.9kg
+                if (targetWeight >= 250)  return 60;   // 25-49.9kg
+                if (targetWeight >= 100)  return 40;   // 10-24.9kg
+                return 20;                              // <10kg
+            }
+        }
+
+        // HP 比例威力（喷火/喷水）：HP 越多威力越大
+        if (MoveRegistry.isHpRatioMove(move)) {
+            int currentHp = engine.toInt(attacker.get("currentHp"), 0);
+            int maxHp = engine.toInt(engine.castMap(attacker.get("stats")).get("hp"), 1);
+            int ratio = Math.max(0, Math.min(100, (currentHp * 100) / maxHp));
+            if (ratio >= 68) return 150;
+            if (ratio >= 35) return 100;
+            if (ratio >= 1)  return 50;
+            return 0; // HP 为 0 时无法使用
+        }
+
+        // 反比 HP 威力（起死回生/抓狂）：HP 越少威力越大
+        if (MoveRegistry.isReversalMove(move)) {
+            int currentHp = engine.toInt(attacker.get("currentHp"), 0);
+            int maxHp = engine.toInt(engine.castMap(attacker.get("stats")).get("hp"), 1);
+            int ratio = Math.max(0, (currentHp * 100) / Math.max(1, maxHp));
+            if (ratio >= 70) return 20;
+            if (ratio >= 35) return 40;
+            if (ratio >= 20) return 80;
+            if (ratio >= 10) return 100;
+            if (ratio >= 5)  return 120;
+            if (ratio >= 2)  return 140;
+            return 150; // HP < 2%
+        }
+
+        // 气象球：有天气时威力翻倍
+        if (MoveRegistry.isWeatherBall(move)) {
+            return fieldEffectSupport.weatherTurns(state) > 0 ? basePower * 2 : basePower;
+        }
+
+        // 地形脉冲：有场地时威力翻倍
+        if (MoveRegistry.isTerrainPulse(move)) {
+            return fieldEffectSupport.terrainTurns(state) > 0 ? basePower * 2 : basePower;
         }
 
         return basePower;
@@ -256,7 +364,7 @@ final class BattleDamageSupport {
     }
 
     int modifiedAttackStat(Map<String, Object> mon, Map<String, Object> defender, int baseStat, int damageClassId,
-            boolean criticalHit) {
+            boolean criticalHit, Map<String, Object> move, Map<String, Object> state) {
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
             int attackStage = hasAbility(defender, "unaware") ? 0 : statStage(mon, "attack");
             if (criticalHit && attackStage < 0) {
@@ -276,50 +384,14 @@ final class BattleDamageSupport {
             baseStat = applyStageModifier(baseStat, specialAttackStage);
         }
 
-        String item = heldItem(mon);
-        String species = String.valueOf(mon.get("name_en"));
-        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            if ("choice-band".equals(item)) {
-                return (int) Math.floor(baseStat * 1.5d);
-            }
-            // 电气球（皮卡丘）：物攻 2 倍
-            if ("light-ball".equals(item) && "pikachu".equalsIgnoreCase(species)) {
-                baseStat = (int) Math.floor(baseStat * 2.0d);
-            }
-            // 粗骨头（卡拉卡拉/嘎啦嘎啦）：物攻 2 倍
-            if ("thick-club".equals(item) && ("cubone".equalsIgnoreCase(species) || "marowak".equalsIgnoreCase(species))) {
-                baseStat = (int) Math.floor(baseStat * 2.0d);
-            }
-        }
-        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            if ("choice-specs".equals(item)) {
-                baseStat = (int) Math.floor(baseStat * 1.5d);
-            }
-            // 电气球（皮卡丘）：特攻 2 倍
-            if ("light-ball".equals(item) && "pikachu".equalsIgnoreCase(species)) {
-                baseStat = (int) Math.floor(baseStat * 2.0d);
-            }
-            // 深海之牙（珍珠贝）：特攻 2 倍
-            if ("deep-sea-tooth".equals(item) && "clamperl".equalsIgnoreCase(species)) {
-                baseStat = (int) Math.floor(baseStat * 2.0d);
-            }
-            // 心之水滴（拉帝亚斯/拉帝欧斯）：特攻 1.5 倍
-            if ("soul-dew".equals(item) && ("latias".equalsIgnoreCase(species) || "latios".equalsIgnoreCase(species))) {
-                baseStat = (int) Math.floor(baseStat * 1.5d);
-            }
-        }
+        // 道具修正（Choice Band/Specs, Light Ball, Thick Club, Deep Sea Tooth, Soul Dew 等）
+        int moveTypeId = engine.toInt(move.get("type_id"), 0);
+        AttackContext ctx = new AttackContext(mon, defender, move, state, moveTypeId, damageClassId, criticalHit);
+        baseStat = EffectRegistry.dispatchItemSourceAttack(mon, ctx, baseStat);
 
-        // Flash Fire boost
+        // Flash Fire boost（标记型效果，非道具）
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL
                 && Boolean.TRUE.equals(mon.get("flashFireBoost"))) {
-            baseStat = (int) Math.floor(baseStat * 1.5d);
-        }
-
-        // Solar Power: 1.5x special attack in sun (but loses HP each turn - handled
-        // elsewhere)
-        String ability = engine.abilityName(mon);
-        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL &&
-                "solar-power".equalsIgnoreCase(ability) && fieldEffectSupport.sunTurns(null) > 0) {
             baseStat = (int) Math.floor(baseStat * 1.5d);
         }
 
@@ -327,9 +399,13 @@ final class BattleDamageSupport {
     }
 
     int modifiedDefenseStat(Map<String, Object> attacker, Map<String, Object> mon, int baseStat, int damageClassId,
-            Map<String, Object> state, boolean criticalHit) {
+            Map<String, Object> state, boolean criticalHit, Map<String, Object> move) {
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
             int defenseStage = hasAbility(attacker, "unaware") ? 0 : statStage(mon, "defense");
+            // 圣剑：无视防御方防御阶级的正值变化
+            if (MoveRegistry.isSacredSword(move) && defenseStage > 0) {
+                defenseStage = 0;
+            }
             if (criticalHit && defenseStage > 0) {
                 defenseStage = 0;
             }
@@ -341,37 +417,15 @@ final class BattleDamageSupport {
             }
             baseStat = applyStageModifier(baseStat, specialDefenseStage);
         }
-        String speciesDef = String.valueOf(mon.get("name_en"));
-        String itemDef = heldItem(mon);
-        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
-                && "metal-powder".equals(itemDef) && "ditto".equalsIgnoreCase(speciesDef)) {
-            baseStat = (int) Math.floor(baseStat * 2.0d);
-        }
-        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            if ("assault-vest".equals(itemDef)) {
-                baseStat = (int) Math.floor(baseStat * 1.5d);
-            }
-            // 深海鳞片（珍珠贝）：特防 2 倍
-            if ("deep-sea-scale".equals(itemDef) && "clamperl".equalsIgnoreCase(speciesDef)) {
-                baseStat = (int) Math.floor(baseStat * 2.0d);
-            }
-            // 心之水滴（拉帝亚斯/拉帝欧斯）：特防 1.5 倍
-            if ("soul-dew".equals(itemDef) && ("latias".equalsIgnoreCase(speciesDef) || "latios".equalsIgnoreCase(speciesDef))) {
-                baseStat = (int) Math.floor(baseStat * 1.5d);
-            }
-        }
-        // 进化奇石：未进化的宝可梦双防 1.5 倍（notFullyEvolved 由上游数据准备层设置）
-        if ("eviolite".equalsIgnoreCase(itemDef)
-                && Boolean.TRUE.equals(mon.get("notFullyEvolved"))) {
-            baseStat = (int) Math.floor(baseStat * 1.5d);
-        }
-        // 神奇鳞片：异常状态时物防 1.5 倍
-        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
-                && hasAbility(mon, "marvel-scale", "marvel scale")
-                && mon.get("condition") != null && !String.valueOf(mon.get("condition")).isBlank()
-                && !"ready".equals(mon.get("condition")) && !"fainted".equals(mon.get("condition"))) {
-            baseStat = (int) Math.floor(baseStat * 1.5d);
-        }
+
+        // 道具/特性防御修正（Eviolite, Assault Vest, Metal Powder, Deep Sea Scale, Soul Dew, Marvel Scale 等）
+        int moveTypeId = engine.toInt(move.get("type_id"), 0);
+        // 构造上下文时 defender=mon，使 handler 中 ctx.defenderCondition() 正确取到 mon 的状态
+        AttackContext ctx = new AttackContext(attacker, mon, move, state, moveTypeId, damageClassId, criticalHit);
+        baseStat = EffectRegistry.dispatchTargetDefense(mon, ctx, baseStat);
+        baseStat = EffectRegistry.dispatchItemTargetDefense(mon, ctx, baseStat);
+
+        // 沙暴岩石系特防 x1.5 / 雪暴冰系物防 x1.5（天气效果，非特性/道具）
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL
                 && fieldEffectSupport.sandTurns(state) > 0
                 && targetHasType(mon, DamageCalculatorUtil.TYPE_ROCK)) {
@@ -452,60 +506,19 @@ final class BattleDamageSupport {
     }
 
     /**
-     * Comprehensive item damage modifier (Pokemon Showdown standard)
+     * Item damage modifier → dispatch + Expert Belt 残留在引擎层
      */
     double itemDamageModifier(Map<String, Object> attacker, Map<String, Object> defender, int moveTypeId,
             Map<String, Object> move, Map<String, Object> state) {
+        int damageClassId = engine.toInt(move.get("damage_class_id"), DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL);
+        AttackContext ctx = new AttackContext(attacker, defender, move, state, moveTypeId, damageClassId, false);
+        double modifier = 1.0;
+
+        // 注册在 EffectRegistry 中的道具：Life Orb, 属性增伤, Muscle Band, Wise Glasses, 石板/卡带/宝石, 物种球, Metronome ...
+        modifier = EffectRegistry.dispatchItemSourceDamage(attacker, ctx, modifier);
+
+        // Expert Belt: 克制时 x1.2（需要 typeEfficacyMapper，留在引擎层）
         String item = heldItem(attacker);
-        double modifier = 1.0d;
-
-        // === Damage Boosting Items ===
-
-        // Life Orb: 1.3x all damage
-        if ("life-orb".equals(item)) {
-            modifier *= 1.3d;
-        }
-
-        // Choice Band/Specs: 1.5x physical/special damage (already applied in stat
-        // calculation)
-        // Note: These are handled in modifiedAttackStat
-
-        // Type-boosting items: 1.2x for matching type
-        modifier *= switch (item) {
-            case "mystic-water", "sea-incense" -> moveTypeId == DamageCalculatorUtil.TYPE_WATER ? 1.2d : 1.0d;
-            case "charcoal", "heat-rock" -> moveTypeId == DamageCalculatorUtil.TYPE_FIRE ? 1.2d : 1.0d;
-            case "miracle-seed", "rose-incense" -> moveTypeId == DamageCalculatorUtil.TYPE_GRASS ? 1.2d : 1.0d;
-            case "never-melt-ice" -> moveTypeId == DamageCalculatorUtil.TYPE_ICE ? 1.2d : 1.0d;
-            case "black-belt", "fighting-gem" -> moveTypeId == DamageCalculatorUtil.TYPE_FIGHTING ? 1.2d : 1.0d;
-            case "poison-barb", "black-sludge" -> moveTypeId == DamageCalculatorUtil.TYPE_POISON ? 1.2d : 1.0d;
-            case "soft-sand" -> moveTypeId == DamageCalculatorUtil.TYPE_GROUND ? 1.2d : 1.0d;
-            case "sharp-beak" -> moveTypeId == DamageCalculatorUtil.TYPE_FLYING ? 1.2d : 1.0d;
-            case "twisted-spoon", "odd-incense" -> moveTypeId == DamageCalculatorUtil.TYPE_PSYCHIC ? 1.2d : 1.0d;
-            case "silver-powder" -> moveTypeId == DamageCalculatorUtil.TYPE_BUG ? 1.2d : 1.0d;
-            case "hard-stone", "rock-incense" -> moveTypeId == DamageCalculatorUtil.TYPE_ROCK ? 1.2d : 1.0d;
-            case "spell-tag" -> moveTypeId == DamageCalculatorUtil.TYPE_GHOST ? 1.2d : 1.0d;
-            case "dragon-fang", "dragon-scale" -> moveTypeId == DamageCalculatorUtil.TYPE_DRAGON ? 1.2d : 1.0d;
-            case "black-glasses" -> moveTypeId == DamageCalculatorUtil.TYPE_DARK ? 1.2d : 1.0d;
-            case "metal-coat", "steel-incense" -> moveTypeId == DamageCalculatorUtil.TYPE_STEEL ? 1.2d : 1.0d;
-            case "silk-scarf" -> moveTypeId == DamageCalculatorUtil.TYPE_NORMAL ? 1.2d : 1.0d;
-            case "magnet" -> moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC ? 1.2d : 1.0d;
-            default -> 1.0d;
-        };
-
-        // Type Gem: 1.3x for first use of matching type move (consumed after use)
-        // Would need to track gem usage
-        modifier *= switch (item) {
-            case "fire-gem" -> moveTypeId == DamageCalculatorUtil.TYPE_FIRE && !itemConsumed(attacker) ? 1.3d : 1.0d;
-            case "water-gem" -> moveTypeId == DamageCalculatorUtil.TYPE_WATER && !itemConsumed(attacker) ? 1.3d : 1.0d;
-            case "electric-gem" ->
-                moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC && !itemConsumed(attacker) ? 1.3d : 1.0d;
-            case "grass-gem" -> moveTypeId == DamageCalculatorUtil.TYPE_GRASS && !itemConsumed(attacker) ? 1.3d : 1.0d;
-            case "fighting-gem" ->
-                moveTypeId == DamageCalculatorUtil.TYPE_FIGHTING && !itemConsumed(attacker) ? 1.3d : 1.0d;
-            default -> 1.0d;
-        };
-
-        // Expert Belt: 1.2x for super effective moves
         if ("expert-belt".equals(item)) {
             double typeMod = typeModifier(defender, moveTypeId);
             if (typeMod > 1.0d) {
@@ -513,415 +526,97 @@ final class BattleDamageSupport {
             }
         }
 
-        // Muscle Band: 1.1x for physical moves
-        if ("muscle-band".equals(item)) {
-            int damageClassId = engine.toInt(move.get("damage_class_id"), DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL);
-            if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-                modifier *= 1.1d;
-            }
-        }
-
-        // Wise Glasses: 1.1x for special moves
-        if ("wise-glasses".equals(item)) {
-            int damageClassId = engine.toInt(move.get("damage_class_id"), DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL);
-            if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-                modifier *= 1.1d;
-            }
-        }
-
-        // Plate items (for Arceus): 1.2x for matching type
-        if (item.endsWith("-plate")) {
-            int plateType = getPlateType(item);
-            if (plateType == moveTypeId) {
-                modifier *= 1.2d;
-            }
-        }
-
-        // Memory items (for Silvally): 1.2x for matching type
-        if (item.endsWith("-memory")) {
-            int memoryType = getMemoryType(item);
-            if (memoryType == moveTypeId) {
-                modifier *= 1.2d;
-            }
-        }
-
-        // 物种限定属性增强道具
-        String species = String.valueOf(attacker.get("name_en"));
-        if ("adamant-orb".equals(item) && "dialga".equalsIgnoreCase(species)) {
-            if (moveTypeId == DamageCalculatorUtil.TYPE_STEEL || moveTypeId == DamageCalculatorUtil.TYPE_DRAGON)
-                modifier *= 1.2d;
-        }
-        if ("lustrous-orb".equals(item) && "palkia".equalsIgnoreCase(species)) {
-            if (moveTypeId == DamageCalculatorUtil.TYPE_WATER || moveTypeId == DamageCalculatorUtil.TYPE_DRAGON)
-                modifier *= 1.2d;
-        }
-        if ("griseous-orb".equals(item) && "giratina".equalsIgnoreCase(species)) {
-            if (moveTypeId == DamageCalculatorUtil.TYPE_GHOST || moveTypeId == DamageCalculatorUtil.TYPE_DRAGON)
-                modifier *= 1.2d;
-        }
-
-        // 节拍器：连续使用同一招式，每回合叠加 0.2x，最高 2.0x
-        if ("metronome".equals(item)) {
-            int count = engine.toInt(attacker.get("metronomeCount"), 0);
-            if (count > 0) {
-                modifier *= (1.0d + count * 0.2d);
-            }
-        }
-
         return modifier;
     }
 
-    /**
-     * Get type ID from plate item name
-     */
-    private int getPlateType(String plateName) {
-        return switch (plateName) {
-            case "flame-plate" -> DamageCalculatorUtil.TYPE_FIRE;
-            case "splash-plate" -> DamageCalculatorUtil.TYPE_WATER;
-            case "zap-plate" -> DamageCalculatorUtil.TYPE_ELECTRIC;
-            case "meadow-plate" -> DamageCalculatorUtil.TYPE_GRASS;
-            case "icicle-plate" -> DamageCalculatorUtil.TYPE_ICE;
-            case "fist-plate" -> DamageCalculatorUtil.TYPE_FIGHTING;
-            case "toxic-plate" -> DamageCalculatorUtil.TYPE_POISON;
-            case "earth-plate" -> DamageCalculatorUtil.TYPE_GROUND;
-            case "sky-plate" -> DamageCalculatorUtil.TYPE_FLYING;
-            case "mind-plate" -> DamageCalculatorUtil.TYPE_PSYCHIC;
-            case "insect-plate" -> DamageCalculatorUtil.TYPE_BUG;
-            case "stone-plate" -> DamageCalculatorUtil.TYPE_ROCK;
-            case "spooky-plate" -> DamageCalculatorUtil.TYPE_GHOST;
-            case "draco-plate" -> DamageCalculatorUtil.TYPE_DRAGON;
-            case "dread-plate" -> DamageCalculatorUtil.TYPE_DARK;
-            case "iron-plate" -> DamageCalculatorUtil.TYPE_STEEL;
-            default -> DamageCalculatorUtil.TYPE_NORMAL;
+    /** 石板 → 属性ID（Arceus 制裁光砾用） */
+    private static int typeIdFromPlate(String item) {
+        return switch (item) {
+            case "fist-plate", "fist plate" -> DamageCalculatorUtil.TYPE_FIGHTING;
+            case "sky-plate", "sky plate" -> DamageCalculatorUtil.TYPE_FLYING;
+            case "poison-plate", "poison plate" -> DamageCalculatorUtil.TYPE_POISON;
+            case "earth-plate", "earth plate" -> DamageCalculatorUtil.TYPE_GROUND;
+            case "stone-plate", "stone plate" -> DamageCalculatorUtil.TYPE_ROCK;
+            case "insect-plate", "insect plate" -> DamageCalculatorUtil.TYPE_BUG;
+            case "spooky-plate", "spooky plate" -> DamageCalculatorUtil.TYPE_GHOST;
+            case "iron-plate", "iron plate" -> DamageCalculatorUtil.TYPE_STEEL;
+            case "flame-plate", "flame plate" -> DamageCalculatorUtil.TYPE_FIRE;
+            case "splash-plate", "splash plate" -> DamageCalculatorUtil.TYPE_WATER;
+            case "meadow-plate", "meadow plate" -> DamageCalculatorUtil.TYPE_GRASS;
+            case "zap-plate", "zap plate" -> DamageCalculatorUtil.TYPE_ELECTRIC;
+            case "mind-plate", "mind plate" -> DamageCalculatorUtil.TYPE_PSYCHIC;
+            case "icicle-plate", "icicle plate" -> DamageCalculatorUtil.TYPE_ICE;
+            case "dragon-plate", "dragon plate" -> DamageCalculatorUtil.TYPE_DRAGON;
+            case "dread-plate", "dread plate" -> DamageCalculatorUtil.TYPE_DARK;
+            case "pixie-plate", "pixie plate" -> DamageCalculatorUtil.TYPE_FAIRY;
+            default -> 0; // 无石板 → Normal（招式原始属性）
+        };
+    }
+
+    /** 记忆 → 属性ID（Silvally 多属性攻击用） */
+    private static int typeIdFromMemory(String item) {
+        return switch (item) {
+            case "fighting-memory", "fighting memory" -> DamageCalculatorUtil.TYPE_FIGHTING;
+            case "flying-memory", "flying memory" -> DamageCalculatorUtil.TYPE_FLYING;
+            case "poison-memory", "poison memory" -> DamageCalculatorUtil.TYPE_POISON;
+            case "ground-memory", "ground memory" -> DamageCalculatorUtil.TYPE_GROUND;
+            case "rock-memory", "rock memory" -> DamageCalculatorUtil.TYPE_ROCK;
+            case "bug-memory", "bug memory" -> DamageCalculatorUtil.TYPE_BUG;
+            case "ghost-memory", "ghost memory" -> DamageCalculatorUtil.TYPE_GHOST;
+            case "steel-memory", "steel memory" -> DamageCalculatorUtil.TYPE_STEEL;
+            case "fire-memory", "fire memory" -> DamageCalculatorUtil.TYPE_FIRE;
+            case "water-memory", "water memory" -> DamageCalculatorUtil.TYPE_WATER;
+            case "grass-memory", "grass memory" -> DamageCalculatorUtil.TYPE_GRASS;
+            case "electric-memory", "electric memory" -> DamageCalculatorUtil.TYPE_ELECTRIC;
+            case "psychic-memory", "psychic memory" -> DamageCalculatorUtil.TYPE_PSYCHIC;
+            case "ice-memory", "ice memory" -> DamageCalculatorUtil.TYPE_ICE;
+            case "dragon-memory", "dragon memory" -> DamageCalculatorUtil.TYPE_DRAGON;
+            case "dark-memory", "dark memory" -> DamageCalculatorUtil.TYPE_DARK;
+            case "fairy-memory", "fairy memory" -> DamageCalculatorUtil.TYPE_FAIRY;
+            default -> 0; // 无记忆 → Normal
         };
     }
 
     /**
-     * Get type ID from memory item name
-     */
-    private int getMemoryType(String memoryName) {
-        return switch (memoryName) {
-            case "fire-memory" -> DamageCalculatorUtil.TYPE_FIRE;
-            case "water-memory" -> DamageCalculatorUtil.TYPE_WATER;
-            case "electric-memory" -> DamageCalculatorUtil.TYPE_ELECTRIC;
-            case "grass-memory" -> DamageCalculatorUtil.TYPE_GRASS;
-            case "ice-memory" -> DamageCalculatorUtil.TYPE_ICE;
-            case "fighting-memory" -> DamageCalculatorUtil.TYPE_FIGHTING;
-            case "poison-memory" -> DamageCalculatorUtil.TYPE_POISON;
-            case "ground-memory" -> DamageCalculatorUtil.TYPE_GROUND;
-            case "flying-memory" -> DamageCalculatorUtil.TYPE_FLYING;
-            case "psychic-memory" -> DamageCalculatorUtil.TYPE_PSYCHIC;
-            case "bug-memory" -> DamageCalculatorUtil.TYPE_BUG;
-            case "rock-memory" -> DamageCalculatorUtil.TYPE_ROCK;
-            case "ghost-memory" -> DamageCalculatorUtil.TYPE_GHOST;
-            case "dragon-memory" -> DamageCalculatorUtil.TYPE_DRAGON;
-            case "dark-memory" -> DamageCalculatorUtil.TYPE_DARK;
-            case "steel-memory" -> DamageCalculatorUtil.TYPE_STEEL;
-            default -> DamageCalculatorUtil.TYPE_NORMAL;
-        };
-    }
-
-    /**
-     * Ability-based damage modifiers (Pokemon Showdown standard)
+     * Ability-based damage modifiers → 全部走 EffectRegistry dispatch
      */
     double abilityDamageModifier(Map<String, Object> attacker, Map<String, Object> defender,
             Map<String, Object> move, int moveTypeId, Map<String, Object> state) {
-        double modifier = 1.0d;
-        String attackerAbility = engine.abilityName(attacker);
-        String defenderAbility = engine.abilityName(defender);
-        int power = engine.toInt(move.get("power"), 0);
         int damageClassId = engine.toInt(move.get("damage_class_id"), DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL);
+        AttackContext ctx = new AttackContext(attacker, defender, move, state, moveTypeId, damageClassId, false);
 
-        // === Attacker Ability Boosts ===
+        double modifier = 1.0;
 
-        // Technician: 1.5x boost for moves with base power <= 60
-        if ("technician".equalsIgnoreCase(attackerAbility) && power > 0 && power <= 60) {
-            modifier *= 1.5d;
+        // 攻击方特性伤害修正（Technician, Sheer Force, Hustle, Guts 等）
+        modifier = EffectRegistry.dispatchSourceDamage(attacker, ctx, modifier);
+
+        // 光子喷涌/暗影之光：无视防御方特性（免疫类特性如 Levitate、倍率减半等均无效）
+        boolean ignoreDefAbilities = MoveRegistry.isUnignorableMove(move);
+
+        // 防御方特性伤害修正（含免疫返回 0，如 Levitate, Sap Sipper, Flash Fire 等）
+        if (!ignoreDefAbilities) {
+            modifier = EffectRegistry.dispatchTargetDamage(defender, ctx, modifier);
+            if (modifier <= 0) return 0;
         }
 
-        // Sheer Force: 1.3x for moves with secondary effects (removes them)
-        if ("sheer-force".equalsIgnoreCase(attackerAbility) && hasSecondaryEffect(move)) {
-            modifier *= 1.3d;
+        // Dark Aura / Fairy Aura: 全场 Dark/Fairy 招式 ×4/3（Aura Break 反转至 ×3/4）
+        if ((moveTypeId == EffectRegistry.DARK && hasFieldAbility(state, "dark-aura"))
+                || (moveTypeId == EffectRegistry.FAIRY && hasFieldAbility(state, "fairy-aura"))) {
+            modifier *= hasFieldAbility(state, "aura-break") ? 0.75 : 4.0 / 3.0;
         }
 
-        // Iron Fist: 1.2x for punching moves
-        if ("iron-fist".equalsIgnoreCase(attackerAbility) && MoveRegistry.isPunchingMove(move)) {
-            modifier *= 1.2d;
-        }
-
-        // Reckless: 1.2x for recoil/crash moves
-        if ("reckless".equalsIgnoreCase(attackerAbility) && MoveRegistry.hasRecoil(move)) {
-            modifier *= 1.2d;
-        }
-
-        // Sand Force: 1.3x for Rock/Ground/Steel moves in sandstorm
-        if ("sand-force".equalsIgnoreCase(attackerAbility) && fieldEffectSupport.sandTurns(null) > 0) {
-            if (moveTypeId == DamageCalculatorUtil.TYPE_ROCK ||
-                    moveTypeId == DamageCalculatorUtil.TYPE_GROUND ||
-                    moveTypeId == DamageCalculatorUtil.TYPE_STEEL) {
-                modifier *= 1.3d;
-            }
-        }
-
-        // Hustle: 1.5x physical attack but lower accuracy
-        if ("hustle".equalsIgnoreCase(attackerAbility) && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            modifier *= 1.5d;
-        }
-
-        // Flare Boost: 1.5x special attack when burned
-        if ("flare-boost".equalsIgnoreCase(attackerAbility) && "burn".equals(attacker.get("condition"))
-                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            modifier *= 1.5d;
-        }
-
-        // Toxic Boost: 1.5x physical attack when poisoned
-        if ("toxic-boost".equalsIgnoreCase(attackerAbility) &&
-                ("poison".equals(attacker.get("condition")) || "toxic".equals(attacker.get("condition")))
-                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            modifier *= 1.5d;
-        }
-
-        // Guts: 1.5x physical attack when statused
-        if ("guts".equalsIgnoreCase(attackerAbility) && attacker.get("condition") != null
-                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            modifier *= 1.5d;
-        }
-
-        // Analytic: 1.3x if moving last
-        if ("analytic".equalsIgnoreCase(attackerAbility)) {
-            // Would check if moving last in turn order
-            modifier *= 1.3d;
-        }
-
-        // Tinted Lens: 2x for not very effective moves
-        if ("tinted-lens".equalsIgnoreCase(attackerAbility)) {
+        // Neuroforce: 效果绝佳时 ×1.25
+        if ("neuroforce".equalsIgnoreCase(engine.abilityName(attacker))) {
             double typeMod = typeModifier(defender, moveTypeId);
-            if (typeMod < 1.0d && typeMod > 0.0d) {
-                modifier *= 2.0d;
+            if (typeMod > 1.0) {
+                modifier *= 1.25;
             }
         }
 
-        // Normalize: All moves become Normal-type and get 1.2x boost
-        if ("normalize".equalsIgnoreCase(attackerAbility) && moveTypeId != DamageCalculatorUtil.TYPE_NORMAL) {
-            modifier *= 1.2d;
-        }
-
-        // Strong Jaw: 1.5x for biting moves
-        if ("strong-jaw".equalsIgnoreCase(attackerAbility) && MoveRegistry.isBitingMove(move)) {
-            modifier *= 1.5d;
-        }
-
-        // Mega Launcher: 1.5x for aura/pulse moves
-        if ("mega-launcher".equalsIgnoreCase(attackerAbility) && MoveRegistry.isPulseMove(move)) {
-            modifier *= 1.5d;
-        }
-
-        // Steely Spirit: 1.5x for Steel moves
-        if ("steely-spirit".equalsIgnoreCase(attackerAbility) && moveTypeId == DamageCalculatorUtil.TYPE_STEEL) {
-            modifier *= 1.5d;
-        }
-
-        // Punk Rock: 1.3x for sound-based moves
-        if ("punk-rock".equalsIgnoreCase(attackerAbility) && MoveRegistry.isSoundMove(move)) {
-            modifier *= 1.3d;
-        }
-
-        // Transistor: 1.3x for Electric moves
-        if ("transistor".equalsIgnoreCase(attackerAbility) && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
-            modifier *= 1.3d;
-        }
-
-        // Dragon's Maw: 1.5x for Dragon moves
-        if ("dragons-maw".equalsIgnoreCase(attackerAbility) && moveTypeId == DamageCalculatorUtil.TYPE_DRAGON) {
-            modifier *= 1.5d;
-        }
-
-        // === Defender Ability Reductions ===
-
-        // Thick Fat: 0.5x for Fire/Ice moves
-        if ("thick-fat".equalsIgnoreCase(defenderAbility) &&
-                (moveTypeId == DamageCalculatorUtil.TYPE_FIRE || moveTypeId == DamageCalculatorUtil.TYPE_ICE)) {
-            modifier *= 0.5d;
-        }
-
-        // Heatproof: 0.5x for Fire moves
-        if ("heatproof".equalsIgnoreCase(defenderAbility) && moveTypeId == DamageCalculatorUtil.TYPE_FIRE) {
-            modifier *= 0.5d;
-        }
-
-        // Water Bubble: 0.5x for Fire moves
-        if ("water-bubble".equalsIgnoreCase(defenderAbility) && moveTypeId == DamageCalculatorUtil.TYPE_FIRE) {
-            modifier *= 0.5d;
-        }
-
-        // Dry Skin: 1.25x for Fire moves
-        if ("dry-skin".equalsIgnoreCase(defenderAbility) && moveTypeId == DamageCalculatorUtil.TYPE_FIRE) {
-            modifier *= 1.25d;
-        }
-
-        // Filter/Solid Rock: 0.75x for super effective moves
-        if (("filter".equalsIgnoreCase(defenderAbility) || "solid-rock".equalsIgnoreCase(defenderAbility))) {
-            double typeMod = typeModifier(defender, moveTypeId);
-            if (typeMod > 1.0d) {
-                modifier *= 0.75d;
-            }
-        }
-
-        // Prism Armor: 0.75x for super effective moves
-        if ("prism-armor".equalsIgnoreCase(defenderAbility)) {
-            double typeMod = typeModifier(defender, moveTypeId);
-            if (typeMod > 1.0d) {
-                modifier *= 0.75d;
-            }
-        }
-
-        // Ice Scales: 0.5x for special moves
-        if ("ice-scales".equalsIgnoreCase(defenderAbility) &&
-                damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            modifier *= 0.5d;
-        }
-
-        // Fur Coat: 0.5x for physical moves
-        if ("fur-coat".equalsIgnoreCase(defenderAbility) &&
-                damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            modifier *= 0.5d;
-        }
-
-        // Friend Guard: 0.75x in doubles (ally has this ability)
-        // Would need to check ally abilities
-
-        // Sap Sipper: Immune to Grass, boosts Attack
-        if ("sap-sipper".equalsIgnoreCase(defenderAbility) && moveTypeId == DamageCalculatorUtil.TYPE_GRASS) {
-            return 0.0d; // Immune
-        }
-
-        // Storm Drain: Immune to Water, boosts Sp. Atk
-        if ("storm-drain".equalsIgnoreCase(defenderAbility) && moveTypeId == DamageCalculatorUtil.TYPE_WATER) {
-            return 0.0d; // Immune
-        }
-
-        // Lightning Rod/Volt Absorb: Immune to Electric
-        if (("lightning-rod".equalsIgnoreCase(defenderAbility) || "volt-absorb".equalsIgnoreCase(defenderAbility))
-                && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
-            return 0.0d; // Immune
-        }
-
-        // Water Absorb/Dry Skin: Immune to Water, heals
-        if (("water-absorb".equalsIgnoreCase(defenderAbility) || "dry-skin".equalsIgnoreCase(defenderAbility))
-                && moveTypeId == DamageCalculatorUtil.TYPE_WATER) {
-            return 0.0d; // Immune
-        }
-
-        // Flash Fire: Immune to Fire (already handled in stat calculation)
-        if ("flash-fire".equalsIgnoreCase(defenderAbility) && moveTypeId == DamageCalculatorUtil.TYPE_FIRE) {
-            return 0.0d; // Immune
-        }
-
-        // Motor Drive: Immune to Electric, boosts Speed
-        if ("motor-drive".equalsIgnoreCase(defenderAbility) && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
-            return 0.0d; // Immune
-        }
-
-        // Well-Baked Body: Immune to Fire, boosts Defense
-        if ("well-baked-body".equalsIgnoreCase(defenderAbility) && moveTypeId == DamageCalculatorUtil.TYPE_FIRE) {
-            return 0.0d; // Immune
-        }
-
-        // Earth Eater: Immune to Ground, heals
-        if ("earth-eater".equalsIgnoreCase(defenderAbility) && moveTypeId == DamageCalculatorUtil.TYPE_GROUND) {
-            return 0.0d; // Immune
-        }
-
-        // Wind Rider: Immune to wind moves, boosts Attack
-        if ("wind-rider".equalsIgnoreCase(defenderAbility) && MoveRegistry.isWindMove(move)) {
-            return 0.0d; // Immune
-        }
-
-        // Sharpness: slicing moves get 1.5x boost
-        if ("sharpness".equalsIgnoreCase(attackerAbility) && MoveRegistry.isSlicingMove(move)) {
-            modifier *= 1.5d;
-        }
-
-        // Punching Glove: punch moves get 1.1x boost
-        if ("punching-glove".equalsIgnoreCase(engine.heldItem(attacker)) && MoveRegistry.isPunchingMove(move)) {
-            modifier *= 1.1d;
-        }
-
-        // Supreme Overlord: +10% per fainted ally (max +50%)
-        if ("supreme-overlord".equalsIgnoreCase(attackerAbility) || "supreme overlord".equalsIgnoreCase(attackerAbility)) {
-            int faintedCount = engine.toInt(attacker.get("faintedAllies"), 0);
-            modifier *= (1.0d + faintedCount * 0.1d);
-        }
-
-        // Protosynthesis/Quark Drive: 1.3x with Booster Energy, sun (Protosynthesis), or Electric Terrain (Quark Drive)
-        if ("protosynthesis".equalsIgnoreCase(attackerAbility) || "quark-drive".equalsIgnoreCase(attackerAbility)) {
-            boolean active = "booster-energy".equals(engine.heldItem(attacker));
-            if (!active && state != null) {
-                Object fe = state.get("fieldEffects");
-                if (fe instanceof Map<?, ?> f) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> fieldEffects = (Map<String, Object>) f;
-                    if ("protosynthesis".equalsIgnoreCase(attackerAbility)
-                            && engine.toInt(fieldEffects.get("sunTurns"), 0) > 0) {
-                        active = true;
-                    }
-                    if ("quark-drive".equalsIgnoreCase(attackerAbility)
-                            && engine.toInt(fieldEffects.get("electricTerrainTurns"), 0) > 0) {
-                        active = true;
-                    }
-                }
-            }
-            if (active) modifier *= 1.3d;
-        }
-
-        // Purifying Salt: Ghost resistance (takes 1/2 damage from Ghost)
-        if (("purifying-salt".equalsIgnoreCase(defenderAbility) || "purifying salt".equalsIgnoreCase(defenderAbility))
-                && moveTypeId == DamageCalculatorUtil.TYPE_GHOST) {
-            modifier *= 0.5d;
-        }
-
-        // Sword of Ruin: Defender's Defense reduced by 25%
-        if (("sword-of-ruin".equalsIgnoreCase(defenderAbility) || "sword of ruin".equalsIgnoreCase(defenderAbility))
-                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            modifier /= 0.75d; // reverse the actual 0.75x def multiplier
-        }
-
-        // Vessel of Ruin: Defender's SpA reduced by 25% (damage dealt by SpA is lower)
-        if (("vessel-of-ruin".equalsIgnoreCase(defenderAbility) || "vessel of ruin".equalsIgnoreCase(defenderAbility))
-                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            modifier /= 0.75d;
-        }
-
-        // Tablets of Ruin: Defender's Atk reduced by 25% (damage dealt by physical is lower)
-        if (("tablets-of-ruin".equalsIgnoreCase(defenderAbility) || "tablets of ruin".equalsIgnoreCase(defenderAbility))
-                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            modifier /= 0.75d;
-        }
-
-        // Orichalcum Pulse: +1.3x Atk in sun
-        if ("orichalcum-pulse".equalsIgnoreCase(attackerAbility) || "orichalcum pulse".equalsIgnoreCase(attackerAbility)) {
-            if (state != null) {
-                Object fe = state.get("fieldEffects");
-                if (fe instanceof Map<?, ?> f && engine.toInt(((Map<String, Object>) f).get("sunTurns"), 0) > 0) {
-                    modifier *= 1.3d;
-                }
-            }
-        }
-
-        // Hadron Engine: +1.3x SpA in Electric Terrain
-        if ("hadron-engine".equalsIgnoreCase(attackerAbility) || "hadron engine".equalsIgnoreCase(attackerAbility)) {
-            if (state != null) {
-                Object fe = state.get("fieldEffects");
-                if (fe instanceof Map<?, ?> f && engine.toInt(((Map<String, Object>) f).get("electricTerrainTurns"), 0) > 0) {
-                    modifier *= 1.3d;
-                }
-            }
-        }
-
-        // Beads of Ruin: Defender's SpD reduced by 25%
-        if (("beads-of-ruin".equalsIgnoreCase(defenderAbility) || "beads of ruin".equalsIgnoreCase(defenderAbility))
-                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            modifier /= 0.75d;
+        // Stakeout: 目标本回合换入时伤害 ×2
+        if ("stakeout".equalsIgnoreCase(engine.abilityName(attacker))
+                && Boolean.TRUE.equals(defender.get("justSwitchedIn"))) {
+            modifier *= 2.0;
         }
 
         return modifier;
@@ -942,12 +637,6 @@ final class BattleDamageSupport {
         return "earthquake".equals(name) || "bulldoze".equals(name) || "magnitude".equals(name);
     }
 
-    private boolean hasSecondaryEffect(Map<String, Object> move) {
-        // Check if move has additional effects (status, stat changes, etc.)
-        Integer effectChance = engine.toInt(move.get("effect_chance"), 0);
-        return effectChance > 0;
-    }
-
     int speedValue(Map<String, Object> mon, Map<String, Object> state, boolean playerSide) {
         // 速度值统一在这里收口，供行动排序层直接比较，避免不同模块各自叠倍率。
         int speed = engine.toInt(engine.castMap(mon.get("stats")).get("speed"), 0);
@@ -958,65 +647,16 @@ final class BattleDamageSupport {
             speed = Math.max(1, speed / 2);
         }
 
-        // 飞毛腿：异常状态时速度 1.5 倍（麻痹时先减半再乘 1.5 = 0.75 倍）
-        if (hasAbility(mon, "quick-feet", "quick feet")
-                && mon.get("condition") != null && !String.valueOf(mon.get("condition")).isBlank()
-                && !"ready".equals(mon.get("condition")) && !"fainted".equals(mon.get("condition"))) {
-            speed = (int) Math.floor(speed * 1.5d);
-        }
+        // 特性速度修正（Swift Swim, Chlorophyll, Sand Rush, Slush Rush, Surge Surfer, Unburden, Quick Feet）
+        SpeedContext spCtx = new SpeedContext(mon, state, playerSide);
+        speed = EffectRegistry.dispatchSpeed(mon, spCtx, speed);
 
-        // Choice Scarf: 1.5x speed
-        if ("choice-scarf".equals(heldItem(mon))) {
-            speed = (int) Math.floor(speed * 1.5d);
-        }
+        // 道具速度修正（Choice Scarf, Iron Ball, Quick Powder, Room Service）
+        speed = EffectRegistry.dispatchItemSpeed(mon, spCtx, speed);
 
-        // 黑铁球：速度减半
-        if ("iron-ball".equals(heldItem(mon)) || "iron ball".equals(heldItem(mon))) {
-            speed = Math.max(1, speed / 2);
-        }
-
-        // 速度粉末（百变怪）：速度 2 倍
-        if ("quick-powder".equals(heldItem(mon)) && "ditto".equalsIgnoreCase(String.valueOf(mon.get("name_en")))) {
-            speed = speed * 2;
-        }
-
-        // Tailwind: 2x speed
+        // Tailwind: 2x speed（场地效果，非特性/道具）
         if (fieldEffectSupport.tailwindTurns(state, playerSide) > 0) {
             speed *= 2;
-        }
-
-        // Weather-based speed abilities
-        String ability = engine.abilityName(mon);
-        if (fieldEffectSupport.rainTurns(state) > 0 && "swift-swim".equalsIgnoreCase(ability)) {
-            speed *= 2; // Swift Swim doubles speed in rain
-        }
-        if (fieldEffectSupport.sunTurns(state) > 0 && "chlorophyll".equalsIgnoreCase(ability)) {
-            speed *= 2; // Chlorophyll doubles speed in sun
-        }
-        if (fieldEffectSupport.sandTurns(state) > 0 && "sand-rush".equalsIgnoreCase(ability)) {
-            speed *= 2; // Sand Rush doubles speed in sandstorm
-        }
-        if (fieldEffectSupport.snowTurns(state) > 0 && "slush-rush".equalsIgnoreCase(ability)) {
-            speed *= 2; // Slush Rush doubles speed in snow/hail
-        }
-
-        // Terrain-based speed (Surge Surfer in Electric Terrain)
-        if (fieldEffectSupport.electricTerrainTurns(state) > 0 && "surge-surfer".equalsIgnoreCase(ability)) {
-            speed *= 2; // Surge Surfer doubles speed in Electric Terrain
-        }
-
-        // Unburden: doubles speed after the Pokemon loses/consumes its held item.
-        if ("unburden".equalsIgnoreCase(ability) && Boolean.TRUE.equals(mon.get("unburdenActive"))) {
-            speed *= 2;
-        }
-
-        // Room Service: -1 Speed stage in Trick Room
-        if ("room-service".equalsIgnoreCase(engine.heldItem(mon)) && state != null) {
-            Object fe = state.get("fieldEffects");
-            if (fe instanceof Map<?, ?> f) {
-                int trTurns = engine.toInt(((Map<String, Object>) f).get("trickRoomTurns"), 0);
-                if (trTurns > 0) speed = (int) (speed * 0.5d);
-            }
         }
 
         return speed;
@@ -1024,10 +664,15 @@ final class BattleDamageSupport {
 
     int applyIncomingDamage(Map<String, Object> attacker, Map<String, Object> target, int damage,
             Map<String, Object> actionLog, List<String> events) {
+        return applyIncomingDamage(attacker, target, damage, actionLog, events, null);
+    }
+
+    int applyIncomingDamage(Map<String, Object> attacker, Map<String, Object> target, int damage,
+            Map<String, Object> actionLog, List<String> events, Map<String, Object> move) {
         int currentHp = engine.toInt(target.get("currentHp"), 0);
         int maxHp = engine.toInt(engine.castMap(target.get("stats")).get("hp"), Math.max(1, currentHp));
         int actualDamage = damage;
-        if (!ignoresTargetAbility(attacker)
+        if (!ignoresTargetAbility(attacker, move)
                 && "sturdy".equalsIgnoreCase(engine.abilityName(target))
                 && currentHp == maxHp && damage >= currentHp) {
             actualDamage = Math.max(0, currentHp - 1);
@@ -1041,14 +686,21 @@ final class BattleDamageSupport {
             events.add(target.get("name") + " 靠气势披带撑住了攻击");
             actionLog.put("focusSash", true);
         }
+        // 忍耐：本回合受到致命攻击时保留 1 HP（与结实/气势披带不同，不要求满 HP）
+        if (Boolean.TRUE.equals(engine.volatileValue(target, "endured", false)) && damage >= currentHp) {
+            actualDamage = Math.max(0, currentHp - 1);
+            events.add(target.get("name") + " 靠忍耐撑住了攻击！");
+            actionLog.put("endured", true);
+        }
         actionLog.put("damage", actualDamage);
         return Math.max(0, currentHp - actualDamage);
     }
 
-    private double fullHpDefenseModifier(Map<String, Object> attacker, Map<String, Object> defender) {
+    private double fullHpDefenseModifier(Map<String, Object> attacker, Map<String, Object> defender,
+            Map<String, Object> move) {
         int currentHp = engine.toInt(defender.get("currentHp"), 0);
         int maxHp = engine.toInt(engine.castMap(defender.get("stats")).get("hp"), Math.max(1, currentHp));
-        if (currentHp <= 0 || currentHp != maxHp || ignoresTargetAbility(attacker)) {
+        if (currentHp <= 0 || currentHp != maxHp || ignoresTargetAbility(attacker, move)) {
             return 1.0d;
         }
         String ability = engine.abilityName(defender);
@@ -1059,8 +711,14 @@ final class BattleDamageSupport {
         return 1.0d;
     }
 
+    /** 无视目标特性：Mold Breaker 系列特性 或 特定无视特性招式 */
     private boolean ignoresTargetAbility(Map<String, Object> attacker) {
         return hasAbility(attacker, "mold-breaker", "mold breaker", "teravolt", "turboblaze");
+    }
+
+    /** 无视目标特性（带招式检测：如光子喷涌/暗影之光无视目标特性） */
+    private boolean ignoresTargetAbility(Map<String, Object> attacker, Map<String, Object> move) {
+        return ignoresTargetAbility(attacker) || (move != null && MoveRegistry.isUnignorableMove(move));
     }
 
     double weatherDamageModifier(Map<String, Object> attacker, Map<String, Object> state, int moveTypeId) {
@@ -1184,18 +842,9 @@ final class BattleDamageSupport {
      */
     int getWeight(Map<String, Object> mon) {
         int baseWeight = engine.toInt(mon.get("weight"), engine.toInt(mon.get("weight_kg"), 100));
-        // 重金属：重量翻倍
-        if (hasAbility(mon, "heavy-metal", "heavy metal")) {
-            baseWeight *= 2;
-        }
-        // 轻金属：重量减半
-        if (hasAbility(mon, "light-metal", "light metal")) {
-            baseWeight /= 2;
-        }
-        // 浮石：重量减半
-        if ("float-stone".equalsIgnoreCase(heldItem(mon))) {
-            baseWeight /= 2;
-        }
+        WeightContext wCtx = new WeightContext(mon);
+        baseWeight = EffectRegistry.dispatchWeight(mon, wCtx, baseWeight);
+        baseWeight = EffectRegistry.dispatchItemWeight(mon, wCtx, baseWeight);
         return Math.max(1, baseWeight);
     }
 
@@ -1210,6 +859,23 @@ final class BattleDamageSupport {
 
     private boolean isGrounded(Map<String, Object> mon) {
         return engine.isGrounded(mon);
+    }
+
+    /** 检查场上是否有活跃宝可梦拥有指定特性（双打适用） */
+    private boolean hasFieldAbility(Map<String, Object> state, String ability) {
+        if (state == null) return false;
+        for (boolean isPlayer : new boolean[]{true, false}) {
+            List<Map<String, Object>> team = engine.team(state, isPlayer);
+            List<Integer> activeSlots = engine.activeSlots(state, isPlayer);
+            for (Integer slot : activeSlots) {
+                if (slot != null && slot >= 0 && slot < team.size()) {
+                    if (ability.equalsIgnoreCase(engine.abilityName(team.get(slot)))) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private boolean isOnSide(Map<String, Object> state, Map<String, Object> mon, boolean playerSide) {

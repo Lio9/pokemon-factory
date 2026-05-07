@@ -6,7 +6,7 @@
     class="rounded-2xl border border-amber-200 bg-[linear-gradient(180deg,rgba(254,243,199,0.7),rgba(255,255,255,0.95))] p-4"
   >
     <div class="mb-3 text-sm font-semibold text-slate-800">
-      {{ tr('队伍预览：从 6 只里选择 4 只，并指定 2 只首发', 'Team preview: pick 4 of 6 Pokemon and choose 2 leads') }}
+      {{ tr(`队伍预览：从 6 只里选择 ${rosterLimit} 只，并指定 ${leadLimit} 只首发`, `Team preview: pick ${rosterLimit} of 6 Pokemon and choose ${leadLimit} lead(s)`) }}
     </div>
     <div class="grid gap-4 lg:grid-cols-2">
       <div>
@@ -62,7 +62,7 @@
 
     <div class="mt-4 rounded-xl bg-white p-4">
       <div class="text-sm text-slate-700">
-        {{ tr('已选择 {selected}/4 只；首发 {lead}/2 只', '{selected}/4 selected; {lead}/2 leads', { selected: selectedRosterIndexes.length, lead: leadRosterIndexes.length }) }}
+        {{ tr(`已选择 {selected}/${rosterLimit} 只；首发 {lead}/${leadLimit} 只`, `{selected}/${rosterLimit} selected; {lead}/${leadLimit} leads`, { selected: selectedRosterIndexes.length, lead: leadRosterIndexes.length }) }}
       </div>
       <div class="mt-2 flex flex-wrap gap-2">
         <button
@@ -81,7 +81,7 @@
         :disabled="!canConfirmPreview || isBusy"
         @click="confirmPreview"
       >
-        {{ busyAction === 'confirm-preview' ? tr('正在确认阵容...', 'Confirming team...') : tr('确认 6 选 4 与首发', 'Confirm preview and leads') }}
+        {{ busyAction === 'confirm-preview' ? tr('正在确认阵容...', 'Confirming team...') : tr(`确认 6 选 ${rosterLimit} 与首发`, `Confirm 6v${rosterLimit} and leads`) }}
       </button>
     </div>
   </section>
@@ -309,6 +309,8 @@ const { translate: tr } = useLocale()
 const emit = defineEmits(['toggle-debug-panel'])
 
 defineProps({
+  rosterLimit: { type: Number, default: 4 },
+  leadLimit: { type: Number, default: 2 },
   busyAction: { type: String, default: '' },
   availableSpecialSystems: { type: Function, required: true },
   activeSpecialSystemLabel: { type: Function, required: true },

@@ -36,6 +36,8 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
     private final PokemonEggGroupMapper pokemonEggGroupMapper;
     private final EggGroupMapper eggGroupMapper;
     private final GrowthRateMapper growthRateMapper;
+    private final MoveMapper moveMapper;
+    private final ItemMapper itemMapper;
     private final PokeDexAssetProperties assetProperties;
 
     public PokedexServiceImpl(
@@ -48,6 +50,8 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         PokemonEggGroupMapper pokemonEggGroupMapper,
         EggGroupMapper eggGroupMapper,
         GrowthRateMapper growthRateMapper,
+        MoveMapper moveMapper,
+        ItemMapper itemMapper,
         PokeDexAssetProperties assetProperties
     ) {
         this.pokemonFormMapper = pokemonFormMapper;
@@ -59,6 +63,8 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         this.pokemonEggGroupMapper = pokemonEggGroupMapper;
         this.eggGroupMapper = eggGroupMapper;
         this.growthRateMapper = growthRateMapper;
+        this.moveMapper = moveMapper;
+        this.itemMapper = itemMapper;
         this.assetProperties = assetProperties;
     }
 
@@ -423,5 +429,16 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
     public Page<ItemVO> getItemList(int current, int size, Integer categoryId, String keyword) {
         // Placeholder implementation: return empty page until implemented.
         return new Page<>(current, size);
+    }
+
+    @Override
+    public Map<String, Object> getSummary() {
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("pokemonCount", baseMapper.selectCount(null));
+        summary.put("typeCount", typeMapper.selectCount(null));
+        summary.put("abilityCount", abilityMapper.selectCount(null));
+        summary.put("moveCount", moveMapper.selectCount(null));
+        summary.put("itemCount", itemMapper.selectCount(null));
+        return summary;
     }
 }

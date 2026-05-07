@@ -55,6 +55,7 @@
             :action-description="actionDescription"
             :available-action-count="availableActionCount"
             :available-action-description="availableActionDescription"
+            :battle-format="battleFormat"
             :busy-action="busyAction"
             :current-battle-id="currentBattleId"
             :factory-run="factoryRun"
@@ -76,6 +77,7 @@
             @start-async="startAsyncBattle"
             @start-factory="startFactoryChallenge"
             @start-manual="startBattle"
+            @update-format="setBattleFormat"
           />
 
           <BattleDecisionPanel
@@ -95,6 +97,7 @@
             :is-picked="isPicked"
             :is-preview-phase="isPreviewPhase"
             :is-replacement-phase="isReplacementPhase"
+            :lead-limit="leadLimit"
             :lead-roster-indexes="leadRosterIndexes"
             :move-effectiveness-hints="moveEffectivenessHints"
             :move-needs-opponent-target="moveNeedsOpponentTarget"
@@ -108,6 +111,7 @@
             :preview-card-class="previewCardClass"
             :replacement-bench-options="replacementBenchOptions"
             :result-text="resultText"
+            :roster-limit="rosterLimit"
             :selected-actions="selectedActions"
             :set-selected-action="setSelectedAction"
             :selected-move-object="selectedMoveObject"
@@ -207,6 +211,7 @@ const {
   abandonFactoryRun,
   availableActionCount,
   availableActionDescription,
+  battleFormat,
   busyAction,
   canConfirmPreview,
   canConfirmReplacement,
@@ -231,6 +236,7 @@ const {
   isPreviewPhase,
   isReplacementPhase,
   lastUpdatedLabel,
+  leadLimit,
   leadRosterIndexes,
   leaderboardData,
   leaderboardLoading,
@@ -261,6 +267,7 @@ const {
   resetBattleState,
   refreshStatus,
   resultText,
+  rosterLimit,
   selectedActions,
   setSelectedAction,
   selectedMoveObject,
@@ -274,6 +281,7 @@ const {
   setSelectedSwitchTarget,
   selectedTargets,
   setSelectedTarget,
+  setBattleFormat,
   settlement,
   setShowDebugPanel,
   showContinueFactoryButton,

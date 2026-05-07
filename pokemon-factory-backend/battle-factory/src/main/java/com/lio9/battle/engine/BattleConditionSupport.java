@@ -1,5 +1,11 @@
 package com.lio9.battle.engine;
 
+import com.lio9.battle.effect.ContactContext;
+import com.lio9.battle.effect.DamageReceivedContext;
+import com.lio9.battle.effect.EffectRegistry;
+import com.lio9.battle.effect.ImmunityContext;
+import com.lio9.battle.effect.StatStageContext;
+import com.lio9.battle.effect.StatusContext;
 import com.lio9.pokedex.util.DamageCalculatorUtil;
 
 import java.util.List;
@@ -41,10 +47,16 @@ final class BattleConditionSupport {
             events.add(target.get("name") + " 免疫麻痹");
             return;
         }
-        // 柔软：免疫麻痹
-        if (hasAbility(target, "limber")) {
+        // 特性免疫麻痹（如柔软）
+        if (EffectRegistry.dispatchStatusImmunity(target, new StatusContext(target, "paralysis", state))) {
             actionLog.put("result", "status-immune");
-            events.add(target.get("name") + " 的柔软特性免疫麻痹");
+            events.add(target.get("name") + " 的" + engine.abilityName(target) + "特性免疫麻痹");
+            return;
+        }
+        // Flower Veil：草属性队友免疫异常状态
+        if (allyHasFlowerVeil(state, target)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 因队友的鲜花帷幕特性免疫异常状态");
             return;
         }
         if (isTypeImmune(move, target)) {
@@ -107,12 +119,16 @@ final class BattleConditionSupport {
             events.add(target.get("name") + " 免疫灼伤");
             return;
         }
-        // 水幕/水泡：免疫灼伤
-        if (hasAbility(target, "water-veil", "water veil", "water-bubble", "water bubble")) {
+        // 特性免疫灼伤（如水幕、水泡）
+        if (EffectRegistry.dispatchStatusImmunity(target, new StatusContext(target, "burn", state))) {
             actionLog.put("result", "status-immune");
-            String abName = engine.abilityName(target);
-            String label = "water-bubble".equalsIgnoreCase(abName) || "water bubble".equalsIgnoreCase(abName) ? "水泡" : "水幕";
-            events.add(target.get("name") + " 的" + label + "特性免疫灼伤");
+            events.add(target.get("name") + " 的" + engine.abilityName(target) + "特性免疫灼伤");
+            return;
+        }
+        // Flower Veil：草属性队友免疫异常状态
+        if (allyHasFlowerVeil(state, target)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 因队友的鲜花帷幕特性免疫异常状态");
             return;
         }
         if (isTypeImmune(move, target)) {
@@ -164,8 +180,20 @@ final class BattleConditionSupport {
             events.add(target.get("name") + " 已经处于异常状态");
             return;
         }
-        // 不眠/干劲：免疫睡眠（Yawn 在 applyYawn 中额外拦截）
-        if (hasAbility(target, "insomnia", "vital-spirit", "vital spirit")) {
+        // Sweet Veil：队友免疫睡眠
+        if (allyHasSweetVeil(state, target)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 因队友的甜幕特性免疫睡眠");
+            return;
+        }
+        // Flower Veil：草属性队友免疫异常状态
+        if (allyHasFlowerVeil(state, target)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 因队友的鲜花帷幕特性免疫异常状态");
+            return;
+        }
+        // 特性免疫睡眠（如不眠、干劲）
+        if (EffectRegistry.dispatchStatusImmunity(target, new StatusContext(target, "sleep", state))) {
             actionLog.put("result", "status-immune");
             events.add(target.get("name") + " 的特性免疫睡眠");
             return;
@@ -195,6 +223,24 @@ final class BattleConditionSupport {
                 || engine.targetHasType(target, DamageCalculatorUtil.TYPE_STEEL)) {
             actionLog.put("result", "status-immune");
             events.add(target.get("name") + " 免疫中毒");
+            return;
+        }
+        // 免疫特性（如免疫）：免疫中毒
+        if (EffectRegistry.dispatchStatusImmunity(target, new StatusContext(target, "poison", state))) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 的" + engine.abilityName(target) + "特性免疫中毒");
+            return;
+        }
+        // Pastel Veil：队友免疫中毒
+        if (allyHasPastelVeil(state, target)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 因队友的彩幕特性免疫中毒");
+            return;
+        }
+        // Flower Veil：草属性队友免疫异常状态
+        if (allyHasFlowerVeil(state, target)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 因队友的鲜花帷幕特性免疫异常状态");
             return;
         }
         if (engine.isPoisonPowder(move) && engine.isPowderImmune(target)) {
@@ -229,7 +275,7 @@ final class BattleConditionSupport {
             events.add(target.get("name") + " 已经陷入混乱");
             return;
         }
-        if (hasAbility(target, "own-tempo", "own tempo")) {
+        if (EffectRegistry.dispatchStatusImmunity(target, new StatusContext(target, "confusion", null))) {
             actionLog.put("result", "status-immune");
             actionLog.put("ability", engine.abilityName(target));
             events.add(target.get("name") + " 的特性让其不会混乱");
@@ -258,10 +304,16 @@ final class BattleConditionSupport {
             events.add(target.get("name") + " 免疫冰冻");
             return;
         }
-        // 熔岩铠甲：免疫冰冻
-        if (hasAbility(target, "magma-armor", "magma armor")) {
+        // 特性免疫冰冻（如熔岩铠甲）
+        if (EffectRegistry.dispatchStatusImmunity(target, new StatusContext(target, "freeze", state))) {
             actionLog.put("result", "status-immune");
-            events.add(target.get("name") + " 的熔岩铠甲特性免疫冰冻");
+            events.add(target.get("name") + " 的" + engine.abilityName(target) + "特性免疫冰冻");
+            return;
+        }
+        // Flower Veil：草属性队友免疫异常状态
+        if (allyHasFlowerVeil(state, target)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 因队友的鲜花帷幕特性免疫异常状态");
             return;
         }
         if (isTypeImmune(move, target)) {
@@ -371,6 +423,12 @@ final class BattleConditionSupport {
             tryApplyPoison(state, actor, target, move, targetLog, events, random, secondaryChance(move, actor, 30));
             return;
         }
+        // 清除之烟：伤害后清除目标所有能力变化（100% 触发）
+        if (matches(nameEn, "clear smog", "clear-smog")) {
+            target.put("statStages", new java.util.LinkedHashMap<String, Object>());
+            events.add(target.get("name") + " 的能力变化被清除之烟重置了！");
+            return;
+        }
         if (matches(nameEn, "tri-attack", "tri attack")) {
             tryApplyTriAttackStatus(state, actor, target, move, targetLog, events, random, secondaryChance(move, actor, 20));
             return;
@@ -395,12 +453,10 @@ final class BattleConditionSupport {
         }
         Map<String, Integer> loweredStages = new java.util.LinkedHashMap<>();
         for (Map<String, Object> statChange : statChanges) {
-            int delta = engine.toInt(statChange.get("change"), 0);
-            // 唱反调：自身能力变化反转（如 Leaf Storm -2 SpA → +2 SpA）
-            if (hasAbility(actor, "contrary")) {
-                delta = -delta;
-            }
             int statId = engine.toInt(statChange.get("stat_id"), 0);
+            int delta = engine.toInt(statChange.get("change"), 0);
+            // 唱反调：能力变化反转（走 EffectRegistry dispatch）
+            delta = EffectRegistry.dispatchStatStage(actor, new StatStageContext(actor, statId, delta, "招式"), delta);
             if (delta == 0) {
                 continue;
             }
@@ -429,8 +485,19 @@ final class BattleConditionSupport {
         }
     }
 
-    void applyDrainHealing(Map<String, Object> actor, Map<String, Object> move, int actualDamage,
+    void applyDrainHealing(Map<String, Object> actor, Map<String, Object> target, Map<String, Object> move, int actualDamage,
             Map<String, Object> actionLog, List<String> events) {
+        // 污泥浆：吸取招式对攻击者造成等量伤害而非回复
+        if (engine.hasAbility(target, "liquid-ooze", "liquid ooze")) {
+            int oozeDmg = Math.max(1, (actualDamage * engine.toInt(move.get("drain"), 0)) / 100);
+            int curHp = engine.toInt(actor.get("currentHp"), 0);
+            int remaining = Math.max(0, curHp - oozeDmg);
+            actor.put("currentHp", remaining);
+            actionLog.put("liquidOoze", true);
+            events.add(actor.get("name") + " 受到了" + target.get("name") + "的污泥浆影响，损失了 " + oozeDmg + " 点 HP");
+            if (remaining <= 0) actor.put("status", "fainted");
+            return;
+        }
         int drain = engine.toInt(move.get("drain"), 0);
         if (drain <= 0 || actualDamage <= 0 || engine.toInt(actor.get("currentHp"), 0) <= 0) {
             return;
@@ -553,8 +620,9 @@ final class BattleConditionSupport {
 
     void applyTaunt(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
             List<String> events) {
-        if (hasAbility(target, "oblivious")) {
-            blockMoveByAbility(actionLog, events, "oblivious", target.get("name") + " 的迟钝让挑衅失效了");
+        if (EffectRegistry.dispatchMentalImmunity(target, new StatusContext(target, "taunt", null))) {
+            String ab = engine.abilityName(target);
+            blockMoveByAbility(actionLog, events, ab, target.get("name") + " 的" + ab + "让挑衅失效了");
             return;
         }
         if (engine.tauntTurns(target) > 0) {
@@ -691,9 +759,9 @@ final class BattleConditionSupport {
 
     void applyAttract(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
                       List<String> events) {
-        if (hasAbility(target, "oblivious", "oblivious") || hasAbility(target, "aroma-veil", "aroma veil")) {
+        if (EffectRegistry.dispatchMentalImmunity(target, new StatusContext(target, "attract", null))) {
             actionLog.put("result", "failed");
-            events.add(target.get("name") + " 的特性阻止了着迷");
+            events.add(target.get("name") + " 的" + engine.abilityName(target) + "特性阻止了着迷");
             return;
         }
         engine.setVolatile(target, "infatuated", true);
@@ -706,6 +774,39 @@ final class BattleConditionSupport {
         engine.setVolatile(target, "perishSongTurns", 3);
         actionLog.put("result", "perish-song");
         events.add(target.get("name") + " 听到了灭亡之歌");
+    }
+
+    /**
+     * Heal Bell / Aromatherapy: 治愈己方全队异常状态。
+     * Heal Bell 为声音类招式（受 Soundproof 等影响），Aromatherapy 为粉末类（受 Grass 类型/Safety Goggles 影响），
+     * 但两者在本方法中共用治愈逻辑——粉末/声音阻断已在调用链上游的 applySharedMoveBlockers 中处理。
+     */
+    void applyHealBell(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> actionLog,
+                       List<String> events, boolean playerSide) {
+        List<Map<String, Object>> myTeam = engine.team(state, playerSide);
+        for (Map<String, Object> mon : myTeam) {
+            String condition = String.valueOf(mon.getOrDefault("condition", ""));
+            if (!condition.isBlank() && !"fainted".equals(condition)) {
+                mon.put("condition", null);
+                // 同步清除睡眠相关 volatile 和恶梦
+                engine.setVolatile(mon, "sleepTurns", 0);
+                engine.setVolatile(mon, "nightmare", false);
+                events.add(mon.get("name") + " 的" + condition + "状态被治愈了");
+            }
+        }
+    }
+
+    /**
+     * Refresh: 治愈自身的中毒/灼伤/麻痹
+     */
+    void applyRefresh(Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+        String condition = String.valueOf(actor.getOrDefault("condition", ""));
+        if ("poison".equals(condition) || "toxic".equals(condition) || "burn".equals(condition) || "paralysis".equals(condition)) {
+            actor.put("condition", null);
+            events.add(actor.get("name") + " 的" + condition + "状态被净化了");
+        } else {
+            events.add(actor.get("name") + " 使用了净化，但没有需要治愈的状态");
+        }
     }
 
     void applyKnockOff(Map<String, Object> target, Map<String, Object> actionLog, List<String> events) {
@@ -739,6 +840,24 @@ final class BattleConditionSupport {
             events.add(target.get("name") + " 受到薄雾场地保护，没有变得困倦");
             return;
         }
+        // Sweet Veil：队友免疫哈欠
+        if (allyHasSweetVeil(state, target)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 因队友的甜幕特性免疫哈欠");
+            return;
+        }
+        // Flower Veil：草属性队友免疫异常状态
+        if (allyHasFlowerVeil(state, target)) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 因队友的鲜花帷幕特性没有变得困倦");
+            return;
+        }
+        // 免疫睡眠的特性也免疫哈欠
+        if (EffectRegistry.dispatchStatusImmunity(target, new StatusContext(target, "sleep", state))) {
+            actionLog.put("result", "status-immune");
+            events.add(target.get("name") + " 的" + engine.abilityName(target) + "特性免疫哈欠");
+            return;
+        }
         if (engine.yawnTurns(target) > 0) {
             actionLog.put("result", "status-failed");
             events.add(target.get("name") + " 已经昏昏欲睡了");
@@ -763,6 +882,12 @@ final class BattleConditionSupport {
         }
         if (target.get("condition") != null && !String.valueOf(target.get("condition")).isBlank()) {
             engine.setVolatile(target, "yawnTurns", 0);
+            return;
+        }
+        // Sweet Veil / Flower Veil / 特性免疫睡眠
+        if (allyHasSweetVeil(state, target) || allyHasFlowerVeil(state, target)
+                || EffectRegistry.dispatchStatusImmunity(target, new StatusContext(target, "sleep", state))) {
+            events.add(target.get("name") + " 的" + engine.abilityName(target) + "特性让其没有睡着");
             return;
         }
         if (electricTerrainActiveFor(target, state)) {
@@ -791,6 +916,17 @@ final class BattleConditionSupport {
         if (applySharedMoveBlockers(attacker, target, move, actionLog, events)) {
             return true;
         }
+
+        // Dazzling / Queenly Majesty / Armor Tail: 阻挡先制招式
+        if (!ignoresTargetAbility(attacker) && engine.toInt(move.get("priority"), 0) > 0) {
+            String abi = engine.abilityName(target);
+            if ("dazzling".equals(abi) || "queenly-majesty".equals(abi) || "queenly majesty".equals(abi)
+                    || "armor-tail".equals(abi) || "armor tail".equals(abi)) {
+                blockMoveByAbility(actionLog, events, abi, target.get("name") + " 的" + abi + "阻挡了先制招式。");
+                return true;
+            }
+        }
+
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
         if (moveTypeId <= 0) {
             return false;
@@ -937,7 +1073,7 @@ final class BattleConditionSupport {
             events.add(target.get("name") + " 的密探斗篷挡住了追加效果");
             return true;
         }
-        if (hasAbility(target, "shield-dust", "shield dust")) {
+        if (EffectRegistry.dispatchBlocksSecondaryEffects(target)) {
             actionLog.put("secondaryEffectBlocked", effectName);
             actionLog.put("ability", engine.abilityName(target));
             events.add(target.get("name") + " 的特性挡住了追加效果");
@@ -965,20 +1101,101 @@ final class BattleConditionSupport {
             return;
         }
 
+        // Long Reach: 接触招式不触发防御方接触效果
+        if (engine.hasAbility(attacker, "long-reach", "long reach")) {
+            return;
+        }
+        // 保护垫: 接触招式不触发任何接触效果（道具版 Long Reach）
+        String heldItem = engine.heldItem(attacker);
+        if ("protective-pads".equalsIgnoreCase(heldItem) || "protective pads".equalsIgnoreCase(heldItem)) {
+            return;
+        }
+
+        // 接触反制：通过 EffectRegistry dispatch 统一处理
+        ContactContext contactCtx = new ContactContext(attacker, target, move, state);
+        EffectRegistry.dispatchContact(target, contactCtx);
+        Object ceObj = contactCtx.result.get("effect");
+        String contactEffect = ceObj instanceof String s ? s : null;
+
         int maxHp = engine.toInt(engine.castMap(attacker.get("stats")).get("hp"), 1);
-        if (hasAbility(target, "rough-skin", "rough skin")) {
-            applyContactPunishDamage(attacker, Math.max(1, maxHp / 8), actionLog, events,
-                    "roughSkin", target.get("name") + " 的粗糙皮肤反伤了 ");
+        if (contactEffect != null) {
+            switch (contactEffect) {
+                case "rough-skin":
+                    applyContactPunishDamage(attacker, Math.max(1, maxHp / 8), actionLog, events,
+                            "roughSkin", target.get("name") + " 的粗糙皮肤反伤了 ");
+                    break;
+                case "iron-barbs":
+                    applyContactPunishDamage(attacker, Math.max(1, maxHp / 8), actionLog, events,
+                            "ironBarbs", target.get("name") + " 的铁刺反伤了 ");
+                    break;
+                case "aftermath":
+                    if (engine.toInt(target.get("currentHp"), 0) <= 0) {
+                        applyContactPunishDamage(attacker, Math.max(1, maxHp / 4), actionLog, events,
+                                "aftermath", target.get("name") + " 的引爆伤到了 ");
+                    }
+                    break;
+                case "gooey", "tangling-hair":
+                    applySpeedDrop(target, attacker, actionLog, events);
+                    break;
+                case "static":
+                    if (rollSecondaryChance(random, intFromResult(contactCtx.result, "chance", 30))) {
+                        applyParalysis(state, target, attacker, contactAbilityMove("Static", "static",
+                                DamageCalculatorUtil.TYPE_ELECTRIC), actionLog, events);
+                        if ("paralysis".equals(attacker.get("condition"))) actionLog.put("static", true);
+                    }
+                    break;
+                case "flame-body":
+                    if (rollSecondaryChance(random, intFromResult(contactCtx.result, "chance", 30))) {
+                        applyBurn(state, target, attacker, contactAbilityMove("Flame Body", "flame-body",
+                                DamageCalculatorUtil.TYPE_FIRE), actionLog, events);
+                        if ("burn".equals(attacker.get("condition"))) actionLog.put("flameBody", true);
+                    }
+                    break;
+                case "poison-point":
+                    if (rollSecondaryChance(random, intFromResult(contactCtx.result, "chance", 30))) {
+                        applyPoison(state, target, attacker, contactAbilityMove("Poison Point", "poison-point",
+                                DamageCalculatorUtil.TYPE_POISON), actionLog, events, false);
+                        if ("poison".equals(attacker.get("condition")) || "toxic".equals(attacker.get("condition")))
+                            actionLog.put("poisonPoint", true);
+                    }
+                    break;
+                case "effect-spore":
+                    handleEffectSpore(state, target, attacker, actionLog, events, random);
+                    break;
+                case "cute-charm":
+                    tryApplyContactInfatuation(state, target, attacker, actionLog, events, random);
+                    break;
+                case "lingering-aroma":
+                    if (!"lingering-aroma".equalsIgnoreCase(String.valueOf(attacker.get("ability")))) {
+                        attacker.put("ability", "lingering-aroma");
+                        actionLog.put("lingeringAroma", true);
+                        events.add(attacker.get("name") + " 被" + target.get("name") + "的幽香气息影响了，特性变成了幽香气息");
+                    }
+                    break;
+                case "perish-body":
+                    engine.setVolatile(attacker, "perishSongTurns", 3);
+                    engine.setVolatile(target, "perishSongTurns", 3);
+                    actionLog.put("perishBody", true);
+                    events.add(target.get("name") + " 的灭亡之躯触发了！" + attacker.get("name") + " 和 "
+                            + target.get("name") + " 都陷入了灭亡之歌状态！");
+                    break;
+            }
         }
-        if (hasAbility(target, "iron-barbs", "iron barbs")) {
-            applyContactPunishDamage(attacker, Math.max(1, maxHp / 8), actionLog, events,
-                    "ironBarbs", target.get("name") + " 的铁刺反伤了 ");
-        }
+
+        // 凸凸头盔（道具，非特性）
         if ("rocky-helmet".equals(engine.heldItem(target))) {
             applyContactPunishDamage(attacker, Math.max(1, maxHp / 6), actionLog, events,
                     "rockyHelmet", target.get("name") + " 的凸凸头盔反伤了 ");
         }
-        // 毒针：接触后转移到攻击者身上
+
+        // Poison Touch：攻击方接触招式 30% 中毒
+        if (hasAbility(attacker, "poison-touch", "poison touch")
+                && !blocksSecondaryEffects(target, "poison-touch", actionLog, events)
+                && rollSecondaryChance(random, 30)) {
+            applyPoison(state, attacker, target, contactAbilityMove("Poison Touch", "poison-touch",
+                    DamageCalculatorUtil.TYPE_POISON), actionLog, events, false);
+        }
+        // 毒针（道具）
         String targetItem = engine.heldItem(target);
         if (("sticky-barb".equalsIgnoreCase(targetItem) || "sticky barb".equalsIgnoreCase(targetItem))
                 && engine.heldItem(attacker).isBlank() && engine.toInt(attacker.get("currentHp"), 0) > 0) {
@@ -986,17 +1203,9 @@ final class BattleConditionSupport {
             attacker.put("heldItem", "sticky-barb");
             events.add(target.get("name") + " 的毒针转移到了 " + attacker.get("name") + " 身上");
         }
-        if (hasAbility(target, "gooey") || hasAbility(target, "tangling-hair", "tangling hair")) {
-            applySpeedDrop(target, attacker, actionLog, events);
-        }
-        if (engine.toInt(target.get("currentHp"), 0) <= 0 && hasAbility(target, "aftermath")) {
-            applyContactPunishDamage(attacker, Math.max(1, maxHp / 4), actionLog, events,
-                    "aftermath", target.get("name") + " 的引爆伤到了 ");
-        }
         if (engine.toInt(attacker.get("currentHp"), 0) <= 0) {
             return;
         }
-        applyReactiveContactStatusAbility(state, attacker, target, actionLog, events, random);
     }
 
     void applyReactiveDamageAbilities(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> target,
@@ -1008,88 +1217,92 @@ final class BattleConditionSupport {
         }
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
         int damageClassId = engine.toInt(move.get("damage_class_id"), 0);
-        if (hasAbility(target, "weak-armor", "weak armor")
-                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            applyAbilityStageChange(target, 3, -1, actionLog, events, "碎裂铠甲");
-            applyAbilityStageChange(target, 6, 2, actionLog, events, "碎裂铠甲");
-        }
-        if (hasAbility(target, "stamina")) {
-            applyAbilityStageChange(target, 3, 1, actionLog, events, "持久力");
-        }
-        if (hasAbility(target, "justified") && moveTypeId == DamageCalculatorUtil.TYPE_DARK) {
-            applyAbilityStageChange(target, 2, 1, actionLog, events, "正义之心");
-        }
-        if (hasAbility(target, "rattled") && (moveTypeId == DamageCalculatorUtil.TYPE_BUG
-                || moveTypeId == DamageCalculatorUtil.TYPE_GHOST
-                || moveTypeId == DamageCalculatorUtil.TYPE_DARK)) {
-            applyAbilityStageChange(target, 6, 1, actionLog, events, "胆怯");
-        }
-        if (hasAbility(target, "steam-engine", "steam engine")
-                && (moveTypeId == DamageCalculatorUtil.TYPE_FIRE || moveTypeId == DamageCalculatorUtil.TYPE_WATER)) {
-            applyAbilityStageChange(target, 6, 6, actionLog, events, "蒸汽机");
-        }
         int maxHp = engine.toInt(engine.castMap(target.get("stats")).get("hp"), Math.max(1, hpBeforeDamage));
-        if (hasAbility(target, "berserk")
-                && hpBeforeDamage * 2 > maxHp
-                && hpAfterDamage * 2 <= maxHp) {
-            applyAbilityStageChange(target, 4, 1, actionLog, events, "怒火中烧");
+        boolean criticalHit = Boolean.TRUE.equals(move.get("criticalHit"));
+
+        DamageReceivedContext ctx = new DamageReceivedContext(state, attacker, target, move,
+                hpBeforeDamage, hpAfterDamage, actualDamage,
+                moveTypeId, damageClassId, maxHp, criticalHit);
+
+        // 特性触发
+        EffectRegistry.dispatchDamageReceived(target, ctx);
+        processReactiveDamageResult(ctx, target, actionLog, events);
+
+        // 道具触发（未消耗过的道具）
+        if (!engine.itemConsumed(target)) {
+            ctx.result.clear();
+            EffectRegistry.dispatchItemDamageReceived(target, ctx);
+            processReactiveItemResult(ctx, target, actionLog, events);
         }
-        // Anger Shell: HP < 50% → +1 Atk/SpA/Speed, -1 Def
-        if (hasAbility(target, "anger-shell", "anger shell")
-                && hpBeforeDamage * 2 > maxHp
-                && hpAfterDamage * 2 <= maxHp) {
-            applyAbilityStageChange(target, 2, 1, actionLog, events, "怒壳");  // Atk
-            applyAbilityStageChange(target, 4, 1, actionLog, events, "怒壳");  // SpA
-            applyAbilityStageChange(target, 6, 1, actionLog, events, "怒壳");  // Speed
-            applyAbilityStageChange(target, 3, -1, actionLog, events, "怒壳"); // Def
+    }
+
+    /** 处理受伤后能力触发结果 */
+    private void processReactiveDamageResult(DamageReceivedContext ctx, Map<String, Object> target,
+            Map<String, Object> actionLog, List<String> events) {
+        if (ctx.result.containsKey("weakArmor")) {
+            applyAbilityStageChange(ctx.state, target, 3, -1, actionLog, events, "碎裂铠甲");
+            applyAbilityStageChange(ctx.state, target, 6, 2, actionLog, events, "碎裂铠甲");
         }
-        // Toxic Debris: physical hit sets Toxic Spikes on attacker's side
-        if (hasAbility(target, "toxic-debris", "toxic debris")
-                && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
-                && state != null) {
-            fieldEffectSupport.addToxicSpikesLayer(state, !engine.isOnSide(state, target, true), attacker, actionLog, events);
+        if (ctx.result.containsKey("stamina")) {
+            applyAbilityStageChange(ctx.state, target, 3, 1, actionLog, events, "持久力");
         }
-        // Seed Sower: hit sets Grassy Terrain
-        if (hasAbility(target, "seed-sower", "seed sower") && state != null) {
-            fieldEffectSupport.activateTerrain(state, "grassy", target, null, events);
+        if (ctx.result.containsKey("justified")) {
+            applyAbilityStageChange(ctx.state, target, 2, 1, actionLog, events, "正义之心");
         }
-        // Sand Spit: hit sets Sandstorm
-        if (hasAbility(target, "sand-spit", "sand spit") && state != null) {
-            fieldEffectSupport.activateWeather(state, "sand", target, null, events);
+        if (ctx.result.containsKey("rattled")) {
+            applyAbilityStageChange(ctx.state, target, 6, 1, actionLog, events, "胆怯");
         }
-        // Electromorphosis: hit by Electric move → charged state (+1 priority or power next Electric move)
-        if (hasAbility(target, "electromorphosis") && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
-            engine.setVolatile(target, "chargingTurn", 2); // charged for 2 turns
+        if (ctx.result.containsKey("steamEngine")) {
+            applyAbilityStageChange(ctx.state, target, 6, 6, actionLog, events, "蒸汽机");
+        }
+        if (ctx.result.containsKey("berserk")) {
+            applyAbilityStageChange(ctx.state, target, 4, 1, actionLog, events, "怒火中烧");
+        }
+        if (ctx.result.containsKey("angerShell")) {
+            applyAbilityStageChange(ctx.state, target, 2, 1, actionLog, events, "怒壳");
+            applyAbilityStageChange(ctx.state, target, 4, 1, actionLog, events, "怒壳");
+            applyAbilityStageChange(ctx.state, target, 6, 1, actionLog, events, "怒壳");
+            applyAbilityStageChange(ctx.state, target, 3, -1, actionLog, events, "怒壳");
+        }
+        if (ctx.result.containsKey("toxicDebris") && ctx.state != null) {
+            fieldEffectSupport.addToxicSpikesLayer(ctx.state,
+                    !engine.isOnSide(ctx.state, target, true), ctx.attacker, actionLog, events);
+        }
+        if (ctx.result.containsKey("seedSower") && ctx.state != null) {
+            fieldEffectSupport.activateTerrain(ctx.state, "grassy", target, null, events);
+        }
+        if (ctx.result.containsKey("sandSpit") && ctx.state != null) {
+            fieldEffectSupport.activateWeather(ctx.state, "sand", target, null, events);
+        }
+        if (ctx.result.containsKey("electromorphosis")) {
+            engine.setVolatile(target, "chargingTurn", 2);
             actionLog.put("electromorphosis", true);
             events.add(target.get("name") + " 的电力转换特性发动了，进入了充电状态");
         }
-        // Items triggered by type: Cell Battery (Electric +1 Atk), Luminous Moss (Water +1 SpD)
-        // Snowball (Ice +1 Atk), Absorb Bulb (Water +1 SpA)
-        String heldItem = engine.heldItem(target);
-        if (!engine.itemConsumed(target)) {
-            if (("cell-battery".equals(heldItem) || "cell battery".equals(heldItem))
-                    && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
-                engine.consumeItem(target);
-                applyAbilityStageChange(target, 2, 1, actionLog, events, "充电池");
-            } else if (("luminous-moss".equals(heldItem) || "luminous moss".equals(heldItem))
-                    && moveTypeId == DamageCalculatorUtil.TYPE_WATER) {
-                engine.consumeItem(target);
-                applyAbilityStageChange(target, 5, 1, actionLog, events, "光苔");
-            } else if (("snowball".equals(heldItem))
-                    && moveTypeId == DamageCalculatorUtil.TYPE_ICE) {
-                engine.consumeItem(target);
-                applyAbilityStageChange(target, 2, 1, actionLog, events, "雪球");
-            } else if (("absorb-bulb".equals(heldItem) || "absorb bulb".equals(heldItem))
-                    && moveTypeId == DamageCalculatorUtil.TYPE_WATER) {
-                engine.consumeItem(target);
-                applyAbilityStageChange(target, 4, 1, actionLog, events, "球根");
-            }
+        if (ctx.result.containsKey("angerPoint")) {
+            applyAbilityStageChange(ctx.state, target, 2, 6, actionLog, events, "愤怒穴位");
         }
+    }
 
-        // Anger Point: critical hit → max Attack
-        if (hasAbility(target, "anger-point", "anger point")
-                && Boolean.TRUE.equals(move.get("criticalHit"))) {
-            applyAbilityStageChange(target, 2, 6, actionLog, events, "愤怒穴位");
+    /** 处理受伤后道具触发结果 */
+    private void processReactiveItemResult(DamageReceivedContext ctx, Map<String, Object> target,
+            Map<String, Object> actionLog, List<String> events) {
+        String action = (String) ctx.result.get("itemReactive");
+        if (action == null) return;
+        engine.consumeItem(target);
+        switch (action) {
+            case "cellBattery" -> {
+                applyAbilityStageChange(ctx.state, target, 2, 1, actionLog, events, "充电池");
+            }
+            case "luminousMoss" -> {
+                applyAbilityStageChange(ctx.state, target, 5, 1, actionLog, events, "光苔");
+            }
+            case "snowball" -> {
+                applyAbilityStageChange(ctx.state, target, 2, 1, actionLog, events, "雪球");
+            }
+            case "absorbBulb" -> {
+                applyAbilityStageChange(ctx.state, target, 4, 1, actionLog, events, "球根");
+            }
         }
     }
 
@@ -1145,17 +1358,15 @@ final class BattleConditionSupport {
         events.add(messagePrefix + attacker.get("name") + "，损失了 " + actualDamage + " 点 HP");
     }
 
-    private void applyAbilityStageChange(Map<String, Object> target, int statId, int delta,
+    private void applyAbilityStageChange(Map<String, Object> state, Map<String, Object> target, int statId, int delta,
             Map<String, Object> actionLog, List<String> events, String trigger) {
         String statKey = statFieldKey(statId);
         if (statKey.isBlank() || delta == 0) {
             return;
         }
-        // 唱反调：能力变化反转
-        if (hasAbility(target, "contrary")) {
-            delta = -delta;
-        }
-        if (delta < 0 && isStatDropBlocked(target, actionLog, events, statKey + "DropBlocked",
+        // 唱反调：能力变化反转（走 EffectRegistry dispatch）
+        delta = EffectRegistry.dispatchStatStage(target, new StatStageContext(target, statId, delta, trigger), delta);
+        if (delta < 0 && isStatDropBlocked(state, target, actionLog, events, statKey + "DropBlocked",
                 statDisplayName(statId) + "下降")) {
             return;
         }
@@ -1178,89 +1389,13 @@ final class BattleConditionSupport {
                 + ((nextStage - previousStage) > 0 ? "提升了" : "下降了"));
     }
 
-    private void applyReactiveContactStatusAbility(Map<String, Object> state, Map<String, Object> attacker,
-            Map<String, Object> target, Map<String, Object> actionLog,
-            List<String> events, Random random) {
-        if (hasAbility(target, "static")) {
-            tryApplyContactParalysis(state, target, attacker, actionLog, events, random,
-                    contactAbilityMove("Static", "static", DamageCalculatorUtil.TYPE_ELECTRIC), "static");
-            return;
-        }
-        if (hasAbility(target, "flame-body", "flame body")) {
-            tryApplyContactBurn(state, target, attacker, actionLog, events, random,
-                    contactAbilityMove("Flame Body", "flame-body", DamageCalculatorUtil.TYPE_FIRE), "flameBody");
-            return;
-        }
-        if (hasAbility(target, "poison-point", "poison point")) {
-            tryApplyContactPoison(state, target, attacker, actionLog, events, random,
-                    contactAbilityMove("Poison Point", "poison-point", DamageCalculatorUtil.TYPE_POISON),
-                    "poisonPoint");
-            return;
-        }
-        if (hasAbility(target, "effect-spore", "effect spore")) {
-            tryApplyEffectSpore(state, target, attacker, actionLog, events, random,
-                    contactAbilityMove("Effect Spore", "effect-spore", DamageCalculatorUtil.TYPE_GRASS));
-            return;
-        }
-        // 迷人之躯：接触有 30% 概率让对手着迷
-        if (hasAbility(target, "cute-charm", "cute charm")) {
-            tryApplyContactInfatuation(state, target, attacker, actionLog, events, random);
-            return;
-        }
-        // 幽香气息：接触后对手的特性变为幽香气息
-        if (hasAbility(target, "lingering-aroma", "lingering aroma")) {
-            if (!hasAbility(attacker, "lingering-aroma", "lingering aroma")) {
-                attacker.put("ability", "lingering-aroma");
-                actionLog.put("lingeringAroma", true);
-                events.add(attacker.get("name") + " 被" + target.get("name") + "的幽香气息影响了，特性变成了幽香气息");
-            }
-        }
-    }
-
-    private void tryApplyContactParalysis(Map<String, Object> state, Map<String, Object> source,
-            Map<String, Object> target,
-            Map<String, Object> actionLog, List<String> events, Random random,
-            Map<String, Object> move, String logKey) {
+    /** 孢子：各 10% 概率施加睡眠/麻痹/中毒（总 30%） */
+    private void handleEffectSpore(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
+            Map<String, Object> actionLog, List<String> events, Random random) {
         if (!rollSecondaryChance(random, 30)) {
             return;
         }
-        applyParalysis(state, source, target, move, actionLog, events);
-        if ("paralysis".equals(target.get("condition"))) {
-            actionLog.put(logKey, true);
-        }
-    }
-
-    private void tryApplyContactBurn(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
-            Map<String, Object> actionLog, List<String> events, Random random,
-            Map<String, Object> move, String logKey) {
-        if (!rollSecondaryChance(random, 30)) {
-            return;
-        }
-        applyBurn(state, source, target, move, actionLog, events);
-        if ("burn".equals(target.get("condition"))) {
-            actionLog.put(logKey, true);
-        }
-    }
-
-    private void tryApplyContactPoison(Map<String, Object> state, Map<String, Object> source,
-            Map<String, Object> target,
-            Map<String, Object> actionLog, List<String> events, Random random,
-            Map<String, Object> move, String logKey) {
-        if (!rollSecondaryChance(random, 30)) {
-            return;
-        }
-        applyPoison(state, source, target, move, actionLog, events, false);
-        if ("poison".equals(target.get("condition"))) {
-            actionLog.put(logKey, true);
-        }
-    }
-
-    private void tryApplyEffectSpore(Map<String, Object> state, Map<String, Object> source, Map<String, Object> target,
-            Map<String, Object> actionLog, List<String> events, Random random,
-            Map<String, Object> move) {
-        if (!rollSecondaryChance(random, 30)) {
-            return;
-        }
+        Map<String, Object> move = contactAbilityMove("Effect Spore", "effect-spore", DamageCalculatorUtil.TYPE_GRASS);
         if (engine.isPowderImmune(target)) {
             actionLog.put("effectSporeBlocked", true);
             events.add(powderImmunityMessage(target, move));
@@ -1273,18 +1408,16 @@ final class BattleConditionSupport {
             if ("sleep".equals(target.get("condition"))) {
                 actionLog.put("effectSpore", "sleep");
             }
-            return;
-        }
-        if (roll == 1) {
+        } else if (roll == 1) {
             applyParalysis(state, source, target, move, actionLog, events);
             if ("paralysis".equals(target.get("condition"))) {
                 actionLog.put("effectSpore", "paralysis");
             }
-            return;
-        }
-        applyPoison(state, source, target, move, actionLog, events, false);
-        if ("poison".equals(target.get("condition"))) {
-            actionLog.put("effectSpore", "poison");
+        } else {
+            applyPoison(state, source, target, move, actionLog, events, false);
+            if ("poison".equals(target.get("condition"))) {
+                actionLog.put("effectSpore", "poison");
+            }
         }
     }
 
@@ -1294,8 +1427,8 @@ final class BattleConditionSupport {
         if (!rollSecondaryChance(random, 30)) {
             return;
         }
-        // 使用 applyAttract 检查 oblivious/aroma-veil
-        if (hasAbility(target, "oblivious", "oblivious") || hasAbility(target, "aroma-veil", "aroma veil")) {
+        // 精神类免疫（迟钝/芳香幕）
+        if (EffectRegistry.dispatchMentalImmunity(target, new StatusContext(target, "attract", null))) {
             actionLog.put("cuteCharmBlocked", true);
             events.add(target.get("name") + " 的特性阻止了着迷");
             return;
@@ -1350,6 +1483,20 @@ final class BattleConditionSupport {
         engine.setVolatile(mon, "disableMove", null);
         engine.setVolatile(mon, "encoreTurns", 0);
         engine.setVolatile(mon, "encoreMove", null);
+        // 防守平分/力量平分切出恢复：还原被修改的基础能力值
+        Map<String, Object> stats = engine.castMap(mon.get("stats"));
+        if (engine.volatiles(mon).containsKey("guardSplitOrigDef")) {
+            stats.put("defense", engine.toInt(engine.volatiles(mon).get("guardSplitOrigDef"), 0));
+            stats.put("specialDefense", engine.toInt(engine.volatiles(mon).get("guardSplitOrigSpD"), 0));
+            engine.clearVolatile(mon, "guardSplitOrigDef");
+            engine.clearVolatile(mon, "guardSplitOrigSpD");
+        }
+        if (engine.volatiles(mon).containsKey("powerSplitOrigAtk")) {
+            stats.put("attack", engine.toInt(engine.volatiles(mon).get("powerSplitOrigAtk"), 0));
+            stats.put("specialAttack", engine.toInt(engine.volatiles(mon).get("powerSplitOrigSpA"), 0));
+            engine.clearVolatile(mon, "powerSplitOrigAtk");
+            engine.clearVolatile(mon, "powerSplitOrigSpA");
+        }
         if ("toxic".equals(mon.get("condition"))) {
             mon.put("toxicCounter", 0);
         }
@@ -1478,6 +1625,25 @@ final class BattleConditionSupport {
                 continue;
             }
 
+            // Trace: 复制对手特性（非幻影/变身类）
+            if ("trace".equalsIgnoreCase(ability)) {
+                applyTraceOnSwitchIn(state, player, source, events);
+                continue;
+            }
+
+            // Frisk: 察觉对手携带的道具
+            if ("frisk".equalsIgnoreCase(ability)) {
+                for (Integer oppSlot : engine.activeSlots(state, !player)) {
+                    if (oppSlot == null || oppSlot < 0 || oppSlot >= engine.team(state, !player).size()) continue;
+                    Map<String, Object> opp = engine.team(state, !player).get(oppSlot);
+                    String oppItem = engine.heldItem(opp);
+                    if (!oppItem.isBlank()) {
+                        events.add(source.get("name") + " 的察觉特性发现了 " + opp.get("name") + " 携带的 " + oppItem);
+                    }
+                }
+                continue;
+            }
+
             // Costar: Copy ally's stat stages on switch-in
             if ("costar".equalsIgnoreCase(ability)) {
                 List<Integer> sideSlots = engine.activeSlots(state, player);
@@ -1573,6 +1739,26 @@ final class BattleConditionSupport {
                     }
                 }
             }
+            // Comatose：树枕尾熊上场时强制进入睡眠状态（但不影响行动）
+            if ("comatose".equalsIgnoreCase(engine.abilityName(source))) {
+                if (!"sleep".equals(String.valueOf(source.get("condition")))) {
+                    source.put("condition", "sleep");
+                    source.put("sleepTurns", 0); // 0 表示不会自然醒来
+                    events.add(source.get("name") + " 的绝对睡眠特性发动了，处于睡眠状态");
+                }
+            }
+            // Pastel Veil：上场时治愈己方全队的中毒状态
+            if ("pastel-veil".equalsIgnoreCase(engine.abilityName(source))
+                    || "pastel veil".equalsIgnoreCase(engine.abilityName(source))) {
+                List<Map<String, Object>> myTeam = engine.team(state, player);
+                for (Map<String, Object> teamMon : myTeam) {
+                    String cond = String.valueOf(teamMon.getOrDefault("condition", ""));
+                    if ("poison".equals(cond) || "toxic".equals(cond)) {
+                        teamMon.put("condition", null);
+                        events.add(source.get("name") + " 的彩幕特性治愈了 " + teamMon.get("name") + " 的中毒状态");
+                    }
+                }
+            }
         }
     }
 
@@ -1600,12 +1786,12 @@ final class BattleConditionSupport {
             // Adrenaline Orb: Speed +1 when Intimidated
             if ("adrenaline-orb".equals(engine.heldItem(target)) && !engine.itemConsumed(target)) {
                 engine.consumeItem(target);
-                applyAbilityStageChange(target, 6, 1, null, events, "替代");
+                applyAbilityStageChange(state, target, 6, 1, null, events, "替代");
                 events.add(target.get("name") + " 的替代发动了，速度提升");
             }
 
             // 使用统一的能力阶级变更方法（支持唱反调反转）
-            applyAbilityStageChange(target, 2, -1, null, events, "威吓");
+            applyAbilityStageChange(state, target, 2, -1, null, events, "威吓");
         }
     }
 
@@ -1661,15 +1847,44 @@ final class BattleConditionSupport {
         }
     }
 
+    /** Trace 不可复制的特性集合 */
+    private static final java.util.Set<String> UNTRACEABLE_ABILITIES = java.util.Set.of(
+        "battle-bond", "comatose", "disguise", "as-one", "as-one-glastrier", "as-one-spectrier",
+        "gourmand", "ice-face", "multitype", "power-construct", "protosynthesis", "quark-drive",
+        "rks-system", "schooling", "shields-down", "stance-change", "zen-mode", "zero-to-hero",
+        "illusion", "truant", "wonder-guard"
+    );
+
+    /** Trace：上场时复制随机对手的特性 */
+    private void applyTraceOnSwitchIn(Map<String, Object> state, boolean player,
+            Map<String, Object> source, List<String> events) {
+        List<java.util.Map<String, Object>> opposingTeam = engine.team(state, !player);
+        String copiedAbility = null;
+        for (Integer oppSlot : engine.activeSlots(state, !player)) {
+            if (oppSlot == null || oppSlot < 0 || oppSlot >= opposingTeam.size()) continue;
+            Map<String, Object> opp = opposingTeam.get(oppSlot);
+            if (engine.toInt(opp.get("currentHp"), 0) <= 0) continue;
+            String oppAbility = engine.abilityName(opp);
+            if (oppAbility.isBlank() || UNTRACEABLE_ABILITIES.contains(oppAbility)) continue;
+            copiedAbility = oppAbility;
+            break; // Trace the first valid opponent
+        }
+        if (copiedAbility != null && !copiedAbility.isBlank()) {
+            source.put("ability", copiedAbility);
+            source.put("tracedAbility", copiedAbility); // 保存原始值用于后续判定
+            events.add(source.get("name") + " 的复制特性发动了，复制了 " + copiedAbility);
+        } else {
+            events.add(source.get("name") + " 的复制特性发动了，但没有可复制的特性");
+        }
+    }
+
     /**
      * Apply self stat boosts for setup moves (Pokemon Showdown standard)
      */
-    boolean applySelfStatBoost(Map<String, Object> actor, String stat, int stages, String moveName,
+    boolean applySelfStatBoost(Map<String, Object> state, Map<String, Object> actor, String stat, int stages, String moveName,
             List<String> events) {
-        // 唱反调：自身能力提升反转
-        if (hasAbility(actor, "contrary")) {
-            stages = -stages;
-        }
+        // 唱反调：自身能力变化反转
+        stages = EffectRegistry.dispatchStatStage(actor, new StatStageContext(actor, 0, stages, moveName), stages);
         int previousStage = damageSupport.statStage(actor, stat);
         int nextStage = Math.max(-6, Math.min(6, previousStage + stages));
         damageSupport.statStages(actor).put(stat, nextStage);
@@ -1678,21 +1893,20 @@ final class BattleConditionSupport {
             String stageText = Math.abs(stages) >= 2 ? "大幅" : "";
             events.add(actor.get("name") + " 使用了 " + moveName + "，"
                     + (stages > 0 ? "提升了" : "降低了") + statName + "！");
+            tryMirrorHerb(state, actor, events);
             return true;
         }
         return false;
     }
 
-    boolean applyMultiStatBoost(Map<String, Object> actor, Map<String, Integer> statChanges, String moveName,
+    boolean applyMultiStatBoost(Map<String, Object> state, Map<String, Object> actor, Map<String, Integer> statChanges, String moveName,
             List<String> events) {
         boolean anyBoosted = false;
         for (Map.Entry<String, Integer> entry : statChanges.entrySet()) {
             String stat = entry.getKey();
             int stages = entry.getValue();
             // 唱反调：自身能力变化反转
-            if (hasAbility(actor, "contrary")) {
-                stages = -stages;
-            }
+            stages = EffectRegistry.dispatchStatStage(actor, new StatStageContext(actor, 0, stages, moveName), stages);
             int previousStage = damageSupport.statStage(actor, stat);
             int nextStage = Math.max(-6, Math.min(6, previousStage + stages));
             damageSupport.statStages(actor).put(stat, nextStage);
@@ -1707,7 +1921,7 @@ final class BattleConditionSupport {
                     boostText.append("和");
                 String statName = getStatChineseName(entry.getKey());
                 // 唱反调时降级可能变成升级
-                int effectiveStages = hasAbility(actor, "contrary") ? -entry.getValue() : entry.getValue();
+                int effectiveStages = EffectRegistry.dispatchStatStage(actor, new StatStageContext(actor, 0, entry.getValue(), moveName), entry.getValue());
                 if (effectiveStages < 0) {
                     boostText.append(statName).append("下降了");
                 } else {
@@ -1716,6 +1930,7 @@ final class BattleConditionSupport {
             }
             String verb = boostText.toString().contains("下降了") ? "" : "提升了";
             events.add(actor.get("name") + " 使用了 " + moveName + "，" + verb + boostText.toString() + "！");
+            tryMirrorHerb(state, actor, events);
         }
         return anyBoosted;
     }
@@ -1941,7 +2156,7 @@ final class BattleConditionSupport {
 
     void applySpeedDrop(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
             List<String> events) {
-        if (isStatDropBlocked(target, actionLog, events, "speedDropBlocked", "降速")) {
+        if (isStatDropBlocked(null, target, actionLog, events, "speedDropBlocked", "降速")) {
             return;
         }
         int previousStage = damageSupport.statStage(target, "speed");
@@ -1957,7 +2172,7 @@ final class BattleConditionSupport {
 
     boolean applySpecialAttackDrop(Map<String, Object> source, Map<String, Object> target, int stages,
             Map<String, Object> actionLog, List<String> events) {
-        if (isStatDropBlocked(target, actionLog, events, "specialAttackDropBlocked", "特攻下降")) {
+        if (isStatDropBlocked(null, target, actionLog, events, "specialAttackDropBlocked", "特攻下降")) {
             return false;
         }
         int previousStage = damageSupport.statStage(target, "specialAttack");
@@ -1976,7 +2191,7 @@ final class BattleConditionSupport {
 
     boolean applySpecialDefenseDrop(Map<String, Object> source, Map<String, Object> target, int stages,
             Map<String, Object> actionLog, List<String> events) {
-        if (isStatDropBlocked(target, actionLog, events, "specialDefenseDropBlocked", "特防下降")) {
+        if (isStatDropBlocked(null, target, actionLog, events, "specialDefenseDropBlocked", "特防下降")) {
             return false;
         }
         int previousStage = damageSupport.statStage(target, "specialDefense");
@@ -1995,7 +2210,7 @@ final class BattleConditionSupport {
 
     boolean applyAttackAndSpecialAttackDrop(Map<String, Object> source, Map<String, Object> target,
             Map<String, Object> actionLog, List<String> events) {
-        if (isStatDropBlocked(target, actionLog, events, "partingShotBlocked", "攻击与特攻下降")) {
+        if (isStatDropBlocked(null, target, actionLog, events, "partingShotBlocked", "攻击与特攻下降")) {
             return false;
         }
         boolean attackDropped = false;
@@ -2042,6 +2257,45 @@ final class BattleConditionSupport {
             if (next != prev) {
                 damageSupport.statStages(target).put(statKey, next);
                 events.add(target.get("name") + " 的机会主义发动了，" + statKey + "提升了 " + stages + " 级");
+            }
+        }
+    }
+
+    /**
+     * 模仿香草：当对方的能力阶级提升时，持有者复制对方所有正向能力阶级，然后消耗道具。
+     * 在每次对方能力提升后调用此方法。
+     */
+    void tryMirrorHerb(Map<String, Object> state, Map<String, Object> boostedMon, List<String> events) {
+        boolean boostedIsPlayer = engine.isOnSide(state, boostedMon, true);
+        // 遍历对方场地上的所有宝可梦
+        List<Map<String, Object>> opposingTeam = engine.team(state, !boostedIsPlayer);
+        List<Integer> opposingSlots = engine.activeSlots(state, !boostedIsPlayer);
+        for (int slot : opposingSlots) {
+            if (slot < 0 || slot >= opposingTeam.size()) continue;
+            Map<String, Object> mon = opposingTeam.get(slot);
+            if (engine.toInt(mon.get("currentHp"), 0) <= 0) continue;
+            String item = engine.heldItem(mon);
+            if (!"mirror-herb".equalsIgnoreCase(item) && !"mirror herb".equalsIgnoreCase(item)) continue;
+            if (engine.itemConsumed(mon)) continue;
+            // 复制对方所有正向能力阶级
+            Map<String, Object> boostedStages = engine.statStages(boostedMon);
+            Map<String, Object> monStages = engine.statStages(mon);
+            boolean anyCopied = false;
+            String[] statNames = {"attack", "defense", "specialAttack", "specialDefense", "speed"};
+            for (String stat : statNames) {
+                int boostLevel = engine.toInt(boostedStages.get(stat), 0);
+                if (boostLevel > 0) {
+                    int currentStage = engine.toInt(monStages.get(stat), 0);
+                    int copyTo = Math.min(6, currentStage + boostLevel);
+                    if (copyTo > currentStage) {
+                        monStages.put(stat, copyTo);
+                        anyCopied = true;
+                    }
+                }
+            }
+            if (anyCopied) {
+                engine.consumeItem(mon);
+                events.add(mon.get("name") + " 的模仿香草复制了 " + boostedMon.get("name") + " 的能力提升！");
             }
         }
     }
@@ -2097,10 +2351,12 @@ final class BattleConditionSupport {
 
     private int confusionSelfDamage(Map<String, Object> mon) {
         Map<String, Object> stats = engine.castMap(mon.get("stats"));
+        java.util.Map<String, Object> emptyMove = java.util.Map.of();
+        java.util.Map<String, Object> emptyState = new java.util.LinkedHashMap<>();
         int attack = damageSupport.modifiedAttackStat(mon, mon, engine.toInt(stats.get("attack"), 100),
-                DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL, false);
+                DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL, false, emptyMove, emptyState);
         int defense = Math.max(1, damageSupport.modifiedDefenseStat(mon, mon, engine.toInt(stats.get("defense"), 100),
-                DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL, new java.util.LinkedHashMap<>(), false));
+                DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL, emptyState, false, emptyMove));
         return Math.max(1, DamageCalculatorUtil.calculateBaseDamage(50, 40, attack, defense));
     }
 
@@ -2112,20 +2368,11 @@ final class BattleConditionSupport {
         }
         // 先计算招式自带的畏缩概率
         int moveFlinchChance = engine.toInt(move.get("flinch_chance"), 0);
-        // 王者之证/锐利之牙：造成伤害时追加 10% 畏缩概率
-        boolean hasKingStone = "king's-rock".equalsIgnoreCase(engine.heldItem(actor))
-                || "king's rock".equalsIgnoreCase(engine.heldItem(actor))
-                || "razor-fang".equalsIgnoreCase(engine.heldItem(actor))
-                || "razor fang".equalsIgnoreCase(engine.heldItem(actor));
-        if (moveFlinchChance <= 0 && !hasKingStone) {
+        // 注意：王者之证/锐利之牙的畏缩判定已移至 hit loop 内每段攻击独立处理
+        if (moveFlinchChance <= 0) {
             return;
         }
-        // 使用招式畏缩概率（如果有）否则使用道具的 10%
-        int totalChance = moveFlinchChance > 0 ? moveFlinchChance : 0;
-        if (hasKingStone && moveFlinchChance <= 0) {
-            totalChance = 10; // 道具的 10% 仅在招式没有畏缩概率时生效
-        }
-        if (!rollSecondaryChance(random, totalChance)) {
+        if (!rollSecondaryChance(random, moveFlinchChance)) {
             return;
         }
         if ("inner-focus".equalsIgnoreCase(engine.abilityName(target))
@@ -2298,10 +2545,8 @@ final class BattleConditionSupport {
     private int secondaryChance(Map<String, Object> move, Map<String, Object> actor, int defaultChance) {
         int chance = engine.toInt(move.get("effect_chance"), 0);
         chance = chance > 0 ? chance : defaultChance;
-        // 天恩：追加效果概率翻倍
-        if (hasAbility(actor, "serene-grace", "serene grace")) {
-            chance = Math.min(100, chance * 2);
-        }
+        // 天恩：追加效果概率翻倍（走 EffectRegistry dispatch）
+        chance = EffectRegistry.dispatchSereneGrace(actor, chance);
         return chance;
     }
 
@@ -2335,11 +2580,30 @@ final class BattleConditionSupport {
         if (statKey.isBlank() || delta == 0) {
             return 0;
         }
-        // 唱反调：目标的能力变化反转
-        if (delta != 0 && hasAbility(target, "contrary")) {
-            delta = -delta;
+        // 唱反调：目标的能力变化反转（走 EffectRegistry dispatch）
+        if (delta != 0) {
+            delta = EffectRegistry.dispatchStatStage(target, new StatStageContext(target, statId, delta, ""), delta);
         }
-        if (delta < 0 && isStatDropBlocked(target, actionLog, events, statKey + "DropBlocked",
+        // 镜甲：反弹能力下降给攻击者（仅对手降能力时触发）
+        if (delta < 0 && source != target
+                && engine.hasAbility(target, "mirror-armor", "mirror armor")) {
+            // 对攻击者应用同等下降（直接修改 source 的对应能力阶级）
+            String srcStatKey = statFieldKey(statId);
+            if (!srcStatKey.isBlank()) {
+                int srcPrevStage = damageSupport.statStage(source, srcStatKey);
+                int srcNextStage = Math.max(-6, Math.min(6, srcPrevStage + delta));
+                if (srcNextStage != srcPrevStage) {
+                    damageSupport.statStages(source).put(srcStatKey, srcNextStage);
+                    String logKey = stageChangeLogKey(statId);
+                    if (!logKey.isBlank() && actionLog != null) {
+                        actionLog.put(logKey, srcNextStage - srcPrevStage);
+                    }
+                    events.add(target.get("name") + " 的镜甲反弹了" + statDisplayName(statId) + "下降！");
+                }
+            }
+            return 0; // 目标自身不下降
+        }
+        if (delta < 0 && isStatDropBlocked(null, target, actionLog, events, statKey + "DropBlocked",
                 statDisplayName(statId) + "下降")) {
             return 0;
         }
@@ -2435,18 +2699,23 @@ final class BattleConditionSupport {
         return engine.toInt(move.get("damage_class_id"), 0) == DamageCalculatorUtil.DAMAGE_CLASS_STATUS;
     }
 
-    private boolean isStatDropBlocked(Map<String, Object> target, Map<String, Object> actionLog, List<String> events,
+    private boolean isStatDropBlocked(Map<String, Object> state, Map<String, Object> target, Map<String, Object> actionLog, List<String> events,
             String logKey, String effectName) {
         if ("clear-amulet".equals(engine.heldItem(target))) {
             actionLog.put(logKey, true);
             events.add(target.get("name") + " 的清净护符挡住了" + effectName);
             return true;
         }
-        if (hasAbility(target, "clear-body", "clear body", "white-smoke", "white smoke", "full-metal-body",
-                "full metal body")) {
+        if (EffectRegistry.dispatchStatDropBlocked(target)) {
             actionLog.put(logKey, true);
             actionLog.put("ability", engine.abilityName(target));
             events.add(target.get("name") + " 的特性挡住了" + effectName);
+            return true;
+        }
+        // Flower Veil：草属性队友免疫能力下降（仅在 state 可用时检查）
+        if (state != null && allyHasFlowerVeil(state, target)) {
+            actionLog.put(logKey, true);
+            events.add(target.get("name") + " 因队友的鲜花帷幕特性免疫能力下降");
             return true;
         }
         return false;
@@ -2560,17 +2829,13 @@ final class BattleConditionSupport {
             blockMoveByAbility(actionLog, events, "wind-rider", target.get("name") + " 的乘风挡住了风类招式");
             return true;
         }
-        if (!ignoresTargetAbility(attacker)
-                && hasAbility(target, "soundproof", "sound proof")
-                && hasMoveFlag(move, "sound")) {
-            blockMoveByAbility(actionLog, events, "soundproof", target.get("name") + " 的隔音挡住了声音招式");
-            return true;
-        }
-        if (!ignoresTargetAbility(attacker)
-                && hasAbility(target, "bulletproof", "bullet proof")
-                && hasMoveFlag(move, "bullet")) {
-            blockMoveByAbility(actionLog, events, "bulletproof", target.get("name") + " 的防弹挡住了弹道招式");
-            return true;
+        if (!ignoresTargetAbility(attacker)) {
+            int moveTypeId = engine.toInt(move.get("type_id"), 0);
+            String blockedBy = EffectRegistry.dispatchMoveBlock(target, new ImmunityContext(target, moveTypeId, move));
+            if (blockedBy != null) {
+                blockMoveByAbility(actionLog, events, blockedBy, target.get("name") + " 的" + blockedBy + "挡住了招式");
+                return true;
+            }
         }
         return false;
     }
@@ -2870,5 +3135,51 @@ final class BattleConditionSupport {
             return true;
         }
         return false;
+    }
+
+    /** 从 Map 中安全读取 int 值（用于 ContactContext.result 等） */
+    private static int intFromResult(Map<String, Object> map, String key, int defaultValue) {
+        Object v = map.get(key);
+        return v instanceof Number n ? n.intValue() : defaultValue;
+    }
+
+    /** 检查目标是否受到队友 Sweet Veil 的保护而免疫睡眠 */
+    private boolean allyHasSweetVeil(Map<String, Object> state, Map<String, Object> target) {
+        return allyHasAbility(state, target, "sweet-veil", "sweet veil");
+    }
+
+    /** 检查目标是否受到队友 Pastel Veil 的保护而免疫中毒 */
+    private boolean allyHasPastelVeil(Map<String, Object> state, Map<String, Object> target) {
+        return allyHasAbility(state, target, "pastel-veil", "pastel veil");
+    }
+
+    /** 检查目标是否受到队友 Flower Veil 的保护（草属性队友免疫异常和能力下降） */
+    private boolean allyHasFlowerVeil(Map<String, Object> state, Map<String, Object> target) {
+        if (allyHasAbility(state, target, "flower-veil", "flower veil")) {
+            return engine.targetHasType(target, DamageCalculatorUtil.TYPE_GRASS);
+        }
+        return false;
+    }
+
+    /** 查找目标的队友是否拥有指定特性（排查已昏迷的队友） */
+    private boolean allyHasAbility(Map<String, Object> state, Map<String, Object> target, String... abilityNames) {
+        for (boolean side : new boolean[]{true, false}) {
+            List<Map<String, Object>> team = engine.team(state, side);
+            if (!team.contains(target)) continue;
+            for (Integer slot : engine.activeSlots(state, side)) {
+                if (slot == null || slot < 0 || slot >= team.size()) continue;
+                Map<String, Object> ally = team.get(slot);
+                if (ally == target) continue; // 不是自己
+                if (engine.toInt(ally.get("currentHp"), 0) <= 0) continue;
+                if (engine.hasAbility(ally, abilityNames)) return true;
+            }
+            break; // 找到了目标所在的队伍，不需要再查对方
+        }
+        return false;
+    }
+
+    /** 检查 Flower Veil 是否阻止目标的能力下降 */
+    boolean isProtectedByFlowerVeil(Map<String, Object> state, Map<String, Object> target) {
+        return allyHasFlowerVeil(state, target);
     }
 }

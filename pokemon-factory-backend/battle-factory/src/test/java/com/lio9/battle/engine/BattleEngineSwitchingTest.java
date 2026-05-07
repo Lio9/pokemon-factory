@@ -4132,6 +4132,7 @@ class BattleEngineSwitchingTest {
                 List<String> drainEvents = new java.util.ArrayList<>();
                 conditionSupport.applyDrainHealing(
                                 opponentTeamState.get(0),
+                                playerTeamState.get(0),
                                 withDrain(move("Drain Move", "drain-move", 80, 100, 0, 2,
                                                 DamageCalculatorUtil.TYPE_GRASS, 10), 50),
                                 40,

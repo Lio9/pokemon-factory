@@ -2,6 +2,7 @@ package com.lio9.battle.engine;
 
 
 
+import com.lio9.battle.engine.event.*;
 import com.lio9.pokedex.util.DamageCalculatorUtil;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 final class BattleRoundSupport {
     /**
@@ -91,10 +93,17 @@ final class BattleRoundSupport {
                 events.add(actor.get("name") + " 正在睡觉，无法行动");
                 return;
             }
-            actor.put("condition", null);
-            actor.put("sleepTurns", 0);
-            actor.put("sleepAppliedRound", 0);
-            events.add(actor.get("name") + " 醒来了");
+            // Sleep Talk / Snore: 允许在睡眠中使用且不唤醒（move 变量此时未定义，用 action.move()）
+            Map<String, Object> currentMove = action.move();
+            if (currentMove != null && (engine.isSleepTalk(currentMove) || engine.isSnore(currentMove))) {
+                events.add(actor.get("name") + " 在睡梦中使用了招式！");
+            } else {
+                actor.put("condition", null);
+                actor.put("sleepTurns", 0);
+                actor.put("sleepAppliedRound", 0);
+                engine.setVolatile(actor, "nightmare", false);
+                events.add(actor.get("name") + " 醒来了");
+            }
         }
         if (conditionSupport.handleConfusionBeforeAction(actor, action.side(), actionLogs, events, random)) {
             return;
@@ -159,6 +168,16 @@ final class BattleRoundSupport {
             actor.put("lastProtectionRound", 0);
         }
 
+        // 最终手段：必须所有已知招式都已使用过至少一次才能使用
+        if (MoveRegistry.isLastResort(move) && !canUseLastResort(actor)) {
+            actionLog.put("result", "failed");
+            actionLogs.add(actionLog);
+            events.add(actor.get("name") + " 的最终手段失败了——并非所有招式都已用过");
+            actor.put("protectionStreak", 0);
+            actor.put("lastProtectionRound", 0);
+            return;
+        }
+
         if (handleSupportMove(state, action, actor, move, round, random, protectedTargets, wideGuardSides, quickGuardSides,
                 redirectionTargets, helpingHandBoosts, actionLogs, events, actionLog, playerSide)) {
             return;
@@ -166,6 +185,10 @@ final class BattleRoundSupport {
 
         List<BattleEngine.TargetRef> targets = targetSupport.resolveMoveTargets(state, action, move, random, redirectionTargets);
         if (targets.isEmpty()) {
+            // Fire ON_MOVE_FAIL — 无目标时招式失败
+            engine.getEventBus().fireEvent(BattleEventType.ON_MOVE_FAIL,
+                new BattleEvent(BattleEventType.ON_MOVE_FAIL) {},
+                Map.of("source", actor, "move", move, "state", state));
             actionLog.put("result", "failed");
             actionLog.put("damage", 0);
             actionLogs.add(actionLog);
@@ -329,6 +352,19 @@ final class BattleRoundSupport {
                 }
             }
 
+            // Fire ON_HIT — 检测类型免疫/特性阻挡
+            {
+                EventResult evtResult = engine.getEventBus().fireEvent(BattleEventType.ON_HIT,
+                    TryHitEvent.normal(), Map.of("source", actor, "target", target, "move", move, "state", state));
+                if (evtResult.isImmune()) {
+                    targetLog.put("result", "immune");
+                    targetLog.put("damage", 0);
+                    actionLogs.add(targetLog);
+                    if (evtResult.getMessage() != null) events.add(evtResult.getMessage());
+                    continue;
+                }
+            }
+
             Map<String, Object> statusSource = actor;
             Map<String, Object> statusTarget = target;
             String statusActingSide = action.side();
@@ -384,6 +420,45 @@ final class BattleRoundSupport {
             Object subHpObj = engine.volatileValue(target, "substitute", null);
             int subHp = subHpObj instanceof Integer ? (Integer) subHpObj : 0;
 
+            // 垂死挣扎：伤害 = 目标 HP - 使用者 HP（至少 1）
+            if (MoveRegistry.isEndeavor(move)) {
+                int actorHp = engine.toInt(actor.get("currentHp"), 0);
+                int targetHp = engine.toInt(target.get("currentHp"), 0);
+                if (targetHp <= actorHp) {
+                    targetLog.put("result", "failed");
+                    targetLog.put("damage", 0);
+                    actionLogs.add(targetLog);
+                    events.add(actor.get("name") + " 使用了垂死挣扎，但失败了");
+                    continue;
+                }
+                int endeavorDamage = Math.max(1, targetHp - actorHp);
+                int endeavorRemainingHp = Math.max(0, targetHp - endeavorDamage);
+                target.put("currentHp", endeavorRemainingHp);
+                targetLog.put("damage", endeavorDamage);
+                targetLog.put("result", "hit");
+                targetLog.put("hitCount", 1);
+                targetLog.put("critical", false);
+                totalDamage = endeavorDamage;
+                anyHit = true;
+                targetLog.put("targetHpAfter", endeavorRemainingHp);
+                actionLogs.add(targetLog);
+                events.add(engine.sideName(action.side()) + " 的 " + actor.get("name") + " 使用垂死挣扎"
+                        + " 对 " + target.get("name") + " 造成了 " + endeavorDamage + " 点伤害");
+                if (endeavorRemainingHp == 0) {
+                    target.put("status", "fainted");
+                    applyOnKOTargetAbility(state, actor, targetLog, events);
+                }
+                continue;
+            }
+
+            // Dream Eater: 目标必须在睡眠中，否则失败
+            if (MoveRegistry.isDreamEater(move) && !"sleep".equals(target.get("condition"))) {
+                targetLog.put("result", "failed");
+                targetLog.put("damage", 0);
+                actionLogs.add(targetLog);
+                events.add(actor.get("name") + " 使用了食梦，但 " + target.get("name") + " 没有睡着");
+                continue;
+            }
             int hitCount = resolveHitCount(actor, move, random);
             int totalActualDamage = 0;
             int criticalHits = 0;
@@ -395,6 +470,28 @@ final class BattleRoundSupport {
                 baseDamageMove.put("power", (int) Math.floor(engine.toInt(move.get("power"), 1) * 1.5d));
                 targetLog.put("knockOffBoosted", true);
             }
+
+            // Fire ON_BEFORE_MOVE — 允许特性/道具修改招式威力
+            {
+                Map<String, Object> ctx = Map.of(
+                    "source", actor, "target", target, "move", move, "state", state
+                );
+                ModifyPowerEvent powerEvent = new ModifyPowerEvent(engine.toInt(baseDamageMove.get("power"), 0));
+                EventResult evtResult = engine.getEventBus().fireEvent(BattleEventType.ON_BEFORE_MOVE, powerEvent, ctx);
+                if (!evtResult.shouldContinue()) {
+                    targetLog.put("result", "blocked");
+                    targetLog.put("damage", 0);
+                    actionLogs.add(targetLog);
+                    events.add(actor.get("name") + " 的招式被特性阻止了");
+                    continue;
+                }
+                int finalPower = evtResult.isModified() ? evtResult.getModifiedValue() : powerEvent.getModifiedPower();
+                if (finalPower != engine.toInt(baseDamageMove.get("power"), 0) && finalPower > 0) {
+                    baseDamageMove = new LinkedHashMap<>(baseDamageMove);
+                    baseDamageMove.put("power", finalPower);
+                }
+            }
+
             for (int hitIndex = 0; hitIndex < hitCount && remainingHp > 0; hitIndex++) {
                 int hpBeforeDamage = engine.toInt(target.get("currentHp"), 0);
                 // 暴击在执行层预先解析，再传给伤害层消费，避免重复判定导致日志与数值不一致。
@@ -406,10 +503,25 @@ final class BattleRoundSupport {
                 }
                 int damage = engine.calculateDamage(actor, target, resolvedMove, random, helpingHandBoosts, state);
 
-                // Ice Face / Disguise: block first hit per switch-in
+                // Fire ON_DAMAGE — 允许特性/道具修改伤害量
+                {
+                    EventResult dr = engine.getEventBus().fireEvent(BattleEventType.ON_DAMAGE,
+                        new DamageEvent(damage, damage, criticalHit),
+                        Map.of("attacker", actor, "defender", target, "move", move, "state", state));
+                    if (!dr.shouldContinue()) {
+                        damage = 0;
+                    } else if (dr.isModified()) {
+                        damage = dr.getModifiedValue();
+                    } else {
+                        damage = Math.max(0, damage);
+                    }
+                }
+
+                // Ice Face / Disguise: block first hit per switch-in（光子喷涌/暗影之光无视）
                 if (damage > 0) {
+                    boolean ignoresAbility = MoveRegistry.isUnignorableMove(move);
                     String blockAbility = engine.abilityName(target);
-                    if (("ice-face".equalsIgnoreCase(blockAbility) || "ice face".equalsIgnoreCase(blockAbility))
+                    if (!ignoresAbility && ("ice-face".equalsIgnoreCase(blockAbility) || "ice face".equalsIgnoreCase(blockAbility))
                             && target.get("iceFaceActive") != Boolean.FALSE) {
                         target.put("iceFaceActive", false);
                         targetLog.put("result", "blocked");
@@ -417,7 +529,7 @@ final class BattleRoundSupport {
                         events.add(target.get("name") + " 的冰鳞粉挡住了攻击");
                         continue;
                     }
-                    if ("disguise".equalsIgnoreCase(blockAbility)
+                    if (!ignoresAbility && "disguise".equalsIgnoreCase(blockAbility)
                             && target.get("disguiseActive") != Boolean.FALSE) {
                         target.put("disguiseActive", false);
                         targetLog.put("result", "blocked");
@@ -441,7 +553,7 @@ final class BattleRoundSupport {
                     }
                 }
 
-                remainingHp = engine.applyIncomingDamage(actor, target, damage, targetLog, events);
+                remainingHp = engine.applyIncomingDamage(actor, target, damage, targetLog, events, move);
                 int actualDamage = engine.toInt(targetLog.get("damage"), damage);
                 target.put("currentHp", remainingHp);
                 // 气势头带：10% 概率撑住致命一击（不消耗道具）
@@ -475,6 +587,51 @@ final class BattleRoundSupport {
                         && engine.toInt(actor.get("currentHp"), 0) > 0) {
                     autoSwitchAfterMove(state, action, actor, move, "red-card", events, actionLogs);
                 }
+                // Jaboca Berry: 受物理招式伤害时反伤攻击者 1/8 最大 HP
+                if (actualDamage > 0 && !engine.itemConsumed(target) && remainingHp > 0) {
+                    String targetItem = engine.heldItem(target);
+                    int dmgClass = engine.toInt(move.get("damage_class_id"), 0);
+                    if ("jaboca-berry".equalsIgnoreCase(targetItem) && dmgClass == 2) {
+                        engine.consumeItem(target);
+                        int atkMaxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
+                        int recoil = Math.max(1, atkMaxHp / 8);
+                        int atkHp = engine.toInt(actor.get("currentHp"), 0);
+                        actor.put("currentHp", Math.max(0, atkHp - recoil));
+                        events.add(target.get("name") + " 的嘉宝果反击了 " + actor.get("name") + "，" + recoil + " 点 HP 损伤");
+                    }
+                    // Rowap Berry: 受特殊招式伤害时反伤攻击者 1/8 最大 HP
+                    if ("rowap-berry".equalsIgnoreCase(targetItem) && dmgClass == 3) {
+                        engine.consumeItem(target);
+                        int atkMaxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
+                        int recoil = Math.max(1, atkMaxHp / 8);
+                        int atkHp = engine.toInt(actor.get("currentHp"), 0);
+                        actor.put("currentHp", Math.max(0, atkHp - recoil));
+                        events.add(target.get("name") + " 的罗子果反击了 " + actor.get("name") + "，" + recoil + " 点 HP 损伤");
+                    }
+                }
+                // Enigma Berry: 受效果绝佳攻击时回复 1/4 最大 HP（非克制或已消耗跳过）
+                if (actualDamage > 0 && !engine.itemConsumed(target) && remainingHp > 0
+                        && ("enigma-berry".equalsIgnoreCase(engine.heldItem(target)) || "enigma berry".equalsIgnoreCase(engine.heldItem(target)))
+                        && engine.typeModifier(target, engine.toInt(move.get("type_id"), 0)) > 1.0d) {
+                    int maxHp = engine.toInt(engine.castMap(target.get("stats")).get("hp"), 1);
+                    int currentHp = engine.toInt(target.get("currentHp"), 0);
+                    int heal = Math.max(1, maxHp / 4);
+                    if (currentHp < maxHp) {
+                        engine.consumeItem(target);
+                        int newHp = Math.min(maxHp, currentHp + heal);
+                        target.put("currentHp", newHp);
+                        remainingHp = newHp;
+                        events.add(target.get("name") + " 的谜芝果回复了 " + heal + " 点 HP");
+                    }
+                }
+                // Micle Berry: HP < 25% 时下一招式命中率 +1 阶级（标记挥发状态）
+                if (actualDamage > 0 && !engine.itemConsumed(target) && remainingHp > 0
+                        && engine.toInt(target.get("currentHp"), 0) * 4 <= engine.toInt(engine.castMap(target.get("stats")).get("hp"), 1)
+                        && ("micle-berry".equalsIgnoreCase(engine.heldItem(target)) || "micle berry".equalsIgnoreCase(engine.heldItem(target)))) {
+                    engine.consumeItem(target);
+                    engine.setVolatile(target, "micleBerryBoosted", true);
+                    events.add(target.get("name") + " 的米库果提高了下一招式的命中率");
+                }
                 // Struggle recoil: 1/4 max HP
                 if (isStruggleMove(move) && actualDamage > 0) {
                     int struggleRecoil = Math.max(1, engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1) / 4);
@@ -487,6 +644,28 @@ final class BattleRoundSupport {
                     }
                 }
                 conditionSupport.applyReactiveContactEffects(state, actor, target, move, targetLog, events, random);
+                // 多段攻击：每段独立判定王者之证/锐利之牙畏缩（仅招式无自然畏缩概率时生效）
+                if (actualDamage > 0 && remainingHp > 0 && engine.toInt(move.get("flinch_chance"), 0) <= 0) {
+                    String heldItem = engine.heldItem(actor);
+                    if (("king's-rock".equalsIgnoreCase(heldItem) || "king's rock".equalsIgnoreCase(heldItem)
+                            || "razor-fang".equalsIgnoreCase(heldItem) || "razor fang".equalsIgnoreCase(heldItem))
+                            && random.nextInt(100) < 10
+                            && !"inner-focus".equalsIgnoreCase(engine.abilityName(target))
+                            && !"inner focus".equalsIgnoreCase(engine.abilityName(target))
+                            && !conditionSupport.blocksSecondaryEffects(target, "flinch", targetLog, events)) {
+                        engine.setVolatile(target, "flinch", true);
+                        targetLog.put("flinch", true);
+                        events.add(target.get("name") + " 因为" + heldItem + "畏缩了");
+                    }
+                }
+                // 多段攻击：每段独立判定恶臭特性畏缩
+                if (actualDamage > 0 && remainingHp > 0 && engine.hasAbility(actor, "stench")
+                        && !conditionSupport.blocksSecondaryEffects(target, "flinch", targetLog, events)
+                        && random.nextInt(100) < 10) {
+                    engine.setVolatile(target, "flinch", true);
+                    targetLog.put("flinch", true);
+                    events.add(target.get("name") + " 因为" + engine.abilityName(actor) + "特性而畏缩了");
+                }
                 if (remainingHp == 0) {
                     target.put("status", "fainted");
                 }
@@ -502,10 +681,17 @@ final class BattleRoundSupport {
             targetLog.put("critical", criticalHits > 0);
             targetLog.put("criticalHits", criticalHits);
             targetLog.put("targetHpAfter", remainingHp);
-            // Rapid Spin: 清除己方场地钉
+            // Rapid Spin: 清除己方场地钉 + 速度提升 1 级
             if (MoveRegistry.isRapidSpin(move) && totalActualDamage > 0) {
                 engine.clearSideHazards(state, "player".equals(action.side()));
                 events.add(actor.get("name") + " 用高速旋转清除了场地钉");
+                Map<String, Object> stages = engine.statStages(actor);
+                int prevSpeed = engine.toInt(stages.get("speed"), 0);
+                if (prevSpeed < 6) {
+                    stages.put("speed", prevSpeed + 1);
+                    targetLog.put("rapidSpinSpeedBoost", true);
+                    events.add(actor.get("name") + " 的高速旋转提升了速度！");
+                }
             }
             // Defog: 清除双方场地钉
             if (MoveRegistry.isDefog(move) && totalActualDamage > 0) {
@@ -533,7 +719,7 @@ final class BattleRoundSupport {
                 }
             }
 
-            conditionSupport.applyDrainHealing(actor, move, totalActualDamage, targetLog, events);
+            conditionSupport.applyDrainHealing(actor, target, move, totalActualDamage, targetLog, events);
             totalDamage += totalActualDamage;
             anyHit = anyHit || totalActualDamage > 0;
             if (isFakeOut(move) && remainingHp > 0) {
@@ -562,8 +748,15 @@ final class BattleRoundSupport {
             }
             if (remainingHp == 0) {
                 events.add(target.get("name") + " 倒下了");
+                // 同命：如果目标使用了同命且被击倒，攻击者也一同倒下
+                if (Boolean.TRUE.equals(engine.volatileValue(target, "destinyBond", false))
+                        && engine.toInt(actor.get("currentHp"), 0) > 0) {
+                    actor.put("currentHp", 0);
+                    actor.put("status", "fainted");
+                    events.add(target.get("name") + " 的同命带走了 " + actor.get("name") + "！");
+                }
                 // 击倒触发特性：moxie/beast-boost/soul-heart/grim-neigh/chilling-neigh
-                applyOnKOTargetAbility(actor, targetLog, events);
+                applyOnKOTargetAbility(state, actor, targetLog, events);
             }
         }
 
@@ -792,12 +985,13 @@ final class BattleRoundSupport {
     /**
      * 击倒触发特性：击倒目标时，根据特性提升对应能力
      */
-    private void applyOnKOTargetAbility(Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+    private void applyOnKOTargetAbility(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
         if (engine.toInt(actor.get("currentHp"), 0) <= 0) {
             return;
         }
         String ability = engine.abilityName(actor);
         Map<String, Object> stages = engine.statStages(actor);
+        boolean anyBoosted = false;
 
         // Moxie / 自信过度：击倒对手攻击 +1
         if ("moxie".equalsIgnoreCase(ability)) {
@@ -806,8 +1000,8 @@ final class BattleRoundSupport {
                 stages.put("attack", prev + 1);
                 actionLog.put("moxie", true);
                 events.add(actor.get("name") + " 的自信过度触发了，攻击提升！");
+                anyBoosted = true;
             }
-            return;
         }
         // Beast Boost / 异兽提升：击倒后最高能力 +1
         if ("beast-boost".equalsIgnoreCase(ability) || "beast boost".equalsIgnoreCase(ability)) {
@@ -827,8 +1021,8 @@ final class BattleRoundSupport {
                 stages.put(highestStat, prev + 1);
                 actionLog.put("beastBoost", highestStat);
                 events.add(actor.get("name") + " 的异兽提升了" + highestStat + "！");
+                anyBoosted = true;
             }
-            return;
         }
         // Soul-Heart / 魂心：任何击倒特攻 +1
         if ("soul-heart".equalsIgnoreCase(ability) || "soul heart".equalsIgnoreCase(ability)) {
@@ -837,8 +1031,8 @@ final class BattleRoundSupport {
                 stages.put("specialAttack", prev + 1);
                 actionLog.put("soulHeart", true);
                 events.add(actor.get("name") + " 的魂心触发了，特攻提升！");
+                anyBoosted = true;
             }
-            return;
         }
         // Grim Neigh / 漆黑嘶鸣：击倒后攻击 +1
         if ("grim-neigh".equalsIgnoreCase(ability) || "grim neigh".equalsIgnoreCase(ability)) {
@@ -847,8 +1041,8 @@ final class BattleRoundSupport {
                 stages.put("attack", prev + 1);
                 actionLog.put("grimNeigh", true);
                 events.add(actor.get("name") + " 的漆黑嘶鸣触发了，攻击提升！");
+                anyBoosted = true;
             }
-            return;
         }
         // Chilling Neigh / 苍白嘶鸣：击倒后攻击 +1
         if ("chilling-neigh".equalsIgnoreCase(ability) || "chilling neigh".equalsIgnoreCase(ability)) {
@@ -857,7 +1051,12 @@ final class BattleRoundSupport {
                 stages.put("attack", prev + 1);
                 actionLog.put("chillingNeigh", true);
                 events.add(actor.get("name") + " 的苍白嘶鸣触发了，攻击提升！");
+                anyBoosted = true;
             }
+        }
+        // Mirror Herb: 复制击倒触发的特性提升
+        if (anyBoosted) {
+            conditionSupport.tryMirrorHerb(state, actor, events);
         }
     }
 
@@ -891,6 +1090,18 @@ final class BattleRoundSupport {
         switchedIn.put("entryRound", engine.toInt(state.get("currentRound"), 0) + 1);
         engine.setVolatile(switchedIn, "flinch", false);
         engine.replaceActiveSlot(state, playerSide, action.actorFieldSlot(), action.switchToTeamIndex());
+
+        // Fire ON_SWITCH_OUT / ON_SWITCH_IN
+        engine.getEventBus().fireEvent(BattleEventType.ON_SWITCH_OUT,
+            new BattleEvent(BattleEventType.ON_SWITCH_OUT) {},
+            Map.of("source", actor, "playerSide", playerSide, "state", state));
+        engine.getEventBus().fireEvent(BattleEventType.ON_SWITCH_IN,
+            new BattleEvent(BattleEventType.ON_SWITCH_IN) {},
+            Map.of("source", switchedIn, "playerSide", playerSide, "state", state));
+
+        // 标记换入用于监查特性（Stakeout 等）
+        switchedIn.put("justSwitchedIn", true);
+
         actionLogs.add(actionLog);
         events.add(engine.sideName(action.side()) + " 收回了 " + actor.get("name") + "，派出了 " + switchedIn.get("name"));
         conditionSupport.applyEntryAbilities(state, playerSide, previousSlots, events);
@@ -990,6 +1201,35 @@ final class BattleRoundSupport {
         if (MoveRegistry.isBatonPass(move)) {
             return handleBatonPass(state, action, actor, move, actionLog, actionLogs, events, playerSide);
         }
+        // 挺住：本回合受到致命攻击时保留 1 HP
+        if (MoveRegistry.isEndure(move)) {
+            engine.setVolatile(actor, "endured", true);
+            events.add(actor.get("name") + " 使用了忍耐！");
+            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+        }
+        // 黑雾：清除双方所有能力变化
+        if (MoveRegistry.isHaze(move)) {
+            for (boolean side : new boolean[]{true, false}) {
+                for (Integer slot : engine.activeSlots(state, side)) {
+                    if (slot == null || slot < 0) continue;
+                    Map<String, Object> mon = engine.team(state, side).get(slot);
+                    if (engine.toInt(mon.get("currentHp"), 0) <= 0) continue;
+                    mon.put("statStages", new LinkedHashMap<String, Object>());
+                }
+            }
+            events.add(actor.get("name") + " 使用了黑雾，所有能力变化恢复了！");
+            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+        }
+        // 同命：如果本回合使用者被击倒，攻击者也一同倒下
+        if (MoveRegistry.isDestinyBond(move)) {
+            engine.setVolatile(actor, "destinyBond", true);
+            events.add(actor.get("name") + " 使用了同命！");
+            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+        }
+        // 分担痛楚：使用者和目标 HP 相加平均分配
+        if (MoveRegistry.isPainSplit(move)) {
+            return handlePainSplit(state, action, actor, move, actionLog, actionLogs, events, playerSide);
+        }
         if (conditionSupport.applyMoveHealing(actor, move, actionLog, events)) {
             return finishNonDamagingMove(actor, move, actionLog, actionLogs);
         }
@@ -1081,6 +1321,73 @@ final class BattleRoundSupport {
             events.add(actor.get("name") + " 困住了 " + target.get("name"));
             return true;
         }
+        // 吸取力量：降低目标攻击 1 级，回复等量于目标攻击数值的 HP
+        if (MoveRegistry.isStrengthSap(move)) {
+            Map<String, Object> targetStats = engine.castMap(target.get("stats"));
+            int baseAtk = engine.toInt(targetStats.get("attack"), 0);
+            int prevAtkStage = engine.toInt(engine.statStages(target).get("attack"), 0);
+            // 降低攻击前先计算回复量（使用降低前的攻击力）
+            int healAmount = effectiveStat(baseAtk, prevAtkStage);
+            // 降低攻击 1 级
+            int nextAtkStage = Math.max(-6, prevAtkStage - 1);
+            if (nextAtkStage != prevAtkStage) {
+                engine.statStages(target).put("attack", nextAtkStage);
+                targetLog.put("attackStageChange", -1);
+                events.add(target.get("name") + " 的攻击下降了！");
+            }
+            // 回复使用者
+            int actorHp = engine.toInt(actor.get("currentHp"), 0);
+            int maxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
+            int actualHeal = Math.min(healAmount, maxHp - actorHp);
+            if (actualHeal > 0) {
+                actor.put("currentHp", actorHp + actualHeal);
+                targetLog.put("strengthSapHeal", actualHeal);
+                events.add(actor.get("name") + " 吸收了 " + target.get("name") + " 的力量，回复了 " + actualHeal + " 点 HP！");
+            } else {
+                events.add(actor.get("name") + " 使用了吸取力量，但 HP 已满");
+            }
+            targetLog.put("result", "strength-sap");
+            actionLogs.add(targetLog);
+            return true;
+        }
+        // 防守平分：双方防御/特防（含阶级修正后）相加平均，设为双方新基础值并清除阶级
+        if (MoveRegistry.isGuardSplit(move)) {
+            if (!handleGuardPowerSplit(actor, target, move, targetLog, events, true)) {
+                targetLog.put("result", "failed");
+            } else {
+                targetLog.put("result", "guard-split");
+                events.add(actor.get("name") + " 和 " + target.get("name") + " 平分了防御和特防！");
+            }
+            actionLogs.add(targetLog);
+            return true;
+        }
+        // 力量平分：双方攻击/特攻（含阶级修正后）相加平均，设为双方新基础值并清除阶级
+        if (MoveRegistry.isPowerSplit(move)) {
+            if (!handleGuardPowerSplit(actor, target, move, targetLog, events, false)) {
+                targetLog.put("result", "failed");
+            } else {
+                targetLog.put("result", "power-split");
+                events.add(actor.get("name") + " 和 " + target.get("name") + " 平分了攻击和特攻！");
+            }
+            actionLogs.add(targetLog);
+            return true;
+        }
+        // 防守互换：交换双方防御/特防的阶级
+        if (MoveRegistry.isGuardSwap(move)) {
+            handleGuardPowerSwap(actor, target, true);
+            targetLog.put("result", "guard-swap");
+            actionLogs.add(targetLog);
+            events.add(actor.get("name") + " 和 " + target.get("name") + " 互换了防御和特防的阶级！");
+            return true;
+        }
+        // 力量互换：交换双方攻击/特攻的阶级
+        if (MoveRegistry.isPowerSwap(move)) {
+            handleGuardPowerSwap(actor, target, false);
+            targetLog.put("result", "power-swap");
+            actionLogs.add(targetLog);
+            events.add(actor.get("name") + " 和 " + target.get("name") + " 互换了攻击和特攻的阶级！");
+            return true;
+        }
         if (engine.isTrickMove(move)) {
             String actorItem = engine.heldItem(actor);
             String targetItem = engine.heldItem(target);
@@ -1125,69 +1432,106 @@ final class BattleRoundSupport {
             }
             return true;
         }
+
+        // Nightmare: 恶梦，目标睡眠中每回合损失 1/8 最大 HP
+        if (engine.isNightmare(move)) {
+            if (!"sleep".equals(target.get("condition"))) {
+                targetLog.put("result", "failed");
+                events.add(actor.get("name") + " 使用了恶梦，但目标没有睡着");
+            } else {
+                engine.setVolatile(target, "nightmare", true);
+                targetLog.put("result", "nightmare");
+                events.add(actor.get("name") + " 让 " + target.get("name") + " 陷入了恶梦状态");
+            }
+            actionLogs.add(targetLog);
+            return true;
+        }
+        // Heal Bell: 治愈铃声，治愈己方全队异常状态（声音类招式）
+        if (engine.isHealBell(move)) {
+            conditionSupport.applyHealBell(state, actor, targetLog, events,
+                "player".equals(action.side()));
+            targetLog.put("result", "heal-bell");
+            actionLogs.add(targetLog);
+            return true;
+        }
+        // Aromatherapy: 芳香治疗，治愈己方全队异常状态（粉末类，靠 move flag 阻隔）
+        if (engine.isAromatherapy(move)) {
+            conditionSupport.applyHealBell(state, actor, targetLog, events,
+                "player".equals(action.side()));
+            targetLog.put("result", "aromatherapy");
+            actionLogs.add(targetLog);
+            return true;
+        }
+        // Refresh: 净化之水，治愈自身的中毒/灼伤/麻痹
+        if (engine.isRefresh(move)) {
+            conditionSupport.applyRefresh(actor, targetLog, events);
+            targetLog.put("result", "refresh");
+            actionLogs.add(targetLog);
+            return true;
+        }
         
         // Self-boosting moves
         if (engine.isSwordsDance(move)) {
-            boolean succeeded = conditionSupport.applySelfStatBoost(actor, "attack", 2, "剑舞", events);
+            boolean succeeded = conditionSupport.applySelfStatBoost(state, actor, "attack", 2, "剑舞", events);
             targetLog.put("result", succeeded ? "swords-dance" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isNastyPlot(move)) {
-            boolean succeeded = conditionSupport.applySelfStatBoost(actor, "specialAttack", 2, "诡计", events);
+            boolean succeeded = conditionSupport.applySelfStatBoost(state, actor, "specialAttack", 2, "诡计", events);
             targetLog.put("result", succeeded ? "nasty-plot" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isDragonDance(move)) {
-            boolean succeeded = conditionSupport.applyMultiStatBoost(actor, 
+            boolean succeeded = conditionSupport.applyMultiStatBoost(state, actor, 
                 Map.of("attack", 1, "speed", 1), "龙舞", events);
             targetLog.put("result", succeeded ? "dragon-dance" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isCalmMind(move)) {
-            boolean succeeded = conditionSupport.applyMultiStatBoost(actor,
+            boolean succeeded = conditionSupport.applyMultiStatBoost(state, actor,
                 Map.of("specialAttack", 1, "specialDefense", 1), "冥想", events);
             targetLog.put("result", succeeded ? "calm-mind" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isAgility(move)) {
-            boolean succeeded = conditionSupport.applySelfStatBoost(actor, "speed", 2, "高速移动", events);
+            boolean succeeded = conditionSupport.applySelfStatBoost(state, actor, "speed", 2, "高速移动", events);
             targetLog.put("result", succeeded ? "agility" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isAutotomize(move)) {
-            boolean succeeded = conditionSupport.applySelfStatBoost(actor, "speed", 2, "轻量化", events);
+            boolean succeeded = conditionSupport.applySelfStatBoost(state, actor, "speed", 2, "轻量化", events);
             targetLog.put("result", succeeded ? "autotomize" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isBulkUp(move)) {
-            boolean succeeded = conditionSupport.applyMultiStatBoost(actor,
+            boolean succeeded = conditionSupport.applyMultiStatBoost(state, actor,
                 Map.of("attack", 1, "defense", 1), "健美", events);
             targetLog.put("result", succeeded ? "bulk-up" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isWorkUp(move)) {
-            boolean succeeded = conditionSupport.applyMultiStatBoost(actor,
+            boolean succeeded = conditionSupport.applyMultiStatBoost(state, actor,
                 Map.of("attack", 1, "specialAttack", 1), "振作", events);
             targetLog.put("result", succeeded ? "work-up" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isQuiverDance(move)) {
-            boolean succeeded = conditionSupport.applyMultiStatBoost(actor,
+            boolean succeeded = conditionSupport.applyMultiStatBoost(state, actor,
                 Map.of("specialAttack", 1, "specialDefense", 1, "speed", 1), "蝶舞", events);
             targetLog.put("result", succeeded ? "quiver-dance" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isCoil(move)) {
-            boolean succeeded = conditionSupport.applyMultiStatBoost(actor,
+            boolean succeeded = conditionSupport.applyMultiStatBoost(state, actor,
                 Map.of("attack", 1, "defense", 1, "accuracy", 1), "盘蜷", events);
             targetLog.put("result", succeeded ? "coil" : "failed");
             actionLogs.add(targetLog);
@@ -1195,7 +1539,7 @@ final class BattleRoundSupport {
         }
         if (engine.isShellSmash(move)) {
             // Shell Smash: Atk +2, SpA +2, Spe +2, Def -1, SpD -1
-            boolean anyChange = conditionSupport.applyMultiStatBoost(actor,
+            boolean anyChange = conditionSupport.applyMultiStatBoost(state, actor,
                 Map.of("attack", 2, "specialAttack", 2, "speed", 2), "破壳", events);
             // Apply defense drops using engine's statStages
             int prevDef = engine.toInt(engine.castMap(actor.get("statStages")).get("defense"), 0);
@@ -1408,6 +1752,17 @@ final class BattleRoundSupport {
         engine.applyCooldown(actor, move);
         engine.replaceActiveSlot(state, playerSide, action.actorFieldSlot(), switchToIndex);
 
+        // Fire ON_SWITCH_OUT / ON_SWITCH_IN
+        engine.getEventBus().fireEvent(BattleEventType.ON_SWITCH_OUT,
+            new BattleEvent(BattleEventType.ON_SWITCH_OUT) {},
+            Map.of("source", actor, "playerSide", playerSide, "state", state));
+        engine.getEventBus().fireEvent(BattleEventType.ON_SWITCH_IN,
+            new BattleEvent(BattleEventType.ON_SWITCH_IN) {},
+            Map.of("source", switchedIn, "playerSide", playerSide, "state", state));
+
+        // 标记换入用于监查特性（Stakeout 等）
+        switchedIn.put("justSwitchedIn", true);
+
         // 应用接力状态到换上来的宝可梦
         if (!savedStages.isEmpty()) {
             switchedIn.put("statStages", savedStages);
@@ -1444,9 +1799,56 @@ final class BattleRoundSupport {
     }
 
     /**
-     * Counter / Mirror Coat / Metal Burst：反伤招式。
-     * @return true 如果成功造成反伤
+     * 分担痛楚：使用者和目标 HP 相加平均分配。
      */
+    private boolean handlePainSplit(Map<String, Object> state, BattleEngine.Action action, Map<String, Object> actor,
+                                    Map<String, Object> move, Map<String, Object> actionLog,
+                                    List<Map<String, Object>> actionLogs, List<String> events, boolean playerSide) {
+        // 分担痛楚：选择目标，使用者和目标 HP 相加平均分配
+        List<BattleEngine.TargetRef> targets = targetSupport.resolveMoveTargets(state, action, move, new Random(),
+                new java.util.HashMap<>());
+        if (targets.isEmpty()) {
+            actionLog.put("result", "failed");
+            actionLogs.add(actionLog);
+            events.add(actor.get("name") + " 使用了分担痛楚，但没有目标");
+            return true;
+        }
+        BattleEngine.TargetRef targetRef = targets.get(0);
+        List<Map<String, Object>> targetTeam = engine.team(state, targetRef.playerSide());
+        if (!engine.isAvailableMon(targetTeam, targetRef.teamIndex())) {
+            actionLog.put("result", "failed");
+            actionLogs.add(actionLog);
+            events.add(actor.get("name") + " 使用了分担痛楚，但目标无法使用");
+            return true;
+        }
+        Map<String, Object> target = targetTeam.get(targetRef.teamIndex());
+        if (target == actor) {
+            actionLog.put("result", "failed");
+            actionLogs.add(actionLog);
+            return true;
+        }
+
+        int actorHp = engine.toInt(actor.get("currentHp"), 0);
+        int targetHp = engine.toInt(target.get("currentHp"), 0);
+        int totalHp = actorHp + targetHp;
+        int avgHp = Math.max(1, totalHp / 2);
+
+        if (actorHp != avgHp) {
+            int maxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
+            actor.put("currentHp", Math.min(avgHp, maxHp));
+        }
+        if (targetHp != avgHp) {
+            int maxHp = engine.toInt(engine.castMap(target.get("stats")).get("hp"), 1);
+            target.put("currentHp", Math.min(avgHp, maxHp));
+        }
+
+        actionLog.put("target", target.get("name"));
+        actionLog.put("result", "pain-split");
+        actionLogs.add(actionLog);
+        events.add(actor.get("name") + " 和 " + target.get("name") + " 分享了痛楚！双方 HP 变为 " + avgHp);
+        return true;
+    }
+
     private boolean handleReverseDamageMove(Map<String, Object> actor, Map<String, Object> target,
                                             Map<String, Object> move, Map<String, Object> targetLog,
                                             List<String> events) {
@@ -1514,6 +1916,18 @@ final class BattleRoundSupport {
         switchedIn.put("entryRound", engine.toInt(state.get("currentRound"), 0) + 1);
         engine.setVolatile(switchedIn, "flinch", false);
         engine.replaceActiveSlot(state, playerSide, action.actorFieldSlot(), switchToIndex);
+
+        // Fire ON_SWITCH_OUT / ON_SWITCH_IN
+        engine.getEventBus().fireEvent(BattleEventType.ON_SWITCH_OUT,
+            new BattleEvent(BattleEventType.ON_SWITCH_OUT) {},
+            Map.of("source", actor, "playerSide", playerSide, "state", state));
+        engine.getEventBus().fireEvent(BattleEventType.ON_SWITCH_IN,
+            new BattleEvent(BattleEventType.ON_SWITCH_IN) {},
+            Map.of("source", switchedIn, "playerSide", playerSide, "state", state));
+
+        // 标记换入用于监查特性（Stakeout 等）
+        switchedIn.put("justSwitchedIn", true);
+
         Map<String, Object> switchLog = new LinkedHashMap<>();
         switchLog.put("side", action.side());
         switchLog.put("actor", actor.get("name"));
@@ -1576,8 +1990,8 @@ final class BattleRoundSupport {
         // Final accuracy = base * accuracy_mult / evasion_mult
         double finalAccuracy = baseAccuracy * accuracyMultiplier / evasionMultiplier;
         // 按 PS 风格在阶段修正后继续叠加特性、道具、天气等额外命中修正。
-        finalAccuracy = applyAbilityAccuracyModifier(attacker, defender, move, finalAccuracy);
-        finalAccuracy = applyItemAccuracyModifier(attacker, defender, finalAccuracy);
+        finalAccuracy = applyAbilityAccuracyModifier(state, attacker, defender, move, finalAccuracy);
+        finalAccuracy = applyItemAccuracyModifier(state, attacker, defender, finalAccuracy);
         finalAccuracy = applyWeatherAccuracyRule(state, move, finalAccuracy);
         // Gravity: 所有招式命中率 +2 阶段等价（约 5/3 倍）
         if (engine.gravityTurns(state) > 0) {
@@ -1588,7 +2002,7 @@ final class BattleRoundSupport {
         return Math.max(1, Math.min(100, (int) Math.floor(finalAccuracy)));
     }
 
-    private double applyAbilityAccuracyModifier(Map<String, Object> attacker, Map<String, Object> defender,
+    private double applyAbilityAccuracyModifier(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> defender,
                                                 Map<String, Object> move, double currentAccuracy) {
         String attackerAbility = engine.abilityName(attacker);
         String defenderAbility = engine.abilityName(defender);
@@ -1603,17 +2017,47 @@ final class BattleRoundSupport {
                 && engine.volatileFlag(defender, "confused")) {
             currentAccuracy *= 0.5d;
         }
+        // 沙隐：沙暴中对手命中率 ×0.8
+        if (matches(defenderAbility, "sand-veil", "sand veil")) {
+            Map<String, Object> fieldEffects = engine.castMap(state.get("fieldEffects"));
+            if (fieldEffects != null) {
+                int sandTurns = engine.toInt(fieldEffects.get("sandTurns"), 0);
+                if (sandTurns > 0) currentAccuracy *= 0.8d;
+            }
+        }
+        // 雪隐：雪天中对手命中率 ×0.8
+        if (matches(defenderAbility, "snow-cloak", "snow cloak")) {
+            Map<String, Object> fieldEffects = engine.castMap(state.get("fieldEffects"));
+            if (fieldEffects != null) {
+                int snowTurns = engine.toInt(fieldEffects.get("snowTurns"), 0);
+                if (snowTurns > 0) currentAccuracy *= 0.8d;
+            }
+        }
         return currentAccuracy;
     }
 
-    private double applyItemAccuracyModifier(Map<String, Object> attacker, Map<String, Object> defender,
+    private double applyItemAccuracyModifier(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> defender,
                                              double currentAccuracy) {
         String attackerItem = engine.heldItem(attacker);
         if (matches(attackerItem, "wide-lens", "wide lens")) {
             currentAccuracy *= 1.1d;
         }
+        // Zoom Lens: 比目标快则 +20% 命中（比较有效速度）
+        if (matches(attackerItem, "zoom-lens", "zoom lens")) {
+            boolean attackerPlayerSide = engine.isOnSide(state, attacker, true);
+            int atkSpeed = engine.speedValue(attacker, state, attackerPlayerSide);
+            int defSpeed = engine.speedValue(defender, state, !attackerPlayerSide);
+            if (defSpeed > atkSpeed) {
+                currentAccuracy *= 1.2d;
+            }
+        }
+        // Micle Berry: 消耗米库果提升下一招命中率（相当于 +1 命中阶段）
+        if (engine.volatileFlag(attacker, "micleBerryBoosted")) {
+            currentAccuracy *= getStageMultiplier(1);
+            engine.setVolatile(attacker, "micleBerryBoosted", false);
+        }
         String defenderItem = engine.heldItem(defender);
-        if (matches(defenderItem, "bright-powder", "bright powder")) {
+        if (matches(defenderItem, "bright-powder", "bright powder", "lax-incense", "lax incense")) {
             currentAccuracy *= 0.9d;
         }
         return currentAccuracy;
@@ -1681,5 +2125,150 @@ final class BattleRoundSupport {
             return 0;
         }
         return engine.toInt(statStages.get(stat), 0);
+    }
+
+    /**
+     * 计算基础能力值经阶级修正后的有效值，公式与 damageSupport.applyStageModifier 一致。
+     */
+    private int effectiveStat(int baseStat, int stage) {
+        int normalized = Math.max(-6, Math.min(6, stage));
+        double multiplier = normalized >= 0
+                ? (2.0d + normalized) / 2.0d
+                : 2.0d / (2.0d - normalized);
+        return Math.max(1, (int) Math.floor(baseStat * multiplier));
+    }
+
+    /**
+     * 防守平分/力量平分：双方对应能力（含阶级修正后）相加平均，
+     * 设为双方新基础值并清除阶级。isGuard=true 表示防守平分，false 表示力量平分。
+     */
+    private boolean handleGuardPowerSplit(Map<String, Object> actor, Map<String, Object> target,
+                                           Map<String, Object> move, Map<String, Object> targetLog,
+                                           List<String> events, boolean isGuard) {
+        Map<String, Object> actorStats = engine.castMap(actor.get("stats"));
+        Map<String, Object> targetStats = engine.castMap(target.get("stats"));
+
+        if (isGuard) {
+            // 防守平分：防御/特防
+            int actDefBase = engine.toInt(actorStats.get("defense"), 0);
+            int actSpDBase = engine.toInt(actorStats.get("specialDefense"), 0);
+            int tgtDefBase = engine.toInt(targetStats.get("defense"), 0);
+            int tgtSpDBase = engine.toInt(targetStats.get("specialDefense"), 0);
+
+            int actDefStage = engine.toInt(engine.statStages(actor).get("defense"), 0);
+            int actSpDStage = engine.toInt(engine.statStages(actor).get("specialDefense"), 0);
+            int tgtDefStage = engine.toInt(engine.statStages(target).get("defense"), 0);
+            int tgtSpDStage = engine.toInt(engine.statStages(target).get("specialDefense"), 0);
+
+            int avgDef = Math.max(1, (effectiveStat(actDefBase, actDefStage) + effectiveStat(tgtDefBase, tgtDefStage)) / 2);
+            int avgSpD = Math.max(1, (effectiveStat(actSpDBase, actSpDStage) + effectiveStat(tgtSpDBase, tgtSpDStage)) / 2);
+
+            // 保存原始基础值（仅首次），用于切出恢复
+            if (!engine.volatiles(actor).containsKey("guardSplitOrigDef")) {
+                engine.setVolatile(actor, "guardSplitOrigDef", actDefBase);
+                engine.setVolatile(actor, "guardSplitOrigSpD", actSpDBase);
+            }
+            if (!engine.volatiles(target).containsKey("guardSplitOrigDef")) {
+                engine.setVolatile(target, "guardSplitOrigDef", tgtDefBase);
+                engine.setVolatile(target, "guardSplitOrigSpD", tgtSpDBase);
+            }
+
+            actorStats.put("defense", avgDef);
+            actorStats.put("specialDefense", avgSpD);
+            engine.statStages(actor).put("defense", 0);
+            engine.statStages(actor).put("specialDefense", 0);
+            targetStats.put("defense", avgDef);
+            targetStats.put("specialDefense", avgSpD);
+            engine.statStages(target).put("defense", 0);
+            engine.statStages(target).put("specialDefense", 0);
+        } else {
+            // 力量平分：攻击/特攻
+            int actAtkBase = engine.toInt(actorStats.get("attack"), 0);
+            int actSpABase = engine.toInt(actorStats.get("specialAttack"), 0);
+            int tgtAtkBase = engine.toInt(targetStats.get("attack"), 0);
+            int tgtSpABase = engine.toInt(targetStats.get("specialAttack"), 0);
+
+            int actAtkStage = engine.toInt(engine.statStages(actor).get("attack"), 0);
+            int actSpAStage = engine.toInt(engine.statStages(actor).get("specialAttack"), 0);
+            int tgtAtkStage = engine.toInt(engine.statStages(target).get("attack"), 0);
+            int tgtSpAStage = engine.toInt(engine.statStages(target).get("specialAttack"), 0);
+
+            int avgAtk = Math.max(1, (effectiveStat(actAtkBase, actAtkStage) + effectiveStat(tgtAtkBase, tgtAtkStage)) / 2);
+            int avgSpA = Math.max(1, (effectiveStat(actSpABase, actSpAStage) + effectiveStat(tgtSpABase, tgtSpAStage)) / 2);
+
+            if (!engine.volatiles(actor).containsKey("powerSplitOrigAtk")) {
+                engine.setVolatile(actor, "powerSplitOrigAtk", actAtkBase);
+                engine.setVolatile(actor, "powerSplitOrigSpA", actSpABase);
+            }
+            if (!engine.volatiles(target).containsKey("powerSplitOrigAtk")) {
+                engine.setVolatile(target, "powerSplitOrigAtk", tgtAtkBase);
+                engine.setVolatile(target, "powerSplitOrigSpA", tgtSpABase);
+            }
+
+            actorStats.put("attack", avgAtk);
+            actorStats.put("specialAttack", avgSpA);
+            engine.statStages(actor).put("attack", 0);
+            engine.statStages(actor).put("specialAttack", 0);
+            targetStats.put("attack", avgAtk);
+            targetStats.put("specialAttack", avgSpA);
+            engine.statStages(target).put("attack", 0);
+            engine.statStages(target).put("specialAttack", 0);
+        }
+        return true;
+    }
+
+    /**
+     * 防守互换/力量互换：交换双方对应能力的阶级。
+     * isGuard=true 表示防守互换（防御/特防），false 表示力量互换（攻击/特攻）。
+     */
+    private void handleGuardPowerSwap(Map<String, Object> actor, Map<String, Object> target, boolean isGuard) {
+        Map<String, Object> actorStages = engine.statStages(actor);
+        Map<String, Object> targetStages = engine.statStages(target);
+
+        if (isGuard) {
+            // 防守互换
+            int actDef = engine.toInt(actorStages.get("defense"), 0);
+            int actSpD = engine.toInt(actorStages.get("specialDefense"), 0);
+            int tgtDef = engine.toInt(targetStages.get("defense"), 0);
+            int tgtSpD = engine.toInt(targetStages.get("specialDefense"), 0);
+            actorStages.put("defense", tgtDef);
+            actorStages.put("specialDefense", tgtSpD);
+            targetStages.put("defense", actDef);
+            targetStages.put("specialDefense", actSpD);
+        } else {
+            // 力量互换
+            int actAtk = engine.toInt(actorStages.get("attack"), 0);
+            int actSpA = engine.toInt(actorStages.get("specialAttack"), 0);
+            int tgtAtk = engine.toInt(targetStages.get("attack"), 0);
+            int tgtSpA = engine.toInt(targetStages.get("specialAttack"), 0);
+            actorStages.put("attack", tgtAtk);
+            actorStages.put("specialAttack", tgtSpA);
+            targetStages.put("attack", actAtk);
+            targetStages.put("specialAttack", actSpA);
+        }
+    }
+
+    /**
+     * 检查最终手段是否可以使用：所有非最终手段的已知招式都必须已使用过至少一次。
+     * 使用时检查 mon 的 usedMoves 集合，在 rememberLastMove 中自动填充。
+     */
+    @SuppressWarnings("unchecked")
+    private boolean canUseLastResort(Map<String, Object> actor) {
+        List<Map<String, Object>> knownMoves = engine.castList(actor.get("moves"));
+        Set<String> usedMoves = (Set<String>) actor.get("usedMoves");
+        if (knownMoves.isEmpty() || usedMoves == null || usedMoves.isEmpty()) {
+            return false;
+        }
+        for (Map<String, Object> knownMove : knownMoves) {
+            String moveName = String.valueOf(knownMove.get("name_en")).toLowerCase();
+            if (moveName.isBlank()) continue;
+            // 跳过最终手段自身
+            if (MoveRegistry.isLastResort(knownMove)) continue;
+            // 如果还有招式没用过，最终手段不能使用
+            if (!usedMoves.contains(moveName)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

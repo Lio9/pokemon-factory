@@ -32,6 +32,16 @@ export function useBattlePageState() {
   const selectedSpecialSystems = ref({})
   const selectedTargets = ref({})
   const selectedSwitchTargets = ref({})
+  const battleFormat = ref('vgc-doubles')
+
+  function setBattleFormat(format) {
+    battleFormat.value = format
+  }
+
+  /** 根据格式返回该选几只、选几只首发 */
+  const rosterLimit = computed(() => battleFormat.value === 'vgc63' || battleFormat.value === 'vgc-singles' || battleFormat.value === 'gen9singles' ? 3 : 4)
+  const leadLimit = computed(() => battleFormat.value === 'vgc63' || battleFormat.value === 'vgc-singles' || battleFormat.value === 'gen9singles' ? 1 : 2)
+
   const selectedRosterIndexes = ref([])
   const leadRosterIndexes = ref([])
   const selectedReplacementIndexes = ref([])
@@ -111,7 +121,10 @@ export function useBattlePageState() {
     selectedSwitchTargets,
     selectedTargets,
     settlement,
-    summary
+    summary,
+    battleFormat,
+    rosterLimit,
+    leadLimit
   })
 
   function stopPolling() {
@@ -268,11 +281,13 @@ export function useBattlePageState() {
 
   function initializePreviewSelections() {
     if (!playerRoster.value.length) return
-    if (selectedRosterIndexes.value.length !== 4) {
-      selectedRosterIndexes.value = playerRoster.value.slice(0, 4).map((_, index) => index)
+    const rl = rosterLimit.value
+    const ll = leadLimit.value
+    if (selectedRosterIndexes.value.length !== rl) {
+      selectedRosterIndexes.value = playerRoster.value.slice(0, rl).map((_, index) => index)
     }
-    if (leadRosterIndexes.value.length !== 2) {
-      leadRosterIndexes.value = selectedRosterIndexes.value.slice(0, 2)
+    if (leadRosterIndexes.value.length !== ll) {
+      leadRosterIndexes.value = selectedRosterIndexes.value.slice(0, ll)
     }
   }
 
@@ -373,7 +388,7 @@ export function useBattlePageState() {
     await runBusy('start-manual', async () => {
       stopPolling()
       resultText.value = translate('正在开始手动对战...', 'Starting a manual battle...')
-      const res = await api.battle.start({})
+      const res = await api.battle.start({ format: battleFormat.value })
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
@@ -385,7 +400,7 @@ export function useBattlePageState() {
     await runBusy('start-async', async () => {
       stopPolling()
       resultText.value = translate('正在提交异步模拟...', 'Submitting async simulation...')
-      const res = await api.battle.startAsync({})
+      const res = await api.battle.startAsync({ format: battleFormat.value })
       currentBattleId.value = res.battleId
       resultText.value = JSON.stringify(res, null, 2)
       await refreshStatus(true)
@@ -440,7 +455,9 @@ export function useBattlePageState() {
 
   async function confirmPreview() {
     if (!canConfirmPreview.value) {
-      resultText.value = translate('请选择 4 只宝可梦，并从中指定 2 只首发', 'Choose 4 Pokemon and assign 2 leads')
+      const rl = rosterLimit.value
+      const ll = leadLimit.value
+      resultText.value = translate(`请选择 ${rl} 只宝可梦，并从中指定 ${ll} 只首发`, `Choose ${rl} Pokemon and assign ${ll} leads`)
       return
     }
 
@@ -534,7 +551,7 @@ export function useBattlePageState() {
       leadRosterIndexes.value = leadRosterIndexes.value.filter((item) => item !== index)
       return
     }
-    if (selectedRosterIndexes.value.length >= 4) {
+    if (selectedRosterIndexes.value.length >= rosterLimit.value) {
       return
     }
     selectedRosterIndexes.value = [...selectedRosterIndexes.value, index]
@@ -548,8 +565,10 @@ export function useBattlePageState() {
       leadRosterIndexes.value = leadRosterIndexes.value.filter((item) => item !== index)
       return
     }
-    if (leadRosterIndexes.value.length >= 2) {
-      leadRosterIndexes.value = [leadRosterIndexes.value[1], index]
+    const ll = leadLimit.value
+    if (leadRosterIndexes.value.length >= ll) {
+      const remaining = leadRosterIndexes.value.slice(-(ll - 1))
+      leadRosterIndexes.value = [...remaining, index]
       return
     }
     leadRosterIndexes.value = [...leadRosterIndexes.value, index]
@@ -771,6 +790,8 @@ export function useBattlePageState() {
     availableActionCount,
     availableActionDescription,
     abandonFactoryRun,
+    battleFormat,
+    setBattleFormat,
     busyAction,
     canConfirmPreview,
     canConfirmReplacement,
