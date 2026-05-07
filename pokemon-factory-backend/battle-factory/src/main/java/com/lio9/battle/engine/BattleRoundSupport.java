@@ -163,6 +163,16 @@ final class BattleRoundSupport {
             actor.put("lastProtectionRound", 0);
             return;
         }
+        // Throat Chop: 喉斩沉默，无法使用声音类招式
+        if (engine.toInt(engine.volatileValue(actor, "throatChopTurns", 0), 0) > 0
+                && MoveRegistry.isSoundMove(move)) {
+            actionLog.put("result", "throat-chop-blocked");
+            actionLogs.add(actionLog);
+            events.add(actor.get("name") + " 因喉斩效果无法使用声音类招式！");
+            actor.put("protectionStreak", 0);
+            actor.put("lastProtectionRound", 0);
+            return;
+        }
         if (!MoveRegistry.isProtectionMove(move)) {
             actor.put("protectionStreak", 0);
             actor.put("lastProtectionRound", 0);
@@ -745,6 +755,22 @@ final class BattleRoundSupport {
             }
             if (remainingHp > 0) {
                 conditionSupport.applyDamagingSecondaryEffects(state, actor, target, move, targetLog, events, random);
+                // Throat Chop: 命中后施加喉斩沉默效果 2 回合
+                if (totalActualDamage > 0 && MoveRegistry.isThroatChop(move)) {
+                    engine.setVolatile(target, "throatChopTurns", 2);
+                    events.add(target.get("name") + " 被喉斩命中，无法使用声音类招式了！");
+                }
+                // Smack Down: 命中后强制目标地面化（无视飞行属性/飘浮特性）
+                if (totalActualDamage > 0 && MoveRegistry.isSmackDown(move)) {
+                    engine.setVolatile(target, "grounded", true);
+                    events.add(target.get("name") + " 被击落了！");
+                }
+                // Jaw Lock: 命中后束缚双方，均无法换人
+                if (totalActualDamage > 0 && MoveRegistry.isJawLock(move)) {
+                    engine.setVolatile(target, "trapped", true);
+                    engine.setVolatile(actor, "trapped", true);
+                    events.add(actor.get("name") + " 和 " + target.get("name") + " 被大嚼咬咬住了，无法换人！");
+                }
             }
             if (remainingHp == 0) {
                 events.add(target.get("name") + " 倒下了");
@@ -1316,6 +1342,11 @@ final class BattleRoundSupport {
                 int divisor = "binding-band".equals(engine.heldItem(actor)) ? 6 : 8;
                 engine.setVolatile(target, "boundDivisor", divisor);
             }
+            // 八爪束缚：额外标记，回合末降低防御和特防
+            if (MoveRegistry.isOctolock(move)) {
+                engine.setVolatile(target, "octolockTurns", 1);
+                events.add(target.get("name") + " 被八爪束缚抓住了，双防每回合都会下降！");
+            }
             targetLog.put("result", "trap");
             actionLogs.add(targetLog);
             events.add(actor.get("name") + " 困住了 " + target.get("name"));
@@ -1556,6 +1587,30 @@ final class BattleRoundSupport {
             return true;
         }
         
+        // 背水一战：全能力 +1（除命中/闪避），自身束缚
+        if (MoveRegistry.isNoRetreat(move)) {
+            boolean succeeded = conditionSupport.applyMultiStatBoost(state, actor,
+                Map.of("attack", 1, "defense", 1, "specialAttack", 1, "specialDefense", 1, "speed", 1),
+                "背水一战", events);
+            if (succeeded) {
+                engine.setVolatile(actor, "trapped", true);
+                events.add(actor.get("name") + " 使用了背水一战，无法换人了！");
+            }
+            targetLog.put("result", succeeded ? "no-retreat" : "failed");
+            actionLogs.add(targetLog);
+            return true;
+        }
+
+        // 焦油覆盖：使目标火系弱点 ×2，速度 -1
+        if (MoveRegistry.isTarShot(move)) {
+            engine.setVolatile(target, "tarShot", true);
+            conditionSupport.applySpeedDrop(actor, target, targetLog, events);
+            targetLog.put("result", "tar-shot");
+            actionLogs.add(targetLog);
+            events.add(target.get("name") + " 被焦油覆盖，火系招式将造成更大伤害！");
+            return true;
+        }
+
         // Entry hazard moves
         if (engine.isStealthRock(move)) {
             engine.setStealthRock(state, "player".equals(action.side()), actor, targetLog, events);
@@ -1643,6 +1698,61 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
+        // Worry Seed: 将目标特性改为不眠
+        if (MoveRegistry.isWorrySeed(move)) {
+            target.put("ability", new java.util.LinkedHashMap<>(Map.of("name_en", "insomnia", "name", "不眠")));
+            targetLog.put("result", "worry-seed");
+            actionLogs.add(targetLog);
+            events.add(target.get("name") + " 的特性被变成了不眠！");
+            return true;
+        }
+
+        // Gastro Acid: 抑制目标特性
+        if (MoveRegistry.isGastroAcid(move)) {
+            engine.setVolatile(target, "abilitySuppressed", true);
+            targetLog.put("result", "gastro-acid");
+            actionLogs.add(targetLog);
+            events.add(target.get("name") + " 的特性被抑制了！");
+            return true;
+        }
+
+        // Heart Swap: 交换双方所有能力阶级
+        if (MoveRegistry.isHeartSwap(move)) {
+            java.util.Map<String, Object> actorStages = engine.castMap(actor.get("statStages"));
+            java.util.Map<String, Object> targetStages = engine.castMap(target.get("statStages"));
+            String[] statKeys = {"attack", "defense", "specialAttack", "specialDefense", "speed", "accuracy", "evasion"};
+            for (String key : statKeys) {
+                int tmp = engine.toInt(actorStages.get(key), 0);
+                actorStages.put(key, engine.toInt(targetStages.get(key), 0));
+                targetStages.put(key, tmp);
+            }
+            targetLog.put("result", "heart-swap");
+            actionLogs.add(targetLog);
+            events.add(actor.get("name") + " 和 " + target.get("name") + " 交换了能力变化！");
+            return true;
+        }
+
+        if (MoveRegistry.isPsychoShift(move)) {
+            String actorCondition = String.valueOf(actor.get("condition"));
+            if ("healthy".equals(actorCondition) || "fainted".equals(actorCondition)) {
+                targetLog.put("result", "failed");
+                actionLogs.add(targetLog);
+                events.add(actor.get("name") + " 没有异常状态可以转移");
+                return true;
+            }
+            target.put("condition", actorCondition);
+            if ("toxic".equals(actorCondition)) {
+                target.put("toxicCounter", engine.toInt(actor.get("toxicCounter"), 0));
+                actor.put("toxicCounter", 0);
+            }
+            actor.put("condition", "healthy");
+            engine.clearVolatile(actor, "nightmare");
+            targetLog.put("result", "psycho-shift");
+            actionLogs.add(targetLog);
+            events.add(actor.get("name") + " 将 " + actorCondition + " 转移给了 " + target.get("name") + "！");
+            return true;
+        }
+
         if (engine.isMorningSun(move)) {
             boolean succeeded = conditionSupport.applyRecoveryMove(actor, move, "晨光", events);
             targetLog.put("result", succeeded ? "morning-sun" : "failed");

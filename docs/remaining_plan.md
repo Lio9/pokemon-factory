@@ -18,16 +18,16 @@
 |------|--------|------|
 | 核心对战链路 | 100% | 顺序/伤害/命中/状态门禁 |
 | Entry Hazards | 100% | 全 4 钉 + 清除 + 免疫 |
-| 通用状态 | 96% | 五异常 + 多数交互 + Heal Bell/Refresh/Nightmare/Dream Eater/Sleep Talk |
-| Move Registry | 96% | 80+ 分类集 |
+| 通用状态 | 98% | 五异常 + 多数交互 + Heal Bell/Refresh/Nightmare/Dream Eater/Sleep Talk + Worry Seed/Gastro Acid/Heart Swap/Psycho Shift |
+| Move Registry | 97% | 85+ 分类集 |
 | 场地/天气 | 92% | 4天+4地 + Rising Voltage/Expanding Force |
 | 切换机制 | 95% | 捕获特性 + 招式 + Shed Shell |
-| 挥发状态 | 95% | 寄生种子/替身/灭亡歌/着迷/诅咒/水流环/扎根 |
+| 挥发状态 | 98% | Throat Chop/Smack Down/Octolock/Jaw Lock/No Retreat/Tar Shot + 原有 7 种 |
 | 保护招式 | 92% | 6 种保护 + Unseen Fist + 变种接触 |
 | 特殊系统 | 85% | Mega/Z/Dynamax/Tera + Z-Status + G-Max |
 | 特性 | 85% | ~100 个有逻辑，VGC 核心覆盖 |
 | 道具 | 85% | ~85 个有逻辑，VGC 核心覆盖 + P0 保护垫/模仿香草 |
-| **VGC 综合** | **~92%** | 主流对战可跑通 |
+| **VGC 综合** | **~93%** | 主流对战可跑通 |
 
 ## 已完成功能清单
 
@@ -73,6 +73,16 @@
 - ✅ Dream Eater — 食梦，睡眠目标伤害+吸血 (Phase 4)
 - ✅ Sleep Talk / Snore — 睡眠中可用招式 (Phase 4)
 - ✅ Quick Claw / Quick Draw / Custap Berry / Stall / Lagging Tail / Full Incense — 先制度系统完善 (Phase 2 Week 6)
+- ✅ Throat Chop — 喉斩沉默声系招式 (Phase 4.1)
+- ✅ Smack Down — 击落使目标地面化 (Phase 4.1)
+- ✅ Octolock — 八爪束缚每回合双防 -1 (Phase 4.1)
+- ✅ Jaw Lock — 大嚼大嚼束缚双方 (Phase 4.1)
+- ✅ No Retreat — 背水一战全能力 +1 自身束缚 (Phase 4.1)
+- ✅ Tar Shot — 焦油覆盖火系弱点 ×2 + 速度 -1 (Phase 4.1)
+- ✅ Worry Seed — 精神种子变更为不眠特性 (Phase 4.2)
+- ✅ Gastro Acid — 胃酸抑制目标特性 (Phase 4.2)
+- ✅ Heart Swap — 心灵互换交换能力阶级 (Phase 4.2)
+- ✅ Psycho Shift — 精神转移自身异常状态 (Phase 4.2)
 
 ### 项目基础
 - ✅ Docker 三服务编排 (common-init + pokedex + battlefactory)

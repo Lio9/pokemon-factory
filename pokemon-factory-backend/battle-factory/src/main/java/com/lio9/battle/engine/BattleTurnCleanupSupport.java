@@ -65,6 +65,8 @@ final class BattleTurnCleanupSupport {
         decrementEncoreEffects(engine.team(state, false), events);
         decrementYawnEffects(state, engine.team(state, true), events, random, currentRound);
         decrementYawnEffects(state, engine.team(state, false), events, random, currentRound);
+        decrementThroatChopEffects(engine.team(state, true), events);
+        decrementThroatChopEffects(engine.team(state, false), events);
         fieldEffectSupport.decrementFieldEffects(state, fieldSnapshot, events);
     }
 
@@ -314,6 +316,18 @@ final class BattleTurnCleanupSupport {
         }
     }
 
+    private void decrementThroatChopEffects(List<Map<String, Object>> team, List<String> events) {
+        for (Map<String, Object> mon : team) {
+            int before = engine.toInt(engine.volatileValue(mon, "throatChopTurns", 0), 0);
+            if (before <= 0) continue;
+            int after = Math.max(0, before - 1);
+            engine.setVolatile(mon, "throatChopTurns", after);
+            if (after == 0 && engine.toInt(mon.get("currentHp"), 0) > 0) {
+                events.add(mon.get("name") + " 的喉斩效果消失了，可以重新使用声音类招式");
+            }
+        }
+    }
+
     private void applyEndTurnStatusEffects(List<Map<String, Object>> team, List<String> events) {
         for (Map<String, Object> mon : team) {
             if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
@@ -432,6 +446,20 @@ final class BattleTurnCleanupSupport {
                 if (curHp - dmg <= 0) {
                     mon.put("status", "fainted");
                     events.add(mon.get("name") + " 被恶梦带走了");
+                }
+            }
+            // 八爪束缚：每回合降低防御和特防 1 级
+            if (engine.toInt(engine.volatileValue(mon, "octolockTurns", 0), 0) > 0) {
+                java.util.Map<String, Object> stages = engine.castMap(mon.get("statStages"));
+                int curDef = engine.toInt(stages.get("defense"), 0);
+                int curSpD = engine.toInt(stages.get("specialDefense"), 0);
+                if (curDef > -6) {
+                    stages.put("defense", curDef - 1);
+                    events.add(mon.get("name") + " 被八爪束缚压制，防御下降了！");
+                }
+                if (curSpD > -6) {
+                    stages.put("specialDefense", curSpD - 1);
+                    events.add(mon.get("name") + " 被八爪束缚压制，特防下降了！");
                 }
             }
             // 诅咒（幽灵）：每回合损失 1/4 最大 HP

@@ -95,7 +95,7 @@ public final class MoveRegistry {
         "sand tomb", "sand-tomb", "whirlpool", "fire spin", "fire-spin",
         "infestation", "magma storm", "magma-storm", "snap trap", "snap-trap",
         "thousand waves", "thousand-waves", "bind", "wrap",
-        "fairy lock", "fairy-lock"
+        "fairy lock", "fairy-lock", "octolock", "jaw lock", "jaw-lock"
     );
 
     // === 束缚持续伤害类招式（每回合造成 1/8 最大 HP 伤害）===
@@ -273,6 +273,30 @@ public final class MoveRegistry {
     private static final Set<String> AROMATHERAPY_MOVES = Set.of("aromatherapy");
     private static final Set<String> REFRESH_MOVES = Set.of("refresh");
 
+    // === 喉斩（沉默声系）===
+    private static final Set<String> THROAT_CHOP_MOVES = Set.of("throat chop", "throat-chop");
+
+    // === 击落（使目标地面化）===
+    private static final Set<String> SMACK_DOWN_MOVES = Set.of("smack down", "smack-down");
+
+    // === 八爪束缚（束缚 + 每回合双防 -1）===
+    private static final Set<String> OCTOLOCK_MOVES = Set.of("octolock");
+
+    // === 大嚼大嚼（束缚双方）===
+    private static final Set<String> JAW_LOCK_MOVES = Set.of("jaw lock", "jaw-lock");
+
+    // === 背水一战（全能力+1，自身束缚）===
+    private static final Set<String> NO_RETREAT_MOVES = Set.of("no retreat", "no-retreat");
+
+    // === 焦油覆盖（火系弱点 + 速度 -1）===
+    private static final Set<String> TAR_SHOT_MOVES = Set.of("tar shot", "tar-shot");
+
+    // === 精神种子 / 胃酸 / 心灵互换 / 精神转移 ===
+    private static final Set<String> WORRY_SEED_MOVES = Set.of("worry seed", "worry-seed");
+    private static final Set<String> GASTRO_ACID_MOVES = Set.of("gastro acid", "gastro-acid");
+    private static final Set<String> HEART_SWAP_MOVES = Set.of("heart swap", "heart-swap");
+    private static final Set<String> PSYCHO_SHIFT_MOVES = Set.of("psycho shift", "psycho-shift");
+
     // === 睡眠相关招式 ===
     private static final Set<String> SLEEP_TALK_MOVES = Set.of("sleep talk", "sleep-talk");
     private static final Set<String> SNORE_MOVES = Set.of("snore");
@@ -383,6 +407,16 @@ public final class MoveRegistry {
     public static boolean isHealBell(Map<String, Object> move) { return matchesAny(move, HEAL_BELL_MOVES); }
     public static boolean isAromatherapy(Map<String, Object> move) { return matchesAny(move, AROMATHERAPY_MOVES); }
     public static boolean isRefresh(Map<String, Object> move) { return matchesAny(move, REFRESH_MOVES); }
+    public static boolean isThroatChop(Map<String, Object> move) { return matchesAny(move, THROAT_CHOP_MOVES); }
+    public static boolean isSmackDown(Map<String, Object> move) { return matchesAny(move, SMACK_DOWN_MOVES); }
+    public static boolean isOctolock(Map<String, Object> move) { return matchesAny(move, OCTOLOCK_MOVES); }
+    public static boolean isJawLock(Map<String, Object> move) { return matchesAny(move, JAW_LOCK_MOVES); }
+    public static boolean isNoRetreat(Map<String, Object> move) { return matchesAny(move, NO_RETREAT_MOVES); }
+    public static boolean isTarShot(Map<String, Object> move) { return matchesAny(move, TAR_SHOT_MOVES); }
+    public static boolean isWorrySeed(Map<String, Object> move) { return matchesAny(move, WORRY_SEED_MOVES); }
+    public static boolean isGastroAcid(Map<String, Object> move) { return matchesAny(move, GASTRO_ACID_MOVES); }
+    public static boolean isHeartSwap(Map<String, Object> move) { return matchesAny(move, HEART_SWAP_MOVES); }
+    public static boolean isPsychoShift(Map<String, Object> move) { return matchesAny(move, PSYCHO_SHIFT_MOVES); }
     public static boolean isSleepTalk(Map<String, Object> move) { return matchesAny(move, SLEEP_TALK_MOVES); }
     public static boolean isSnore(Map<String, Object> move) { return matchesAny(move, SNORE_MOVES); }
     public static boolean isNightmare(Map<String, Object> move) { return matchesAny(move, NIGHTMARE_MOVES); }

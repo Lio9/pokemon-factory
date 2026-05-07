@@ -155,6 +155,11 @@ final class BattleDamageSupport {
                 && (hasAbility(attacker, "scrappy", "mind's-eye", "mind's eye"))) {
             typeModifier = 1.0d;
         }
+        // Tar Shot: 被焦油覆盖的目标受到火系招式时属性克制 ×2
+        if (Boolean.TRUE.equals(engine.volatileValue(defender, "tarShot", false))
+                && moveTypeId == DamageCalculatorUtil.TYPE_FIRE) {
+            typeModifier *= 2.0d;
+        }
         modifier *= typeModifier;
         if (typeModifier <= 0.0d) {
             return 0;

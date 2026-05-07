@@ -917,6 +917,10 @@ public class BattleEngine {
     }
 
     String abilityName(Map<String, Object> mon) {
+        // 胃酸抑制：特性被抑制时返回空字符串
+        if (Boolean.TRUE.equals(volatileValue(mon, "abilitySuppressed", false))) {
+            return "";
+        }
         Object ability = mon.get("ability");
         if (ability instanceof Map<?, ?> abilityMap) {
             Object nameEn = abilityMap.get("name_en");
@@ -1399,6 +1403,10 @@ public class BattleEngine {
     }
 
     boolean isGrounded(Map<String, Object> mon) {
+        // 如果被 Smack Down 击落，强制地面化（无视飞行属性和飘浮特性）
+        if (Boolean.TRUE.equals(volatileValue(mon, "grounded", false))) {
+            return true;
+        }
         return !targetHasType(mon, DamageCalculatorUtil.TYPE_FLYING)
                 && !"levitate".equalsIgnoreCase(abilityName(mon));
     }

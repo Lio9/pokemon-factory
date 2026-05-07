@@ -1483,6 +1483,8 @@ final class BattleConditionSupport {
         engine.setVolatile(mon, "disableMove", null);
         engine.setVolatile(mon, "encoreTurns", 0);
         engine.setVolatile(mon, "encoreMove", null);
+        engine.clearVolatile(mon, "grounded");
+        engine.clearVolatile(mon, "abilitySuppressed");
         // 防守平分/力量平分切出恢复：还原被修改的基础能力值
         Map<String, Object> stats = engine.castMap(mon.get("stats"));
         if (engine.volatiles(mon).containsKey("guardSplitOrigDef")) {
