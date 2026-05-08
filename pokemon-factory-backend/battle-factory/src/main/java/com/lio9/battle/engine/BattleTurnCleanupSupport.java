@@ -46,6 +46,8 @@ final class BattleTurnCleanupSupport {
         applyEndTurnHealing(engine.team(state, false), events);
         applyEndTurnItemEffects(engine.team(state, true), events);
         applyEndTurnItemEffects(engine.team(state, false), events);
+        applyCudChew(engine.team(state, true), events);
+        applyCudChew(engine.team(state, false), events);
         applyEndTurnAbilityEffects(state, true, events, random);
         applyEndTurnAbilityEffects(state, false, events, random);
         applyEndTurnFieldEffects(state, events);
@@ -109,6 +111,20 @@ final class BattleTurnCleanupSupport {
         if (fieldEffectSupport.snowTurns(state) > 0) {
             applyWeatherDamage(state, true, "snow", events);
             applyWeatherDamage(state, false, "snow", events);
+            // 冰鳞粉（Ice Face）：雪天时重新生成冰鳞粉
+            for (boolean ifSide : new boolean[]{true, false}) {
+                for (Integer ifSlot : engine.activeSlots(state, ifSide)) {
+                    if (ifSlot == null || ifSlot < 0 || ifSlot >= engine.team(state, ifSide).size()) continue;
+                    Map<String, Object> ifMon = engine.team(state, ifSide).get(ifSlot);
+                    if (engine.toInt(ifMon.get("currentHp"), 0) <= 0) continue;
+                    String ifAb = engine.abilityName(ifMon);
+                    if ("ice-face".equalsIgnoreCase(ifAb) || "ice face".equalsIgnoreCase(ifAb)) {
+                        ifMon.put("iceFaceActive", true);
+                        ifMon.put("icefaceReformed", true);
+                        events.add(ifMon.get("name") + " 的冰鳞粉在雪天中重新恢复了！");
+                    }
+                }
+            }
         }
         // 青草场地回血 (Grassy Terrain)
         if (fieldEffectSupport.grassyTerrainTurns(state) > 0) {
@@ -462,6 +478,17 @@ final class BattleTurnCleanupSupport {
                     events.add(mon.get("name") + " 被八爪束缚压制，特防下降了！");
                 }
             }
+            // 盐腌（Salt Cure）：每回合损失 1/8 HP，钢/水系损失 1/4
+            if (Boolean.TRUE.equals(engine.volatileValue(mon, "saltCured", false))) {
+                int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+                int divisor = (engine.targetHasType(mon, DamageCalculatorUtil.TYPE_STEEL)
+                        || engine.targetHasType(mon, DamageCalculatorUtil.TYPE_WATER)) ? 4 : 8;
+                int saltDmg = Math.max(1, maxHp / divisor);
+                int curHp = engine.toInt(mon.get("currentHp"), 0);
+                mon.put("currentHp", Math.max(0, curHp - saltDmg));
+                events.add(mon.get("name") + " 受到盐腌影响，损失了 " + saltDmg + " 点 HP");
+                if (curHp - saltDmg <= 0) { mon.put("status", "fainted"); events.add(mon.get("name") + " 倒下了"); }
+            }
             // 诅咒（幽灵）：每回合损失 1/4 最大 HP
             if (Boolean.TRUE.equals(mon.get("cursed"))) {
                 int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
@@ -516,6 +543,22 @@ final class BattleTurnCleanupSupport {
         int heal = Math.max(1, maxHp / denominator);
         mon.put("currentHp", Math.min(maxHp, curHp + heal));
         events.add(mon.get("name") + msg + " " + heal + " 点 HP");
+    }
+
+    /** Cud Chew: 回合末重新触发树果效果 */
+    private void applyCudChew(List<Map<String, Object>> team, List<String> events) {
+        for (Map<String, Object> mon : team) {
+            if (!Boolean.TRUE.equals(mon.get("cudChewPending"))) continue;
+            if (engine.toInt(mon.get("currentHp"), 0) <= 0) continue;
+            mon.put("cudChewPending", false);
+            int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+            int curHp = engine.toInt(mon.get("currentHp"), 0);
+            if (curHp > 0 && curHp < maxHp) {
+                int heal = Math.max(1, maxHp / 4);
+                mon.put("currentHp", Math.min(maxHp, curHp + heal));
+                events.add(mon.get("name") + " 的反刍特性发动，树果效果再次触发，回复了 " + heal + " 点 HP！");
+            }
+        }
     }
 
     /**
@@ -596,6 +639,12 @@ final class BattleTurnCleanupSupport {
                 continue;
             }
             String ability = engine.abilityName(mon);
+            // Hunger Switch (饱了又饿): 莫鲁贝可每回合切换形态
+            if ("hunger-switch".equalsIgnoreCase(ability) || "hunger switch".equalsIgnoreCase(ability)) {
+                boolean hangry = Boolean.TRUE.equals(engine.volatileValue(mon, "hangryMode", false));
+                engine.setVolatile(mon, "hangryMode", !hangry);
+                events.add(mon.get("name") + (hangry ? " 恢复成了满腹花纹" : " 变成了空腹花纹！"));
+            }
             if ("speed-boost".equalsIgnoreCase(ability) || "speed boost".equalsIgnoreCase(ability)) {
                 applySpeedBoost(mon, events);
             }

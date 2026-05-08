@@ -51,6 +51,17 @@ final class BattleDamageSupport {
                 ? (Boolean) preResolvedCritical
                 : calculateCriticalHitChance(attacker, move, random);
 
+        // Merciless: 攻击中毒目标必中要害
+        if (!criticalHit) {
+            String attAbility = engine.abilityName(attacker);
+            if ("merciless".equalsIgnoreCase(attAbility)) {
+                String defCondition = String.valueOf(defender.getOrDefault("condition", ""));
+                if ("poison".equals(defCondition) || "toxic".equals(defCondition)) {
+                    criticalHit = true;
+                }
+            }
+        }
+
         // Battle Armor / Shell Armor: 阻挡会心一击（光子喷涌/暗影之光无视）
         if (criticalHit && !ignoresTargetAbility(attacker, move)) {
             String defAbility = engine.abilityName(defender);
@@ -79,9 +90,18 @@ final class BattleDamageSupport {
                     : modifiedAttackStat(attacker, defender, engine.toInt(attackerStats.get("specialAttack"), 100),
                             damageClassId, criticalHit, move, state);
         }
-        int baseDefenseStat = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
-                ? engine.toInt(defenderStats.get("defense"), 100)
-                : engine.toInt(defenderStats.get("specialDefense"), 100);
+        // 奇妙空间（Wonder Room）：5 回合内物防/特防互换
+        boolean wonderRoomActive = fieldEffectSupport.wonderRoomTurns(state) > 0;
+        int baseDefenseStat;
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
+            baseDefenseStat = wonderRoomActive
+                    ? engine.toInt(defenderStats.get("specialDefense"), 100)
+                    : engine.toInt(defenderStats.get("defense"), 100);
+        } else {
+            baseDefenseStat = wonderRoomActive
+                    ? engine.toInt(defenderStats.get("defense"), 100)
+                    : engine.toInt(defenderStats.get("specialDefense"), 100);
+        }
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
         int defenseStat = Math.max(1,
                 modifiedDefenseStat(attacker, defender, baseDefenseStat, damageClassId, state, criticalHit, move));
@@ -150,6 +170,12 @@ final class BattleDamageSupport {
 
         // Type effectiveness
         double typeModifier = typeModifier(defender, moveTypeId);
+        // Ring Target: 持有者招式无视属性免疫（但不改变正常/效果绝佳/效果不佳）
+        boolean ringTargetActive = "ring-target".equalsIgnoreCase(heldItem(attacker))
+                || "ring target".equalsIgnoreCase(heldItem(attacker));
+        if (typeModifier <= 0.0d && ringTargetActive) {
+            typeModifier = 1.0d;
+        }
         // Scrappy & Mind's Eye: Normal-type moves hit Ghost types
         if (typeModifier <= 0.0d && moveTypeId == DamageCalculatorUtil.TYPE_NORMAL
                 && (hasAbility(attacker, "scrappy", "mind's-eye", "mind's eye"))) {
@@ -291,6 +317,19 @@ final class BattleDamageSupport {
             return 150; // HP < 2%
         }
 
+        // 报恩/迁怒：满亲密时 102 威力（无亲密系统则默认 102）
+        if (MoveRegistry.isFriendshipMove(move)) {
+            return 102;
+        }
+
+        // 喷出（Spit Up）：威力 = 100 × 蓄力层数，无蓄力时失败
+        if (MoveRegistry.isSpitUp(move)) {
+            int stockpileCount = engine.toInt(engine.volatileValue(attacker, "stockpileCount", 0), 0);
+            if (stockpileCount <= 0) return 0; // 调用方应处理失败
+            engine.setVolatile(attacker, "stockpileCount", 0); // 喷出后解除蓄力
+            return 100 * stockpileCount;
+        }
+
         // 气象球：有天气时威力翻倍
         if (MoveRegistry.isWeatherBall(move)) {
             return fieldEffectSupport.weatherTurns(state) > 0 ? basePower * 2 : basePower;
@@ -299,6 +338,14 @@ final class BattleDamageSupport {
         // 地形脉冲：有场地时威力翻倍
         if (MoveRegistry.isTerrainPulse(move)) {
             return fieldEffectSupport.terrainTurns(state) > 0 ? basePower * 2 : basePower;
+        }
+
+        // 自然之恩（Natural Gift）：根据持有树果决定威力和属性
+        if (MoveRegistry.isNaturalGift(move)) {
+            String held = heldItem(attacker);
+            if (held.isBlank() || !engine.isBerry(held)) return 0; // 无树果则失败
+            // 简化：所有树果默认 60 威力、普通属性；实际应查表
+            return 60;
         }
 
         return basePower;
@@ -399,6 +446,18 @@ final class BattleDamageSupport {
             baseStat = applyStageModifier(baseStat, specialAttackStage);
         }
 
+        // Slow Start: 5 回合内物攻减半
+        int slowTurns = engine.toInt(engine.volatileValue(mon, "slowStartTurns", 0), 0);
+        if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL && slowTurns > 0) {
+            baseStat = Math.max(1, (int) Math.floor(baseStat * 0.5d));
+        }
+        // Defeatist: HP≤50% 时攻击减半
+        if (engine.hasAbility(mon, "defeatist")) {
+            int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+            int curHp = engine.toInt(mon.get("currentHp"), 0);
+            if (curHp > 0 && curHp * 2 <= maxHp) baseStat = Math.max(1, (int) Math.floor(baseStat * 0.5d));
+        }
+
         // 道具修正（Choice Band/Specs, Light Ball, Thick Club, Deep Sea Tooth, Soul Dew 等）
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
         AttackContext ctx = new AttackContext(mon, defender, move, state, moveTypeId, damageClassId, criticalHit);
@@ -415,8 +474,15 @@ final class BattleDamageSupport {
 
     int modifiedDefenseStat(Map<String, Object> attacker, Map<String, Object> mon, int baseStat, int damageClassId,
             Map<String, Object> state, boolean criticalHit, Map<String, Object> move) {
+        boolean wonderRoomActive = fieldEffectSupport.wonderRoomTurns(state) > 0;
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
-            int defenseStage = hasAbility(attacker, "unaware") ? 0 : statStage(mon, "defense");
+            int defenseStage;
+            if (wonderRoomActive) {
+                // 奇妙空间：物理招式使用特防基础值和特防阶级
+                defenseStage = hasAbility(attacker, "unaware") ? 0 : statStage(mon, "specialDefense");
+            } else {
+                defenseStage = hasAbility(attacker, "unaware") ? 0 : statStage(mon, "defense");
+            }
             // 圣剑：无视防御方防御阶级的正值变化
             if (MoveRegistry.isSacredSword(move) && defenseStage > 0) {
                 defenseStage = 0;
@@ -426,7 +492,13 @@ final class BattleDamageSupport {
             }
             baseStat = applyStageModifier(baseStat, defenseStage);
         } else if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
-            int specialDefenseStage = hasAbility(attacker, "unaware") ? 0 : statStage(mon, "specialDefense");
+            int specialDefenseStage;
+            if (wonderRoomActive) {
+                // 奇妙空间：特殊招式使用物防基础值和物防阶级
+                specialDefenseStage = hasAbility(attacker, "unaware") ? 0 : statStage(mon, "defense");
+            } else {
+                specialDefenseStage = hasAbility(attacker, "unaware") ? 0 : statStage(mon, "specialDefense");
+            }
             if (criticalHit && specialDefenseStage > 0) {
                 specialDefenseStage = 0;
             }
@@ -661,6 +733,10 @@ final class BattleDamageSupport {
         if ("paralysis".equals(mon.get("condition"))) {
             speed = Math.max(1, speed / 2);
         }
+
+        // 缓慢启动（Slow Start）：5 回合内速度减半
+        int slowTurns = engine.toInt(engine.volatileValue(mon, "slowStartTurns", 0), 0);
+        if (slowTurns > 0) speed = Math.max(1, (int) Math.floor(speed * 0.5d));
 
         // 特性速度修正（Swift Swim, Chlorophyll, Sand Rush, Slush Rush, Surge Surfer, Unburden, Quick Feet）
         SpeedContext spCtx = new SpeedContext(mon, state, playerSide);

@@ -216,6 +216,17 @@ public class BattleEngine {
         }
 
         turnCleanupSupport.applyEndTurnEffects(state, fieldSnapshot, events, random, round);
+        // Slow Start: 回合结束时递减
+        for (boolean ssSide : new boolean[]{true, false}) {
+            for (Integer ssSlot : activeSlots(state, ssSide)) {
+                if (ssSlot == null || ssSlot < 0) continue;
+                List<Map<String, Object>> ssTeam = team(state, ssSide);
+                if (ssSlot >= ssTeam.size()) continue;
+                int st = toInt(volatileValue(ssTeam.get(ssSlot), "slowStartTurns", 0), 0);
+                if (st > 0) setVolatile(ssTeam.get(ssSlot), "slowStartTurns", st - 1);
+            }
+        }
+
         flowSupport.prepareReplacementPhase(state, events);
         turnCleanupSupport.clearFlinch(state);
         turnCleanupSupport.clearEndured(state);
@@ -226,6 +237,9 @@ public class BattleEngine {
         roundLog.put("opponentActive", flowSupport.activeNames(state, false));
         rounds(state).add(roundLog);
         state.put("roundsCount", rounds(state).size());
+
+        // Pickup: 战斗结束时，拥有捡拾特性且无道具的宝可梦拾取一个已消耗道具
+        if ("completed".equals(state.get("status"))) applyPickup(state);
 
         flowSupport.resolveBattleResult(state);
         flowSupport.refreshDerivedState(state);
@@ -347,10 +361,18 @@ public class BattleEngine {
     }
 
     void applyCooldown(Map<String, Object> mon, Map<String, Object> move) {
+        applyCooldown(mon, move, null);
+    }
+
+    void applyCooldown(Map<String, Object> mon, Map<String, Object> move, Map<String, Object> state) {
         // 使用招式后扣除 1 PP（Struggle 无 PP 字段，currentPp=0 自动跳过）
         int currentPp = toInt(move.get("currentPp"), 0);
         if (currentPp > 0) {
             move.put("currentPp", currentPp - 1);
+        }
+        // 压迫感（Pressure）：对方场上有压迫感特性时，招式多消耗 1 PP
+        if (state != null && currentPp > 0 && hasPressureOnOpposingSide(state, mon)) {
+            move.put("currentPp", toInt(move.get("currentPp"), 0) - 1);
         }
         if (MoveRegistry.isProtectionMove(move)) {
             return;
@@ -712,6 +734,31 @@ public class BattleEngine {
         return MoveRegistry.isConfuseRay(move);
     }
 
+    // Delegating to MoveRegistry for forced switch / self-buff moves
+    boolean isForcedSwitchMove(Map<String, Object> move) { return MoveRegistry.isForcedSwitchMove(move); }
+    boolean isHoneClaws(Map<String, Object> move) { return MoveRegistry.isHoneClaws(move); }
+    boolean isIronDefense(Map<String, Object> move) { return MoveRegistry.isIronDefense(move); }
+    boolean isGrowth(Map<String, Object> move) { return MoveRegistry.isGrowth(move); }
+    boolean isBellyDrum(Map<String, Object> move) { return MoveRegistry.isBellyDrum(move); }
+    boolean isHowl(Map<String, Object> move) { return MoveRegistry.isHowl(move); }
+    boolean isAcrobatics(Map<String, Object> move) { return MoveRegistry.isAcrobatics(move); }
+    boolean isMagicRoom(Map<String, Object> move) { return MoveRegistry.isMagicRoom(move); }
+    boolean isWonderRoom(Map<String, Object> move) { return MoveRegistry.isWonderRoom(move); }
+    boolean isFriendshipMove(Map<String, Object> move) { return MoveRegistry.isFriendshipMove(move); }
+    boolean isStockpile(Map<String, Object> move) { return MoveRegistry.isStockpile(move); }
+    boolean isSpitUp(Map<String, Object> move) { return MoveRegistry.isSpitUp(move); }
+    boolean isSwallow(Map<String, Object> move) { return MoveRegistry.isSwallow(move); }
+    boolean isSuicideMove(Map<String, Object> move) { return MoveRegistry.isSuicideMove(move); }
+    boolean isBelch(Map<String, Object> move) { return MoveRegistry.isBelch(move); }
+    boolean isBugBite(Map<String, Object> move) { return MoveRegistry.isBugBite(move); }
+    boolean isNaturalGift(Map<String, Object> move) { return MoveRegistry.isNaturalGift(move); }
+    boolean isTransform(Map<String, Object> move) { return MoveRegistry.isTransform(move); }
+    boolean isCourtChange(Map<String, Object> move) { return MoveRegistry.isCourtChange(move); }
+    boolean isRevivalBlessing(Map<String, Object> move) { return MoveRegistry.isRevivalBlessing(move); }
+    boolean isShedTail(Map<String, Object> move) { return MoveRegistry.isShedTail(move); }
+    boolean isMortalSpin(Map<String, Object> move) { return MoveRegistry.isMortalSpin(move); }
+    boolean isSaltCure(Map<String, Object> move) { return MoveRegistry.isSaltCure(move); }
+
     // Delegating to MoveRegistry for Feint and Knock Off
     boolean isFeint(Map<String, Object> move) {
         return MoveRegistry.isFeint(move);
@@ -721,12 +768,22 @@ public class BattleEngine {
         return MoveRegistry.isKnockOff(move);
     }
 
+    boolean isImprison(Map<String, Object> move) { return MoveRegistry.isImprison(move); }
+
+    boolean isThiefMove(Map<String, Object> move) {
+        return MoveRegistry.isThiefMove(move);
+    }
+
     boolean isContactMove(Map<String, Object> move) {
         return MoveRegistry.isContactMove(move);
     }
 
     boolean canUseMove(Map<String, Object> mon, Map<String, Object> move, int currentRound) {
         String item = heldItem(mon);
+        // 打嗝（Belch）：需要先消耗过树果
+        if (MoveRegistry.isBelch(move) && !Boolean.TRUE.equals(mon.get("berryConsumed"))) {
+            return false;
+        }
         // 统一通过 volatile 访问器读取控制类状态，确保与旧字段保持同步。
         if (healBlockTurns(mon) > 0 && isHealingMove(move)) {
             return false;
@@ -755,7 +812,7 @@ public class BattleEngine {
         if (toInt(mon.get("rechargeTurns"), 0) > 0) {
             return false;
         }
-        if ("assault-vest".equals(item) && isStatusMove(move)) {
+        if ("assault-vest".equals(item) && isStatusMove(move) && !hasKlutz(mon)) {
             return false;
         }
         if (tauntTurns(mon) > 0 && isStatusMove(move)) {
@@ -916,11 +973,57 @@ public class BattleEngine {
         return item == null ? "" : String.valueOf(item);
     }
 
+    /** 检查场上是否有活跃的化学变化气体特性（除持有者自身外所有特性失效） */
+    boolean isNeutralizingGasActive(Map<String, Object> state) {
+        if (state == null) return false;
+        for (boolean side : new boolean[]{true, false}) {
+            for (Integer slot : activeSlots(state, side)) {
+                if (slot == null || slot < 0) continue;
+                List<Map<String, Object>> team = team(state, side);
+                if (slot >= team.size()) continue;
+                Map<String, Object> mon = team.get(slot);
+                if (Boolean.TRUE.equals(volatileValue(mon, "abilitySuppressed", false))) continue;
+                Object ab = mon.get("ability");
+                String abName = ab instanceof Map ? String.valueOf(((Map<?,?>)ab).get("name_en")) : String.valueOf(ab);
+                if ("neutralizing-gas".equalsIgnoreCase(abName)) return true;
+            }
+        }
+        return false;
+    }
+
     String abilityName(Map<String, Object> mon) {
+        return abilityName(mon, null);
+    }
+
+    String abilityName(Map<String, Object> mon, Map<String, Object> state) {
         // 胃酸抑制：特性被抑制时返回空字符串
         if (Boolean.TRUE.equals(volatileValue(mon, "abilitySuppressed", false))) {
             return "";
         }
+        // 化学变化气体：场上其他所有宝可梦的特性失效（但持有者自身特性依然有效）
+        if (state != null && isNeutralizingGasActive(state)) {
+            // 检查此 mon 本身是否就是 Neutralizing Gas 持有者
+            String rawAbility = rawAbilityName(mon);
+            if (!"neutralizing-gas".equalsIgnoreCase(rawAbility)) {
+                return ""; // 被化学变化气体抑制
+            }
+        }
+        Object ability = mon.get("ability");
+        if (ability instanceof Map<?, ?> abilityMap) {
+            Object nameEn = abilityMap.get("name_en");
+            if (nameEn != null && !String.valueOf(nameEn).isBlank()) {
+                return String.valueOf(nameEn);
+            }
+            Object name = abilityMap.get("name");
+            if (name != null) {
+                return String.valueOf(name);
+            }
+        }
+        return ability == null ? "" : String.valueOf(ability);
+    }
+
+    /** 直接读取特性名，绕过所有抑制检查（供 Neutralizing Gas 实现内部使用） */
+    private String rawAbilityName(Map<String, Object> mon) {
         Object ability = mon.get("ability");
         if (ability instanceof Map<?, ?> abilityMap) {
             Object nameEn = abilityMap.get("name_en");
@@ -949,6 +1052,21 @@ public class BattleEngine {
         return hasAbility(mon, "magic-guard", "magic guard");
     }
 
+    /** Klutz: 持有者的道具无效（仅检查，不阻塞 Mega/Z/太晶石等特殊系统道具） */
+    boolean hasKlutz(Map<String, Object> mon) {
+        return hasAbility(mon, "klutz");
+    }
+
+    /** 对持有道具的效果是否生效（Klutz 持有者道具无效） */
+    boolean isItemEffectActive(Map<String, Object> state, Map<String, Object> mon) {
+        String item = heldItem(mon);
+        if (item.isBlank()) return false;
+        // 魔法空间（Magic Room）：5 回合内所有道具效果失效
+        if (state != null && magicRoomTurns(state) > 0) return false;
+        if (!hasKlutz(mon)) return true;
+        return false;
+    }
+
     boolean itemConsumed(Map<String, Object> mon) {
         return Boolean.TRUE.equals(mon.get("itemConsumed"));
     }
@@ -959,6 +1077,10 @@ public class BattleEngine {
             return; // already consumed
         }
         mon.put("itemConsumed", true);
+        // 消耗树果时标记，供打嗝（Belch）判断
+        if (isBerry(previousItem)) {
+            mon.put("berryConsumed", true);
+        }
         // Cud Chew: berry will be consumed again at end of next turn
         if (hasAbility(mon, "cud-chew", "cud chew") && isBerry(previousItem)) {
             mon.put("cudChewPending", true);
@@ -1004,8 +1126,11 @@ public class BattleEngine {
         return damageSupport.calculateCriticalHitChance(attacker, move, random);
     }
 
-    void applyDefenderItemEffects(Map<String, Object> target, Map<String, Object> move, int actualDamage,
+    void applyDefenderItemEffects(Map<String, Object> state, Map<String, Object> target, Map<String, Object> move, int actualDamage,
             Map<String, Object> actionLog, List<String> events, Random random) {
+        // Klutz: 道具效果被禁用
+        if (!isItemEffectActive(state, target)) return;
+
         if (toInt(target.get("currentHp"), 0) <= 0)
             return;
 
@@ -1018,8 +1143,9 @@ public class BattleEngine {
             events.add(target.get("name") + " 的气球被打破了");
         }
 
-        // Eject Button: holder switches out when hit
+        // Eject Button: holder switches out when hit (consumed on use)
         if ("eject-button".equals(item) && actualDamage > 0 && !itemConsumed(target)) {
+            consumeItem(target);
             actionLog.put("ejectButton", true);
             events.add(target.get("name") + " 的逃脱按钮被触发");
         }
@@ -1044,30 +1170,42 @@ public class BattleEngine {
         }
 
         // Berries (Sitrus, Oran, Pinch, Type-resist)
-        if (!itemConsumed(target)) {
+        // 注意：紧张感（Unnerve）会阻止对方所有树果消耗，在进入树果处理前检查
+        boolean unnerveBlocksBerry = !itemConsumed(target) && hasUnnerveOnOpposingSide(state, target)
+                && isBerry(heldItem(target));
+        // 熟成（Ripen）：树果效果翻倍
+        boolean hasRipen = hasAbility(target, "ripen");
+        // 颊囊（Cheek Pouch）：食用树果时额外回复 1/3 最大 HP
+        boolean hasCheekPouch = hasAbility(target, "cheek-pouch", "cheek pouch");
+        if (!itemConsumed(target) && !unnerveBlocksBerry) {
             int maxHp = toInt(castMap(target.get("stats")).get("hp"), 1);
             int currentHp = toInt(target.get("currentHp"), 0);
 
-            // Sitrus Berry: Heal 25% when HP drops to 50% or below
+            // Sitrus Berry: Heal 25% when HP drops to 50% or below (Ripen: 50%)
             if ("sitrus-berry".equals(item) && currentHp * 2 <= maxHp) {
                 if (healBlockTurns(target) > 0) {
                     actionLog.put("berryHealBlocked", true);
                     events.add(target.get("name") + " 受到回复封锁，文柚果无法生效");
                     return;
                 }
-                int heal = Math.max(1, maxHp / 4);
+                int heal = hasRipen ? Math.max(1, maxHp / 2) : Math.max(1, maxHp / 4);
                 target.put("currentHp", Math.min(maxHp, currentHp + heal));
                 consumeItem(target);
                 actionLog.put("berryHeal", heal);
                 events.add(target.get("name") + " 食用了文柚果，回复了 " + heal + " 点 HP");
             }
 
-            // Oran Berry: Heal 10 HP when HP drops to 50% or below
+            // Oran Berry: Heal 10 HP when HP drops to 50% or below (Ripen: 20)
             if ("oran-berry".equals(item) && currentHp * 2 <= maxHp && !itemConsumed(target)) {
-                int heal = Math.min(10, maxHp - currentHp);
-                target.put("currentHp", currentHp + heal);
-                consumeItem(target);
-                events.add(target.get("name") + " 食用了橙橙果，回复了 " + heal + " 点 HP");
+                if (healBlockTurns(target) > 0) {
+                    actionLog.put("berryHealBlocked", true);
+                    events.add(target.get("name") + " 受到回复封锁，橙橙果无法生效");
+                } else {
+                    int heal = hasRipen ? Math.min(20, maxHp - currentHp) : Math.min(10, maxHp - currentHp);
+                    target.put("currentHp", currentHp + heal);
+                    consumeItem(target);
+                    events.add(target.get("name") + " 食用了橙橙果，回复了 " + heal + " 点 HP");
+                }
             }
 
             // Pinch Berries: Raise a stat by +1 when HP drops to 25% or below (50% with Gluttony)
@@ -1095,31 +1233,51 @@ public class BattleEngine {
                 }
                 if (stageKey != null) {
                     int currentStage = statStage(target, stageKey);
+                    int boost = hasRipen ? 2 : 1;
                     if (currentStage < 6) {
-                        statStages(target).put(stageKey, currentStage + 1);
+                        statStages(target).put(stageKey, Math.min(6, currentStage + boost));
                         consumeItem(target);
                         actionLog.put("pinchBerry", stageKey);
-                        events.add(target.get("name") + " 的 " + berryName + "发动了，" + stageKey + "提升 1 级");
+                        events.add(target.get("name") + " 的 " + berryName + "发动了，" + stageKey + (boost >= 2 ? "大幅" : "") + "提升 " + boost + " 级");
                     }
                 }
                 // Starf Berry: Random stat sharply +2 when HP < 25%
                 if ("starf-berry".equals(item)) {
                     String[] statChoices = {"attack", "defense", "specialAttack", "specialDefense", "speed"};
                     String chosen = statChoices[random.nextInt(statChoices.length)];
+                    int boost = hasRipen ? 4 : 2;
                     int currentStage = statStage(target, chosen);
-                    statStages(target).put(chosen, Math.min(6, currentStage + 2));
+                    statStages(target).put(chosen, Math.min(6, currentStage + boost));
                     consumeItem(target);
                     actionLog.put("starfBerry", chosen);
-                    events.add(target.get("name") + " 的星桃果发动了，" + chosen + "大幅提升 2 级");
+                    events.add(target.get("name") + " 的星桃果发动了，" + chosen + "大幅提升 " + boost + " 级");
                 }
             }
 
-            // Resist Berries (e.g., Babiri Berry for Steel)
+            // Resist Berries (e.g., Babiri Berry for Steel) — Ripen 翻倍减伤效果
             double resistFactor = getBerryResistFactor(item, toInt(move.get("type_id"), 0));
+            if (hasRipen && resistFactor < 1.0) resistFactor = resistFactor * resistFactor; // 0.5 → 0.25
             if (resistFactor < 1.0 && actualDamage > 0 && !itemConsumed(target)) {
                 consumeItem(target);
                 actionLog.put("berryResist", item);
                 events.add(target.get("name") + " 的 " + item + " 削弱了受到的伤害");
+            }
+        }
+
+        // 颊囊（Cheek Pouch）：食用树果后额外回复 1/3 最大 HP（回复封锁时无效）
+        if (hasCheekPouch && itemConsumed(target) && target.get("currentHp") instanceof Integer curHp) {
+            if (healBlockTurns(target) > 0) {
+                actionLog.put("cheekPouchBlocked", true);
+                events.add(target.get("name") + " 受到回复封锁，颊囊特性未能生效");
+            } else {
+                int maxHp = toInt(castMap(target.get("stats")).get("hp"), 1);
+                int cheekHeal = Math.max(1, maxHp / 3);
+                int actualHeal = Math.min(cheekHeal, maxHp - curHp);
+                if (actualHeal > 0) {
+                    target.put("currentHp", curHp + actualHeal);
+                    actionLog.put("cheekPouchHeal", actualHeal);
+                    events.add(target.get("name") + " 的颊囊特性发动，回复了 " + actualHeal + " 点 HP");
+                }
             }
         }
     }
@@ -1160,11 +1318,16 @@ public class BattleEngine {
             return 0.5;
         if (moveTypeId == DamageCalculatorUtil.TYPE_FAIRY && "roseli-berry".equals(item))
             return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_NORMAL && "chilan-berry".equals(item))
+            return 0.5;
         return 1.0;
     }
 
-    void applyAttackerItemEffects(Map<String, Object> attacker, int damage, Map<String, Object> actionLog,
+    void applyAttackerItemEffects(Map<String, Object> state, Map<String, Object> attacker, int damage, Map<String, Object> actionLog,
             List<String> events) {
+        // Klutz: 道具效果被禁用
+        if (!isItemEffectActive(state, attacker)) return;
+
         // 空贝铃铛：回复造成伤害的 1/8
         String item = heldItem(attacker);
         if (damage > 0 && toInt(attacker.get("currentHp"), 0) > 0
@@ -1188,6 +1351,10 @@ public class BattleEngine {
         if (isMagicGuard(attacker)) {
             return;
         }
+        // Sheer Force: 抑制 Life Orb 反伤（但 Life Orb 增伤已被 Sheer Force 覆盖）
+        if (hasAbility(attacker, "sheer-force", "sheer force")) {
+            return;
+        }
         int maxHp = toInt(castMap(attacker.get("stats")).get("hp"), 1);
         int recoil = Math.max(1, maxHp / 10);
         int currentHp = toInt(attacker.get("currentHp"), 0);
@@ -1202,6 +1369,7 @@ public class BattleEngine {
 
     void rememberChoiceMove(Map<String, Object> mon, Map<String, Object> move) {
         String item = heldItem(mon);
+        if (hasKlutz(mon)) return; // Klutz 使道具无效，不锁定招式
         if ("choice-band".equals(item) || "choice-specs".equals(item) || "choice-scarf".equals(item)) {
             mon.put("choiceLockedMove", move.get("name_en"));
             return;
@@ -1719,6 +1887,10 @@ public class BattleEngine {
         return fieldEffectSupport.trickRoomTurns(state);
     }
 
+    int sunTurns(Map<String, Object> state) {
+        return fieldEffectSupport.sunTurns(state);
+    }
+
     int snowTurns(Map<String, Object> state) {
         return fieldEffectSupport.snowTurns(state);
     }
@@ -1775,6 +1947,24 @@ public class BattleEngine {
 
     int gravityTurns(Map<String, Object> state) {
         return fieldEffectSupport.gravityTurns(state);
+    }
+
+    int magicRoomTurns(Map<String, Object> state) {
+        return fieldEffectSupport.magicRoomTurns(state);
+    }
+
+    int wonderRoomTurns(Map<String, Object> state) {
+        return fieldEffectSupport.wonderRoomTurns(state);
+    }
+
+    void toggleWonderRoom(Map<String, Object> state, Map<String, Object> actor,
+                         Map<String, Object> actionLog, List<String> events) {
+        fieldEffectSupport.toggleWonderRoom(state, actor, actionLog, events);
+    }
+
+    void toggleMagicRoom(Map<String, Object> state, Map<String, Object> actor,
+                         Map<String, Object> actionLog, List<String> events) {
+        fieldEffectSupport.toggleMagicRoom(state, actor, actionLog, events);
     }
 
     void activateGravity(Map<String, Object> state, Map<String, Object> actor,
@@ -2024,6 +2214,93 @@ public class BattleEngine {
         boolean terastallizeRequested() {
             return "tera".equals(specialSystemRequested);
         }
+    }
+
+    /** Pickup: 战斗结束时，拥有捡拾特性且无道具的宝可梦拾取一个已消耗道具 */
+    private void applyPickup(Map<String, Object> state) {
+        java.util.List<String> consumedItems = new java.util.ArrayList<>();
+        for (boolean side : new boolean[]{true, false}) {
+            for (Map<String, Object> mon : team(state, side)) {
+                String item = heldItem(mon);
+                if (!item.isBlank() && Boolean.TRUE.equals(mon.get("itemConsumed"))) {
+                    consumedItems.add(item);
+                }
+            }
+        }
+        if (consumedItems.isEmpty()) return;
+        java.util.Random random = new java.util.Random(toLong(state.get("seed"), 0L) + 9999L);
+        for (boolean side : new boolean[]{true, false}) {
+            for (Map<String, Object> mon : team(state, side)) {
+                if (!hasAbility(mon, "pickup")) continue;
+                if (!heldItem(mon).isBlank()) continue;
+                if (toInt(mon.get("currentHp"), 0) <= 0) continue;
+                String picked = consumedItems.get(random.nextInt(consumedItems.size()));
+                mon.put("heldItem", picked);
+                consumedItems.remove(picked);
+                if (consumedItems.isEmpty()) return;
+            }
+        }
+    }
+
+    /** 触发逃脱背包换人：能力下降时持有者自动换下 */
+    void ejectPackSwitch(Map<String, Object> state, Map<String, Object> target,
+                         List<String> events, List<Map<String, Object>> actionLogs) {
+        boolean playerSide = isOnSide(state, target, true);
+        List<Map<String, Object>> team = team(state, playerSide);
+        List<Integer> slots = activeSlots(state, playerSide);
+        int monTeamIndex = team.indexOf(target);
+        if (monTeamIndex < 0) return;
+        int fieldSlot = slots.indexOf(monTeamIndex);
+        if (fieldSlot < 0) return;
+
+        int switchToIndex = firstAvailableBench(team, slots);
+        if (switchToIndex < 0) return;
+
+        Map<String, Object> switchedIn = team.get(switchToIndex);
+        conditionSupport.applySwitchOutEffects(target, events);
+        target.put("choiceLockedMove", null);
+        conditionSupport.resetBattleStages(target);
+        switchedIn.put("entryRound", toInt(state.get("currentRound"), 0) + 1);
+        setVolatile(switchedIn, "flinch", false);
+
+        List<Integer> newSlots = new ArrayList<>(slots);
+        newSlots.set(fieldSlot, switchToIndex);
+        state.put(playerSide ? "playerActiveSlots" : "opponentActiveSlots", newSlots);
+
+        Map<String, Object> ejectLog = new LinkedHashMap<>();
+        ejectLog.put("side", playerSide ? "player" : "opponent");
+        ejectLog.put("actor", target.get("name"));
+        ejectLog.put("actionType", "switch");
+        ejectLog.put("switchTo", switchedIn.get("name"));
+        ejectLog.put("result", "eject-pack");
+        if (actionLogs != null) actionLogs.add(ejectLog);
+        events.add(sideName(playerSide ? "player" : "opponent") + " 收回了 " + target.get("name")
+                + "，派出了 " + switchedIn.get("name"));
+        conditionSupport.applyEntryAbilities(state, playerSide, slots, events);
+    }
+
+    /** 检查对方场上是否有压迫感特性，增加对手招式 PP 消耗 */
+    boolean hasPressureOnOpposingSide(Map<String, Object> state, Map<String, Object> mon) {
+        boolean playerSide = isOnSide(state, mon, true);
+        for (Integer slot : activeSlots(state, !playerSide)) {
+            if (slot == null || slot < 0) continue;
+            List<Map<String, Object>> team = team(state, !playerSide);
+            if (slot >= team.size()) continue;
+            if (hasAbility(team.get(slot), "pressure")) return true;
+        }
+        return false;
+    }
+
+    /** 检查对方场上是否有紧张感特性，阻止己方树果消耗 */
+    boolean hasUnnerveOnOpposingSide(Map<String, Object> state, Map<String, Object> mon) {
+        boolean playerSide = isOnSide(state, mon, true);
+        for (Integer slot : activeSlots(state, !playerSide)) {
+            if (slot == null || slot < 0) continue;
+            List<Map<String, Object>> team = team(state, !playerSide);
+            if (slot >= team.size()) continue;
+            if (hasAbility(team.get(slot), "unnerve")) return true;
+        }
+        return false;
     }
 
     record RedirectionEffect(int actorIndex, boolean powder) {

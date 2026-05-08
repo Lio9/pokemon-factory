@@ -62,6 +62,7 @@ final class BattleFieldEffectSupport {
         effects.put("gravityTurns", 0);
         // Magic Room 场地效果
         effects.put("magicRoomTurns", 0);
+        effects.put("wonderRoomTurns", 0);
 
         return effects;
     }
@@ -308,6 +309,7 @@ final class BattleFieldEffectSupport {
         decrementFieldEffect(state, fieldSnapshot, "opponentSafeguardTurns", "对手神秘守护消失了", events);
         decrementFieldEffect(state, fieldSnapshot, "gravityTurns", "重力的效果消失了", events);
         decrementFieldEffect(state, fieldSnapshot, "magicRoomTurns", "魔法空间的效果消失了", events);
+        decrementFieldEffect(state, fieldSnapshot, "wonderRoomTurns", "奇妙空间的效果消失了", events);
     }
 
     void clearScreens(Map<String, Object> state, boolean playerSide) {
@@ -334,6 +336,36 @@ final class BattleFieldEffectSupport {
 
     int magicRoomTurns(Map<String, Object> state) {
         return toInt(fieldEffects(state).get("magicRoomTurns"), 0);
+    }
+
+    int wonderRoomTurns(Map<String, Object> state) {
+        return toInt(fieldEffects(state).get("wonderRoomTurns"), 0);
+    }
+
+    void toggleMagicRoom(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+        int current = magicRoomTurns(state);
+        if (current > 0) {
+            fieldEffects(state).put("magicRoomTurns", 0);
+            actionLog.put("result", "magic-room-ended");
+            events.add(actor.get("name") + " 让魔法空间的效果消失了");
+            return;
+        }
+        fieldEffects(state).put("magicRoomTurns", 5);
+        actionLog.put("result", "magic-room");
+        events.add(actor.get("name") + " 创造了魔法空间！所有道具的效果都被消除了！");
+    }
+
+    void toggleWonderRoom(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
+        int current = wonderRoomTurns(state);
+        if (current > 0) {
+            fieldEffects(state).put("wonderRoomTurns", 0);
+            actionLog.put("result", "wonder-room-ended");
+            events.add(actor.get("name") + " 让奇妙空间的效果消失了");
+            return;
+        }
+        fieldEffects(state).put("wonderRoomTurns", 5);
+        actionLog.put("result", "wonder-room");
+        events.add(actor.get("name") + " 制造了奇妙空间！所有宝可梦的防御和特防交换了！");
     }
 
     void activateGravity(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {

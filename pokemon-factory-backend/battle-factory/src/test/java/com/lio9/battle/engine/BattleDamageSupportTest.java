@@ -236,7 +236,7 @@ class BattleDamageSupportTest {
         Map<String, Object> actionLog = new LinkedHashMap<>();
         List<String> events = new ArrayList<>();
 
-        engine.applyAttackerItemEffects(attacker, 80, actionLog, events);
+        engine.applyAttackerItemEffects(Map.of("fieldEffects", Map.of("magicRoomTurns", 0)), attacker, 80, actionLog, events);
 
         assertEquals(200, attacker.get("currentHp"));
         assertEquals(null, actionLog.get("lifeOrbRecoil"));

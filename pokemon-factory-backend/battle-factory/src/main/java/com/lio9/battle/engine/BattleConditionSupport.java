@@ -397,6 +397,107 @@ final class BattleConditionSupport {
             } else if (nameEn.startsWith("g-max-vine-lash") || nameEn.startsWith("g max vine lash")) {
                 fieldEffectSupport.setGMaxVineLash(state, !isPlayerSide);
                 events.add(actor.get("name") + " 的 G-Max 藤蔓鞭打开始了！");
+            } else if (nameEn.startsWith("g-max-centiferno") || nameEn.startsWith("g max centiferno")) {
+                engine.setVolatile(target, "bound", true);
+                engine.setVolatile(target, "boundTurns", 4);
+                engine.setVolatile(target, "boundDivisor", 8);
+                events.add(actor.get("name") + " 的 G-Max 百火缠绕困住了对手！");
+            } else if (nameEn.startsWith("g-max-chi-strike") || nameEn.startsWith("g max chi strike")) {
+                engine.setVolatile(actor, "critStageBoost", 1);
+                events.add(actor.get("name") + " 的 G-Max 气功弹提升了全队的会心率！");
+            } else if (nameEn.startsWith("g-max-cuddle") || nameEn.startsWith("g max cuddle")) {
+                applyAttract(actor, target, targetLog, events);
+                events.add(actor.get("name") + " 的 G-Max 黏黏拥抱让对手着迷！");
+            } else if (nameEn.startsWith("g-max-depletion") || nameEn.startsWith("g max depletion")) {
+                for (Map<String, Object> tm : engine.moves(target)) {
+                    int pp = engine.toInt(tm.get("currentPp"), 0);
+                    if (pp > 0) tm.put("currentPp", Math.max(0, pp - 2));
+                }
+                events.add(actor.get("name") + " 的 G-Max 资源耗尽降低了对手招式 PP！");
+            } else if (nameEn.startsWith("g-max-drum-beating") || nameEn.startsWith("g max drum beating")) {
+                fieldEffectSupport.activateTerrain(state, "grassy", actor, null, events);
+                events.add(actor.get("name") + " 的 G-Max 鼓击乱打催生了青草场地！");
+            } else if (nameEn.startsWith("g-max-finale") || nameEn.startsWith("g max finale")) {
+                // 回复全队 1/6 HP
+                for (Integer allySlot : engine.activeSlots(state, isPlayerSide)) {
+                    if (allySlot == null) continue;
+                    Map<String, Object> ally = engine.team(state, isPlayerSide).get(allySlot);
+                    int mh = engine.toInt(engine.castMap(ally.get("stats")).get("hp"), 1);
+                    int ch = engine.toInt(ally.get("currentHp"), 0);
+                    if (ch > 0 && ch < mh) ally.put("currentHp", Math.min(mh, ch + Math.max(1, mh / 6)));
+                }
+                events.add(actor.get("name") + " 的 G-Max 最终乐章回复了全队 HP！");
+            } else if (nameEn.startsWith("g-max-foam-burst") || nameEn.startsWith("g max foam burst")) {
+                damageSupport.statStages(target).put("speed", Math.max(-6, damageSupport.statStage(target, "speed") - 2));
+                events.add(actor.get("name") + " 的 G-Max 泡影咏叹调大幅降低了对手速度！");
+            } else if (nameEn.startsWith("g-max-gold-rush") || nameEn.startsWith("g max gold rush")) {
+                applyConfusion(actor, target, targetLog, events, random);
+                events.add(actor.get("name") + " 的 G-Max 极巨黄金让对手混乱了！");
+            } else if (nameEn.startsWith("g-max-gravitas") || nameEn.startsWith("g max gravitas")) {
+                fieldEffectSupport.activateGravity(state, actor, targetLog, events);
+                events.add(actor.get("name") + " 的 G-Max 重力场制造了重力！");
+            } else if (nameEn.startsWith("g-max-hydrosnipe") || nameEn.startsWith("g max hydrosnipe")) {
+                targetLog.put("hydrosnipe", true);
+                events.add(actor.get("name") + " 的 G-Max 水炮狙击会心一击率提升了！");
+            } else if (nameEn.startsWith("g-max-malodor") || nameEn.startsWith("g max malodor")) {
+                applyPoison(state, actor, target, move, targetLog, events, false);
+                events.add(actor.get("name") + " 的 G-Max 恶臭让对手中毒了！");
+            } else if (nameEn.startsWith("g-max-stun-shock") || nameEn.startsWith("g max stun shock")) {
+                if (random.nextBoolean()) {
+                    applyParalysis(state, actor, target, move, targetLog, events);
+                } else {
+                    applyPoison(state, actor, target, move, targetLog, events, false);
+                }
+                events.add(actor.get("name") + " 的 G-Max 极电冲击让对手麻痹或中毒！");
+            } else if (nameEn.startsWith("g-max-sweetness") || nameEn.startsWith("g max sweetness")) {
+                for (Integer allySlot : engine.activeSlots(state, isPlayerSide)) {
+                    if (allySlot == null) continue;
+                    Map<String, Object> ally = engine.team(state, isPlayerSide).get(allySlot);
+                    if (engine.toInt(ally.get("currentHp"), 0) > 0) {
+                        ally.put("condition", null);
+                    }
+                }
+                events.add(actor.get("name") + " 的 G-Max 甜蜜嘉年华治愈了全队异常状态！");
+            } else if (nameEn.startsWith("g-max-tartness") || nameEn.startsWith("g max tartness")) {
+                damageSupport.statStages(target).put("evasion", Math.max(-6, damageSupport.statStage(target, "evasion") - 1));
+                events.add(actor.get("name") + " 的 G-Max 酸酸毒液降低了对手闪避率！");
+            } else if (nameEn.startsWith("g-max-terror") || nameEn.startsWith("g max terror")) {
+                engine.setVolatile(target, "trapped", true);
+                events.add(actor.get("name") + " 的 G-Max 恐怖袭击困住了对手！");
+            } else if (nameEn.startsWith("g-max-volt-crash") || nameEn.startsWith("g max volt crash")) {
+                applyParalysis(state, actor, target, move, targetLog, events);
+                events.add(actor.get("name") + " 的 G-Max 极速伏特让对手麻痹了！");
+            } else if (nameEn.startsWith("g-max-meltdown") || nameEn.startsWith("g max meltdown")) {
+                engine.setVolatile(target, "tormentTurns", 2);
+                events.add(actor.get("name") + " 的 G-Max 金属熔解让对方无法连续使用相同招式！");
+            } else if (nameEn.startsWith("g-max-replenish") || nameEn.startsWith("g max replenish")) {
+                // 50% 概率回收树果
+                if (random.nextBoolean() && Boolean.TRUE.equals(actor.get("itemConsumed"))) {
+                    String prevItem = String.valueOf(actor.getOrDefault("consumedItem", ""));
+                    if (!prevItem.isBlank()) {
+                        actor.put("heldItem", prevItem);
+                        actor.put("itemConsumed", false);
+                        events.add(actor.get("name") + " 的 G-Max 资源再生回收了树果！");
+                    }
+                }
+            } else if (nameEn.startsWith("g-max-wind-rage") || nameEn.startsWith("g max wind rage")) {
+                engine.clearSideHazards(state, isPlayerSide);
+                events.add(actor.get("name") + " 的 G-Max 风绞清除了场地效果！");
+            } else if (nameEn.startsWith("g-max-befuddle") || nameEn.startsWith("g max befuddle")) {
+                int status = random.nextInt(3);
+                if (status == 0) applyPoison(state, actor, target, move, targetLog, events, false);
+                else if (status == 1) applyParalysis(state, actor, target, move, targetLog, events);
+                else applySleep(state, actor, target, move, targetLog, events, random, engine.toInt(state.get("currentRound"), 0));
+                events.add(actor.get("name") + " 的 G-Max 极巨中毒让对手陷入异常状态！");
+            } else if (nameEn.startsWith("g-max-snooze") || nameEn.startsWith("g max snooze")) {
+                engine.setVolatile(target, "yawnTurns", 2);
+                events.add(actor.get("name") + " 的 G-Max 极巨睡眠让对手昏昏欲睡！");
+            } else if (nameEn.startsWith("g-max-one-blow") || nameEn.startsWith("g max one blow")) {
+                targetLog.put("bypassProtection", true);
+                events.add(actor.get("name") + " 的 G-Max 一击必杀打破了守护！");
+            } else if (nameEn.startsWith("g-max-rapid-flow") || nameEn.startsWith("g max rapid flow")) {
+                targetLog.put("bypassProtection", true);
+                events.add(actor.get("name") + " 的 G-Max 连击流打破了守护！");
             } else if (nameEn.contains("g-max") || nameEn.contains("g-max-") || nameEn.contains("g max ")) {
                 events.add(actor.get("name") + " 释放了 G-Max 招式！");
             }
@@ -1531,12 +1632,79 @@ final class BattleConditionSupport {
     void applyEntryAbilities(Map<String, Object> state, boolean player, List<Integer> previousSlots,
             List<String> events) {
         List<Integer> currentSlots = engine.activeSlots(state, player);
+        // Imposter: 上场时自动变身为对手
+        for (Integer slot : currentSlots) {
+            if (previousSlots.contains(slot) || slot < 0 || slot >= engine.team(state, player).size()) continue;
+            Map<String, Object> enteringMon = engine.team(state, player).get(slot);
+            if ("imposter".equalsIgnoreCase(engine.abilityName(enteringMon))) {
+                checkImposterOnEntry(state, player, enteringMon, events);
+            }
+        }
+        // 治愈之愿/新月舞：检查场上是否有待生效的复活效果
+        for (Integer slot : currentSlots) {
+            if (previousSlots.contains(slot) || slot < 0 || slot >= engine.team(state, player).size()) continue;
+            Map<String, Object> enteringMon = engine.team(state, player).get(slot);
+            // 从已退场的队友中查找 pending flag（存储在 fainted mon 的 volatile 上）
+            // 治愈之愿：满状态复活
+            for (Map<String, Object> mon : engine.team(state, player)) {
+                if (Boolean.TRUE.equals(engine.volatileValue(mon, "healingWishPending", false))) {
+                    engine.clearVolatile(mon, "healingWishPending");
+                    int maxHp = engine.toInt(engine.castMap(enteringMon.get("stats")).get("hp"), 1);
+                    enteringMon.put("currentHp", maxHp);
+                    enteringMon.remove("condition");
+                    enteringMon.put("status", "");
+                    events.add(enteringMon.get("name") + " 因治愈之愿效果满状态复活了！");
+                }
+                if (Boolean.TRUE.equals(engine.volatileValue(mon, "lunarDancePending", false))) {
+                    engine.clearVolatile(mon, "lunarDancePending");
+                    int maxHp = engine.toInt(engine.castMap(enteringMon.get("stats")).get("hp"), 1);
+                    enteringMon.put("currentHp", maxHp);
+                    enteringMon.remove("condition");
+                    enteringMon.put("status", "");
+                    // PP 全恢复
+                    for (Map<String, Object> m : engine.moves(enteringMon)) {
+                        Object origPP = m.get("pp");
+                        if (origPP instanceof Number) {
+                            m.put("currentPp", ((Number) origPP).intValue());
+                        }
+                    }
+                    events.add(enteringMon.get("name") + " 因新月舞效果满状态复活且 PP 全恢复！");
+                }
+            }
+        }
         List<Map<String, Object>> enteringTeam = engine.team(state, player);
         for (Integer slot : currentSlots) {
             if (previousSlots.contains(slot) || slot == null || slot < 0 || slot >= enteringTeam.size()) {
                 continue;
             }
             Map<String, Object> source = enteringTeam.get(slot);
+
+            // Hospitality (热情款待): 上场时回复队友 1/4 最大 HP
+            if ("hospitality".equalsIgnoreCase(engine.abilityName(source))) {
+                for (Integer allySlot : currentSlots) {
+                    if (previousSlots.contains(allySlot) || allySlot == slot) continue;
+                    if (allySlot == null || allySlot >= engine.team(state, player).size()) continue;
+                    Map<String, Object> ally = engine.team(state, player).get(allySlot);
+                    if (engine.toInt(ally.get("currentHp"), 0) > 0) {
+                        int mh = engine.toInt(engine.castMap(ally.get("stats")).get("hp"), 1);
+                        int ch = engine.toInt(ally.get("currentHp"), 0);
+                        if (ch < mh) ally.put("currentHp", Math.min(mh, ch + Math.max(1, mh / 4)));
+                        events.add(source.get("name") + " 的热情款待特性发动，" + ally.get("name") + " 回复了 HP！");
+                    }
+                    break;
+                }
+            }
+            // Slow Start: 刚上场时初始化 5 回合攻速减半
+            if (engine.hasAbility(source, "slow-start", "slow start")) {
+                engine.setVolatile(source, "slowStartTurns", 5);
+            }
+            // Defeatist: 上场时检查 HP（已由 AbilityName 引擎层处理，此处为空桩以便后续扩展）
+            if (engine.hasAbility(source, "defeatist")) {
+                // 无额外入场效果，伤害公式中已处理 HP 判定
+            }
+
+            // 形态变化检查（zen-mode/schooling/shields-down）
+            checkFormChange(source, state, events);
 
             // Apply entry hazards FIRST (before abilities/items)
             applyEntryHazards(state, player, source, events);
@@ -1647,6 +1815,41 @@ final class BattleConditionSupport {
                     if (!oppItem.isBlank()) {
                         events.add(source.get("name") + " 的察觉特性发现了 " + opp.get("name") + " 携带的 " + oppItem);
                     }
+                }
+                continue;
+            }
+
+            // Anticipation: 检测对手是否拥有克制/秒杀/自爆招式
+            if ("anticipation".equalsIgnoreCase(ability)) {
+                boolean dangerousMoveFound = false;
+                for (Integer oppSlot : engine.activeSlots(state, !player)) {
+                    if (oppSlot == null || oppSlot < 0 || oppSlot >= engine.team(state, !player).size()) continue;
+                    Map<String, Object> opp = engine.team(state, !player).get(oppSlot);
+                    List<Map<String, Object>> oppMoves = engine.moves(opp);
+                    if (oppMoves == null) continue;
+                    for (Map<String, Object> m : oppMoves) {
+                        String mn = String.valueOf(m.get("name_en")).toLowerCase();
+                        // OHKO 招式
+                        if (mn.contains("fissure") || mn.contains("horn drill") || mn.contains("guillotine") || mn.contains("sheer cold")) {
+                            dangerousMoveFound = true;
+                            break;
+                        }
+                        // 自爆/大爆炸
+                        if (mn.contains("self-destruct") || mn.contains("self destruct") || mn.contains("explosion")) {
+                            dangerousMoveFound = true;
+                            break;
+                        }
+                        // 克制效果
+                        int moveTypeId = engine.toInt(m.get("type_id"), 0);
+                        if (moveTypeId > 0 && engine.typeModifier(source, moveTypeId) > 1.0) {
+                            dangerousMoveFound = true;
+                            break;
+                        }
+                    }
+                    if (dangerousMoveFound) break;
+                }
+                if (dangerousMoveFound) {
+                    events.add(source.get("name") + " 因危险预知而颤抖了");
                 }
                 continue;
             }
@@ -2347,7 +2550,7 @@ final class BattleConditionSupport {
                 events.add(target.get("name") + " 的看门狗特性触发，攻击提升了");
             }
         }
-        // Eject Pack: stat drop triggers switch-out flag
+        // Eject Pack: stat drop triggers switch-out flag (processed at end of processAction)
         if ("eject-pack".equals(engine.heldItem(target)) && !engine.itemConsumed(target)) {
             engine.consumeItem(target);
             target.put("ejectPackTriggered", true);
@@ -3180,6 +3383,161 @@ final class BattleConditionSupport {
     }
 
     /** 检查目标是否受到队友 Flower Veil 的保护（草属性队友免疫异常和能力下降） */
+    /** 检查并触发形态变化特性（zen-mode / schooling / shields-down / stance-change） */
+    void checkFormChange(Map<String, Object> mon, Map<String, Object> state, List<String> events) {
+        String ab = engine.abilityName(mon);
+        int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+        int curHp = engine.toInt(mon.get("currentHp"), 0);
+        int hpPct = maxHp > 0 ? (curHp * 100) / maxHp : 100;
+
+        // Zen Mode (达摩模式): HP ≤ 50% 时切换形态
+        if (("zen-mode".equalsIgnoreCase(ab) || "zen mode".equalsIgnoreCase(ab))) {
+            boolean alreadyActivated = Boolean.TRUE.equals(engine.volatileValue(mon, "zenModeActive", false));
+            boolean shouldActivate = hpPct <= 50 && curHp > 0;
+            if (shouldActivate && !alreadyActivated) {
+                engine.setVolatile(mon, "zenModeActive", true);
+                events.add(mon.get("name") + " 的达摩模式发动了，转化成了达摩形态！");
+            } else if (!shouldActivate && alreadyActivated) {
+                engine.setVolatile(mon, "zenModeActive", false);
+                events.add(mon.get("name") + " 的达摩模式解除了，恢复成了常态");
+            }
+        }
+
+        // Schooling (鱼群): HP < 25% 时变成单独形态，HP ≥ 25% 时恢复鱼群形态
+        if ("schooling".equalsIgnoreCase(ab)) {
+            boolean soloMode = Boolean.TRUE.equals(engine.volatileValue(mon, "schoolingSolo", false));
+            if (hpPct < 25 && curHp > 0 && !soloMode) {
+                engine.setVolatile(mon, "schoolingSolo", true);
+                events.add(mon.get("name") + " 的鱼群特性解除，弱丁鱼变成了单独形态！");
+            } else if (hpPct >= 25 && soloMode) {
+                engine.setVolatile(mon, "schoolingSolo", false);
+                events.add(mon.get("name") + " 的鱼群特性发动，恢复成了鱼群形态！");
+            }
+        }
+
+        // Power Construct (群聚变形): HP ≤ 50% 时变为完全体形态
+        if ("power-construct".equalsIgnoreCase(ab) || "power construct".equalsIgnoreCase(ab)) {
+            boolean completeMode = Boolean.TRUE.equals(engine.volatileValue(mon, "powerConstructComplete", false));
+            if (hpPct <= 50 && curHp > 0 && !completeMode) {
+                engine.setVolatile(mon, "powerConstructComplete", true);
+                events.add(mon.get("name") + " 的群聚变形发动了，变成了完全体形态！");
+            }
+        }
+
+        // Forecast (阴晴不定): 随天气变化属性
+        if ("forecast".equalsIgnoreCase(ab)) {
+            java.util.Map<String, Object> fe = engine.castMap(state.get("fieldEffects"));
+            int rain = engine.toInt(fe.get("rainTurns"), 0);
+            int sun = engine.toInt(fe.get("sunTurns"), 0);
+            int snow = engine.toInt(fe.get("snowTurns"), 0);
+            String newForm;
+            if (sun > 0) newForm = "sunny";
+            else if (rain > 0) newForm = "rainy";
+            else if (snow > 0) newForm = "snowy";
+            else newForm = "normal";
+            String currentForm = String.valueOf(engine.volatileValue(mon, "forecastForm", "normal"));
+            if (!newForm.equals(currentForm)) {
+                engine.setVolatile(mon, "forecastForm", newForm);
+                if ("normal".equals(newForm)) {
+                    events.add(mon.get("name") + " 变回了普通形态");
+                } else {
+                    events.add(mon.get("name") + " 的阴晴不定特性发动，变成了" + ("sunny".equals(newForm) ? "晴天" : "rainy".equals(newForm) ? "雨天" : "雪天") + "形态");
+                }
+            }
+        }
+
+        // Shields Down (陨石): HP ≤ 50% 时外壳破碎
+        if ("shields-down".equalsIgnoreCase(ab) || "shields down".equalsIgnoreCase(ab)) {
+            boolean coreMode = Boolean.TRUE.equals(engine.volatileValue(mon, "shieldsDownCore", false));
+            if (hpPct <= 50 && curHp > 0 && !coreMode) {
+                engine.setVolatile(mon, "shieldsDownCore", true);
+                events.add(mon.get("name") + " 的外壳破碎了，变成了核心形态！");
+            } else if (hpPct > 50 && coreMode) {
+                engine.setVolatile(mon, "shieldsDownCore", false);
+                events.add(mon.get("name") + " 的外壳恢复了，变回了陨石形态");
+            }
+        }
+    }
+
+    /** Transform (变身): 复制目标的状态（类型/能力/招式/特性/能力阶级） */
+    void applyTransform(Map<String, Object> actor, Map<String, Object> target, List<String> events) {
+        if (engine.toInt(target.get("currentHp"), 0) <= 0) return;
+        // 复制名称
+        actor.put("transformedName", target.get("name"));
+        actor.put("transformedNameEn", target.get("name_en"));
+        // 复制类型
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> targetTypes = (List<Map<String, Object>>) target.get("types");
+        actor.put("types", new java.util.ArrayList<>(targetTypes));
+        // 复制能力（保持当前 HP 的百分比）
+        int actorMaxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
+        int actorCurHp = engine.toInt(actor.get("currentHp"), 0);
+        int targetMaxHp = engine.toInt(engine.castMap(target.get("stats")).get("hp"), 1);
+        Map<String, Object> targetStats = engine.castMap(target.get("stats"));
+        Map<String, Object> newStats = new java.util.LinkedHashMap<>();
+        newStats.put("hp", actorMaxHp); // 保持己方 HP 上限
+        newStats.put("attack", targetStats.get("attack"));
+        newStats.put("defense", targetStats.get("defense"));
+        newStats.put("specialAttack", targetStats.get("specialAttack"));
+        newStats.put("specialDefense", targetStats.get("specialDefense"));
+        newStats.put("speed", targetStats.get("speed"));
+        actor.put("stats", newStats);
+        actor.put("currentHp", Math.min(actorMaxHp, actorCurHp));
+        // 复制特性
+        Object targetAbility = target.get("ability");
+        if (targetAbility != null) actor.put("ability", targetAbility);
+        // 复制招式（保留 PP）
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> targetMoves = (List<Map<String, Object>>) target.get("moves");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> actorMoves = (List<Map<String, Object>>) actor.get("moves");
+        List<Map<String, Object>> copiedMoves = new java.util.ArrayList<>();
+        for (Map<String, Object> tm : targetMoves) {
+            Map<String, Object> cm = new java.util.LinkedHashMap<>(tm);
+            cm.put("currentPp", 5); // Transform 后招式 PP 固定为 5
+            copiedMoves.add(cm);
+        }
+        actor.put("moves", copiedMoves);
+        // 复制能力阶级
+        Map<String, Object> targetStages = engine.castMap(target.get("statStages"));
+        Map<String, Object> newStages = new java.util.LinkedHashMap<>();
+        for (String key : new String[]{"attack", "defense", "specialAttack", "specialDefense", "speed"}) {
+            newStages.put(key, engine.toInt(targetStages.get(key), 0));
+        }
+        actor.put("statStages", newStages);
+        engine.setVolatile(actor, "transformed", true);
+        events.add(actor.get("name") + " 变身成了 " + target.get("name") + "！");
+    }
+
+    /** Imposter (变身者): 上场时自动变身为对手 */
+    void checkImposterOnEntry(Map<String, Object> state, boolean player, Map<String, Object> mon, List<String> events) {
+        if (!"imposter".equalsIgnoreCase(engine.abilityName(mon))) return;
+        if (Boolean.TRUE.equals(engine.volatileValue(mon, "transformed", false))) return;
+        for (Integer slot : engine.activeSlots(state, !player)) {
+            if (slot == null || slot < 0) continue;
+            List<Map<String, Object>> oppTeam = engine.team(state, !player);
+            if (slot >= oppTeam.size()) continue;
+            if (engine.toInt(oppTeam.get(slot).get("currentHp"), 0) > 0) {
+                applyTransform(mon, oppTeam.get(slot), events);
+                break;
+            }
+        }
+    }
+
+    /** Stance Change (战斗切换): Aegislash 使用攻击招式后切换为刀剑形态 */
+    void checkStanceChangeAfterMove(Map<String, Object> mon, Map<String, Object> move) {
+        String ab = engine.abilityName(mon);
+        if (!"stance-change".equalsIgnoreCase(ab) && !"stance change".equalsIgnoreCase(ab)) return;
+        boolean isBlade = Boolean.TRUE.equals(engine.volatileValue(mon, "stanceBlade", false));
+        boolean usesAttack = engine.toInt(move.get("power"), 0) > 0;
+        // 使用攻击招式 → 刀剑形态；使用王者之盾等 → 防御形态；其他不变
+        if (usesAttack && !isBlade) {
+            engine.setVolatile(mon, "stanceBlade", true);
+        } else if (!usesAttack && isBlade) {
+            engine.setVolatile(mon, "stanceBlade", false);
+        }
+    }
+
     private boolean allyHasFlowerVeil(Map<String, Object> state, Map<String, Object> target) {
         if (allyHasAbility(state, target, "flower-veil", "flower veil")) {
             return engine.targetHasType(target, DamageCalculatorUtil.TYPE_GRASS);

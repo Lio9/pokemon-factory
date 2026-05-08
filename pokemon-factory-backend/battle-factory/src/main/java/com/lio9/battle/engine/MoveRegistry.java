@@ -25,7 +25,8 @@ public final class MoveRegistry {
     private static final Set<String> PROTECT_MOVES = Set.of(
         "protect", "detect", "king's shield", "kings-shield",
         "obstruct", "silk trap", "silk-trap",
-        "burning bulwark", "burning-bulwark"
+        "burning bulwark", "burning-bulwark",
+        "baneful bunker", "baneful-bunker"
     );
 
     private static final Set<String> WIDE_GUARD_MOVES = Set.of(
@@ -198,6 +199,10 @@ public final class MoveRegistry {
     // === 接力类招式 ===
     private static final Set<String> BATON_PASS_MOVES = Set.of("baton pass", "baton-pass");
 
+    // === 窃取类招式 ===
+    private static final Set<String> THIEF_MOVES = Set.of("thief", "covet");
+    public static boolean isThiefMove(Map<String, Object> move) { return matchesAny(move, THIEF_MOVES); }
+
     // === 击落类招式 ===
     private static final Set<String> KNOCK_OFF_MOVES = Set.of("knock off", "knock-off");
 
@@ -260,6 +265,46 @@ public final class MoveRegistry {
         "power swap", "power-swap"
     );
 
+    // === 强制换人招式（吼叫/吹飞/龙尾/巴投） ===
+    private static final Set<String> FORCED_SWITCH_MOVES = Set.of(
+        "roar", "whirlwind",
+        "dragon tail", "dragon-tail",
+        "circle throw", "circle-throw"
+    );
+
+    /** 强制换人招式是否为声音系（吼叫是声音系，吹飞/龙尾/巴投不是） */
+    public static boolean isForcedSwitchSoundMove(Map<String, Object> move) {
+        return matchesAny(move, Set.of("roar"));
+    }
+
+    public static boolean isForcedSwitchMove(Map<String, Object> move) {
+        return matchesAny(move, FORCED_SWITCH_MOVES);
+    }
+
+    // === 强化类招式 ===
+    private static final Set<String> HONE_CLAWS_MOVES = Set.of(
+        "hone claws", "hone-claws"
+    );
+    private static final Set<String> IRON_DEFENSE_MOVES = Set.of(
+        "iron defense", "iron-defense"
+    );
+    private static final Set<String> GROWTH_MOVES = Set.of("growth");
+    private static final Set<String> BELLY_DRUM_MOVES = Set.of(
+        "belly drum", "belly-drum"
+    );
+    private static final Set<String> HOWL_MOVES = Set.of("howl");
+
+    public static boolean isHoneClaws(Map<String, Object> move) { return matchesAny(move, HONE_CLAWS_MOVES); }
+    public static boolean isIronDefense(Map<String, Object> move) { return matchesAny(move, IRON_DEFENSE_MOVES); }
+    public static boolean isGrowth(Map<String, Object> move) { return matchesAny(move, GROWTH_MOVES); }
+    public static boolean isBellyDrum(Map<String, Object> move) { return matchesAny(move, BELLY_DRUM_MOVES); }
+    public static boolean isHowl(Map<String, Object> move) { return matchesAny(move, HOWL_MOVES); }
+
+    // === 杂技（无道具时威力翻倍） ===
+    private static final Set<String> ACROBATICS_MOVES = Set.of("acrobatics");
+
+    public static boolean isAcrobatics(Map<String, Object> move) { return matchesAny(move, ACROBATICS_MOVES); }
+
     // === 反伤类招式 ===
     private static final Set<String> COUNTER_MOVES = Set.of("counter");
     private static final Set<String> MIRROR_COAT_MOVES = Set.of("mirror coat", "mirror-coat");
@@ -305,6 +350,58 @@ public final class MoveRegistry {
 
     // === 清除能力变化类招式 ===
     private static final Set<String> HAZE_MOVES = Set.of("haze");
+
+    // === 封印类招式 ===
+    private static final Set<String> IMPRISON_MOVES = Set.of("imprison");
+    public static boolean isImprison(Map<String, Object> move) { return matchesAny(move, IMPRISON_MOVES); }
+
+    // === 亲密度类招式 ===
+    private static final Set<String> FRIENDSHIP_MOVES = Set.of("return", "frustration");
+    public static boolean isFriendshipMove(Map<String, Object> move) { return matchesAny(move, FRIENDSHIP_MOVES); }
+
+    // === 自杀类招式（付出代价的不攻击招式） ===
+    private static final Set<String> SUICIDE_MOVES = Set.of("memento", "healing wish", "healing-wish", "lunar dance", "lunar-dance");
+    public static boolean isSuicideMove(Map<String, Object> move) { return matchesAny(move, SUICIDE_MOVES); }
+
+    // === 变身类招式 ===
+    private static final Set<String> TRANSFORM_MOVES = Set.of("transform");
+    public static boolean isTransform(Map<String, Object> move) { return matchesAny(move, TRANSFORM_MOVES); }
+
+    // === 树果相关招式 ===
+    private static final Set<String> BELCH_MOVES = Set.of("belch");
+    private static final Set<String> BUG_BITE_MOVES = Set.of("bug bite", "bug-bite");
+    private static final Set<String> NATURAL_GIFT_MOVES = Set.of("natural gift", "natural-gift");
+    public static boolean isBelch(Map<String, Object> move) { return matchesAny(move, BELCH_MOVES); }
+    public static boolean isBugBite(Map<String, Object> move) { return matchesAny(move, BUG_BITE_MOVES); }
+    public static boolean isNaturalGift(Map<String, Object> move) { return matchesAny(move, NATURAL_GIFT_MOVES); }
+
+    // === 换场类招式 ===
+    private static final Set<String> COURT_CHANGE_MOVES = Set.of("court change", "court-change");
+    public static boolean isCourtChange(Map<String, Object> move) { return matchesAny(move, COURT_CHANGE_MOVES); }
+
+    // === 复活类招式 ===
+    private static final Set<String> REVIVAL_BLESSING_MOVES = Set.of("revival blessing", "revival-blessing");
+    public static boolean isRevivalBlessing(Map<String, Object> move) { return matchesAny(move, REVIVAL_BLESSING_MOVES); }
+
+    // === 蜕尾类招式 ===
+    private static final Set<String> SHED_TAIL_MOVES = Set.of("shed tail", "shed-tail");
+    public static boolean isShedTail(Map<String, Object> move) { return matchesAny(move, SHED_TAIL_MOVES); }
+
+    // === 毒旋清除类 ===
+    private static final Set<String> MORTAL_SPIN_MOVES = Set.of("mortal spin", "mortal-spin");
+    public static boolean isMortalSpin(Map<String, Object> move) { return matchesAny(move, MORTAL_SPIN_MOVES); }
+
+    // === 盐腌类 ===
+    private static final Set<String> SALT_CURE_MOVES = Set.of("salt cure", "salt-cure");
+    public static boolean isSaltCure(Map<String, Object> move) { return matchesAny(move, SALT_CURE_MOVES); }
+
+    // === 蓄力类招式 ===
+    private static final Set<String> STOCKPILE_MOVES = Set.of("stockpile");
+    private static final Set<String> SPIT_UP_MOVES = Set.of("spit up", "spit-up");
+    private static final Set<String> SWALLOW_MOVES = Set.of("swallow");
+    public static boolean isStockpile(Map<String, Object> move) { return matchesAny(move, STOCKPILE_MOVES); }
+    public static boolean isSpitUp(Map<String, Object> move) { return matchesAny(move, SPIT_UP_MOVES); }
+    public static boolean isSwallow(Map<String, Object> move) { return matchesAny(move, SWALLOW_MOVES); }
 
     // === 同命类招式 ===
     private static final Set<String> DESTINY_BOND_MOVES = Set.of("destiny bond", "destiny-bond");

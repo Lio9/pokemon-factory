@@ -96,8 +96,9 @@ public final class EffectRegistry {
         return h != null ? h.onTargetModifyDamage(ctx, mod) : mod;
     }
 
-    /** 攻击方道具：修正伤害倍率 */
+    /** 攻击方道具：修正伤害倍率（Klutz 阻塞） */
     public static double dispatchItemSourceDamage(Map<String, Object> attacker, AttackContext ctx, double mod) {
+        if (hasKlutz(attacker)) return mod;
         ItemHandler h = getItem(heldItem(attacker));
         return h != null ? h.onSourceModifyDamage(ctx, mod) : mod;
     }
@@ -108,8 +109,9 @@ public final class EffectRegistry {
         return h != null ? h.onSourceModifyAttackStat(ctx, stat) : stat;
     }
 
-    /** 攻击方道具：修正攻击属性值（含 Choice Band/Specs） */
+    /** 攻击方道具：修正攻击属性值（含 Choice Band/Specs）（Klutz 阻塞） */
     public static int dispatchItemSourceAttack(Map<String, Object> attacker, AttackContext ctx, int stat) {
+        if (hasKlutz(attacker)) return stat;
         ItemHandler h = getItem(heldItem(attacker));
         return h != null ? h.onSourceModifyAttackStat(ctx, stat) : stat;
     }
@@ -120,8 +122,9 @@ public final class EffectRegistry {
         return h != null ? h.onTargetModifyDefenseStat(ctx, stat) : stat;
     }
 
-    /** 防御方道具：修正防御属性值 */
+    /** 防御方道具：修正防御属性值（Klutz 阻塞） */
     public static int dispatchItemTargetDefense(Map<String, Object> defender, AttackContext ctx, int stat) {
+        if (hasKlutz(defender)) return stat;
         ItemHandler h = getItem(heldItem(defender));
         return h != null ? h.onTargetModifyDefenseStat(ctx, stat) : stat;
     }
@@ -132,8 +135,9 @@ public final class EffectRegistry {
         return h != null ? h.onModifySpeed(ctx, speed) : speed;
     }
 
-    /** 道具：修正速度值 */
+    /** 道具：修正速度值（Klutz 阻塞） */
     public static int dispatchItemSpeed(Map<String, Object> mon, SpeedContext ctx, int speed) {
+        if (hasKlutz(mon)) return speed;
         ItemHandler h = getItem(heldItem(mon));
         return h != null ? h.onModifySpeed(ctx, speed) : speed;
     }
@@ -150,10 +154,17 @@ public final class EffectRegistry {
         return h != null ? h.onModifyWeight(ctx, weight) : weight;
     }
 
-    /** 道具：修正重量 */
+    /** 道具：修正重量（Klutz 阻塞） */
     public static int dispatchItemWeight(Map<String, Object> mon, WeightContext ctx, int weight) {
+        if (hasKlutz(mon)) return weight;
         ItemHandler h = getItem(heldItem(mon));
         return h != null ? h.onModifyWeight(ctx, weight) : weight;
+    }
+
+    /** 检查目标是否持有 Klutz 特性（道具无效化） */
+    private static boolean hasKlutz(Map<String, Object> mon) {
+        String ab = abilityName(mon);
+        return "klutz".equals(ab);
     }
 
     /** 装备是否在登记表中（用于判断是否为「有效道具」） */
@@ -1355,6 +1366,143 @@ public final class EffectRegistry {
         regAbility(new Ab() {
             public String id() { return "ball-fetch"; }
         });
+
+        // ========== P0/P1 缺失特性补齐 ==========
+
+        // 危险预知：上场时检测对手是否拥有克制/秒杀/自爆招式
+        regAbility(new Ab() {
+            public String id() { return "anticipation"; }
+        });
+
+        // 不仁不义：攻击中毒目标必中要害
+        regAbility(new Ab() {
+            public String id() { return "merciless"; }
+        });
+
+        // 奇迹皮肤：变化招式命中率 ×0.5
+        regAbility(new Ab() {
+            public String id() { return "wonder-skin"; }
+        });
+
+        // 飞出的内在物：被击倒时造成等量伤害
+        regAbility(new Ab() {
+            public String id() { return "innards-out"; }
+        });
+
+        // 精神力：不会畏缩
+        regAbility(new Ab() {
+            public String id() { return "inner-focus"; }
+        });
+
+        // 适应力：本系加成从 1.5x → 2.0x
+        regAbility(new Ab() {
+            public String id() { return "adaptability"; }
+            public double onSourceModifyDamage(AttackContext ctx, double mod) {
+                // STAB 修正由引擎在 calcSTAB 阶段处理，此处标记由引擎读取
+                return mod;
+            }
+        });
+
+        // 硬爪：接触招式 ×1.3
+        regAbility(new Ab() {
+            public String id() { return "tough-claws"; }
+            public double onSourceModifyDamage(AttackContext ctx, double mod) {
+                return hasMoveFlag(ctx.move, "contact") ? mod * 1.3 : mod;
+            }
+        });
+
+        // 狙击手：会心一击倍率 2.25x（由引擎 damage 公式读取）
+        regAbility(new Ab() {
+            public String id() { return "sniper"; }
+        });
+
+        // 下载：登场时根据对手防御/特防提升攻击或特攻（引擎 switch-in 实现）
+        regAbility(new Ab() {
+            public String id() { return "download"; }
+        });
+
+        // 加速：每回合结束时速度 +1（引擎 turn-cleanup 实现）
+        regAbility(new Ab() {
+            public String id() { return "speed-boost"; }
+        });
+
+        // 纯朴：无视对手能力变化（引擎 damage 公式实现）
+        regAbility(new Ab() {
+            public String id() { return "unaware"; }
+        });
+
+        // 先进医术：回复招式先制度 +3
+        regAbility(new Ab() {
+            public String id() { return "triage"; }
+        });
+
+        // 腐蚀：毒系招式可中毒钢系
+        regAbility(new Ab() {
+            public String id() { return "corrosion"; }
+        });
+
+        // 鲜艳之躯/女王威严/尾甲：阻挡对手先制招式
+        regAbility(new Ab() {
+            public String id() { return "dazzling"; }
+        });
+        regAbility(new Ab() {
+            public String id() { return "queenly-majesty"; }
+        });
+        regAbility(new Ab() {
+            public String id() { return "armor-tail"; }
+        });
+
+        // 亲子爱：第二次攻击 0.25x
+        regAbility(new Ab() {
+            public String id() { return "parental-bond"; }
+            public double onSourceModifyDamage(AttackContext ctx, double mod) {
+                return Boolean.TRUE.equals(ctx.attacker.get("parentalBondSecondHit")) ? mod * 0.25 : mod;
+            }
+        });
+
+        // 暗黑气场/妖精气场/气场破坏
+        regAbility(new Ab() {
+            public String id() { return "dark-aura"; }
+            public double onSourceModifyDamage(AttackContext ctx, double mod) {
+                return ctx.moveTypeIs(DARK) ? mod * 4.0 / 3.0 : mod;
+            }
+        });
+        regAbility(new Ab() {
+            public String id() { return "fairy-aura"; }
+            public double onSourceModifyDamage(AttackContext ctx, double mod) {
+                return ctx.moveTypeIs(FAIRY) ? mod * 4.0 / 3.0 : mod;
+            }
+        });
+        regAbility(new Ab() {
+            public String id() { return "aura-break"; }
+            public double onSourceModifyDamage(AttackContext ctx, double mod) {
+                // 由引擎结合 dark-aura/fairy-aura 计算，此处标记
+                return mod;
+            }
+        });
+
+        // 异兽提升：击倒对手后提升最高能力（引擎 faint 处理实现）
+        regAbility(new Ab() {
+            public String id() { return "beast-boost"; }
+        });
+
+        // 镜甲：反弹能力下降
+        regAbility(new Ab() {
+            public String id() { return "mirror-armor"; }
+        });
+
+        // 好胜/不服输：能力下降时攻击/特攻 +2
+        regAbility(new Ab() {
+            public String id() { return "competitive"; }
+        });
+        regAbility(new Ab() {
+            public String id() { return "defiant"; }
+        });
+
+        // 神奇守护：只有效果绝佳的招式才能命中
+        regAbility(new Ab() {
+            public String id() { return "wonder-guard"; }
+        });
     }
 
     // ========================================================================
@@ -1516,8 +1664,15 @@ public final class EffectRegistry {
     }
 
     private static boolean isBoosterActive(AttackContext ctx, String ability, String fieldKey) {
-        // Booster Energy 触发
-        if ("booster-energy".equals(heldItem(ctx.attacker))) return true;
+        // Booster Energy 触发（首次激活即消耗）
+        if ("booster-energy".equals(heldItem(ctx.attacker))) {
+            if (!Boolean.TRUE.equals(ctx.attacker.get("boosterEnergyUsed"))) {
+                ctx.attacker.put("boosterEnergyUsed", true);
+                ctx.attacker.put("heldItem", "");
+                ctx.attacker.put("itemConsumed", true);
+            }
+            return true;
+        }
         // 场地激活
         return fieldActive(ctx.state, fieldKey);
     }
