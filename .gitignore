@@ -90,3 +90,4 @@ csv/
 # ========================
 .env.local
 .env.*.local
+**/config/jwt.key 
