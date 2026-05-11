@@ -1021,11 +1021,8 @@ public final class EffectRegistry {
         //  道具
         // ====================================================================
 
-        // === 伤害倍率道具 ===
-        regItem(new It() {
-            public String id() { return "life-orb"; }
-            public double onSourceModifyDamage(AttackContext ctx, double mod) { return mod * 1.3; }
-        });
+        // 道具 handler 委托到 ItemHandlers
+        ItemHandlers.registerAll(ITEMS);
         // Metronome: 连续用同一招式每次 +0.2x
         regItem(new It() {
             public String id() { return "metronome"; }
