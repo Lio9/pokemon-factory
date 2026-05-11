@@ -317,6 +317,14 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
     private EvolutionNodeVO buildNode(Integer speciesId, Map<Integer, Pokemon> speciesMap,
                                        Map<Integer, List<Pokemon>> childrenMap,
                                        Integer chainId, Integer currentId) {
+        return buildNode(speciesId, speciesMap, childrenMap, chainId, currentId, new java.util.HashSet<>());
+    }
+
+    private EvolutionNodeVO buildNode(Integer speciesId, Map<Integer, Pokemon> speciesMap,
+                                       Map<Integer, List<Pokemon>> childrenMap,
+                                       Integer chainId, Integer currentId,
+                                       java.util.Set<Integer> visited) {
+        if (!visited.add(speciesId)) return null; // 循环引用保护
         Pokemon sp = speciesMap.get(speciesId);
         if (sp == null) return null;
 
@@ -345,7 +353,7 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         List<Pokemon> children = childrenMap.get(speciesId);
         if (children != null && !children.isEmpty()) {
             node.setChildren(children.stream()
-                    .map(child -> buildNode(child.getId(), speciesMap, childrenMap, chainId, currentId))
+                    .map(child -> buildNode(child.getId(), speciesMap, childrenMap, chainId, currentId, visited))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList()));
         }
