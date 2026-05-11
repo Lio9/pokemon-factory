@@ -1548,8 +1548,10 @@ public final class EffectRegistry {
     // ========================================================================
 
     /** 避免匿名类中重复写 AbilityHandler 全方法 */
-    private abstract static class Ab implements AbilityHandler {}
-    private abstract static class It implements ItemHandler {}
+    /** 能力 handler 基类——包可见，允许外部 handler 文件继承 */
+    abstract static class Ab implements AbilityHandler {}
+    /** 道具 handler 基类——包可见 */
+    abstract static class It implements ItemHandler {}
 
     private static void regAbility(AbilityHandler h) { register(h); }
     private static void regItem(ItemHandler h) { register(h); }
