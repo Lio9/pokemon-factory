@@ -1,45 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  UserMapper 文件说明
-  所属模块：user-module 后端模块。
-  文件类型：数据库映射配置文件。
-  核心职责：负责声明 SQL、结果映射和 Mapper 接口之间的绑定关系。
-  阅读建议：建议结合对应 Java Mapper 接口与数据模型一起阅读。
-  项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
--->
-
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.lio9.user.mapper.UserMapper">
 
-    <!-- 用户账号结果映射：统一在 XML 中处理下划线字段到 Java 属性的转换 -->
     <resultMap id="UserAccountResultMap" type="com.lio9.user.model.UserAccount">
         <id property="id" column="id"/>
         <result property="username" column="username"/>
         <result property="displayName" column="display_name"/>
         <result property="passwordHash" column="password_hash"/>
+        <result property="email" column="email"/>
+        <result property="tokenVersion" column="token_version"/>
+        <result property="failedAttempts" column="failed_attempts"/>
+        <result property="lockedUntil" column="locked_until"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
         <result property="lastLoginAt" column="last_login_at"/>
     </resultMap>
 
-    <!-- 新建账号时统一补齐展示名与审计时间字段 -->
     <insert id="insertUser">
-        INSERT INTO app_user(username, display_name, password_hash, created_at, updated_at)
-        VALUES(#{username}, #{displayName}, #{passwordHash}, datetime('now'), datetime('now'))
+        INSERT INTO app_user(username, display_name, password_hash, token_version, created_at, updated_at)
+        VALUES(#{username}, #{displayName}, #{passwordHash}, 1, datetime('now'), datetime('now'))
     </insert>
 
-    <!-- 登录、注册、恢复会话都复用这条查询 -->
     <select id="findByUsername" resultMap="UserAccountResultMap">
-        SELECT id, username, display_name, password_hash, created_at, updated_at, last_login_at
-        FROM app_user
-        WHERE username = #{username}
+        SELECT * FROM app_user WHERE username = #{username}
     </select>
 
-    <!-- 登录成功后刷新最后登录时间，便于会话展示与追踪 -->
     <update id="touchLogin">
-        UPDATE app_user
-        SET last_login_at = datetime('now'),
+        UPDATE app_user SET last_login_at = datetime('now'), updated_at = datetime('now')
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateDisplayName">
+        UPDATE app_user SET display_name = #{displayName}, updated_at = datetime('now')
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE app_user SET password_hash = #{passwordHash},
+            token_version = token_version + 1,
             updated_at = datetime('now')
         WHERE id = #{id}
     </update>
+
+    <update id="incrementTokenVersion">
+        UPDATE app_user SET token_version = token_version + 1, updated_at = datetime('now')
+        WHERE id = #{id}
+    </update>
+
+    <update id="resetFailedAttempts">
+        UPDATE app_user SET failed_attempts = 0, locked_until = NULL
+        WHERE id = #{id}
+    </update>
+
+    <update id="incrementFailedAttempts">
+        UPDATE app_user SET failed_attempts = COALESCE(failed_attempts, 0) + 1
+        WHERE id = #{id}
+    </update>
+
+    <update id="unlockAccount">
+        UPDATE app_user SET failed_attempts = 0, locked_until = NULL
+        WHERE id = #{id}
+    </update>
+
 </mapper>

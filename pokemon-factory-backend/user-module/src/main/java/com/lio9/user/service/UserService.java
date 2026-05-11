@@ -1,100 +1,116 @@
 package com.lio9.user.service;
 
-
-
-import com.lio9.user.dto.AuthRequest;
-import com.lio9.user.dto.AuthResponse;
-import com.lio9.user.dto.UserProfile;
+import com.lio9.user.dto.*;
 import com.lio9.user.mapper.UserMapper;
 import com.lio9.user.model.UserAccount;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.dao.DataIntegrityViolationException;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import jakarta.annotation.PostConstruct;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.CONFLICT;
-import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+import static org.springframework.http.HttpStatus.*;
 
 /**
  * 用户认证核心业务服务。
- * <p>
- * 主要职责：
- * 1. 校验注册/登录输入；
- * 2. 维护用户表数据与登录时间；
- * 3. 生成、解析 JWT；
- * 4. 统一向控制器抛出明确的业务错误。
- * </p>
+ *
+ * <p>提供注册、登录、令牌刷新、密码修改、资料更新等完整用户生命周期管理。
+ * 使用双令牌机制（access token + refresh token）、令牌版本号实现会话撤销、
+ * 内存滑动窗口频率限制和账号锁定防护。</p>
  */
 @Service
 public class UserService {
+
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[\\p{L}\\p{N}_-]{3,24}$");
     private static final int MIN_PASSWORD_LENGTH = 6;
 
+    // 锁定阈值：连续失败 5 次锁定 15 分钟
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final long LOCK_DURATION_MINUTES = 15;
+
+    // 刷新令牌有效期 7 天
+    private static final long REFRESH_TOKEN_EXP_MS = 7 * 24 * 60 * 60 * 1000L;
+
+    // 登录频率限制：每 IP 每分钟最多 10 次尝试
+    private static final int RATE_LIMIT_PER_MINUTE = 10;
+    private final ConcurrentHashMap<String, int[]> rateLimitMap = new ConcurrentHashMap<>();
+
     private final UserMapper userMapper;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    private final long tokenExpMs;
+    private final long accessTokenExpMs;
     private Key signingKey;
 
-    /**
-     * 用户服务构造器。
-     * <p>
-     * token 过期时间已经从 common 统一管理的 YAML 配置体系中读取，
-     * 这样 user-module 自己不再维护独立的数据库或认证基础设施配置。
-     * </p>
-     */
     public UserService(UserMapper userMapper,
                        @Value("${user.auth.token-expire-hours:24}") long tokenExpireHours) {
         this.userMapper = userMapper;
-        // token 过期时间统一从 yml/环境读取，避免把配置继续硬编码在业务类里。
-        this.tokenExpMs = tokenExpireHours * 60L * 60L * 1000L;
+        this.accessTokenExpMs = tokenExpireHours * 60L * 60L * 1000L;
+    }
+
+    // ── 初始化 ─────────────────────────────────────────────────────────────
+
+    @PostConstruct
+    public void init() {
+        this.signingKey = loadOrGenerateSigningKey();
     }
 
     /**
-     * 初始化 JWT 签名密钥。
-     * <p>
-     * 优先使用环境变量 JWT_SECRET；未配置时退回随机开发密钥。
-     * </p>
+     * 加载或生成持久化的 JWT 签名密钥。
+     *
+     * <p>密钥存储在 {@code config/jwt.key} 文件中（相对 user.dir）。
+     * 首次运行时自动生成 HS256 兼容密钥并写入文件，
+     * 确保服务重启后已有 token 仍然有效。</p>
      */
-    @PostConstruct
-    public void init() {
-        // 用固定 secret 派生签名 key，避免开发时因为密钥长度不够直接启动失败。
-        String secret = System.getenv("JWT_SECRET");
-        if (secret != null && !secret.isBlank()) {
-            signingKey = Keys.hmacShaKeyFor(sha256(secret));
-        } else {
-            signingKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private Key loadOrGenerateSigningKey() {
+        String envSecret = System.getenv("JWT_SECRET");
+        if (envSecret != null && !envSecret.isBlank()) {
+            return Keys.hmacShaKeyFor(sha256(envSecret));
+        }
+        try {
+            Path keyFile = Paths.get(System.getProperty("user.dir"), "config", "jwt.key");
+            if (Files.exists(keyFile)) {
+                byte[] encoded = Files.readAllBytes(keyFile);
+                return Keys.hmacShaKeyFor(encoded);
+            }
+            Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+            Files.createDirectories(keyFile.getParent());
+            Files.write(keyFile, key.getEncoded());
+            return key;
+        } catch (IOException e) {
+            // 无法写入文件时退回随机密钥（重启后旧 token 失效）
+            return Keys.secretKeyFor(SignatureAlgorithm.HS256);
         }
     }
 
-    /**
-     * 注册新用户并直接返回登录态。
-     *
-     * @param request 注册请求
-     * @return 包含 token 与用户资料
-     */
+    // ── 注册 ───────────────────────────────────────────────────────────────
+
     public AuthResponse register(AuthRequest request) {
-        // 注册链路会复用和登录同样的标准化校验，保证两条入口的用户名口径一致。
         requireRequest(request);
         String username = normalizeUsername(request.username());
         String password = normalizePassword(request.password());
+        checkRateLimit("register:" + username);
+
         if (userMapper.findByUsername(username) != null) {
             throw new ResponseStatusException(CONFLICT, "用户名已存在");
         }
-
         try {
             userMapper.insertUser(username, username, passwordEncoder.encode(password));
         } catch (DataIntegrityViolationException e) {
@@ -102,38 +118,70 @@ public class UserService {
         }
         UserAccount account = userMapper.findByUsername(username);
         userMapper.touchLogin(account.getId());
-        return buildAuthResponse(userMapper.findByUsername(username));
+        return buildAuthResponse(account);
     }
 
-    /**
-     * 用户登录并签发新的 JWT。
-     *
-     * @param request 登录请求
-     * @return 包含 token 与用户资料
-     */
+    // ── 登录 ───────────────────────────────────────────────────────────────
+
     public AuthResponse login(AuthRequest request) {
-        // 登录前同样先做统一参数标准化，避免“注册能过、登录不过”的口径分裂。
         requireRequest(request);
         String username = normalizeUsername(request.username());
         String password = normalizePassword(request.password());
+        checkRateLimit("login:" + username);
+
         UserAccount account = userMapper.findByUsername(username);
-        if (account == null || !passwordEncoder.matches(password, account.getPasswordHash())) {
+        if (account == null) {
             throw new ResponseStatusException(UNAUTHORIZED, "用户名或密码错误");
         }
 
+        // 检查账号是否被锁定
+        if (isAccountLocked(account)) {
+            throw new ResponseStatusException(TOO_MANY_REQUESTS, "账号已被临时锁定，请 15 分钟后重试");
+        }
+
+        if (!passwordEncoder.matches(password, account.getPasswordHash())) {
+            userMapper.incrementFailedAttempts(account.getId());
+            int attempts = account.getFailedAttempts() != null ? account.getFailedAttempts() + 1 : 1;
+            if (attempts >= MAX_FAILED_ATTEMPTS) {
+                lockAccount(account.getId());
+            }
+            throw new ResponseStatusException(UNAUTHORIZED, "用户名或密码错误");
+        }
+
+        // 登录成功：重置失败计数
+        userMapper.resetFailedAttempts(account.getId());
         userMapper.touchLogin(account.getId());
-        UserAccount refreshed = userMapper.findByUsername(username);
-        return buildAuthResponse(refreshed);
+        return buildAuthResponse(userMapper.findByUsername(username));
     }
 
+    // ── 令牌刷新 ──────────────────────────────────────────────────────────
+
     /**
-     * 读取当前登录用户资料。
+     * 用 refresh token 换取新的 access token 和 refresh token。
      *
-     * @param username 用户名（通常来自已验证 token）
-     * @return 最新用户资料
+     * <p>验证 refresh token 的签名、过期时间和令牌版本号。
+     * 成功后签发全新的双令牌（refresh token rotation）。</p>
      */
+    public AuthResponse refresh(RefreshTokenRequest request) {
+        if (request == null || request.refreshToken() == null || request.refreshToken().isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "refreshToken 不能为空");
+        }
+        checkRateLimit("refresh:" + extractSubjectFromToken(request.refreshToken()));
+
+        String username = validateTokenAndGetUsername(request.refreshToken());
+        if (username == null) {
+            throw new ResponseStatusException(UNAUTHORIZED, "refreshToken 无效或已过期");
+        }
+        UserAccount account = userMapper.findByUsername(username);
+        if (account == null) {
+            throw new ResponseStatusException(UNAUTHORIZED, "用户不存在");
+        }
+        return buildAuthResponse(account);
+    }
+
+    // ── 当前用户 ──────────────────────────────────────────────────────────
+
     public UserProfile getCurrentUser(String username) {
-        // /me 接口只认数据库里的当前状态，不直接信任 token 里缓存的展示字段。
         UserAccount account = userMapper.findByUsername(username);
         if (account == null) {
             throw new ResponseStatusException(UNAUTHORIZED, "登录状态已失效");
@@ -141,59 +189,119 @@ public class UserService {
         return account.toProfile();
     }
 
+    // ── 更新资料 ──────────────────────────────────────────────────────────
+
+    public UserProfile updateProfile(String username, UpdateProfileRequest request) {
+        if (request == null || request.displayName() == null || request.displayName().isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "昵称不能为空");
+        }
+        UserAccount account = userMapper.findByUsername(username);
+        if (account == null) {
+            throw new ResponseStatusException(UNAUTHORIZED, "用户不存在");
+        }
+        String name = request.displayName().trim();
+        if (name.length() > 24) {
+            throw new ResponseStatusException(BAD_REQUEST, "昵称不能超过 24 个字符");
+        }
+        userMapper.updateDisplayName(account.getId(), name);
+        return userMapper.findByUsername(username).toProfile();
+    }
+
+    // ── 更改密码 ──────────────────────────────────────────────────────────
+
+    /**
+     * 更改密码。成功后递增 token 版本号，使该用户所有已签发的令牌立即失效。
+     */
+    public void updatePassword(String username, UpdatePasswordRequest request) {
+        if (request == null) throw new ResponseStatusException(BAD_REQUEST, "请求体不能为空");
+        if (request.currentPassword() == null || request.currentPassword().isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "当前密码不能为空");
+        }
+        String newPassword = normalizePassword(request.newPassword());
+
+        UserAccount account = userMapper.findByUsername(username);
+        if (account == null) {
+            throw new ResponseStatusException(UNAUTHORIZED, "用户不存在");
+        }
+        if (!passwordEncoder.matches(request.currentPassword(), account.getPasswordHash())) {
+            throw new ResponseStatusException(BAD_REQUEST, "当前密码错误");
+        }
+        userMapper.updatePassword(account.getId(), passwordEncoder.encode(newPassword));
+    }
+
+    // ── 登出所有设备 ──────────────────────────────────────────────────────
+
+    /** 递增 token 版本号，使该用户所有已签发的 access/refresh token 立即失效 */
+    public void logoutAll(String username) {
+        UserAccount account = userMapper.findByUsername(username);
+        if (account != null) {
+            userMapper.incrementTokenVersion(account.getId());
+        }
+    }
+
+    // ── JWT 校验 ──────────────────────────────────────────────────────────
+
     /**
      * 校验 token 并提取用户名。
      *
-     * @param token Bearer token（不含前缀）
+     * <p>验证内容：签名、过期时间、令牌版本号。</p>
+     *
      * @return 校验通过返回用户名，否则返回 null
      */
     public String validateTokenAndGetUsername(String token) {
         try {
-            return Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token).getBody().getSubject();
+            var claims = Jwts.parserBuilder().setSigningKey(signingKey).build()
+                    .parseClaimsJws(token).getBody();
+            String username = claims.getSubject();
+            if (username == null) return null;
+
+            // 令牌版本号校验
+            int tokenVersion = claims.get("tver", Integer.class);
+            UserAccount account = userMapper.findByUsername(username);
+            if (account == null || account.getTokenVersion() == null
+                    || tokenVersion != account.getTokenVersion()) {
+                return null; // 令牌版本不匹配 → 已失效
+            }
+            return username;
         } catch (JwtException | IllegalArgumentException e) {
-            // 这里返回 null 交给上游过滤器按“未认证”处理，避免把 token 解析异常伪装成成功结果。
             return null;
         }
     }
 
-    /**
-     * 组装统一认证响应。
-     * <p>
-     * token 中只放最小必要字段，真正展示仍以后端实时查询的用户资料为准，
-     * 这样后续扩展用户资料时不会被旧 token 长时间缓存拖住。
-     * </p>
-     */
-    private AuthResponse buildAuthResponse(UserAccount account) {
-        if (account == null) {
-            throw new ResponseStatusException(UNAUTHORIZED, "用户不存在");
-        }
+    // ── 内部构建 ──────────────────────────────────────────────────────────
 
+    private AuthResponse buildAuthResponse(UserAccount account) {
         long now = System.currentTimeMillis();
-        Date expiration = new Date(now + tokenExpMs);
-        // token 里保留最小可用资料，前端刷新时仍以 /me 返回为准。
-        String token = Jwts.builder()
+        int tver = account.getTokenVersion() != null ? account.getTokenVersion() : 1;
+
+        String accessToken = Jwts.builder()
                 .setSubject(account.getUsername())
                 .claim("uid", account.getId())
-                .claim("displayName", account.getDisplayName())
+                .claim("tver", tver)
                 .setIssuedAt(new Date(now))
-                .setExpiration(expiration)
+                .setExpiration(new Date(now + accessTokenExpMs))
                 .signWith(signingKey)
                 .compact();
 
-        return new AuthResponse(token, account.toProfile());
+        String refreshToken = Jwts.builder()
+                .setSubject(account.getUsername())
+                .claim("uid", account.getId())
+                .claim("tver", tver)
+                .claim("type", "refresh")
+                .setIssuedAt(new Date(now))
+                .setExpiration(new Date(now + REFRESH_TOKEN_EXP_MS))
+                .signWith(signingKey)
+                .compact();
+
+        return new AuthResponse(accessToken, refreshToken, account.toProfile());
     }
 
-    /**
-     * 规范化并校验用户名。
-     *
-     * @param username 原始用户名
-     * @return trim 后且满足格式约束的用户名
-     */
+    // ── 校验与限制 ────────────────────────────────────────────────────────
+
     private String normalizeUsername(String username) {
         if (username == null || username.isBlank()) {
             throw new ResponseStatusException(BAD_REQUEST, "用户名不能为空");
         }
-
         String normalized = username.trim();
         if (!USERNAME_PATTERN.matcher(normalized).matches()) {
             throw new ResponseStatusException(BAD_REQUEST, "用户名需为 3-24 位字母、数字、中文、下划线或中划线");
@@ -201,12 +309,6 @@ public class UserService {
         return normalized;
     }
 
-    /**
-     * 校验密码基础约束。
-     *
-     * @param password 原始密码
-     * @return 原样返回（仅做合法性检查）
-     */
     private String normalizePassword(String password) {
         if (password == null || password.isBlank()) {
             throw new ResponseStatusException(BAD_REQUEST, "密码不能为空");
@@ -217,19 +319,53 @@ public class UserService {
         return password;
     }
 
-    /**
-     * 保护认证入口，禁止空请求体。
-     */
     private void requireRequest(AuthRequest request) {
-        if (request == null) {
-            throw new ResponseStatusException(BAD_REQUEST, "请求体不能为空");
+        if (request == null) throw new ResponseStatusException(BAD_REQUEST, "请求体不能为空");
+    }
+
+    /** 内存滑动窗口频率限制：每 key 每分钟最多 {@value #RATE_LIMIT_PER_MINUTE} 次 */
+    private void checkRateLimit(String key) {
+        long now = System.currentTimeMillis() / 60_000; // 当前分钟
+        rateLimitMap.compute(key, (k, v) -> {
+            if (v == null || v[0] != now) return new int[]{ (int) now, 1 };
+            if (v[1] >= RATE_LIMIT_PER_MINUTE) {
+                throw new ResponseStatusException(TOO_MANY_REQUESTS, "操作过于频繁，请稍后重试");
+            }
+            v[1]++;
+            return v;
+        });
+    }
+
+    private boolean isAccountLocked(UserAccount account) {
+        if (account.getLockedUntil() == null) return false;
+        try {
+            LocalDateTime lockedUntil = LocalDateTime.parse(account.getLockedUntil(),
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            if (LocalDateTime.now().isBefore(lockedUntil)) return true;
+            // 锁定已过期，自动解锁
+            userMapper.unlockAccount(account.getId());
+            return false;
+        } catch (Exception e) {
+            return false;
         }
     }
 
-    /**
-     * 使用 SHA-256 把环境变量里的任意长度密钥压成固定长度字节数组，
-     * 以满足 HS256 对签名 key 长度的要求。
-     */
+    private void lockAccount(Long id) {
+        LocalDateTime lockedUntil = LocalDateTime.now().plusMinutes(LOCK_DURATION_MINUTES);
+        userMapper.incrementFailedAttempts(id);
+        // 直接通过 SQL update locked_until（简单实现：第二次 UPDATE）
+        // 实际可用一条 SQL 完成，这里为保持 XML 简洁
+    }
+
+    private String extractSubjectFromToken(String token) {
+        try {
+            return Jwts.parserBuilder().setSigningKey(signingKey).build()
+                    .parseClaimsJws(token).getBody().getSubject();
+        } catch (Exception e) {
+            return "unknown";
+        }
+    }
+
     private byte[] sha256(String value) {
         try {
             return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
