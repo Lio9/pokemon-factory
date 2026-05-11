@@ -1,10 +1,3 @@
-# application 文件说明
-# 所属模块：poke-dex 后端模块。
-# 文件类型：YAML 配置文件。
-# 核心职责：负责声明模块运行参数、环境配置和基础设施开关。
-# 阅读建议：建议优先确认不同 profile 或环境变量的覆盖关系。
-# 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
-
 server:
   port: 8081
   compression:
@@ -14,17 +7,14 @@ server:
 
 spring:
   config:
-    # 统一从 common 导入数据库配置，当前模块只保留业务侧配置。
     import: optional:classpath:application-common.yml,optional:classpath:application-common-pokedex.yml
   application:
-    name: poke-dex
+    name: pokedex
   main:
     allow-bean-definition-overriding: true
   jackson:
     property-naming-strategy: SNAKE_CASE
 
-# 导入任务配置
-# HTTP 客户端配置
 http:
   client:
     max-connections: 100

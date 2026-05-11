@@ -1,547 +1,278 @@
-
-
 <template>
-  <div
-    ref="listContainer"
-    class="move-list"
-  >
+  <div ref="listContainer" class="move-list">
     <!-- 搜索和筛选 -->
-    <div class="sticky top-[4.25rem] z-10 mb-5 rounded-xl bg-white p-4 shadow-sm sm:top-[4.75rem] sm:mb-6">
+    <div class="glass-card mb-6 p-4 sticky top-[4.25rem] z-10 sm:top-[4.75rem]">
       <div class="flex flex-col gap-4">
-        <!-- 搜索和基本筛选 -->
         <div class="flex flex-wrap gap-3">
+
           <div class="flex-1 min-w-[200px]">
             <el-input
               v-model="keyword"
-              placeholder="搜索技能名称..."
+              :placeholder="tr('搜索技能名称...', 'Search moves...')"
               clearable
+              size="large"
               @input="handleSearchInput"
               @clear="handleSearch"
+              @keyup.enter="handleSearch"
             >
               <template #append>
-                <el-button @click="handleSearch">
-                  搜索
+                <el-button class="!bg-gradient-to-r !from-rose-500 !to-orange-500 !text-white !border-none hover:!from-rose-600 hover:!to-orange-600" @click="handleSearch">
+                  <el-icon><Search /></el-icon>
                 </el-button>
               </template>
             </el-input>
           </div>
           <div class="w-full sm:w-32">
-            <el-select
-              v-model="selectedType"
-              placeholder="属性"
-              clearable
-              @change="handleSearch"
-            >
-              <el-option
-                v-for="t in types"
-                :key="t.id"
-                :label="t.name"
-                :value="t.id"
-              />
+            <el-select v-model="selectedType" :placeholder="tr('属性', 'Type')" clearable size="large" class="w-full" @change="handleSearch">
+              <el-option v-for="t in types" :key="t.id" :label="t.name" :value="t.id">
+                <div class="flex items-center gap-2">
+                  <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: t.color || '#888' }" />
+                  <span>{{ t.name }}</span>
+                </div>
+              </el-option>
             </el-select>
           </div>
           <div class="w-full sm:w-32">
-            <el-select
-              v-model="selectedDamageClass"
-              placeholder="分类"
-              clearable
-              @change="handleSearch"
-            >
-              <el-option
-                label="物理"
-                value="physical"
-              />
-              <el-option
-                label="特殊"
-                value="special"
-              />
-              <el-option
-                label="变化"
-                value="status"
-              />
+            <el-select v-model="selectedDamageClass" :placeholder="tr('分类', 'Category')" clearable size="large" class="w-full" @change="handleSearch">
+              <el-option :label="tr('物理', 'Physical')" value="physical" />
+              <el-option :label="tr('特殊', 'Special')" value="special" />
+              <el-option :label="tr('变化', 'Status')" value="status" />
             </el-select>
           </div>
-          <el-button
-            :icon="viewMode === 'grid' ? 'List' : 'Grid'"
-            :type="viewMode === 'grid' ? 'primary' : 'default'"
-            @click="toggleViewMode"
-          >
-            {{ viewMode === 'grid' ? '列表' : '网格' }}
-          </el-button>
-          <el-button
-            :icon="isShowFavorites ? 'StarFilled' : 'Star'"
-            :type="isShowFavorites ? 'warning' : 'default'"
-            @click="toggleFavorites"
-          >
-            {{ isShowFavorites ? '全部' : `收藏 (${favorites.size})` }}
-          </el-button>
+          <div class="flex gap-2">
+            <el-button
+              size="large"
+              :class="viewMode === 'grid' ? 'bg-gradient-to-r from-rose-500 to-orange-500 text-white border-none' : 'bg-white text-slate-600 border-slate-300'"
+              @click="toggleViewMode"
+            >
+              <component :is="viewMode === 'grid' ? 'List' : 'Grid'" class="w-4 h-4" />
+              <span class="ml-1">{{ viewMode === 'grid' ? tr('列表', 'List') : tr('网格', 'Grid') }}</span>
+            </el-button>
+            <el-button
+              size="large"
+              :class="isShowFavorites ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-none' : 'bg-white text-slate-600 border-slate-300'"
+              @click="toggleFavorites"
+            >
+              <component :is="isShowFavorites ? 'StarFilled' : 'Star'" class="w-4 h-4" />
+              <span class="ml-1">{{ isShowFavorites ? tr('全部', 'All') : `${tr('收藏', 'Fav')} (${favorites.size})` }}</span>
+            </el-button>
+            <el-button size="large" class="bg-white text-slate-600 border-slate-300" @click="showFilters = !showFilters">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              <span class="ml-1">{{ tr('筛选', 'Filter') }}</span>
+            </el-button>
+          </div>
         </div>
 
-        <!-- 高级筛选面板 -->
+        <!-- 高级筛选 -->
         <el-collapse-transition>
-          <div
-            v-if="showFilters"
-            class="flex flex-wrap gap-3 items-end"
-          >
+          <div v-if="showFilters" class="flex flex-wrap gap-3 items-end p-4 rounded-xl bg-slate-50/80 border border-slate-100">
             <div class="flex-1 min-w-[150px]">
-              <label class="text-xs text-gray-500 mb-1 block">威力范围</label>
-              <el-select
-                v-model="powerRange"
-                placeholder="威力"
-                clearable
-                @change="handleSearch"
-              >
-                <el-option
-                  label="无威力"
-                  value="none"
-                />
-                <el-option
-                  label="1-40"
-                  value="1-40"
-                />
-                <el-option
-                  label="41-70"
-                  value="41-70"
-                />
-                <el-option
-                  label="71-100"
-                  value="71-100"
-                />
-                <el-option
-                  label="101-150"
-                  value="101-150"
-                />
-                <el-option
-                  label="151+"
-                  value="151+"
-                />
+              <label class="text-xs font-semibold text-slate-500 mb-1.5 block">{{ tr('威力范围', 'Power range') }}</label>
+              <el-select v-model="powerRange" :placeholder="tr('威力', 'Power')" clearable size="default" class="w-full" @change="handleSearch">
+                <el-option :label="tr('无威力', 'No power')" value="none" />
+                <el-option label="1-40" value="1-40" />
+                <el-option label="41-70" value="41-70" />
+                <el-option label="71-100" value="71-100" />
+                <el-option label="101-150" value="101-150" />
+                <el-option label="151+" value="151+" />
               </el-select>
             </div>
             <div class="flex-1 min-w-[150px]">
-              <label class="text-xs text-gray-500 mb-1 block">命中范围</label>
-              <el-select
-                v-model="accuracyRange"
-                placeholder="命中"
-                clearable
-                @change="handleSearch"
-              >
-                <el-option
-                  label="必中"
-                  value="100"
-                />
-                <el-option
-                  label="90-99"
-                  value="90-99"
-                />
-                <el-option
-                  label="80-89"
-                  value="80-89"
-                />
-                <el-option
-                  label="70-79"
-                  value="70-79"
-                />
-                <el-option
-                  label="<70"
-                  value="<70"
-                />
+              <label class="text-xs font-semibold text-slate-500 mb-1.5 block">{{ tr('命中范围', 'Accuracy') }}</label>
+              <el-select v-model="accuracyRange" :placeholder="tr('命中', 'Accuracy')" clearable size="default" class="w-full" @change="handleSearch">
+                <el-option :label="tr('必中', 'Always')" value="100" />
+                <el-option label="75-99" value="75-99" />
+                <el-option label="50-74" value="50-74" />
+                <el-option label="<50" value="0-49" />
               </el-select>
             </div>
             <div class="flex-1 min-w-[150px]">
-              <label class="text-xs text-gray-500 mb-1 block">PP范围</label>
-              <el-select
-                v-model="ppRange"
-                placeholder="PP"
-                clearable
-                @change="handleSearch"
-              >
-                <el-option
-                  label="≤5"
-                  value="≤5"
-                />
-                <el-option
-                  label="6-10"
-                  value="6-10"
-                />
-                <el-option
-                  label="11-20"
-                  value="11-20"
-                />
-                <el-option
-                  label="21-30"
-                  value="21-30"
-                />
-                <el-option
-                  label=">30"
-                  value=">30"
-                />
+              <label class="text-xs font-semibold text-slate-500 mb-1.5 block">PP</label>
+              <el-select v-model="ppRange" :placeholder="tr('PP', 'PP')" clearable size="default" class="w-full" @change="handleSearch">
+                <el-option label="1-5" value="1-5" />
+                <el-option label="6-10" value="6-10" />
+                <el-option label="11-20" value="11-20" />
+                <el-option label="21+" value="21+" />
               </el-select>
             </div>
             <div class="flex-1 min-w-[150px]">
-              <label class="text-xs text-gray-500 mb-1 block">排序</label>
-              <el-select
-                v-model="sortBy"
-                @change="handleSort"
-              >
-                <el-option
-                  label="默认"
-                  value="default"
-                />
-                <el-option
-                  label="威力 高→低"
-                  value="power-desc"
-                />
-                <el-option
-                  label="威力 低→高"
-                  value="power-asc"
-                />
-                <el-option
-                  label="命中 高→低"
-                  value="accuracy-desc"
-                />
-                <el-option
-                  label="命中 低→高"
-                  value="accuracy-asc"
-                />
-                <el-option
-                  label="PP 高→低"
-                  value="pp-desc"
-                />
-                <el-option
-                  label="PP 低→高"
-                  value="pp-asc"
-                />
-                <el-option
-                  label="名称 A-Z"
-                  value="name-asc"
-                />
-                <el-option
-                  label="名称 Z-A"
-                  value="name-desc"
-                />
+              <label class="text-xs font-semibold text-slate-500 mb-1.5 block">{{ tr('排序', 'Sort') }}</label>
+              <el-select v-model="sortBy" size="default" class="w-full" @change="handleSort">
+                <el-option :label="tr('默认', 'Default')" value="default" />
+                <el-option label="A-Z" value="name-asc" />
+                <el-option label="Z-A" value="name-desc" />
+                <el-option :label="tr('威力↑', 'Power ↑')" value="power-asc" />
+                <el-option :label="tr('威力↓', 'Power ↓')" value="power-desc" />
               </el-select>
             </div>
           </div>
         </el-collapse-transition>
-
-        <!-- 展开/收起筛选按钮 -->
-        <div class="flex justify-center">
-          <el-button
-            link
-            type="primary"
-            @click="showFilters = !showFilters"
-          >
-            {{ showFilters ? '收起筛选' : '展开筛选 ▼' }}
-          </el-button>
-        </div>
       </div>
     </div>
 
-    <!-- 统计信息 -->
-    <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-      <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-4 text-white">
-        <div class="text-2xl font-bold">
-          {{ total }}
-        </div>
-        <div class="text-red-100 text-sm">
-          总数
-        </div>
+    <!-- 统计栏 -->
+    <div class="flex items-center justify-between mb-4 px-1">
+      <div class="text-sm text-slate-500">
+        {{ tr('共 {total} 个技能', '{total} moves total', { total }) }}
+        <span v-if="isShowFavorites" class="ml-2 text-amber-600 font-medium">· {{ tr('收藏', 'Favorites') }}</span>
       </div>
-      <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white">
-        <div class="text-2xl font-bold">
-          {{ loadedCount }}
-        </div>
-        <div class="text-orange-100 text-sm">
-          已加载
-        </div>
-      </div>
-      <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl p-4 text-white">
-        <div class="text-2xl font-bold">
-          {{ selectedType ? types.find(t => t.id === selectedType)?.name : '全部' }}
-        </div>
-        <div class="text-yellow-100 text-sm">
-          属性筛选
-        </div>
-      </div>
+      <div class="text-xs text-slate-400">{{ tr('已加载 {count}', 'Loaded {count}', { count: loadedCount }) }}</div>
     </div>
 
-    <!-- 加载骨架屏 -->
-    <div v-if="loading && moves.length === 0">
-      <div
-        v-if="viewMode === 'grid'"
-        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        <el-skeleton
-          v-for="i in 6"
-          :key="i"
-          animated
-        >
-          <template #template>
-            <el-card class="mb-4">
-              <el-skeleton-item
-                variant="h3"
-                style="width: 50%"
-              />
-              <el-skeleton-item
-                variant="text"
-                style="width: 70%"
-              />
-              <el-skeleton-item
-                variant="text"
-                style="width: 40%"
-              />
-              <el-skeleton-item
-                variant="rect"
-                style="width: 100%; height: 60px; margin-top: 10px"
-              />
-            </el-card>
-          </template>
-        </el-skeleton>
-      </div>
-      <div
-        v-else
-        class="bg-white rounded-xl shadow-sm overflow-hidden"
-      >
-        <el-skeleton
-          :rows="5"
-          animated
-        />
+    <!-- 加载骨架 -->
+    <div v-if="loading && moves.length === 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <div v-for="i in 12" :key="i" class="glass-card p-4 animate-pulse">
+        <div class="h-4 bg-slate-200 rounded w-3/4 mb-3" />
+        <div class="flex gap-2 mb-3"><div class="h-5 bg-slate-200 rounded-full w-14" /><div class="h-5 bg-slate-100 rounded-full w-14" /></div>
+        <div class="h-3 bg-slate-100 rounded w-1/2" />
       </div>
     </div>
 
     <!-- 网格视图 -->
-    <div
-      v-else-if="moves.length && viewMode === 'grid'"
-      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-    >
-      <div
-        v-for="move in moves"
-        :key="move.id"
-        class="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer group"
-        @click="showMoveDetail(move)"
-      >
-        <div class="flex items-start justify-between mb-3">
-          <div class="flex items-center gap-2">
-            <h3 class="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-              {{ move.name }}
-            </h3>
-            <span class="text-xs text-gray-400">{{ move.nameEn }}</span>
+    <template v-if="viewMode === 'grid'">
+      <div v-if="moves.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div
+          v-for="(move, index) in moves"
+          :key="move.id"
+          class="glass-card-interactive glass-card p-4 cursor-pointer animate-slide-up"
+          :style="{ animationDelay: `${index * 25}ms` }"
+          @click="showMoveDetail(move)"
+        >
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="font-semibold text-slate-800 text-sm leading-tight truncate flex-1">{{ move.name }}</h3>
+            <button
+              class="ml-1 flex-shrink-0 transition-transform duration-200 hover:scale-110"
+              :class="favorites.has(move.id) ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'"
+              @click.stop="toggleFavorite(move)"
+            >
+              <component :is="favorites.has(move.id) ? 'StarFilled' : 'Star'" class="w-4 h-4" />
+            </button>
           </div>
-          <el-button
-            :icon="favorites.has(move.id) ? 'StarFilled' : 'Star'"
-            :type="favorites.has(move.id) ? 'warning' : 'default'"
-            text
-            size="small"
-            @click.stop="toggleFavorite(move.id)"
-          />
-        </div>
-        <div class="flex flex-wrap gap-2 mb-3">
-          <span
-            class="px-2 py-1 rounded text-white text-xs font-medium"
-            :style="{ backgroundColor: move.typeColor }"
-          >
-            {{ move.typeName }}
-          </span>
-          <span class="px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs">
-            {{ move.damageClass }}
-          </span>
-        </div>
-        <div class="grid grid-cols-3 gap-2 text-center text-sm">
-          <div class="bg-red-50 rounded-lg py-2">
-            <div class="font-semibold text-red-600">
-              {{ move.power || '-' }}
-            </div>
-            <div class="text-xs text-red-400">
-              威力
-            </div>
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            <span v-if="move.typeName" class="type-badge type-badge-sm" :style="{ backgroundColor: move.typeColor || '#888' }">{{ move.typeName }}</span>
+            <span
+              class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+              :class="{
+                'bg-rose-100 text-rose-700': move.damageClass === 'physical',
+                'bg-blue-100 text-blue-700': move.damageClass === 'special',
+                'bg-purple-100 text-purple-700': move.damageClass === 'status'
+              }"
+            >
+              {{ move.damageClass === 'physical' ? tr('物理', 'Phys') : move.damageClass === 'special' ? tr('特殊', 'Spec') : tr('变化', 'Sts') }}
+            </span>
           </div>
-          <div class="bg-blue-50 rounded-lg py-2">
-            <div class="font-semibold text-blue-600">
-              {{ move.accuracy || '-' }}
-            </div>
-            <div class="text-xs text-blue-400">
-              命中
-            </div>
-          </div>
-          <div class="bg-green-50 rounded-lg py-2">
-            <div class="font-semibold text-green-600">
-              {{ move.pp || '-' }}
-            </div>
-            <div class="text-xs text-green-400">
-              PP
-            </div>
+          <div class="flex items-center gap-3 text-xs text-slate-500">
+            <span v-if="move.power != null" class="font-semibold text-slate-700">{{ tr('威力', 'Pwr') }} {{ move.power }}</span>
+            <span v-if="move.accuracy != null">{{ move.accuracy }}%</span>
+            <span>PP {{ move.pp }}</span>
           </div>
         </div>
       </div>
-    </div>
+    </template>
 
     <!-- 列表视图 -->
-    <div
-      v-else-if="moves.length"
-      class="bg-white rounded-xl shadow-sm overflow-hidden"
-    >
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">
-                技能
-              </th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">
-                属性
-              </th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">
-                分类
-              </th>
-              <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase">
-                威力
-              </th>
-              <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase">
-                命中
-              </th>
-              <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase">
-                PP
-              </th>
-              <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <tr
-              v-for="move in moves"
-              :key="move.id"
-              class="hover:bg-gray-50"
+    <template v-else>
+      <div v-if="moves.length" class="space-y-2">
+        <div
+          v-for="(move, index) in moves"
+          :key="move.id"
+          class="glass-card-interactive glass-card p-3 flex items-center gap-4 cursor-pointer animate-slide-up"
+          :style="{ animationDelay: `${index * 15}ms` }"
+          @click="showMoveDetail(move)"
+        >
+          <span class="text-xs text-slate-400 w-10 font-mono">#{{ move.id }}</span>
+          <div class="flex-1 flex items-center gap-3">
+            <h3 class="font-semibold text-slate-800 text-sm">{{ move.name }}</h3>
+            <span v-if="move.typeName" class="type-badge type-badge-sm" :style="{ backgroundColor: move.typeColor || '#888' }">{{ move.typeName }}</span>
+            <span
+              class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+              :class="{
+                'bg-rose-100 text-rose-700': move.damageClass === 'physical',
+                'bg-blue-100 text-blue-700': move.damageClass === 'special',
+                'bg-purple-100 text-purple-700': move.damageClass === 'status'
+              }"
             >
-              <td class="py-3 px-4">
-                <div class="font-medium text-gray-900">
-                  {{ move.name }}
-                </div>
-                <div class="text-xs text-gray-400">
-                  {{ move.nameEn }}
-                </div>
-              </td>
-              <td class="py-3 px-4">
-                <span
-                  class="px-2 py-1 rounded text-white text-xs"
-                  :style="{ backgroundColor: move.typeColor }"
-                >
-                  {{ move.typeName }}
-                </span>
-              </td>
-              <td class="py-3 px-4 text-sm text-gray-500">
-                {{ move.damageClass }}
-              </td>
-              <td class="py-3 px-4 text-center font-medium">
-                {{ move.power || '-' }}
-              </td>
-              <td class="py-3 px-4 text-center">
-                {{ move.accuracy || '-' }}
-              </td>
-              <td class="py-3 px-4 text-center">
-                {{ move.pp || '-' }}
-              </td>
-              <td class="py-3 px-4 text-center">
-                <el-button
-                  :icon="favorites.has(move.id) ? 'StarFilled' : 'Star'"
-                  :type="favorites.has(move.id) ? 'warning' : 'default'"
-                  text
-                  size="small"
-                  @click="toggleFavorite(move.id)"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              {{ move.damageClass === 'physical' ? tr('物理', 'Phys') : move.damageClass === 'special' ? tr('特殊', 'Spec') : tr('变化', 'Sts') }}
+            </span>
+          </div>
+          <div class="flex items-center gap-4 text-xs text-slate-500">
+            <span v-if="move.power != null" class="font-semibold text-slate-700">{{ move.power }}</span>
+            <span>{{ move.accuracy != null ? `${move.accuracy}%` : '-' }}</span>
+            <span>PP {{ move.pp }}</span>
+          </div>
+          <button
+            class="flex-shrink-0 transition-transform duration-200 hover:scale-110"
+            :class="favorites.has(move.id) ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'"
+            @click.stop="toggleFavorite(move)"
+          >
+            <component :is="favorites.has(move.id) ? 'StarFilled' : 'Star'" class="w-5 h-5" />
+          </button>
+        </div>
       </div>
+    </template>
 
-      <!-- 加载更多 -->
-      <div
-        ref="loadMoreTrigger"
-        class="text-center py-6"
-      >
-        <div v-if="loadingMore">
-          <el-icon class="is-loading text-2xl text-blue-500">
-            <Loading />
-          </el-icon>
-          <span class="text-gray-500 ml-2">加载中...</span>
-        </div>
-        <div
-          v-else-if="!hasMore"
-          class="text-gray-400"
-        >
-          已加载全部 {{ total }} 个技能
-        </div>
-        <div
-          v-else
-          class="text-gray-400"
-        >
-          下拉加载更多...
-        </div>
+    <div v-if="!loading && moves.length === 0" class="text-center py-16">
+      <div class="text-4xl mb-4">🔍</div>
+      <p class="text-slate-500">{{ tr('没有找到技能', 'No moves found') }}</p>
+    </div>
+
+    <!-- 加载更多 -->
+    <div ref="loadMoreTrigger" class="text-center py-8">
+      <div v-if="loadingMore" class="flex items-center justify-center gap-3">
+        <div class="loading-dots"><span /><span /><span /></div>
+        <span class="text-sm text-slate-400">{{ tr('加载中...', 'Loading...') }}</span>
+      </div>
+      <div v-else-if="!hasMore && moves.length > 0" class="text-sm text-slate-400">
+        {{ tr('已加载全部 {total} 个技能', 'All {total} moves loaded', { total }) }}
       </div>
     </div>
 
-    <div
-      v-else
-      class="text-center py-12 text-gray-500"
-    >
-      没有找到技能
-    </div>
-
-    <!-- 详情对话框 -->
+    <!-- 技能详情弹窗 -->
     <el-dialog
       v-model="showDetailDialog"
       :title="selectedMove?.name"
-      width="600px"
+      width="520px"
+      :close-on-click-modal="true"
+      destroy-on-close
+      class="detail-dialog"
     >
-      <div v-if="selectedMove">
-        <div class="mb-4">
-          <span class="text-gray-500 text-sm">{{ selectedMove.nameEn }}</span>
-        </div>
-        <div class="flex gap-3 mb-4">
+      <div v-if="selectedMove" class="space-y-5">
+        <div class="flex items-center gap-3">
+          <span v-if="selectedMove.typeName" class="type-badge" :style="{ backgroundColor: selectedMove.typeColor || '#888' }">{{ selectedMove.typeName }}</span>
           <span
-            class="px-3 py-1 rounded text-white text-sm"
-            :style="{ backgroundColor: selectedMove.typeColor }"
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
+            :class="{
+              'bg-rose-100 text-rose-700': selectedMove.damageClass === 'physical',
+              'bg-blue-100 text-blue-700': selectedMove.damageClass === 'special',
+              'bg-purple-100 text-purple-700': selectedMove.damageClass === 'status'
+            }"
           >
-            {{ selectedMove.typeName }}
-          </span>
-          <span class="px-3 py-1 rounded bg-gray-100 text-gray-700 text-sm">
-            {{ selectedMove.damageClass }}
+            {{ selectedMove.damageClass === 'physical' ? tr('物理', 'Physical') : selectedMove.damageClass === 'special' ? tr('特殊', 'Special') : tr('变化', 'Status') }}
           </span>
         </div>
-        <div class="grid grid-cols-3 gap-4 mb-4">
-          <div class="text-center">
-            <div class="text-2xl font-bold text-red-600">
-              {{ selectedMove.power || '-' }}
-            </div>
-            <div class="text-sm text-gray-500">
-              威力
-            </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div class="glass-card p-3 text-center">
+            <div class="text-xs text-slate-500 mb-1">{{ tr('威力', 'Power') }}</div>
+            <div class="text-xl font-bold text-slate-800">{{ selectedMove.power ?? '-' }}</div>
           </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-blue-600">
-              {{ selectedMove.accuracy || '-' }}
-            </div>
-            <div class="text-sm text-gray-500">
-              命中
-            </div>
+          <div class="glass-card p-3 text-center">
+            <div class="text-xs text-slate-500 mb-1">{{ tr('命中', 'Accuracy') }}</div>
+            <div class="text-xl font-bold text-slate-800">{{ selectedMove.accuracy != null ? `${selectedMove.accuracy}%` : '-' }}</div>
           </div>
-          <div class="text-center">
-            <div class="text-2xl font-bold text-green-600">
-              {{ selectedMove.pp || '-' }}
-            </div>
-            <div class="text-sm text-gray-500">
-              PP
-            </div>
+          <div class="glass-card p-3 text-center">
+            <div class="text-xs text-slate-500 mb-1">PP</div>
+            <div class="text-xl font-bold text-slate-800">{{ selectedMove.pp ?? '-' }}</div>
           </div>
         </div>
-        <div class="bg-gray-50 rounded-lg p-4">
-          <h4 class="font-semibold mb-2">
-            效果说明
-          </h4>
-          <p class="text-gray-600 text-sm">
-            {{ selectedMove.effect || '暂无效果说明' }}
-          </p>
+
+        <div v-if="selectedMove.description" class="rounded-xl bg-slate-50 p-4 text-sm text-slate-700 leading-relaxed">
+          {{ selectedMove.description }}
+        </div>
+
+        <div v-if="selectedMove.effect" class="rounded-xl bg-indigo-50 p-4 text-sm text-indigo-700 leading-relaxed">
+          <div class="text-xs font-semibold uppercase tracking-wider text-indigo-500 mb-1">{{ tr('追加效果', 'Additional effect') }}</div>
+          {{ selectedMove.effect }}
         </div>
       </div>
     </el-dialog>
@@ -550,40 +281,78 @@
 
 <script>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { Loading, Star, StarFilled, List, Grid } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { moveApi, typeApi } from '../services/api.js'
 import { dataCache } from '../services/cache.js'
+import { useLocale } from '../composables/useLocale'
+
+const { translate: tr } = useLocale()
+
+const FAVORITES_KEY = 'pokemon-factory-move-favorites'
+const SEARCH_HISTORY_KEY = 'pokemon-factory-move-search'
 
 export default {
   name: 'MoveList',
-  components: { Loading },
+  components: { Search },
   setup() {
     const listContainer = ref(null)
     const loadMoreTrigger = ref(null)
 
-    const loading = ref(false)
-    const loadingMore = ref(false)
-    const moves = ref([])
-    const filteredMoves = ref([])
-    const types = ref([])
+    // 数据
     const keyword = ref('')
-    const selectedType = ref(null)
-    const selectedDamageClass = ref(null)
+    const selectedType = ref('')
+    const selectedDamageClass = ref('')
     const powerRange = ref('')
     const accuracyRange = ref('')
     const ppRange = ref('')
     const sortBy = ref('default')
     const viewMode = ref('grid')
     const showFilters = ref(false)
+
+    // 收藏
     const isShowFavorites = ref(false)
     const favorites = ref(new Set())
+
+    // 分页
+    const moves = ref([])
+    const types = ref([])
+    const currentPage = ref(0)
+    const pageSize = ref(48)
+    const total = ref(0)
+
+    // 状态
+    const loading = ref(false)
+    const loadingMore = ref(false)
     const showDetailDialog = ref(false)
     const selectedMove = ref(null)
 
-    const currentPage = ref(0)
-    const pageSize = ref(30)
-    const total = ref(0)
+    // 收藏相关
+    const loadFavorites = () => {
+      try {
+        const saved = localStorage.getItem(FAVORITES_KEY)
+        if (saved) {
+          favorites.value = new Set(JSON.parse(saved))
+        }
+      } catch { /* ignore */ }
+    }
+
+    const saveFavorites = () => {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites.value]))
+    }
+
+    const toggleFavorite = (move) => {
+      if (favorites.value.has(move.id)) {
+        favorites.value.delete(move.id)
+      } else {
+        favorites.value.add(move.id)
+      }
+      saveFavorites()
+    }
+
+    const toggleFavorites = () => {
+      isShowFavorites.value = !isShowFavorites.value
+      applyFilters()
+    }
 
     let searchTimer = null
     let observer = null
@@ -592,68 +361,16 @@ export default {
     const hasMore = computed(() => currentPage.value < totalPages.value)
     const loadedCount = computed(() => moves.value.length)
 
-    // 加载收藏
-    const loadFavorites = () => {
-      try {
-        const saved = localStorage.getItem('pokemon-moves-favorites')
-        if (saved) {
-          favorites.value = new Set(JSON.parse(saved))
-        }
-      } catch (error) {
-        console.error('加载收藏失败:', error)
-      }
-    }
+    // 注意: moves 模板中使用的是 filteredMoves 由下方 applyFilters 提供
+    const filteredMoves = ref([])
 
-    // 保存收藏
-    const saveFavorites = () => {
-      try {
-        localStorage.setItem('pokemon-moves-favorites', JSON.stringify([...favorites.value]))
-      } catch (error) {
-        console.error('保存收藏失败:', error)
-      }
-    }
-
-    // 切换收藏
-    const toggleFavorite = (moveId) => {
-      if (favorites.value.has(moveId)) {
-        favorites.value.delete(moveId)
-        ElMessage.success('已取消收藏')
-      } else {
-        favorites.value.add(moveId)
-        ElMessage.success('已添加收藏')
-      }
-      saveFavorites()
-      applyFilters()
-    }
-
-    // 切换收藏视图
-    const toggleFavorites = () => {
-      isShowFavorites.value = !isShowFavorites.value
-      applyFilters()
-    }
-
-    // 切换视图模式
-    const toggleViewMode = () => {
-      viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid'
-    }
-
-    // 显示技能详情
-    const showMoveDetail = (move) => {
-      selectedMove.value = move
-      showDetailDialog.value = true
-    }
-
-    // 应用筛选
+    // 筛选和排序
     const applyFilters = () => {
       let result = [...moves.value]
 
-      // 关键字搜索
-      if (keyword.value) {
-        const kw = keyword.value.toLowerCase()
-        result = result.filter(m =>
-          m.name.toLowerCase().includes(kw) ||
-          m.nameEn?.toLowerCase().includes(kw)
-        )
+      // 收藏筛选
+      if (isShowFavorites.value) {
+        result = result.filter(m => favorites.value.has(m.id))
       }
 
       // 属性筛选
@@ -661,67 +378,53 @@ export default {
         result = result.filter(m => m.typeId === selectedType.value)
       }
 
-      // 伤害分类筛选
+      // 分类筛选
       if (selectedDamageClass.value) {
-        result = result.filter(m => {
-          const damageClassMap = {
-            'physical': '物理',
-            'special': '特殊',
-            'status': '变化'
-          }
-          return m.damageClass === damageClassMap[selectedDamageClass.value]
-        })
+        result = result.filter(m => m.damageClass === selectedDamageClass.value)
       }
 
-      // 威力范围筛选
+      // 威力筛选
       if (powerRange.value) {
-        result = result.filter(m => {
-          if (powerRange.value === 'none') return m.power === null || m.power === 0
-          if (powerRange.value === '151+') return m.power >= 151
+        if (powerRange.value === 'none') {
+          result = result.filter(m => m.power === null || m.power === 0)
+        } else if (powerRange.value === '151+') {
+          result = result.filter(m => m.power >= 151)
+        } else {
           const [min, max] = powerRange.value.split('-').map(Number)
-          return m.power >= min && m.power <= max
-        })
+          result = result.filter(m => m.power >= min && m.power <= max)
+        }
       }
 
-      // 命中范围筛选
+      // 命中筛选
       if (accuracyRange.value) {
-        result = result.filter(m => {
-          if (accuracyRange.value === '100') return m.accuracy === 100
-          if (accuracyRange.value === '<70') return m.accuracy !== null && m.accuracy < 70
+        if (accuracyRange.value === '100') {
+          result = result.filter(m => m.accuracy === 100 || m.accuracy === null)
+        } else {
           const [min, max] = accuracyRange.value.split('-').map(Number)
-          return m.accuracy >= min && m.accuracy <= max
-        })
+          result = result.filter(m => m.accuracy >= min && m.accuracy <= max)
+        }
       }
 
-      // PP范围筛选
+      // PP筛选
       if (ppRange.value) {
-        result = result.filter(m => {
-          if (ppRange.value === '≤5') return m.pp <= 5
-          if (ppRange.value === '>30') return m.pp > 30
+        if (ppRange.value === '21+') {
+          result = result.filter(m => m.pp >= 21)
+        } else {
           const [min, max] = ppRange.value.split('-').map(Number)
-          return m.pp >= min && m.pp <= max
-        })
-      }
-
-      // 收藏筛选
-      if (isShowFavorites.value) {
-        result = result.filter(m => favorites.value.has(m.id))
+          result = result.filter(m => m.pp >= min && m.pp <= max)
+        }
       }
 
       // 排序
       if (sortBy.value !== 'default') {
         const [field, order] = sortBy.value.split('-')
         result.sort((a, b) => {
-          let valA, valB
-          if (field === 'name') {
-            valA = a.name
-            valB = b.name
-          } else {
-            valA = a[field] || 0
-            valB = b[field] || 0
+          const valA = a[field] ?? (field === 'name' ? '' : 0)
+          const valB = b[field] ?? (field === 'name' ? '' : 0)
+          if (typeof valA === 'string') {
+            return order === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
           }
-          if (order === 'asc') return valA > valB ? 1 : -1
-          return valA < valB ? 1 : -1
+          return order === 'asc' ? valA - valB : valB - valA
         })
       }
 
@@ -787,6 +490,11 @@ export default {
 
     const handleSearch = () => {
       fetchMoves(false)
+    }
+
+    const showMoveDetail = (move) => {
+      selectedMove.value = move
+      showDetailDialog.value = true
     }
 
     const setupObserver = () => {
@@ -863,11 +571,7 @@ export default {
       toggleViewMode,
       toggleFavorite,
       toggleFavorites,
-      showMoveDetail,
-      Star,
-      StarFilled,
-      List,
-      Grid
+      showMoveDetail
     }
   }
 }
@@ -875,7 +579,7 @@ export default {
 
 <style scoped>
 .move-list {
-  padding: 20px;
+  padding-bottom: 1rem;
 }
 
 .line-clamp-2 {
@@ -892,14 +596,68 @@ export default {
   overflow: hidden;
 }
 
-/* 移动端优化 */
-@media (max-width: 640px) {
-  .move-list {
-    padding: 10px;
-  }
+/* 骨架屏 */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
 
-  .grid-cols-3 {
-    grid-template-columns: 1fr !important;
-  }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* 加载动画 */
+.loading-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #f43f5e, #f97316);
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out both;
+}
+
+/* 详情弹窗样式覆盖 */
+:deep(.detail-dialog .el-dialog) {
+  border-radius: 1.5rem !important;
+}
+
+:deep(.detail-dialog .el-dialog__header) {
+  padding: 1.5rem 1.5rem 0;
+}
+
+:deep(.detail-dialog .el-dialog__body) {
+  padding: 1.5rem;
+}
+
+:deep(.detail-dialog .el-dialog__title) {
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .move-list { padding-bottom: 0.5rem; }
 }
 </style>

@@ -6,6 +6,9 @@ import com.lio9.pokedex.util.DamageCalculatorUtil;
 
 import java.util.Map;
 
+/**
+ * 战场态势分析：评估双方威胁、弱点覆盖与战术权重。
+ */
 final class BattleAnalysisSupport {
     private final BattleEngine engine;
 

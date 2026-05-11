@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+/**
+ * 目标选择逻辑：根据招式目标类型和场上情况确定有效目标集合。
+ */
 final class BattleTargetSupport {
     private final BattleEngine engine;
 

@@ -363,7 +363,7 @@
               <span 
                 v-for="type in pokemon.types"
                 :key="type.id"
-                class="px-2 py-0.5 rounded-full text-xs font-bold text-white"
+                class="type-badge type-badge-sm"
                 :style="{ backgroundColor: type.color }"
               >
                 {{ type.name }}

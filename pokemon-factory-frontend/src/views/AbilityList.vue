@@ -1,411 +1,203 @@
-
-
 <template>
-  <div
-    ref="listContainer"
-    class="ability-list"
-  >
+  <div ref="listContainer" class="ability-list">
     <!-- 搜索和筛选 -->
-    <div class="sticky top-[4.25rem] z-10 mb-5 rounded-xl bg-white p-4 shadow-sm sm:top-[4.75rem] sm:mb-6">
+    <div class="glass-card mb-6 p-4 sticky top-[4.25rem] z-10 sm:top-[4.75rem]">
       <div class="flex flex-col gap-4">
-        <!-- 搜索和基本操作 -->
         <div class="flex flex-wrap gap-3">
           <div class="flex-1 min-w-[200px]">
             <el-input
               v-model="keyword"
-              placeholder="搜索特性名称..."
+              :placeholder="tr('搜索特性名称...', 'Search abilities...')"
               clearable
+              size="large"
               @input="handleSearchInput"
               @clear="handleSearch"
+              @keyup.enter="handleSearch"
             >
               <template #append>
-                <el-button @click="handleSearch">
-                  搜索
+                <el-button class="!bg-gradient-to-r !from-violet-500 !to-purple-600 !text-white !border-none hover:!from-violet-600 hover:!to-purple-700" @click="handleSearch">
+                  <el-icon><Search /></el-icon>
                 </el-button>
               </template>
             </el-input>
           </div>
-          <el-button
-            :icon="viewMode === 'grid' ? 'List' : 'Grid'"
-            :type="viewMode === 'grid' ? 'primary' : 'default'"
-            @click="toggleViewMode"
-          >
-            {{ viewMode === 'grid' ? '列表' : '网格' }}
-          </el-button>
-          <el-button
-            :icon="isShowFavorites ? 'StarFilled' : 'Star'"
-            :type="isShowFavorites ? 'warning' : 'default'"
-            @click="toggleFavorites"
-          >
-            {{ isShowFavorites ? '全部' : `收藏 (${favorites.size})` }}
-          </el-button>
+          <div class="flex gap-2">
+            <el-button
+              size="large"
+              :class="viewMode === 'grid' ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white border-none' : 'bg-white text-slate-600 border-slate-300'"
+              @click="toggleViewMode"
+            >
+              <component :is="viewMode === 'grid' ? 'List' : 'Grid'" class="w-4 h-4" />
+              <span class="ml-1">{{ viewMode === 'grid' ? tr('列表', 'List') : tr('网格', 'Grid') }}</span>
+            </el-button>
+            <el-button
+              size="large"
+              :class="isShowFavorites ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-none' : 'bg-white text-slate-600 border-slate-300'"
+              @click="toggleFavorites"
+            >
+              <component :is="isShowFavorites ? 'StarFilled' : 'Star'" class="w-4 h-4" />
+              <span class="ml-1">{{ isShowFavorites ? tr('全部', 'All') : `${tr('收藏', 'Fav')} (${favorites.size})` }}</span>
+            </el-button>
+            <el-button size="large" class="bg-white text-slate-600 border-slate-300" @click="showFilters = !showFilters">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              <span class="ml-1">{{ tr('筛选', 'Filter') }}</span>
+            </el-button>
+          </div>
         </div>
 
-        <!-- 高级筛选面板 -->
+        <!-- 高级筛选 -->
         <el-collapse-transition>
-          <div
-            v-if="showFilters"
-            class="flex flex-wrap gap-3 items-end"
-          >
-            <div class="flex-1 min-w-[200px]">
-              <label class="text-xs text-gray-500 mb-1 block">代数筛选</label>
-              <el-select
-                v-model="selectedGeneration"
-                placeholder="世代"
-                clearable
-                @change="applyFilters"
-              >
-                <el-option
-                  label="第一世代"
-                  value="1"
-                />
-                <el-option
-                  label="第二世代"
-                  value="2"
-                />
-                <el-option
-                  label="第三世代"
-                  value="3"
-                />
-                <el-option
-                  label="第四世代"
-                  value="4"
-                />
-                <el-option
-                  label="第五世代"
-                  value="5"
-                />
-                <el-option
-                  label="第六世代"
-                  value="6"
-                />
-                <el-option
-                  label="第七世代"
-                  value="7"
-                />
-                <el-option
-                  label="第八世代"
-                  value="8"
-                />
-                <el-option
-                  label="第九世代"
-                  value="9"
-                />
+          <div v-if="showFilters" class="flex flex-wrap gap-3 items-end p-4 rounded-xl bg-slate-50/80 border border-slate-100">
+            <div class="flex-1 min-w-[160px]">
+              <label class="text-xs font-semibold text-slate-500 mb-1.5 block">{{ tr('代数筛选', 'Generation') }}</label>
+              <el-select v-model="selectedGeneration" :placeholder="tr('世代', 'Gen')" clearable size="default" class="w-full" @change="applyFilters">
+                <el-option v-for="g in 9" :key="g" :label="`${tr('第', 'Gen')} ${g} ${tr('世代', '')}`" :value="String(g)" />
               </el-select>
             </div>
             <div class="flex-1 min-w-[150px]">
-              <label class="text-xs text-gray-500 mb-1 block">描述长度</label>
-              <el-select
-                v-model="descriptionLength"
-                placeholder="描述长度"
-                clearable
-                @change="applyFilters"
-              >
-                <el-option
-                  label="简短 (<50字)"
-                  value="short"
-                />
-                <el-option
-                  label="中等 (50-100字)"
-                  value="medium"
-                />
-                <el-option
-                  label="详细 (>100字)"
-                  value="long"
-                />
+              <label class="text-xs font-semibold text-slate-500 mb-1.5 block">{{ tr('描述长度', 'Desc length') }}</label>
+              <el-select v-model="descriptionLength" :placeholder="tr('描述长度', 'Length')" clearable size="default" class="w-full" @change="applyFilters">
+                <el-option :label="tr('简短 (<50字)', 'Short (<50)')" value="short" />
+                <el-option :label="tr('中等 (50-100字)', 'Medium (50-100)')" value="medium" />
+                <el-option :label="tr('详细 (>100字)', 'Long (>100)')" value="long" />
               </el-select>
             </div>
             <div class="flex-1 min-w-[150px]">
-              <label class="text-xs text-gray-500 mb-1 block">排序</label>
-              <el-select
-                v-model="sortBy"
-                @change="handleSort"
-              >
-                <el-option
-                  label="默认"
-                  value="default"
-                />
-                <el-option
-                  label="名称 A-Z"
-                  value="name-asc"
-                />
-                <el-option
-                  label="名称 Z-A"
-                  value="name-desc"
-                />
-                <el-option
-                  label="ID 升序"
-                  value="id-asc"
-                />
-                <el-option
-                  label="ID 降序"
-                  value="id-desc"
-                />
+              <label class="text-xs font-semibold text-slate-500 mb-1.5 block">{{ tr('排序', 'Sort') }}</label>
+              <el-select v-model="sortBy" size="default" class="w-full" @change="handleSort">
+                <el-option :label="tr('默认', 'Default')" value="default" />
+                <el-option label="A-Z" value="name-asc" />
+                <el-option label="Z-A" value="name-desc" />
               </el-select>
             </div>
           </div>
         </el-collapse-transition>
-
-        <!-- 展开/收起筛选按钮 -->
-        <div class="flex justify-center">
-          <el-button
-            link
-            type="primary"
-            @click="showFilters = !showFilters"
-          >
-            {{ showFilters ? '收起筛选' : '展开筛选 ▼' }}
-          </el-button>
-        </div>
       </div>
     </div>
 
-    <!-- 统计信息 -->
-    <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-      <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
-        <div class="text-2xl font-bold">
-          {{ total }}
-        </div>
-        <div class="text-green-100 text-sm">
-          总数
-        </div>
+    <!-- 统计栏 -->
+    <div class="flex items-center justify-between mb-4 px-1">
+      <div class="text-sm text-slate-500">
+        {{ tr('共 {total} 个特性', '{total} abilities total', { total }) }}
+        <span v-if="isShowFavorites" class="ml-2 text-amber-600 font-medium">· {{ tr('收藏', 'Favorites') }}</span>
       </div>
-      <div class="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 text-white">
-        <div class="text-2xl font-bold">
-          {{ loadedCount }}
-        </div>
-        <div class="text-teal-100 text-sm">
-          已加载
-        </div>
-      </div>
+      <div class="text-xs text-slate-400">{{ tr('已加载 {count}', 'Loaded {count}', { count: loadedCount }) }}</div>
     </div>
 
-    <!-- 加载骨架屏 -->
-    <div v-if="loading && abilities.length === 0">
-      <div
-        v-if="viewMode === 'grid'"
-        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        <el-skeleton
-          v-for="i in 6"
-          :key="i"
-          animated
-        >
-          <template #template>
-            <el-card class="mb-4">
-              <el-skeleton-item
-                variant="h3"
-                style="width: 50%"
-              />
-              <el-skeleton-item
-                variant="text"
-                style="width: 70%"
-              />
-              <el-skeleton-item
-                variant="rect"
-                style="width: 100%; height: 40px; margin-top: 10px"
-              />
-            </el-card>
-          </template>
-        </el-skeleton>
-      </div>
-      <div
-        v-else
-        class="bg-white rounded-xl shadow-sm overflow-hidden"
-      >
-        <el-skeleton
-          :rows="5"
-          animated
-        />
+    <!-- 加载骨架 -->
+    <div v-if="loading && abilities.length === 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div v-for="i in 8" :key="i" class="glass-card p-4 animate-pulse">
+        <div class="h-5 bg-slate-200 rounded w-2/3 mb-3" />
+        <div class="h-12 bg-slate-100 rounded w-full" />
       </div>
     </div>
 
     <!-- 网格视图 -->
-    <div
-      v-else-if="abilities.length && viewMode === 'grid'"
-      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-    >
-      <div
-        v-for="ability in abilities"
-        :key="ability.id"
-        class="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer group"
-        @click="showAbilityDetail(ability)"
-      >
-        <div class="flex items-start justify-between mb-3">
-          <div class="flex items-center gap-2">
-            <h3 class="font-semibold text-gray-900 group-hover:text-green-600 transition-colors">
-              {{ ability.name }}
-            </h3>
-            <span class="text-xs text-gray-400">#{{ ability.id }}</span>
+    <template v-if="viewMode === 'grid'">
+      <div v-if="abilities.length" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div
+          v-for="(ability, index) in abilities"
+          :key="ability.id"
+          class="glass-card-interactive glass-card p-5 cursor-pointer animate-slide-up"
+          :style="{ animationDelay: `${index * 30}ms` }"
+          @click="showAbilityDetail(ability)"
+        >
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm shadow-sm">✦</div>
+              <h3 class="font-semibold text-slate-800">{{ ability.name }}</h3>
+            </div>
+            <button
+              class="flex-shrink-0 transition-transform duration-200 hover:scale-110"
+              :class="favorites.has(ability.id) ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'"
+              @click.stop="toggleFavorite(ability)"
+            >
+              <component :is="favorites.has(ability.id) ? 'StarFilled' : 'Star'" class="w-4 h-4" />
+            </button>
           </div>
-          <el-button
-            :icon="favorites.has(ability.id) ? 'StarFilled' : 'Star'"
-            :type="favorites.has(ability.id) ? 'warning' : 'default'"
-            text
-            size="small"
-            @click.stop="toggleFavorite(ability.id)"
-          />
-        </div>
-        <div class="flex items-center gap-2 mb-3">
-          <span class="text-xs text-gray-400">{{ ability.nameEn }}</span>
-          <span
-            v-if="ability.generation"
-            class="px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs"
-          >
-            第{{ ability.generation }}世代
-          </span>
-        </div>
-        <p class="text-gray-600 text-sm line-clamp-3 mb-3">
-          {{ ability.description || '暂无描述' }}
-        </p>
-        <div class="flex items-center justify-between text-xs text-gray-400">
-          <span>{{ (ability.description || '').length }} 字</span>
-          <span class="text-green-500">查看详情 →</span>
+          <p class="text-sm text-slate-600 leading-relaxed line-clamp-3">
+            {{ ability.description || ability.effect || '' }}
+          </p>
+          <div v-if="ability.generation" class="mt-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
+              {{ tr('第 {gen} 世代', 'Gen {gen}', { gen: ability.generation }) }}
+            </span>
+          </div>
         </div>
       </div>
-    </div>
+    </template>
 
     <!-- 列表视图 -->
-    <div
-      v-else-if="abilities.length"
-      class="bg-white rounded-xl shadow-sm overflow-hidden"
-    >
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">
-                特性
-              </th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">
-                世代
-              </th>
-              <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">
-                描述
-              </th>
-              <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <tr
-              v-for="ability in abilities"
-              :key="ability.id"
-              class="hover:bg-gray-50"
-            >
-              <td class="py-3 px-4">
-                <div class="font-medium text-gray-900">
-                  {{ ability.name }}
-                </div>
-                <div class="text-xs text-gray-400">
-                  {{ ability.nameEn }}
-                </div>
-              </td>
-              <td class="py-3 px-4">
-                <span
-                  v-if="ability.generation"
-                  class="px-2 py-1 rounded bg-purple-100 text-purple-700 text-xs"
-                >
-                  第{{ ability.generation }}世代
-                </span>
-                <span
-                  v-else
-                  class="text-gray-400"
-                >-</span>
-              </td>
-              <td class="py-3 px-4">
-                <p class="text-sm text-gray-600 line-clamp-2">
-                  {{ ability.description || '暂无描述' }}
-                </p>
-              </td>
-              <td class="py-3 px-4 text-center">
-                <el-button
-                  :icon="favorites.has(ability.id) ? 'StarFilled' : 'Star'"
-                  :type="favorites.has(ability.id) ? 'warning' : 'default'"
-                  text
-                  size="small"
-                  @click="toggleFavorite(ability.id)"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <template v-else>
+      <div v-if="abilities.length" class="space-y-2">
+        <div
+          v-for="(ability, index) in abilities"
+          :key="ability.id"
+          class="glass-card-interactive glass-card p-4 flex items-center gap-4 cursor-pointer animate-slide-up"
+          :style="{ animationDelay: `${index * 20}ms` }"
+          @click="showAbilityDetail(ability)"
+        >
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">✦</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <h3 class="font-semibold text-slate-800">{{ ability.name }}</h3>
+              <span v-if="ability.generation" class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">{{ tr('Gen {gen}', 'Gen {gen}', { gen: ability.generation }) }}</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-1 truncate">{{ ability.description || ability.effect || '' }}</p>
+          </div>
+          <button
+            class="flex-shrink-0 transition-transform duration-200 hover:scale-110"
+            :class="favorites.has(ability.id) ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'"
+            @click.stop="toggleFavorite(ability)"
+          >
+            <component :is="favorites.has(ability.id) ? 'StarFilled' : 'Star'" class="w-5 h-5" />
+          </button>
+        </div>
       </div>
+    </template>
 
-      <!-- 加载更多 -->
-      <div
-        ref="loadMoreTrigger"
-        class="text-center py-6"
-      >
-        <div v-if="loadingMore">
-          <el-icon class="is-loading text-2xl text-green-500">
-            <Loading />
-          </el-icon>
-          <span class="text-gray-500 ml-2">加载中...</span>
-        </div>
-        <div
-          v-else-if="!hasMore"
-          class="text-gray-400"
-        >
-          已加载全部 {{ total }} 个特性
-        </div>
-        <div
-          v-else
-          class="text-gray-400"
-        >
-          下拉加载更多...
-        </div>
+    <div v-if="!loading && abilities.length === 0" class="text-center py-16">
+      <div class="text-4xl mb-4">🔍</div>
+      <p class="text-slate-500">{{ tr('没有找到特性', 'No abilities found') }}</p>
+    </div>
+
+    <!-- 加载更多 -->
+    <div ref="loadMoreTrigger" class="text-center py-8">
+      <div v-if="loadingMore" class="flex items-center justify-center gap-3">
+        <div class="loading-dots"><span /><span /><span /></div>
+        <span class="text-sm text-slate-400">{{ tr('加载中...', 'Loading...') }}</span>
+      </div>
+      <div v-else-if="!hasMore && abilities.length > 0" class="text-sm text-slate-400">
+        {{ tr('已加载全部 {total} 个特性', 'All {total} abilities loaded', { total }) }}
       </div>
     </div>
 
-    <div
-      v-else
-      class="text-center py-12 text-gray-500"
-    >
-      没有找到特性
-    </div>
-
-    <!-- 详情对话框 -->
+    <!-- 详情弹窗 -->
     <el-dialog
       v-model="showDetailDialog"
       :title="selectedAbility?.name"
-      width="600px"
+      width="520px"
+      :close-on-click-modal="true"
+      destroy-on-close
+      class="detail-dialog"
     >
-      <div v-if="selectedAbility">
-        <div class="mb-4">
-          <span class="text-gray-500 text-sm">{{ selectedAbility.nameEn }}</span>
-          <span
-            v-if="selectedAbility.generation"
-            class="ml-3 px-2 py-1 rounded bg-purple-100 text-purple-700 text-xs"
-          >
-            第{{ selectedAbility.generation }}世代
-          </span>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-4 mb-4">
-          <h4 class="font-semibold mb-2">
-            效果说明
-          </h4>
-          <p class="text-gray-600 text-sm leading-relaxed">
-            {{ selectedAbility.description || '暂无描述' }}
-          </p>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div class="bg-blue-50 rounded-lg p-3 text-center">
-            <div class="text-lg font-bold text-blue-600">
-              #{{ selectedAbility.id }}
-            </div>
-            <div class="text-sm text-blue-400">
-              ID
-            </div>
+      <div v-if="selectedAbility" class="space-y-5">
+        <div class="flex items-center gap-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-lg shadow-sm">✦</div>
+          <div>
+            <h3 class="font-semibold text-slate-800 text-lg">{{ selectedAbility.name }}</h3>
+            <span v-if="selectedAbility.generation" class="text-xs text-slate-400">{{ tr('第 {gen} 世代引入', 'Introduced in Gen {gen}', { gen: selectedAbility.generation }) }}</span>
           </div>
-          <div class="bg-green-50 rounded-lg p-3 text-center">
-            <div class="text-lg font-bold text-green-600">
-              {{ (selectedAbility.description || '').length }}
-            </div>
-            <div class="text-sm text-green-400">
-              描述字数
-            </div>
-          </div>
+        </div>
+
+        <div class="rounded-xl bg-slate-50 p-4 text-sm text-slate-700 leading-relaxed">
+          <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">{{ tr('效果', 'Effect') }}</div>
+          {{ selectedAbility.description || selectedAbility.effect || tr('暂无描述', 'No description') }}
+        </div>
+
+        <div v-if="selectedAbility.effect && selectedAbility.effect !== selectedAbility.description" class="rounded-xl bg-violet-50 p-4 text-sm text-violet-700 leading-relaxed">
+          <div class="text-xs font-semibold uppercase tracking-wider text-violet-500 mb-2">{{ tr('详细效果', 'Detailed effect') }}</div>
+          {{ selectedAbility.effect }}
         </div>
       </div>
     </el-dialog>
@@ -414,35 +206,40 @@
 
 <script>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { Loading, Star, StarFilled, List, Grid } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { abilityApi } from '../services/api.js'
+import { useLocale } from '../composables/useLocale'
+
+const { translate: tr } = useLocale()
+
+const FAVORITES_KEY = 'pokemon-factory-ability-favorites'
 
 export default {
   name: 'AbilityList',
-  components: { Loading },
+  components: { Search },
   setup() {
     const listContainer = ref(null)
     const loadMoreTrigger = ref(null)
 
-    const loading = ref(false)
-    const loadingMore = ref(false)
-    const abilities = ref([])
-    const filteredAbilities = ref([])
     const keyword = ref('')
-    const selectedGeneration = ref(null)
+    const selectedGeneration = ref('')
     const descriptionLength = ref('')
     const sortBy = ref('default')
     const viewMode = ref('grid')
     const showFilters = ref(false)
+
     const isShowFavorites = ref(false)
     const favorites = ref(new Set())
+
+    const abilities = ref([])
+    const currentPage = ref(0)
+    const pageSize = ref(36)
+    const total = ref(0)
+
+    const loading = ref(false)
+    const loadingMore = ref(false)
     const showDetailDialog = ref(false)
     const selectedAbility = ref(null)
-
-    const currentPage = ref(0)
-    const pageSize = ref(20)
-    const total = ref(0)
 
     let searchTimer = null
     let observer = null
@@ -451,58 +248,35 @@ export default {
     const hasMore = computed(() => currentPage.value < totalPages.value)
     const loadedCount = computed(() => abilities.value.length)
 
-    // 加载收藏
+    const filteredAbilities = ref([])
+
     const loadFavorites = () => {
       try {
-        const saved = localStorage.getItem('pokemon-abilities-favorites')
+        const saved = localStorage.getItem(FAVORITES_KEY)
         if (saved) {
           favorites.value = new Set(JSON.parse(saved))
         }
-      } catch (error) {
-        console.error('加载收藏失败:', error)
-      }
+      } catch { /* ignore */ }
     }
 
-    // 保存收藏
     const saveFavorites = () => {
-      try {
-        localStorage.setItem('pokemon-abilities-favorites', JSON.stringify([...favorites.value]))
-      } catch (error) {
-        console.error('保存收藏失败:', error)
-      }
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites.value]))
     }
 
-    // 切换收藏
-    const toggleFavorite = (abilityId) => {
-      if (favorites.value.has(abilityId)) {
-        favorites.value.delete(abilityId)
-        ElMessage.success('已取消收藏')
+    const toggleFavorite = (ability) => {
+      if (favorites.value.has(ability.id)) {
+        favorites.value.delete(ability.id)
       } else {
-        favorites.value.add(abilityId)
-        ElMessage.success('已添加收藏')
+        favorites.value.add(ability.id)
       }
       saveFavorites()
-      applyFilters()
     }
 
-    // 切换收藏视图
     const toggleFavorites = () => {
       isShowFavorites.value = !isShowFavorites.value
       applyFilters()
     }
 
-    // 切换视图模式
-    const toggleViewMode = () => {
-      viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid'
-    }
-
-    // 显示特性详情
-    const showAbilityDetail = (ability) => {
-      selectedAbility.value = ability
-      showDetailDialog.value = true
-    }
-
-    // 应用筛选
     const applyFilters = () => {
       let result = [...abilities.value]
 
@@ -518,16 +292,16 @@ export default {
 
       // 世代筛选
       if (selectedGeneration.value) {
-        result = result.filter(a => a.generation === parseInt(selectedGeneration.value))
+        result = result.filter(a => String(a.generation) === selectedGeneration.value)
       }
 
       // 描述长度筛选
       if (descriptionLength.value) {
         result = result.filter(a => {
-          const len = (a.description || '').length
-          if (descriptionLength.value === 'short') return len < 50
-          if (descriptionLength.value === 'medium') return len >= 50 && len <= 100
-          if (descriptionLength.value === 'long') return len > 100
+          const text = (a.description || a.effect || '').length
+          if (descriptionLength.value === 'short') return text < 50
+          if (descriptionLength.value === 'medium') return text >= 50 && text <= 100
+          if (descriptionLength.value === 'long') return text > 100
           return true
         })
       }
@@ -551,7 +325,6 @@ export default {
       filteredAbilities.value = result
     }
 
-    // 排序处理
     const handleSort = () => {
       applyFilters()
     }
@@ -598,6 +371,11 @@ export default {
       fetchAbilities(false)
     }
 
+    const showAbilityDetail = (ability) => {
+      selectedAbility.value = ability
+      showDetailDialog.value = true
+    }
+
     const setupObserver = () => {
       if (observer) observer.disconnect()
       observer = new IntersectionObserver(
@@ -635,7 +413,6 @@ export default {
       })
     })
 
-    // 监听筛选条件变化
     watch([keyword, selectedGeneration, descriptionLength, isShowFavorites], () => {
       applyFilters()
     })
@@ -667,11 +444,7 @@ export default {
       toggleViewMode,
       toggleFavorite,
       toggleFavorites,
-      showAbilityDetail,
-      Star,
-      StarFilled,
-      List,
-      Grid
+      showAbilityDetail
     }
   }
 }
@@ -679,7 +452,7 @@ export default {
 
 <style scoped>
 .ability-list {
-  padding: 20px;
+  padding-bottom: 1rem;
 }
 
 .line-clamp-2 {
@@ -696,18 +469,68 @@ export default {
   overflow: hidden;
 }
 
-/* 移动端优化 */
+/* 骨架屏 */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* 加载动画 */
+.loading-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out both;
+}
+
+/* 详情弹窗 */
+:deep(.detail-dialog .el-dialog) {
+  border-radius: 1.5rem !important;
+}
+
+:deep(.detail-dialog .el-dialog__header) {
+  padding: 1.5rem 1.5rem 0;
+}
+
+:deep(.detail-dialog .el-dialog__body) {
+  padding: 1.5rem;
+}
+
+:deep(.detail-dialog .el-dialog__title) {
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
 @media (max-width: 640px) {
-  .ability-list {
-    padding: 10px;
-  }
-
-  .grid-cols-3 {
-    grid-template-columns: 1fr !important;
-  }
-
-  .grid-cols-2 {
-    grid-template-columns: 1fr !important;
-  }
+  .ability-list { padding-bottom: 0.5rem; }
 }
 </style>

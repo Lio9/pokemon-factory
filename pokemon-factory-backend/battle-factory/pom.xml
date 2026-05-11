@@ -1,50 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  pom 文件说明
-  所属模块：battle-factory 后端模块。
-  文件类型：XML 配置文件。
-  核心职责：负责提供项目运行期所需的结构化配置或映射定义。
-  阅读建议：建议关注节点结构与外部引用关系。
-  项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
--->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.5</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <groupId>com.lio9</groupId>
+        <artifactId>pokemon-factory</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>com.lio9</groupId>
-    <artifactId>battle-factory</artifactId>
+
+    <artifactId>battle</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>battle-factory</name>
-    <description>Battle Factory Module</description>
-    <url/>
-    <licenses>
-        <license/>
-    </licenses>
-    <developers>
-        <developer/>
-    </developers>
-    <scm>
-        <connection/>
-        <developerConnection/>
-        <tag/>
-        <url/>
-    </scm>
-    <properties>
-        <java.version>17</java.version>
-    </properties>
-    <repositories>
-        <repository>
-            <id>central</id>
-            <name>Maven Central</name>
-            <url>https://repo1.maven.org/maven2/</url>
-        </repository>
-    </repositories>
+    <name>Pokemon Factory — Battle</name>
+    <description>Battle engine, factory runs, ladder, doubles simulation</description>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -67,16 +36,13 @@
             <artifactId>sqlite-jdbc</artifactId>
         </dependency>
 
-        <!-- battleFactory 仍然显式声明运行时 MyBatis 依赖，避免 Spring Boot 4 场景下只依赖传递依赖导致 Mapper 代理异常 -->
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
-            <version>4.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-boot-starter</artifactId>
-            <version>3.5.9</version>
         </dependency>
 
         <dependency>
@@ -89,6 +55,8 @@
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
+
+        <!-- 自产模块 -->
         <dependency>
             <groupId>com.lio9</groupId>
             <artifactId>common</artifactId>
@@ -96,27 +64,23 @@
         </dependency>
         <dependency>
             <groupId>com.lio9</groupId>
-            <artifactId>poke-dex</artifactId>
+            <artifactId>pokedex</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- depend on user module for user management -->
         <dependency>
             <groupId>com.lio9</groupId>
-            <artifactId>user-module</artifactId>
+            <artifactId>user</artifactId>
             <version>${project.version}</version>
         </dependency>
 
-        <!-- security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

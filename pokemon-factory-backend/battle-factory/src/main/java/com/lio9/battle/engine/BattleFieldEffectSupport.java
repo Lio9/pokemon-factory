@@ -6,6 +6,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 场地效果管理：顺风、戏法空间、天气、terrain 等全场效果的创建与清除。
+ */
 final class BattleFieldEffectSupport {
     private final BattleEngine engine;
 

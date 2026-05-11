@@ -1,267 +1,113 @@
 package com.lio9.common.response;
 
-
-
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 通用响应构建器
- * 提供统一的成功和失败响应构建方法
- * 
- * @author Lio9
- * @version 1.0
- * @since 2024-02-12
+ * 统一 API 响应构建器。
+ *
+ * <p>所有后端接口统一返回 {@code {code, message, data}} 结构。
+ * 业务层抛出异常时由 {@code @RestControllerAdvice} 统一捕获并构建错误响应。</p>
+ *
+ * <pre>
+ *   // 成功
+ *   return ResultResponse.buildSuccess(data);
+ *   // 分页
+ *   return ResultResponse.buildPageSuccess(page);
+ *   // 携带自定义消息的成功
+ *   return ResultResponse.buildSuccess("消息", data);
+ * </pre>
  */
-public class ResultResponse {
-    
-    /**
-     * 构建通用成功响应
-     * 
-     * @param code 状态码
-     * @param message 消息内容
-     * @param data 数据
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildSuccessResponse(int code, String message, Object data) {
-        Map<String, Object> result = new HashMap<>();
-        result.put("code", code);
-        result.put("message", message);
-        result.put("data", data);
-        return result;
+public final class ResultResponse {
+
+    private ResultResponse() {}
+
+    /** 构建 {@code {code, message, data}} 成功响应 */
+    public static Map<String, Object> buildSuccess(Object data) {
+        return build(ResponseCode.SUCCESS, "操作成功", data);
     }
-    
-    /**
-     * 构建自定义失败响应
-     * 
-     * @param code 状态码
-     * @param message 消息
-     * @param error 错误信息
-     * @return ResponseEntity对象
-     */
+
+    /** 构建携带自定义消息的成功响应 */
+    public static Map<String, Object> buildSuccess(String message, Object data) {
+        return build(ResponseCode.SUCCESS, message, data);
+    }
+
+    /** 构建 201 Created 响应 */
+    public static Map<String, Object> buildCreated(Object data) {
+        return build(ResponseCode.CREATED, "创建成功", data);
+    }
+
+    /** 构建分页查询成功响应 */
+    public static Map<String, Object> buildPageSuccess(Object data) {
+        return build(ResponseCode.SUCCESS, "操作成功", data);
+    }
+
+    /** 构建自定义错误响应 */
     public static Map<String, Object> buildCustomErrorResponse(int code, String message, String error) {
         return buildCustomErrorResponse(code, message, error, null);
     }
 
-    /**
-     * 构建自定义失败响应，并在需要时附带结构化上下文数据。
-     * 
-     * @param code 状态码
-     * @param message 消息
-     * @param error 错误信息
-     * @param data 额外上下文数据
-     * @return ResponseEntity对象
-     */
+    /** 构建带上下文的错误响应 */
     public static Map<String, Object> buildCustomErrorResponse(int code, String message, String error, Object data) {
         Map<String, Object> result = new HashMap<>();
         result.put("code", code);
         result.put("message", message);
         result.put("error", error);
-        if (data != null) {
-            result.put("data", data);
-        }
+        if (data != null) result.put("data", data);
         return result;
     }
-    
-    /**
-     * 构建成功响应（默认消息）
-     * 
-     * @param data 数据
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildSuccess(Object data) {
-        return buildSuccessResponse(ResponseCode.SUCCESS, ResponseCode.MSG_SUCCESS, data);
-    }
-    
-    /**
-     * 构建成功响应（自定义消息）
-     * 
-     * @param message 消息内容
-     * @param data 数据
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildSuccess(String message, Object data) {
-        return buildSuccessResponse(ResponseCode.SUCCESS, message, data);
-    }
-    
-    /**
-     * 构建创建成功响应
-     * 
-     * @param data 数据
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildCreated(Object data) {
-        return buildSuccessResponse(ResponseCode.CREATED, ResponseCode.MSG_SUCCESS, data);
-    }
-    
-    /**
-     * 构建操作成功响应
-     * 
-     * @param data 数据
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildOperationSuccess(Object data) {
-        return buildSuccessResponse(ResponseCode.OPERATION_SUCCESS, ResponseCode.MSG_SUCCESS, data);
-    }
-    
-    /**
-     * 构建查询成功响应
-     * 
-     * @param data 数据
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildQuerySuccess(Object data) {
-        return buildSuccessResponse(ResponseCode.SUCCESS, ResponseCode.MSG_SUCCESS, data);
-    }
-    
-    /**
-     * 构建分页查询成功响应
-     * 
-     * @param data 分页数据
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildPageSuccess(Object data) {
-        return buildSuccessResponse(ResponseCode.SUCCESS, ResponseCode.MSG_SUCCESS, data);
-    }
-    
-    /**
-     * 构建导入成功响应
-     * 
-     * @param data 数据
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildImportSuccess(Object data) {
-        return buildSuccessResponse(ResponseCode.IMPORT_SUCCESS, ResponseCode.MSG_IMPORT_SUCCESS, data);
-    }
-    
-    /**
-     * 构建导入完成响应
-     * 
-     * @param data 数据
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildImportCompleted(Object data) {
-        return buildSuccessResponse(ResponseCode.IMPORT_COMPLETED, ResponseCode.MSG_IMPORT_COMPLETED, data);
-    }
-    
-    // ==================== 通用失败响应方法 ====================
-    
-    /**
-     * 构建失败响应（默认错误消息）
-     * 
-     * @param error 错误信息
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildError(String error) {
-        return buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, ResponseCode.MSG_FAILED, error);
-    }
-    
-    /**
-     * 构建失败响应（自定义错误消息）
-     * 
-     * @param message 错误消息
-     * @param error 错误信息
-     * @return ResponseEntity对象
-     */
+
+    /** 构建错误响应（带自定义消息和异常信息） */
     public static Map<String, Object> buildError(String message, String error) {
         return buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, message, error);
     }
-    
-    /**
-     * 构建参数验证失败响应
-     * 
-     * @param field 字段名
-     * @param reason 原因
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildValidationFailed(String field, String reason) {
-        String message = String.format("参数验证失败: %s - %s", field, reason);
-        return buildCustomErrorResponse(ResponseCode.VALIDATION_FAILED, message, null);
-    }
-    
-    /**
-     * 构建参数验证失败响应（默认消息）
-     * 
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildValidationFailed() {
-        return buildCustomErrorResponse(ResponseCode.VALIDATION_FAILED, ResponseCode.MSG_VALIDATION_FAILED, null);
-    }
-    
-    /**
-     * 构建资源不存在响应
-     * 
-     * @param resource 资源类型
-     * @param id 资源ID
-     * @return ResponseEntity对象
-     */
+
+    /** 构建资源不存在响应 */
     public static Map<String, Object> buildNotFound(String resource, Object id) {
-        String message = String.format("%s不存在: ID=%s", resource, id);
-        return buildCustomErrorResponse(ResponseCode.DATA_NOT_FOUND, message, null);
+        return buildCustomErrorResponse(ResponseCode.DATA_NOT_FOUND,
+                String.format("%s不存在: ID=%s", resource, id), null);
     }
-    
-    /**
-     * 构建资源不存在响应（默认消息）
-     * 
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildNotFound() {
-        return buildCustomErrorResponse(ResponseCode.DATA_NOT_FOUND, ResponseCode.MSG_DATA_NOT_FOUND, null);
+
+    /** 构建参数验证失败响应 */
+    public static Map<String, Object> buildValidationFailed(String field, String reason) {
+        return buildCustomErrorResponse(ResponseCode.VALIDATION_FAILED,
+                String.format("参数验证失败: %s - %s", field, reason), null);
     }
-    
-    /**
-     * 构建权限不足响应
-     * 
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildInsufficientPermission() {
-        return buildCustomErrorResponse(ResponseCode.INSUFFICIENT_PERMISSION, ResponseCode.MSG_INSUFFICIENT_PERMISSION, null);
+
+    // ── 兼容别名（部分旧控制器仍在使用） ─────────────────────────────────
+
+    /** @deprecated 改用 {@link #buildSuccess(Object)} */
+    @Deprecated public static Map<String, Object> buildSuccessResponse(int code, String message, Object data) {
+        return build(code, message, data);
     }
-    
-    /**
-     * 构建操作失败响应
-     * 
-     * @param error 错误信息
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildOperationFailed(String error) {
-        return buildCustomErrorResponse(ResponseCode.OPERATION_FAILED, ResponseCode.MSG_FAILED, error);
+
+    /** @deprecated 改用 {@link #buildSuccess(Object)} */
+    @Deprecated public static Map<String, Object> buildOperationSuccess(Object data) {
+        return build(ResponseCode.SUCCESS, "操作成功", data);
     }
-    
-    /**
-     * 构建操作失败响应（默认消息）
-     * 
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildOperationFailed() {
-        return buildCustomErrorResponse(ResponseCode.OPERATION_FAILED, ResponseCode.MSG_FAILED, null);
+
+    /** @deprecated 改用 {@link #buildError(String, String)} */
+    @Deprecated public static Map<String, Object> buildOperationFailed(String error) {
+        return buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, "操作失败", error);
     }
-    
-    /**
-     * 构建超时响应
-     * 
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildTimeout() {
-        return buildCustomErrorResponse(ResponseCode.TIMEOUT, ResponseCode.MSG_TIMEOUT, null);
+
+    /** @deprecated */
+    @Deprecated public static Map<String, Object> buildImportSuccess(Object data) {
+        return build(ResponseCode.IMPORT_SUCCESS, "导入成功", data);
     }
-    
-    /**
-     * 构建导入失败响应
-     * 
-     * @param error 错误信息
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildImportFailed(String error) {
-        return buildCustomErrorResponse(ResponseCode.IMPORT_FAILED, ResponseCode.MSG_IMPORT_FAILED, error);
+
+    /** @deprecated */
+    @Deprecated public static Map<String, Object> buildImportFailed(String error) {
+        return buildCustomErrorResponse(ResponseCode.IMPORT_FAILED, "导入失败", error);
     }
-    
-    /**
-     * 构建导入失败响应（默认消息）
-     * 
-     * @return ResponseEntity对象
-     */
-    public static Map<String, Object> buildImportFailed() {
-        return buildCustomErrorResponse(ResponseCode.IMPORT_FAILED, ResponseCode.MSG_IMPORT_FAILED, null);
+
+    // ── 内部 ──────────────────────────────────────────────────────────────
+
+    private static Map<String, Object> build(int code, String message, Object data) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("code", code);
+        result.put("message", message);
+        result.put("data", data);
+        return result;
     }
 }

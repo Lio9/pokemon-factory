@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 异步对战执行器。
@@ -79,7 +81,19 @@ public class BattleExecutor {
             battleMapper.insertInitial(playerId, null, 0, playerMoveMapJson, finalPlayerTeamJson, "queued", null, null);
             Integer battleId = battleMapper.lastInsertId();
             jobMapper.insertJob(battleId, "PENDING", playerMoveMapJson);
-            executor.submit(() -> runBattle(battleId, playerId, finalPlayerTeamJson));
+                        Future<?> battleFuture = executor.submit(() -> runBattle(battleId, playerId, finalPlayerTeamJson));
+            try {
+                battleFuture.get(5, TimeUnit.MINUTES);
+            } catch (Exception e) {
+                battleFuture.cancel(true);
+                log.error("异步对战超时, battleId={}", battleId, e);
+                try {
+                    battleMapper.updateBattle(battleId, null, "{\"status\":\"completed\",\"phase\":\"completed\",\"winner\":\"opponent\",\"error\":\"timeout\"}", 0, null, "completed");
+                    markJobDone(battleId, "TIMEOUT");
+                } catch (Exception nested) {
+                    log.error("超时后兜底落库失败, battleId={}", battleId, nested);
+                }
+            }
             return battleId;
         } catch (Exception e) {
             log.error("提交异步对战失败, playerId={}", playerId, e);
@@ -155,7 +169,7 @@ public class BattleExecutor {
                     }
                     Integer playerId = battle.get("player_id") == null ? null : ((Number) battle.get("player_id")).intValue();
                     String playerTeamJson = String.valueOf(battle.getOrDefault("player_team_json", "[]"));
-                    executor.submit(() -> runBattle(battleId, playerId, playerTeamJson));
+                                executor.submit(() -> runBattle(battleId, playerId, playerTeamJson));
                 } catch (Exception e) {
                     log.warn("恢复异步任务失败, battleId={}", battleId, e);
                 }

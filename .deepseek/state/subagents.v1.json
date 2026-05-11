@@ -1,4 +1,56 @@
 {
   "schema_version": 1,
-  "agents": []
+  "agents": [
+    {
+      "id": "agent_0d86e6cb",
+      "agent_type": "implementer",
+      "prompt": "重写 ItemList.vue 为 Composition API + 新设计",
+      "assignment": {
+        "objective": "重写 ItemList.vue 为 Composition API + 新设计"
+      },
+      "model": "deepseek-v4-flash",
+      "nickname": "Humpback",
+      "status": "Cancelled",
+      "result": null,
+      "steps_taken": 0,
+      "duration_ms": 439750,
+      "allowed_tools": [],
+      "updated_at_ms": 1778463950888,
+      "session_boot_id": "boot_fef873c4-710"
+    },
+    {
+      "id": "agent_2acfb925",
+      "agent_type": "implementer",
+      "prompt": "重写 MoveList.vue 的 template 和 style",
+      "assignment": {
+        "objective": "重写 MoveList.vue 的 template 和 style"
+      },
+      "model": "deepseek-v4-flash",
+      "nickname": "Blue",
+      "status": "Cancelled",
+      "result": null,
+      "steps_taken": 0,
+      "duration_ms": 439812,
+      "allowed_tools": [],
+      "updated_at_ms": 1778463950888,
+      "session_boot_id": "boot_fef873c4-710"
+    },
+    {
+      "id": "agent_b7a15472",
+      "agent_type": "implementer",
+      "prompt": "重写 AbilityList.vue 的 template 和 style",
+      "assignment": {
+        "objective": "重写 AbilityList.vue 的 template 和 style"
+      },
+      "model": "deepseek-v4-flash",
+      "nickname": "蓝鲸",
+      "status": "Cancelled",
+      "result": null,
+      "steps_taken": 0,
+      "duration_ms": 439784,
+      "allowed_tools": [],
+      "updated_at_ms": 1778463950888,
+      "session_boot_id": "boot_fef873c4-710"
+    }
+  ]
 }

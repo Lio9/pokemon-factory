@@ -1,13 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  pom 文件说明
-  所属模块：项目根目录。
-  文件类型：XML 配置文件。
-  核心职责：负责提供项目运行期所需的结构化配置或映射定义。
-  阅读建议：建议关注节点结构与外部引用关系。
-  项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
--->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
@@ -15,12 +6,12 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.0.5</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>com.lio9</groupId>
 	<artifactId>pokemon-factory</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>pokemon-factory</name>
+	<name>Pokemon Factory — Parent</name>
 	<description>Pokemon Factory Project</description>
 	<packaging>pom</packaging>
 
@@ -33,46 +24,68 @@
 
 	<properties>
 		<java.version>17</java.version>
-        <jsoup.version>1.18.3</jsoup.version>
-        <mybatis-spring.version>4.0.0</mybatis-spring.version>
-        <sqlite.version>3.47.2.0</sqlite.version>
-        <mybatis-plus.version>3.5.9</mybatis-plus.version>
-        <lombok.version>1.18.36</lombok.version>
-        <springdoc.version>2.6.0</springdoc.version>
+		<jsoup.version>1.18.3</jsoup.version>
+		<mybatis-spring.version>4.0.0</mybatis-spring.version>
+		<sqlite.version>3.47.2.0</sqlite.version>
+		<mybatis-plus.version>3.5.9</mybatis-plus.version>
+		<lombok.version>1.18.36</lombok.version>
+		<springdoc.version>2.6.0</springdoc.version>
 	</properties>
 
 	<dependencyManagement>
 		<dependencies>
-            <dependency>
-                <groupId>org.jsoup</groupId>
-                <artifactId>jsoup</artifactId>
-                <version>${jsoup.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.baomidou</groupId>
-                <artifactId>mybatis-plus-boot-starter</artifactId>
-                <version>${mybatis-plus.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.mybatis.spring.boot</groupId>
-                <artifactId>mybatis-spring-boot-starter</artifactId>
-                <version>${mybatis-spring.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.xerial</groupId>
-                <artifactId>sqlite-jdbc</artifactId>
-                <version>${sqlite.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok</artifactId>
-                <version>${lombok.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springdoc</groupId>
-                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-                <version>${springdoc.version}</version>
-            </dependency>
+			<dependency>
+				<groupId>org.jsoup</groupId>
+				<artifactId>jsoup</artifactId>
+				<version>${jsoup.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.baomidou</groupId>
+				<artifactId>mybatis-plus-boot-starter</artifactId>
+				<version>${mybatis-plus.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.mybatis.spring.boot</groupId>
+				<artifactId>mybatis-spring-boot-starter</artifactId>
+				<version>${mybatis-spring.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.xerial</groupId>
+				<artifactId>sqlite-jdbc</artifactId>
+				<version>${sqlite.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.projectlombok</groupId>
+				<artifactId>lombok</artifactId>
+				<version>${lombok.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springdoc</groupId>
+				<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+				<version>${springdoc.version}</version>
+			</dependency>
+
+			<!-- 自产模块（标准化 artifactId） -->
+			<dependency>
+				<groupId>com.lio9</groupId>
+				<artifactId>common</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.lio9</groupId>
+				<artifactId>pokedex</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.lio9</groupId>
+				<artifactId>user</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.lio9</groupId>
+				<artifactId>battle</artifactId>
+				<version>${project.version}</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
@@ -94,8 +107,6 @@
 						</execution>
 					</executions>
 				</plugin>
-				
-
 			</plugins>
 		</pluginManagement>
 	</build>

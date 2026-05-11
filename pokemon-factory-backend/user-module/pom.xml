@@ -1,27 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  pom 文件说明
-  所属模块：user-module 后端模块。
-  文件类型：XML 配置文件。
-  核心职责：负责提供项目运行期所需的结构化配置或映射定义。
-  阅读建议：建议关注节点结构与外部引用关系。
-  项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
--->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.5</version>
-        <relativePath/>
+        <groupId>com.lio9</groupId>
+        <artifactId>pokemon-factory</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>com.lio9</groupId>
-    <artifactId>user-module</artifactId>
+
+    <artifactId>user</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
+    <name>Pokemon Factory — User</name>
+    <description>User registration, login, session management</description>
 
     <dependencies>
         <dependency>
@@ -49,17 +42,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-        <!-- user-module 独立打包后仍会走到 MyBatis-Plus 相关自动配置探测，
-             这里显式补齐运行时依赖，避免只依赖 common 的 optional 传递依赖时缺类。 -->
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
-            <version>4.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-boot-starter</artifactId>
-            <version>3.5.9</version>
         </dependency>
         <dependency>
             <groupId>jakarta.annotation</groupId>

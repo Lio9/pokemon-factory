@@ -5,6 +5,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 战斗状态查询：提供对当前摘要、回合日志和队伍状态的只读访问。
+ */
 final class BattleStateSupport {
 
     BattleStateSupport() {

@@ -1,20 +1,9 @@
-# application 文件说明
-# 所属模块：user-module 后端模块。
-# 文件类型：YAML 配置文件。
-# 核心职责：负责声明模块运行参数、环境配置和基础设施开关。
-# 阅读建议：建议优先确认不同 profile 或环境变量的覆盖关系。
-# 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
-
 spring:
   config:
-    # 用户模块本身不再维护独立数据库连接，统一复用 common 暴露的数据库配置。
     import: optional:classpath:application-common.yml
   application:
-    # user-module 既可以作为 battleFactory 的依赖模块被装配，
-    # 也可以通过自己的启动类独立运行，这里继续保留统一模块名。
-    name: user-module
+    name: user
 
 user:
   auth:
-    # JWT_SECRET 仍然优先从环境变量读取；这里保留认证相关配置位，避免模块资源目录只剩空壳。
     token-expire-hours: 24

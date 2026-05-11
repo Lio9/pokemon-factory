@@ -5,6 +5,9 @@ import com.lio9.pokedex.util.DamageCalculatorUtil;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AI 对手决策逻辑：选择招式、目标和替换优先级。
+ */
 final class BattleAISupport {
     private final BattleEngine engine;
     private final BattleAnalysisSupport analysisSupport;

@@ -3,7 +3,7 @@
 <template>
   <section
     v-if="isPreviewPhase"
-    class="rounded-2xl border border-amber-200 bg-[linear-gradient(180deg,rgba(254,243,199,0.7),rgba(255,255,255,0.95))] p-4"
+    class="glass-card border border-amber-200/60 p-4"
   >
     <div class="mb-3 text-sm font-semibold text-slate-800">
       {{ tr(`队伍预览：从 6 只里选择 ${rosterLimit} 只，并指定 ${leadLimit} 只首发`, `Team preview: pick ${rosterLimit} of 6 Pokemon and choose ${leadLimit} lead(s)`) }}

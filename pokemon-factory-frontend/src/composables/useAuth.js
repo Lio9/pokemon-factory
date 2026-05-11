@@ -1,17 +1,12 @@
-/*
- * useAuth 文件说明
- * 所属模块：前端应用。
- * 文件类型：前端组合式逻辑文件。
- * 核心职责：负责抽离可复用状态、派生数据和副作用处理流程。
- * 阅读建议：建议结合调用它的页面或组件一起理解数据流。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
- */
-
 import { computed, reactive, readonly } from 'vue'
 import api from '../services/api'
 import { normalizeAuthSession } from '../services/contracts/authContract'
-import { getToken, getStoredUser, persistSession } from '../services/sessionStorage'
+import { getToken, getStoredUser, persistSession, sessionManager } from '../services/sessionStorage'
+import { setSessionManager } from '../services/httpClient'
 import { translate } from './useLocale'
+
+// 将会话管理器注入 httpClient（401 自动清会话）
+setSessionManager(sessionManager)
 
 const initialToken = getToken()
 
@@ -22,7 +17,6 @@ const state = reactive({
   initialized: !initialToken
 })
 
-// 用统一入口更新内存状态和本地缓存，避免 login/register/restoreSession 各自维护不同逻辑。
 function setSession(session) {
   state.token = session?.token || ''
   state.user = session?.user || null
@@ -34,21 +28,15 @@ function clearSession() {
   setSession(null)
 }
 
-// 页面刷新后优先用 /me 校验 token 是否仍有效，防止本地残留的过期 token 误导页面展示。
-// 用 restorePromise 记录正在进行中的恢复请求，让并发调用者共享同一个 Promise，避免重复发起请求。
 let restorePromise = null
 
 async function restoreSession() {
-  if (state.restoring) {
-    return restorePromise
-  }
-
+  if (state.restoring) return restorePromise
   if (!state.token) {
     state.initialized = true
     state.user = null
     return null
   }
-
   state.restoring = true
   restorePromise = (async () => {
     try {
@@ -56,7 +44,6 @@ async function restoreSession() {
       setSession(normalizeAuthSession({ token: state.token, ...response }))
       return state.user
     } catch {
-      // token 失效时直接清掉本地会话，避免页面继续展示过期用户信息。
       clearSession()
       return null
     } finally {
@@ -68,7 +55,6 @@ async function restoreSession() {
   return restorePromise
 }
 
-// 登录成功后直接刷新统一会话状态，页面其他位置只读 useAuth 暴露的只读状态即可。
 async function login(credentials) {
   const response = await api.user.login(credentials)
   const session = normalizeAuthSession(response)
@@ -76,7 +62,6 @@ async function login(credentials) {
   return session.user
 }
 
-// 注册成功后立即建立会话，和后端“注册即登录”的返回语义保持一致。
 async function register(credentials) {
   const response = await api.user.register(credentials)
   const session = normalizeAuthSession(response)
@@ -87,7 +72,6 @@ async function register(credentials) {
 const isAuthenticated = computed(() => Boolean(state.token && state.user))
 const displayName = computed(() => state.user?.displayName || state.user?.username || translate('游客', 'Guest'))
 
-// 对外只暴露只读状态和受控操作，避免任意组件直接改内部 state。
 export function useAuth() {
   return {
     state: readonly(state),

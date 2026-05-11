@@ -1,20 +1,21 @@
 package com.lio9.battle.engine.event;
 
+import com.lio9.battle.effect.MoveUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Map;
 
 /**
- * 特性事件处理器配置
- * 将 Pokemon Showdown 中的特性效果注册到事件系统
+ * 特性事件处理器配置。
+ *
+ * <p>将 Showdown 特性效果以事件驱动方式注册到 {@link BattleEventBus}。
+ * 注意：当前引擎主路径仍通过 {@link com.lio9.battle.effect.EffectRegistry} 派发，
+ * 事件总线仅作为辅助/渐进迁移路径。</p>
  */
 @Configuration
 public class AbilityEventConfig {
 
-    /**
-     * 漂浮特性 - 免疫地面系招式
-     */
     @Bean
     public BattleEventHandler levitateHandler() {
         return new BattleEventHandler() {
@@ -23,15 +24,10 @@ public class AbilityEventConfig {
                 if (event instanceof TryHitEvent) {
                     Map<String, Object> target = event.getTarget(context);
                     Map<String, Object> move = event.getMove(context);
-
-                    if (target != null && move != null) {
-                        String ability = getAbilityName(target);
-                        if ("levitate".equalsIgnoreCase(ability)) {
-                            int moveTypeId = toInt(move.get("type_id"), 0);
-                            if (moveTypeId == 4) { // TYPE_GROUND = 4
-                                return EventResult.stopWithMessage("immune",
-                                        target.get("name") + " 漂浮在空中，免疫地面系招式");
-                            }
+                    if (target != null && move != null && "levitate".equalsIgnoreCase(getAbilityName(target))) {
+                        if (toInt(move.get("type_id"), 0) == 4) { // GROUND
+                            return EventResult.stopWithMessage("immune",
+                                    target.get("name") + " floats with Levitate, immune to Ground");
                         }
                     }
                 }
@@ -39,112 +35,75 @@ public class AbilityEventConfig {
             }
 
             @Override
-            public int getPriority() {
-                return 100; // 高优先级，免疫效果应该先判定
-            }
+            public int getPriority() { return 100; }
 
             @Override
-            public String getSource() {
-                return "ability:levitate";
-            }
+            public String getSource() { return "ability:levitate"; }
         };
     }
 
-    /**
-     * 技术高手特性 - 威力60及以下的招式威力×1.5
-     */
     @Bean
     public BattleEventHandler technicianHandler() {
         return new BattleEventHandler() {
             @Override
             public EventResult handle(BattleEvent event, Map<String, Object> context) {
-                if (event instanceof ModifyPowerEvent powerEvent) {
+                if (event instanceof ModifyPowerEvent pe) {
                     Map<String, Object> source = event.getSource(context);
-                    if (source != null) {
-                        String ability = getAbilityName(source);
-                        if ("technician".equalsIgnoreCase(ability)) {
-                            if (powerEvent.getBasePower() > 0 && powerEvent.getBasePower() <= 60) {
-                                int boosted = (int) Math.floor(powerEvent.getBasePower() * 1.5);
-                                return EventResult.modifyAndContinue(boosted);
-                            }
-                        }
+                    if (source != null && "technician".equalsIgnoreCase(getAbilityName(source))
+                            && pe.getBasePower() > 0 && pe.getBasePower() <= 60) {
+                        return EventResult.modifyAndContinue((int) Math.floor(pe.getBasePower() * 1.5));
                     }
                 }
                 return EventResult.CONTINUE;
             }
 
             @Override
-            public int getPriority() {
-                return 30; // 与 Pokemon Showdown 保持一致
-            }
+            public int getPriority() { return 30; }
 
             @Override
-            public String getSource() {
-                return "ability:technician";
-            }
+            public String getSource() { return "ability:technician"; }
         };
     }
 
-    /**
-     * 大力士/瑜伽之力特性 - 攻击×2
-     * 注意：这个特性在伤害计算中通过 abilityDamageModifier 处理
-     * 这里注册用于其他可能的触发点
-     */
     @Bean
     public BattleEventHandler hugePowerHandler() {
         return new BattleEventHandler() {
             @Override
             public EventResult handle(BattleEvent event, Map<String, Object> context) {
-                // Huge Power 主要在伤害计算时生效
-                // 这里可以用于日志记录或其他触发
                 return EventResult.CONTINUE;
             }
 
             @Override
-            public String getSource() {
-                return "ability:huge-power";
-            }
+            public String getSource() { return "ability:huge-power"; }
         };
     }
 
-    /**
-     * 适应力特性 - STAB 从 1.5 倍提升到 2 倍
-     */
     @Bean
     public BattleEventHandler adaptabilityHandler() {
         return new BattleEventHandler() {
             @Override
             public EventResult handle(BattleEvent event, Map<String, Object> context) {
-                // Adaptability 在 STAB 计算时检查
                 return EventResult.CONTINUE;
             }
 
             @Override
-            public String getSource() {
-                return "ability:adaptability";
-            }
+            public String getSource() { return "ability:adaptability"; }
         };
     }
 
-    /**
-     * 硬爪/钢拳特性 - 接触类招式威力×1.3
-     */
     @Bean
     public BattleEventHandler toughClawsHandler() {
         return new BattleEventHandler() {
             @Override
             public EventResult handle(BattleEvent event, Map<String, Object> context) {
-                if (event instanceof ModifyPowerEvent powerEvent) {
+                if (event instanceof ModifyPowerEvent pe) {
                     Map<String, Object> source = event.getSource(context);
                     Map<String, Object> move = event.getMove(context);
-
                     if (source != null && move != null) {
                         String ability = getAbilityName(source);
-                        if (("tough-claws".equalsIgnoreCase(ability) ||
-                                "iron-fist".equalsIgnoreCase(ability)) &&
-                                isContactMove(move)) {
-                            int boosted = (int) Math.floor(powerEvent.getBasePower() * 1.3);
-                            return EventResult.modifyAndContinue(boosted);
+                        if (("tough-claws".equalsIgnoreCase(ability) || "iron-fist".equalsIgnoreCase(ability))
+                                && isContactMove(move)) {
+                            return EventResult.modifyAndContinue((int) Math.floor(pe.getBasePower() * 1.3));
                         }
                     }
                 }
@@ -152,20 +111,13 @@ public class AbilityEventConfig {
             }
 
             @Override
-            public int getPriority() {
-                return 30;
-            }
+            public int getPriority() { return 30; }
 
             @Override
-            public String getSource() {
-                return "ability:tough-claws";
-            }
+            public String getSource() { return "ability:tough-claws"; }
         };
     }
 
-    /**
-     * 威吓特性 - 上场时降低对手攻击1级
-     */
     @Bean
     public BattleEventHandler intimidateHandler() {
         return new BattleEventHandler() {
@@ -173,60 +125,37 @@ public class AbilityEventConfig {
             public EventResult handle(BattleEvent event, Map<String, Object> context) {
                 if (event.getType() == BattleEventType.ON_SWITCH_IN) {
                     Map<String, Object> source = event.getSource(context);
-                    if (source != null) {
-                        String ability = getAbilityName(source);
-                        if ("intimidate".equalsIgnoreCase(ability)) {
-                            // 触发威吓效果（在对战流程中处理）
-                            return EventResult.continueWith("intimidate");
-                        }
+                    if (source != null && "intimidate".equalsIgnoreCase(getAbilityName(source))) {
+                        return EventResult.continueWith("intimidate");
                     }
                 }
                 return EventResult.CONTINUE;
             }
 
             @Override
-            public String getSource() {
-                return "ability:intimidate";
-            }
+            public String getSource() { return "ability:intimidate"; }
         };
     }
 
-    // === 辅助方法 ===
+    // ── 辅助方法 ──────────────────────────────────────────────────────────
 
     private String getAbilityName(Map<String, Object> pokemon) {
         Object ability = pokemon.get("ability");
-        if (ability instanceof Map<?, ?> abilityMap) {
-            Object nameEn = abilityMap.get("name_en");
-            if (nameEn != null && !String.valueOf(nameEn).isBlank()) {
-                return String.valueOf(nameEn);
-            }
+        if (ability instanceof Map<?, ?> m) {
+            Object nameEn = m.get("name_en");
+            if (nameEn != null) return String.valueOf(nameEn);
         }
         return ability == null ? "" : String.valueOf(ability);
     }
 
     private int toInt(Object value, int fallback) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        if (value != null) {
-            try {
-                return Integer.parseInt(value.toString());
-            } catch (NumberFormatException ignored) {
-            }
-        }
+        if (value instanceof Number n) return n.intValue();
+        if (value != null) try { return Integer.parseInt(value.toString()); } catch (NumberFormatException ignored) {}
         return fallback;
     }
 
+    /** 使用招式 flags 判断是否为接触类招式 */
     private boolean isContactMove(Map<String, Object> move) {
-        // 简化判断：物理招式且不是远程招式
-        int damageClassId = toInt(move.get("damage_class_id"), 0);
-        if (damageClassId != 2) { // DAMAGE_CLASS_PHYSICAL = 2
-            return false;
-        }
-
-        // 检查是否为非接触类招式
-        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
-        return !nameEn.contains("beam") && !nameEn.contains("bomb") &&
-                !nameEn.contains("pulse") && !nameEn.contains("wave");
+        return MoveUtils.hasMoveFlag(move, "contact");
     }
 }

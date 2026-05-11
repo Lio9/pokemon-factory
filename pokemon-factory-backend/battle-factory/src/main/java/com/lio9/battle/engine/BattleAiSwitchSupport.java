@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+/**
+ * AI 替换决策逻辑：计算替换收益并选择最优上场宝可梦。
+ */
 final class BattleAiSwitchSupport {
     private final BattleEngine engine;
 

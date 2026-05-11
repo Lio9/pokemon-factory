@@ -1,14 +1,14 @@
-/*
- * httpClient 文件说明
- * 所属模块：前端应用。
- * 文件类型：前端基础服务文件。
- * 核心职责：负责请求、缓存、会话或资源地址等基础能力封装。
- * 阅读建议：建议关注对上层暴露的统一调用入口。
- * 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
+/**
+ * 统一 HTTP 客户端
+ *
+ * 约定：
+ * - 所有请求返回 `{ code, data, message, success }` 标准化结构
+ * - `request()` 返回原始 payload
+ * - `requestData()` 自动拆包拿到 data
+ * - 401 自动清除本地会话，触发全局回调
+ * - 非 2xx 统一包装为 Error 抛出
  */
-
 import { appEnv } from '../config/env'
-import { getToken } from './sessionStorage'
 
 export const API_BASE = appEnv.apiBase
 export const BATTLE_API_BASE = appEnv.battleApiBase
@@ -16,80 +16,100 @@ export const DAMAGE_API_BASE = appEnv.damageApiBase
 export const SPRITES_BASE = appEnv.spritesBase
 export const API_ROOT = API_BASE.replace(/\/api\/pokedex$/, '/api')
 
-/**
- * 判断是否为项目统一响应壳结构（code/data/error）。
- * @param {any} payload 响应体
- * @returns {boolean}
- */
+// 会话存储引用（延迟引入，避免循环依赖）
+let _sessionManager = null
+let _onUnauthorized = null
+
+export function setSessionManager(manager) {
+  _sessionManager = manager
+}
+
+export function setOnUnauthorized(cb) {
+  _onUnauthorized = cb
+}
+
+function getToken() {
+  return _sessionManager?.getToken() ?? ''
+}
+
 export function isStandardResponse(payload) {
   return Boolean(
-    payload
-    && typeof payload === 'object'
-    && typeof payload.code === 'number'
-    && ('data' in payload || 'error' in payload)
+    payload &&
+    typeof payload === 'object' &&
+    typeof payload.code === 'number' &&
+    ('data' in payload || 'message' in payload)
   )
 }
 
-/**
- * 解析 fetch 响应体，JSON 优先，非 JSON 退化为 message 文本。
- * @param {Response} response fetch 响应对象
- * @returns {Promise<any>}
- */
-export async function parseResponseBody(response) {
+async function parseResponseBody(response) {
   const contentType = response.headers.get('content-type') || ''
   if (contentType.includes('application/json')) {
     return response.json()
   }
-
   const text = await response.text()
-  return text ? { message: text } : null
+  return text ? { code: response.status, data: null, message: text } : null
 }
 
-/**
- * 统一请求入口：自动注入 token、标准化错误并返回原始 payload。
- * @param {string} url 请求地址
- * @param {RequestInit} [options={}] fetch 选项
- * @returns {Promise<any>}
- */
+function buildError(payload, status) {
+  const msg = payload?.message || payload?.error || `请求失败 (${status})`
+  const err = new Error(msg)
+  err.status = status
+  err.code = payload?.code ?? status
+  err.data = payload?.data ?? null
+  return err
+}
+
 export async function request(url, options = {}) {
   const token = getToken()
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {})
   }
-
   if (token) {
     headers.Authorization = `Bearer ${token}`
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers
-  })
-
-  const payload = await parseResponseBody(response)
-
-  if (!response.ok) {
-    const error = new Error(payload?.message || payload?.error || `HTTP error! status: ${response.status}`)
-    error.status = response.status
-    if (payload && typeof payload === 'object') {
-      error.code = payload.code
-      error.error = payload.error
-      error.data = payload.data
-    }
-    throw error
+  let response
+  try {
+    response = await fetch(url, { ...options, headers })
+  } catch (netErr) {
+    const err = new Error(netErr.message || '网络连接失败，请检查网络')
+    err.status = 0
+    err.code = 0
+    err.isNetworkError = true
+    throw err
   }
 
-  return payload
+  const payload = await parseResponseBody(response)
+  if (!payload) {
+    throw buildError({ message: `服务器无响应 (${response.status})` }, response.status)
+  }
+
+  // 401 → 自动清除会话
+  if (response.status === 401) {
+    _sessionManager?.clearSession()
+    _onUnauthorized?.()
+    throw buildError(payload, 401)
+  }
+
+  if (!response.ok) {
+    throw buildError(payload, response.status)
+  }
+
+  // 业务错误码（>= 400）
+  if (payload.code != null && payload.code >= 400) {
+    throw buildError(payload, payload.code)
+  }
+
+  return {
+    success: payload.code === 200,
+    code: payload.code ?? 200,
+    data: payload.data ?? null,
+    message: payload.message ?? ''
+  }
 }
 
-/**
- * 请求并自动拆出 data 字段；非标准响应则原样返回。
- * @param {string} url 请求地址
- * @param {RequestInit} [options={}] fetch 选项
- * @returns {Promise<any>}
- */
 export async function requestData(url, options = {}) {
   const payload = await request(url, options)
-  return isStandardResponse(payload) ? payload.data : payload
+  return payload.data
 }

@@ -667,8 +667,9 @@ public class BattleService {
      * @return 标准化后的键值映射；无输入时返回空 Map
      * @throws IllegalArgumentException 当 JSON 解析失败时抛出
      */
+    /** 解析玩家动作映射，兼容 Map 与 JSON 字符串。Controller 也复用此方法。 */
     @SuppressWarnings("unchecked")
-    private Map<String, String> parsePlayerMoveMap(Object rawValue) {
+    public Map<String, String> parsePlayerMoveMap(Object rawValue) {
         if (rawValue instanceof Map<?, ?> rawMap) {
             Map<String, String> moveMap = new LinkedHashMap<>();
             rawMap.forEach(

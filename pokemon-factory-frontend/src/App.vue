@@ -1,89 +1,117 @@
 <template>
-  <div id="app" class="app-shell min-h-screen text-slate-800 font-sans">
-    <el-container>
-      <el-header class="sticky top-0 z-30 border-b border-white/60 bg-white/75 backdrop-blur-xl !p-0">
-        <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 sm:h-16 sm:px-6 lg:px-8 w-full">
-          <router-link to="/" class="flex items-center gap-2.5 sm:gap-3">
-            <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white sm:h-10 sm:w-10">
-              P
-            </div>
-            <div>
-              <h1 class="text-base font-bold tracking-tight text-slate-800 sm:text-lg">Pokemon Factory</h1>
-            </div>
-          </router-link>
-
-          <nav class="hidden md:flex items-center gap-1">
-            <router-link
-              v-for="item in navItems"
-              :key="item.path"
-              :to="item.path"
-              class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-              :class="route.path.startsWith(item.path) && item.path !== '/'
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'"
-            >
-              {{ item.name }}
-            </router-link>
-          </nav>
-
-          <div class="flex items-center gap-2">
-            <div class="flex items-center rounded-lg border border-slate-200 bg-white/80 p-0.5">
-              <button
-                v-for="option in localeOptions"
-                :key="option.value"
-                class="rounded-md px-2 py-1 text-xs font-medium transition"
-                :class="locale === option.value ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-800'"
-                @click="setLocale(option.value)"
-              >
-                {{ option.shortLabel }}
-              </button>
-            </div>
-
-            <router-link
-              v-if="!isAuthenticated"
-              to="/login"
-              class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-700"
-            >
-              {{ tr('登录', 'Login') }}
-            </router-link>
-            <div v-else class="flex items-center gap-2">
-              <span class="text-sm text-slate-600">{{ authDisplayName }}</span>
-              <button
-                class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
-                @click="handleLogout"
-              >
-                {{ tr('退出', 'Logout') }}
-              </button>
-            </div>
-
-            <el-dropdown trigger="click" class="md:hidden">
-              <button class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-for="item in navItems" :key="item.path">
-                    <router-link :to="item.path" class="block w-full text-sm">{{ item.name }}</router-link>
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+  <div id="app" class="app-shell min-h-screen text-slate-800">
+    <!-- 导航栏 -->
+    <el-header
+      class="sticky top-0 z-30 h-auto border-b border-white/70 bg-white/80 px-0 shadow-sm backdrop-blur-xl"
+      style="padding: 0;"
+    >
+      <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 sm:h-16 sm:px-6 lg:px-8">
+        <!-- Logo -->
+        <router-link to="/" class="flex items-center gap-2.5 sm:gap-3 group">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-sm font-bold text-white shadow-md transition-transform duration-300 group-hover:scale-105 sm:h-10 sm:w-10">
+            PF
           </div>
-        </div>
-      </el-header>
+          <div>
+            <h1 class="text-base font-bold tracking-tight text-slate-800 sm:text-lg">
+              <span class="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Pokemon</span>
+              <span class="text-slate-600"> Factory</span>
+            </h1>
+          </div>
+        </router-link>
 
-      <el-main class="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
-        <div class="min-h-[calc(100vh-120px)] rounded-2xl border border-white/60 bg-white/72 p-4 backdrop-blur-xl sm:p-6">
-          <router-view />
-        </div>
-      </el-main>
+        <!-- 桌面导航 -->
+        <nav class="hidden md:flex items-center gap-0.5">
+          <router-link
+            v-for="item in navItems"
+            :key="item.path"
+            :to="item.path"
+            class="relative px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+            :class="isActiveRoute(item.path)
+              ? 'text-blue-700 bg-blue-50/80'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'"
+          >
+            {{ item.name }}
+          </router-link>
+        </nav>
 
-      <el-footer class="px-4 py-4 text-center text-xs text-slate-400">
+        <!-- 右侧操作区 -->
+        <div class="flex items-center gap-2">
+          <!-- 语言切换 -->
+          <div class="flex items-center rounded-lg border border-slate-200 bg-white/80 p-0.5 shadow-sm">
+            <button
+              v-for="option in localeOptions"
+              :key="option.value"
+              class="rounded-md px-2 py-1 text-xs font-medium transition-all duration-200"
+              :class="locale === option.value
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'"
+              @click="setLocale(option.value)"
+            >
+              {{ option.shortLabel }}
+            </button>
+          </div>
+
+          <!-- 登录/用户 -->
+          <router-link
+            v-if="!isAuthenticated"
+            to="/login"
+            class="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-all duration-200 hover:shadow-md hover:from-blue-700 hover:to-indigo-700"
+          >
+            {{ tr('登录', 'Login') }}
+          </router-link>
+          <div v-else class="flex items-center gap-2">
+            <span class="text-sm text-slate-600">{{ authDisplayName }}</span>
+            <button
+              class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-all duration-200 hover:bg-slate-200"
+              @click="handleLogout"
+            >
+              {{ tr('退出', 'Logout') }}
+            </button>
+          </div>
+
+          <!-- 移动端菜单 -->
+          <el-dropdown trigger="click" class="md:hidden">
+            <button class="flex items-center justify-center rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item v-for="item in navItems" :key="item.path">
+                  <router-link :to="item.path" class="block w-full text-sm font-medium">{{ item.name }}</router-link>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+      </div>
+
+      <!-- 导航栏底部渐变线 -->
+      <div class="h-[1px] bg-gradient-to-r from-transparent via-blue-200/60 to-transparent" />
+    </el-header>
+
+    <!-- 主内容区 -->
+    <el-main class="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <router-view v-slot="{ Component }">
+        <transition
+          name="page"
+          mode="out-in"
+          appear
+        >
+          <component :is="Component" />
+        </transition>
+      </router-view>
+    </el-main>
+
+    <!-- 页脚 -->
+    <el-footer class="px-4 py-4 text-center text-xs text-slate-400">
+      <div class="mx-auto max-w-7xl">
         &copy; 2024-{{ new Date().getFullYear() }} Pokemon Factory
-      </el-footer>
-    </el-container>
+        <span class="mx-2 text-slate-300">·</span>
+        <span>{{ tr('宝可梦图鉴与对战模拟平台', 'Pokemon Dex & Battle Simulator') }}</span>
+      </div>
+    </el-footer>
 
     <ErrorHandler />
   </div>
@@ -115,6 +143,11 @@ const navItems = computed(() => [
   { name: tr('对战工厂', 'Battle'), path: '/battle' }
 ])
 
+function isActiveRoute(path) {
+  if (path === '/') return route.path === '/'
+  return route.path.startsWith(path)
+}
+
 const isAuthenticated = computed(() => auth.isAuthenticated.value)
 const authDisplayName = computed(() => auth.displayName.value)
 
@@ -133,30 +166,31 @@ async function handleLogout() {
 </script>
 
 <style>
-#app {
-  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
 .app-shell {
-  background: radial-gradient(circle at top left, rgba(14, 165, 233, 0.12), transparent 50%),
-              radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 50%),
-              linear-gradient(180deg, #eef6ff 0%, #f8fafc 24%, #f4f7fb 100%);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.08), transparent 50%),
+    radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.06), transparent 50%),
+    radial-gradient(circle at 50% 100%, rgba(6, 182, 212, 0.04), transparent 50%),
+    linear-gradient(180deg, #f8fafc 0%, #f0f5ff 25%, #f5f3ff 50%, #f0fdfa 100%);
+  min-height: 100vh;
 }
 
-html {
-  font-size: clamp(14px, 0.82vw + 11px, 16px);
+/* 页面切换动画 */
+.page-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
+.page-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
 </style>

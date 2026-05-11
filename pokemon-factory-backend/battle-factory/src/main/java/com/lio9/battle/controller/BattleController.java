@@ -1,8 +1,5 @@
 package com.lio9.battle.controller;
 
-
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.config.BattleApiResponseSupport;
 import com.lio9.battle.service.BattleExecutor;
 import com.lio9.battle.service.BattleService;
@@ -13,16 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * 对战工厂 HTTP 接口入口。
- * <p>
- * 该控制器只负责请求参数整理、认证用户名注入和响应透传，
- * 真正的对战编排、状态推进和持久化都下沉到 BattleService / BattleExecutor。
- * </p>
- */
 @RestController
 @RequestMapping("/api/battle")
 public class BattleController {
@@ -30,31 +19,21 @@ public class BattleController {
     private final BattleExecutor battleExecutor;
     private final PlayerMapper playerMapper;
     private final FactoryRunService factoryRunService;
-    private final ObjectMapper objectMapper;
 
-    public BattleController(BattleService battleService, BattleExecutor battleExecutor, PlayerMapper playerMapper, FactoryRunService factoryRunService, ObjectMapper objectMapper) {
+    public BattleController(BattleService battleService, BattleExecutor battleExecutor,
+                            PlayerMapper playerMapper, FactoryRunService factoryRunService) {
         this.battleService = battleService;
         this.battleExecutor = battleExecutor;
         this.playerMapper = playerMapper;
         this.factoryRunService = factoryRunService;
-        this.objectMapper = objectMapper;
     }
 
-    /**
-     * 开始一场手动对战。
-     * <p>
-     * 当前登录用户名统一从安全上下文中读取，不允许前端伪造其他用户名。
-     * </p>
-     */
     @PostMapping("/start")
     public ResponseEntity<?> startBattle(@RequestBody Map<String, Object> req, Authentication authentication) {
         req.put("username", authenticatedUsername(authentication));
         return BattleApiResponseSupport.fromPayload(battleService.startMatch(req));
     }
 
-    /**
-     * 提交一场异步自动模拟任务。
-     */
     @PostMapping("/start-async")
     public ResponseEntity<?> startAsync(@RequestBody Map<String, Object> req, Authentication authentication) {
         String username = authenticatedUsername(authentication);
@@ -69,49 +48,31 @@ public class BattleController {
         return BattleApiResponseSupport.success(Map.of("battleId", battleId));
     }
 
-    /**
-     * 查询当前对战状态与摘要。
-     */
     @GetMapping("/status/{battleId}")
     public ResponseEntity<?> status(@PathVariable Long battleId) {
         return BattleApiResponseSupport.fromPayload(battleService.getBattleStatus(battleId));
     }
 
-    /**
-     * 抽样查看当前段位附近的对手池。
-     */
     @GetMapping("/pool")
     public ResponseEntity<?> pool(@RequestParam(required = false) Integer rank) {
         return BattleApiResponseSupport.success(battleService.samplePool(rank));
     }
 
-    /**
-     * 确认队伍预览阶段的 6 选 4 与首发选择。
-     */
     @PostMapping("/{battleId}/preview")
     public ResponseEntity<?> confirmPreview(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
         return BattleApiResponseSupport.fromPayload(battleService.confirmTeamPreview(battleId, req));
     }
 
-    /**
-     * 确认倒下补位选择。
-     */
     @PostMapping("/{battleId}/replacement")
     public ResponseEntity<?> confirmReplacement(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
         return BattleApiResponseSupport.fromPayload(battleService.confirmReplacement(battleId, req));
     }
 
-    /**
-     * 提交当前回合动作。
-     */
     @PostMapping("/{battleId}/move")
     public ResponseEntity<?> move(@PathVariable Long battleId, @RequestBody Map<String, Object> req) {
         return BattleApiResponseSupport.fromPayload(battleService.applyMove(battleId, normalizeMoveMap(req)));
     }
 
-    /**
-     * 胜利后执行交换奖励逻辑。
-     */
     @PostMapping("/exchange")
     public ResponseEntity<?> exchange(@RequestBody Map<String, Object> req) {
         Number battleId = (Number) req.get("battleId");
@@ -120,109 +81,64 @@ public class BattleController {
         if (battleId == null || replacedIndex == null || newPokemonJson == null || newPokemonJson.isBlank()) {
             return BattleApiResponseSupport.error(HttpStatus.BAD_REQUEST, "missing_fields", "请求缺少必要字段。");
         }
-        return BattleApiResponseSupport.fromPayload(battleService.updateBattleAfterExchange(battleId.longValue(), replacedIndex.intValue(), newPokemonJson));
+        return BattleApiResponseSupport.fromPayload(
+                battleService.updateBattleAfterExchange(battleId.longValue(), replacedIndex.intValue(), newPokemonJson));
     }
 
-    /**
-     * 认输：主动放弃当前对战。
-     */
     @PostMapping("/{battleId}/forfeit")
     public ResponseEntity<?> forfeit(@PathVariable Long battleId, Authentication authentication) {
-        return BattleApiResponseSupport.fromPayload(battleService.forfeitBattle(battleId, authenticatedUsername(authentication)));
+        return BattleApiResponseSupport.fromPayload(
+                battleService.forfeitBattle(battleId, authenticatedUsername(authentication)));
     }
 
-    // ========== 工厂挑战（9 轮连续对战）==========
-
-    /**
-     * 开始一次工厂挑战（9 轮连续对战）。
-     */
     @PostMapping("/factory/start")
     public ResponseEntity<?> startFactoryRun(Authentication authentication) {
         return BattleApiResponseSupport.fromPayload(factoryRunService.startRun(authenticatedUsername(authentication)));
     }
 
-    /**
-     * 在工厂挑战中开始下一场对战。
-     */
     @PostMapping("/factory/{runId}/next")
     public ResponseEntity<?> nextFactoryBattle(@PathVariable Integer runId, Authentication authentication) {
-        return BattleApiResponseSupport.fromPayload(factoryRunService.startNextBattle(authenticatedUsername(authentication), runId));
+        return BattleApiResponseSupport.fromPayload(
+                factoryRunService.startNextBattle(authenticatedUsername(authentication), runId));
     }
 
-    /**
-     * 放弃当前工厂挑战并结算。
-     */
     @PostMapping("/factory/abandon")
     public ResponseEntity<?> abandonFactoryRun(Authentication authentication) {
         return BattleApiResponseSupport.fromPayload(factoryRunService.abandonRun(authenticatedUsername(authentication)));
     }
 
-    /**
-     * 获取当前工厂挑战状态。
-     */
     @GetMapping("/factory/status")
     public ResponseEntity<?> factoryRunStatus(Authentication authentication) {
         return BattleApiResponseSupport.fromPayload(factoryRunService.getRunStatus(authenticatedUsername(authentication)));
     }
 
-    // ========== 玩家信息 ==========
-
-    /**
-     * 获取玩家完整信息（段位、积分、历史战绩）。
-     */
     @GetMapping("/profile")
     public ResponseEntity<?> profile(Authentication authentication) {
         return BattleApiResponseSupport.success(factoryRunService.getProfile(authenticatedUsername(authentication)));
     }
 
-    /**
-     * 排行榜（大师球段位）。
-     */
     @GetMapping("/leaderboard")
     public ResponseEntity<?> leaderboard(@RequestParam(defaultValue = "50") int limit) {
         return BattleApiResponseSupport.success(factoryRunService.getLeaderboard(limit));
     }
 
-    @SuppressWarnings("unchecked")
-    /**
-     * 兼容前端不同形态的出招提交结构，统一折叠成 battle service 能识别的扁平 Map。
-     */
+    /** 从请求中提取 playerMoveMap，委托给 Service 的统一解析方法 */
     private Map<String, String> normalizeMoveMap(Map<String, Object> req) {
-        if (req == null) {
-            return Map.of();
-        }
-        if (req.get("playerMoveMap") instanceof Map<?, ?> rawMap) {
-            Map<String, String> moveMap = new LinkedHashMap<>();
-            rawMap.forEach((key, value) -> moveMap.put(String.valueOf(key), value == null ? "" : String.valueOf(value)));
-            return moveMap;
-        }
-        if (req.get("playerMoveMap") instanceof String rawJson && !rawJson.isBlank()) {
-            try {
-                return objectMapper.readValue(rawJson, Map.class);
-            } catch (Exception e) {
-                throw new IllegalArgumentException("invalid_move_map_json", e);
-            }
-        }
-        if (req.get("move") != null) {
-            return Map.of("__active", String.valueOf(req.get("move")));
-        }
+        if (req == null) return Map.of();
+        Object moveMap = req.get("playerMoveMap");
+        if (moveMap != null) return battleService.parsePlayerMoveMap(moveMap);
+        if (req.get("move") != null) return Map.of("__active", String.valueOf(req.get("move")));
         return Map.of();
     }
 
-    /**
-     * 把任意原始动作对象转成 JSON，供异步任务直接落库。
-     */
     private String toMoveJson(Object rawMoveMap) {
         try {
-            return rawMoveMap == null ? null : objectMapper.writeValueAsString(rawMoveMap);
+            return rawMoveMap == null ? null : new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(rawMoveMap);
         } catch (Exception e) {
             throw new IllegalArgumentException("invalid_move_map", e);
         }
     }
 
-    /**
-     * 从安全上下文中提取当前认证用户名。
-     */
     private String authenticatedUsername(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal() == null) {
             throw new IllegalStateException("authenticated user missing");

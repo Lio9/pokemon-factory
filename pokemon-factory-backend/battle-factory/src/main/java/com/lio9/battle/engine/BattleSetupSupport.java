@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 战斗初始状态构建：初始化队伍、场地下标映射与基础属性。
+ */
 final class BattleSetupSupport {
     private final BattlePreviewSupport previewSupport;
     private final BattleStateSupport stateSupport;

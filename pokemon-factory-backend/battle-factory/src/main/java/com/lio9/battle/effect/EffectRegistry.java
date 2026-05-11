@@ -1,5 +1,6 @@
 package com.lio9.battle.effect;
 
+import static com.lio9.battle.effect.MoveUtils.*;
 import java.util.*;
 
 /**
@@ -24,28 +25,65 @@ public final class EffectRegistry {
     private static final Map<String, AbilityHandler> ABILITIES = new LinkedHashMap<>();
     private static final Map<String, ItemHandler> ITEMS = new LinkedHashMap<>();
 
-    // ====== 类型常量 ======
-    public static final int NORMAL = 1;
-    public static final int FIRE = 2;
-    public static final int WATER = 3;
-    public static final int ELECTRIC = 4;
-    public static final int GRASS = 5;
-    public static final int ICE = 6;
-    public static final int FIGHTING = 7;
-    public static final int POISON = 8;
-    public static final int GROUND = 9;
-    public static final int FLYING = 10;
-    public static final int PSYCHIC = 11;
-    public static final int BUG = 12;
-    public static final int ROCK = 13;
-    public static final int GHOST = 14;
-    public static final int DRAGON = 15;
-    public static final int DARK = 16;
-    public static final int STEEL = 17;
-    public static final int FAIRY = 18;
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int NORMAL = PokemonType.NORMAL.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int FIRE = PokemonType.FIRE.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int WATER = PokemonType.WATER.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int ELECTRIC = PokemonType.ELECTRIC.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int GRASS = PokemonType.GRASS.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int ICE = PokemonType.ICE.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int FIGHTING = PokemonType.FIGHTING.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int POISON = PokemonType.POISON.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int GROUND = PokemonType.GROUND.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int FLYING = PokemonType.FLYING.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int PSYCHIC = PokemonType.PSYCHIC.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int BUG = PokemonType.BUG.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int ROCK = PokemonType.ROCK.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int GHOST = PokemonType.GHOST.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int DRAGON = PokemonType.DRAGON.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int DARK = PokemonType.DARK.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int STEEL = PokemonType.STEEL.id();
+    /** @deprecated 请使用 {@link PokemonType} 枚举 */
+    @Deprecated
+    public static final int FAIRY = PokemonType.FAIRY.id();
 
-    public static final int PHYSICAL = 1;
-    public static final int SPECIAL = 2;
+    /** @deprecated 请使用 {@link PokemonType#PHYSICAL} */
+    @Deprecated public static final int PHYSICAL = PokemonType.PHYSICAL;
+    /** @deprecated 请使用 {@link PokemonType#SPECIAL} */
+    @Deprecated public static final int SPECIAL = PokemonType.SPECIAL;
 
     static { registerAll(); }
     private EffectRegistry() {}
@@ -1675,95 +1713,5 @@ public final class EffectRegistry {
         }
         // 场地激活
         return fieldActive(ctx.state, fieldKey);
-    }
-
-    static boolean hasStatus(String condition) {
-        return condition != null && !condition.isEmpty()
-                && !"ready".equals(condition) && !"fainted".equals(condition);
-    }
-
-    static boolean isSpecies(Map<String, Object> mon, String... names) {
-        String s = strVal(mon, "name_en");
-        for (String n : names) if (n.equalsIgnoreCase(s)) return true;
-        return false;
-    }
-
-    static boolean isSlicingMove(Map<String, Object> move) {
-        String n = moveName(move);
-        return n.contains("slash") || n.contains("cut") || n.contains("blade")
-            || n.contains("razor") || n.contains("claw") || n.contains("axe")
-            || n.contains("night-slash") || n.contains("night slash")
-            || n.contains("psycho-cut") || n.contains("leaf-blade");
-    }
-
-    static boolean isSoundMove(Map<String, Object> move) {
-        String n = moveName(move);
-        return n.contains("boomburst") || n.contains("hypervoice") || n.contains("hyper voice")
-            || n.contains("bug-buzz") || n.contains("bug buzz")
-            || n.contains("snarl") || n.contains("overdrive") || n.contains("clang");
-    }
-
-    static boolean isWindMove(Map<String, Object> move) {
-        String n = moveName(move);
-        return n.contains("gust") || n.contains("twister") || n.contains("hurricane")
-            || n.contains("bleakwind") || n.contains("icy-wind") || n.contains("icy wind")
-            || n.contains("heat-wave") || n.contains("heat wave")
-            || n.contains("tailwind") || n.contains("air-slash");
-    }
-
-    static boolean isRecoilMove(Map<String, Object> move) {
-        String n = moveName(move);
-        return n.contains("double-edge") || n.contains("double edge")
-            || n.contains("flare-blitz") || n.contains("flare blitz")
-            || n.contains("wood-hammer") || n.contains("wood hammer")
-            || n.contains("head-smash") || n.contains("head smash")
-            || n.contains("brave-bird") || n.contains("brave bird")
-            || n.contains("wild-charge") || n.contains("wild charge")
-            || n.contains("volt-tackle") || n.contains("volt tackle");
-    }
-
-    static boolean moveCategory(String cat, Map<String, Object> move) {
-        return moveName(move).contains(cat);
-    }
-
-    static boolean hasEffectChance(Map<String, Object> move) {
-        return intVal(move, "effect_chance") > 0;
-    }
-
-    /** 检查招式是否带有某 flag（如 sound/bullet/wind/contact/powder） */
-    @SuppressWarnings("unchecked")
-    public static boolean hasMoveFlag(Map<String, Object> move, String expected) {
-        Object flags = move.get("flags");
-        if (flags instanceof List<?> list) {
-            for (Object flag : list) {
-                if (expected.equalsIgnoreCase(String.valueOf(flag))) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        if (flags instanceof String s) {
-            for (String part : s.split(",")) {
-                if (expected.equalsIgnoreCase(part.trim())) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    static String moveName(Map<String, Object> move) {
-        Object n = move.get("name_en");
-        return n == null ? "" : String.valueOf(n).toLowerCase();
-    }
-
-    static int intVal(Map<String, Object> m, String key) {
-        Object v = m.get(key);
-        return v instanceof Number n ? n.intValue() : 0;
-    }
-
-    static String strVal(Map<String, Object> m, String key) {
-        Object v = m.get(key);
-        return v == null ? "" : String.valueOf(v).toLowerCase();
     }
 }

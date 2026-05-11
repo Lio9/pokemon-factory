@@ -44,7 +44,7 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ResultResponse.buildSuccessResponse(ResponseCode.CREATED, "注册成功", userService.register(request)));
+                .body(ResultResponse.buildCreated(userService.register(request)));
     }
 
     /**

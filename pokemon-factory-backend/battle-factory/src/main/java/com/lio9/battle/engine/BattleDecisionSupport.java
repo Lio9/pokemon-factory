@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+/**
+ * 回合决策构建：将玩家/AI 的动作选择转换为引擎可执行的指令。
+ */
 final class BattleDecisionSupport {
     private final BattleEngine engine;
     private final BattleAISupport aiSupport;

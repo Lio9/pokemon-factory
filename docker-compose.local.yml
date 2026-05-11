@@ -1,39 +1,11 @@
-# docker-compose.local 文件说明
-# 所属模块：项目根目录。
-# 文件类型：YAML 配置文件。
-# 核心职责：负责声明模块运行参数、环境配置和基础设施开关。
-# 阅读建议：建议优先确认不同 profile 或环境变量的覆盖关系。
-# 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
-
 services:
-  common-init:
-    build:
-      context: ./pokemon-factory-backend
-      dockerfile: Dockerfile.module
-      args:
-        MODULE_PATH: common
-        JAR_PATTERN: common-*-exec.jar
-    environment:
-      SQLITE_DB_PATH: /workspace/data/pokemon-factory.db
-      POKEMON_FACTORY_DATABASE_INITIALIZE_ON_STARTUP: "true"
-      POKEMON_FACTORY_DATABASE_IMPORT_CSV_ON_STARTUP: "true"
-      REMOTE_CSV_BASE_URL: https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv
-      CSV_CACHE_DIR: /workspace/csv-cache
-    volumes:
-      - backend-db:/workspace/data
-      - csv-cache:/workspace/csv-cache
-    restart: "no"
-
   pokedex:
     build:
       context: ./pokemon-factory-backend
       dockerfile: Dockerfile.module
       args:
         MODULE_PATH: poke-dex
-        JAR_PATTERN: poke-dex-*.jar
-    depends_on:
-      common-init:
-        condition: service_completed_successfully
+        JAR_PATTERN: pokedex-*.jar
     environment:
       SQLITE_DB_PATH: /workspace/data/pokemon-factory.db
     volumes:
@@ -41,16 +13,13 @@ services:
     ports:
       - "8081:8081"
 
-  battlefactory:
+  battle:
     build:
       context: ./pokemon-factory-backend
       dockerfile: Dockerfile.module
       args:
         MODULE_PATH: battle-factory
-        JAR_PATTERN: battle-factory-*.jar
-    depends_on:
-      common-init:
-        condition: service_completed_successfully
+        JAR_PATTERN: battle-*.jar
     environment:
       SQLITE_DB_PATH: /workspace/data/pokemon-factory.db
       JWT_SECRET: local-docker-jwt-secret
@@ -70,10 +39,9 @@ services:
         VITE_SPRITES_BASE: http://localhost:8081
     depends_on:
       - pokedex
-      - battlefactory
+      - battle
     ports:
       - "7890:80"
 
 volumes:
   backend-db:
-  csv-cache:
