@@ -715,6 +715,7 @@ import { ElMessage } from 'element-plus'
 import { ChevronLeft, ChevronRight, BarChart3, Sparkles, Layers, GitBranch, ArrowRight, Zap, Hash, Star, Baby, Loader2, Image, RotateCcw, Sparkles as Shiny, Heart, Scale, Share2, X } from 'lucide-vue-next'
 import { pokemonApi, sprites } from '../services/api.js'
 import { dataCache } from '../services/cache.js'
+import EvolutionTreeNode from '../components/EvolutionTreeNode.vue'
 
 // 种族值条组件
 const StatBar = {
@@ -853,7 +854,7 @@ const CompareView = {
 
 export default {
   name: 'PokemonDetail',
-  components: { ChevronLeft, ChevronRight, BarChart3, Sparkles, Layers, GitBranch, ArrowRight, Zap, Hash, Star, Baby, Loader2, Image, RotateCcw, Shiny, StatBar, RadarChart, CompareView, Heart, Scale, Share2, X },
+  components: { ChevronLeft, ChevronRight, BarChart3, Sparkles, Layers, GitBranch, ArrowRight, Zap, Hash, Star, Baby, Loader2, Image, RotateCcw, Shiny, StatBar, RadarChart, CompareView, Heart, Scale, Share2, X, EvolutionTreeNode },
   setup() {
     const route = useRoute()
     const router = useRouter()
@@ -1026,6 +1027,11 @@ export default {
     })
 
     // 过滤后的技能
+    // 进化链（树形数据）
+    const evolutionTree = computed(() => {
+      return pokemon.value?.evolutionChain || []
+    })
+
     const filteredMoves = computed(() => {
       if (selectedMoveFilter.value === 'all') return moves.value
       return moves.value.filter(move => {

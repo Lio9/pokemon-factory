@@ -29,6 +29,7 @@ import com.lio9.pokedex.mapper.PokemonMapper;
 import com.lio9.pokedex.mapper.PokemonMoveMapper;
 import com.lio9.pokedex.service.PokemonService;
 import com.lio9.pokedex.vo.AbilityVO;
+import com.lio9.pokedex.vo.EvolutionNodeVO;
 import com.lio9.pokedex.vo.EvolutionVO;
 import com.lio9.pokedex.vo.PokemonDetailVO;
 import com.lio9.pokedex.vo.PokemonFormDetailVO;
@@ -40,6 +41,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -246,6 +248,11 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
                 formVOs.add(formVO);
             }
             
+            // 进化链（树形结构，支持分支进化）
+            if (pokemon.getEvolutionChainId() != null) {
+                detailVO.setEvolutionChain(getEvolutionChainTree(pokemon.getId().longValue()));
+            }
+
             detailVO.setForms(formVOs);
         }
         
@@ -273,54 +280,99 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
 
     @Override
     public List<EvolutionVO> getEvolutionChain(Long pokemonId) {
+        List<EvolutionNodeVO> tree = getEvolutionChainTree(pokemonId);
+        return flattenEvolutionTree(tree);
+    }
+
+    /** 获取树形进化链（供详情页使用） */
+    public List<EvolutionNodeVO> getEvolutionChainTree(Long pokemonId) {
         Pokemon pokemon = getById(pokemonId);
-        if (pokemon == null || pokemon.getEvolutionChainId() == null) {
-            return new ArrayList<>();
-        }
-        
+        if (pokemon == null || pokemon.getEvolutionChainId() == null) return new ArrayList<>();
+
         QueryWrapper<Pokemon> wrapper = new QueryWrapper<>();
         wrapper.eq("evolution_chain_id", pokemon.getEvolutionChainId());
         wrapper.orderByAsc("id");
         List<Pokemon> speciesList = list(wrapper);
-        
-        if (speciesList.isEmpty()) {
-            return new ArrayList<>();
-        }
-        
-        List<EvolutionVO> evolutionVOs = new ArrayList<>();
-        
-        for (Pokemon species : speciesList) {
-            EvolutionVO vo = new EvolutionVO();
-            vo.setSpeciesId(species.getId());
-            vo.setPokemonName(species.getName());
-            vo.setIsCurrent(species.getId().equals(pokemonId.intValue()));
-            
-            if (species.getEvolvesFromSpeciesId() != null) {
-                QueryWrapper<EvolutionChain> evWrapper = new QueryWrapper<>();
-                evWrapper.eq("pokemon_id", species.getId());
-                EvolutionChain evolutionChain = evolutionChainMapper.selectOne(evWrapper);
-                
-                if (evolutionChain != null) {
-                    vo.setTrigger(evolutionChain.getEvolutionMethod());
-                    vo.setMinLevel(parseEvolutionLevel(evolutionChain.getEvolutionValue()));
-                    vo.setItem(evolutionChain.getEvolutionParameter());
-                }
-            }
-            
-            QueryWrapper<PokemonForm> formWrapper = new QueryWrapper<>();
-            formWrapper.eq("species_id", species.getId());
-            formWrapper.eq("is_default", 1);
-            PokemonForm defaultForm = pokemonFormMapper.selectOne(formWrapper);
-            if (defaultForm != null) {
-                vo.setSpriteUrl(defaultForm.getSpriteUrl());
-            }
-            
-            evolutionVOs.add(vo);
-        }
-        
-        return evolutionVOs;
+        if (speciesList.isEmpty()) return new ArrayList<>();
+        return buildEvolutionTree(speciesList, pokemon.getEvolutionChainId(), pokemonId.intValue());
     }
-    
+
+    private List<EvolutionNodeVO> buildEvolutionTree(List<Pokemon> speciesList, Integer chainId, Integer currentId) {
+        Map<Integer, List<Pokemon>> childrenMap = new HashMap<>();
+        Map<Integer, Pokemon> speciesMap = new HashMap<>();
+        List<Integer> rootIds = new ArrayList<>();
+
+        for (Pokemon sp : speciesList) {
+            speciesMap.put(sp.getId(), sp);
+            Integer parentId = sp.getEvolvesFromSpeciesId();
+            if (parentId == null) rootIds.add(sp.getId());
+            else childrenMap.computeIfAbsent(parentId, k -> new ArrayList<>()).add(sp);
+        }
+        return rootIds.stream()
+                .map(id -> buildNode(id, speciesMap, childrenMap, chainId, currentId))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private EvolutionNodeVO buildNode(Integer speciesId, Map<Integer, Pokemon> speciesMap,
+                                       Map<Integer, List<Pokemon>> childrenMap,
+                                       Integer chainId, Integer currentId) {
+        Pokemon sp = speciesMap.get(speciesId);
+        if (sp == null) return null;
+
+        EvolutionNodeVO node = new EvolutionNodeVO();
+        node.setSpeciesId(sp.getId());
+        node.setPokemonName(sp.getName());
+        node.setIsCurrent(sp.getId().equals(currentId));
+
+        QueryWrapper<PokemonForm> formWrapper = new QueryWrapper<>();
+        formWrapper.eq("species_id", sp.getId());
+        formWrapper.eq("is_default", 1);
+        PokemonForm defaultForm = pokemonFormMapper.selectOne(formWrapper);
+        if (defaultForm != null) node.setSpriteUrl(defaultForm.getSpriteUrl());
+
+        if (sp.getEvolvesFromSpeciesId() != null) {
+            QueryWrapper<EvolutionChain> evWrapper = new QueryWrapper<>();
+            evWrapper.eq("pokemon_id", sp.getId());
+            EvolutionChain ev = evolutionChainMapper.selectOne(evWrapper);
+            if (ev != null) {
+                node.setTrigger(ev.getEvolutionMethod());
+                node.setMinLevel(parseEvolutionLevel(ev.getEvolutionValue()));
+                node.setItem(ev.getEvolutionParameter());
+            }
+        }
+
+        List<Pokemon> children = childrenMap.get(speciesId);
+        if (children != null && !children.isEmpty()) {
+            node.setChildren(children.stream()
+                    .map(child -> buildNode(child.getId(), speciesMap, childrenMap, chainId, currentId))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList()));
+        }
+        return node;
+    }
+
+    private List<EvolutionVO> flattenEvolutionTree(List<EvolutionNodeVO> tree) {
+        List<EvolutionVO> result = new ArrayList<>();
+        for (EvolutionNodeVO node : tree) flattenNode(node, result);
+        return result;
+    }
+
+    private void flattenNode(EvolutionNodeVO node, List<EvolutionVO> result) {
+        if (node == null) return;
+        EvolutionVO vo = new EvolutionVO();
+        vo.setSpeciesId(node.getSpeciesId());
+        vo.setPokemonName(node.getPokemonName());
+        vo.setSpriteUrl(node.getSpriteUrl());
+        vo.setIsCurrent(node.getIsCurrent());
+        vo.setTrigger(node.getTrigger());
+        vo.setMinLevel(node.getMinLevel());
+        vo.setItem(node.getItem());
+        result.add(vo);
+        if (node.getChildren() != null)
+            for (EvolutionNodeVO c : node.getChildren()) flattenNode(c, result);
+    }
+
     /**
      * 解析进化等级
      */
