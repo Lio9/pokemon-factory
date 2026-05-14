@@ -239,6 +239,69 @@ public class UserService {
         }
     }
 
+    // ── 邮箱验证 ──────────────────────────────────────────────────────
+
+    /**
+     * 发送邮箱验证邮件（当前为模拟实现）。
+     *
+     * <p>生成验证令牌并保存到数据库。实际项目中应集成邮件服务（如 SendGrid、AWS SES）。</p>
+     *
+     * @param username 用户名
+     * @param email 邮箱地址
+     * @return 验证令牌（生产环境应通过邮件发送，不返回给前端）
+     */
+    public String requestEmailVerification(String username, String email) {
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "邮箱地址不能为空");
+        }
+        
+        // 简单的邮箱格式验证
+        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw new ResponseStatusException(BAD_REQUEST, "邮箱格式不正确");
+        }
+
+        UserAccount account = userMapper.findByUsername(username);
+        if (account == null) {
+            throw new ResponseStatusException(UNAUTHORIZED, "用户不存在");
+        }
+
+        // 生成验证令牌
+        String verificationToken = generateVerificationToken();
+        
+        // 保存到数据库
+        userMapper.updateEmailAndVerificationToken(account.getId(), email, verificationToken);
+
+        // TODO: 实际项目中这里应该调用邮件服务发送验证链接
+        // emailService.sendVerificationEmail(email, verificationToken);
+        
+        // 开发环境：返回令牌以便测试
+        return verificationToken;
+    }
+
+    /**
+     * 验证邮箱。
+     *
+     * @param token 验证令牌
+     */
+    public void verifyEmail(String token) {
+        if (token == null || token.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "验证令牌不能为空");
+        }
+
+        UserAccount account = userMapper.findByVerificationToken(token);
+        if (account == null) {
+            throw new ResponseStatusException(UNAUTHORIZED, "验证令牌无效或已过期");
+        }
+
+        // 标记邮箱为已验证
+        userMapper.verifyEmail(account.getId());
+    }
+
+    private String generateVerificationToken() {
+        // 生成随机 UUID 作为验证令牌
+        return java.util.UUID.randomUUID().toString().replace("-", "");
+    }
+
     // ── JWT 校验 ──────────────────────────────────────────────────────────
 
     /**

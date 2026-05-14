@@ -106,7 +106,11 @@ final class BattleDamageSupport {
         int defenseStat = Math.max(1,
                 modifiedDefenseStat(attacker, defender, baseDefenseStat, damageClassId, state, criticalHit, move));
 
-        int power = Math.max(1, calculateMovePower(move, attacker, defender, state));
+        int power = calculateMovePower(move, attacker, defender, state);
+        // 威力为 0 表示招式应该失败（如 Spit-up 无蓄力、Natural Gift 无树果等）
+        if (power <= 0) {
+            return 0;
+        }
         int baseDamage = DamageCalculatorUtil.calculateBaseDamage(level, power, attackStat, defenseStat);
 
         double modifier = 1.0d;

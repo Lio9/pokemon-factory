@@ -10,16 +10,28 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import pinia from './stores'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import VueVirtualScroller from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import './index.css'
+import { registerServiceWorker, requestNotificationPermission } from './services/pwa'
 
 const app = createApp(App)
+app.use(pinia)
 app.use(ElementPlus)
 app.use(router)
 app.use(VueVirtualScroller)
+
+// 注册 PWA Service Worker
+if (import.meta.env.PROD) {
+  registerServiceWorker()
+  // 延迟请求通知权限，等待用户交互后
+  setTimeout(() => {
+    requestNotificationPermission()
+  }, 5000)
+}
 
 // 无限滚动指令
 app.directive('infinite-scroll', {

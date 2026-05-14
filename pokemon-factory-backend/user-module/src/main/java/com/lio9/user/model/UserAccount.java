@@ -15,6 +15,8 @@ public class UserAccount {
     private String displayName;
     private String passwordHash;
     private String email;
+    private Integer emailVerified;
+    private String verificationToken;
     private Integer tokenVersion;
     private Integer failedAttempts;
     private String lockedUntil;
@@ -37,6 +39,12 @@ public class UserAccount {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
+    public Integer getEmailVerified() { return emailVerified; }
+    public void setEmailVerified(Integer emailVerified) { this.emailVerified = emailVerified; }
+
+    public String getVerificationToken() { return verificationToken; }
+    public void setVerificationToken(String verificationToken) { this.verificationToken = verificationToken; }
+
     public Integer getTokenVersion() { return tokenVersion; }
     public void setTokenVersion(Integer tokenVersion) { this.tokenVersion = tokenVersion; }
 
@@ -57,6 +65,10 @@ public class UserAccount {
 
     /** 转换成可安全返回给前端的用户资料对象 */
     public UserProfile toProfile() {
-        return new UserProfile(id, username, displayName, email, createdAt, updatedAt, lastLoginAt);
+        Boolean emailVerified = null;
+        if (this.email != null) {
+            emailVerified = this.emailVerified != null && this.emailVerified == 1;
+        }
+        return new UserProfile(id, username, displayName, email, emailVerified, createdAt, updatedAt, lastLoginAt);
     }
 }

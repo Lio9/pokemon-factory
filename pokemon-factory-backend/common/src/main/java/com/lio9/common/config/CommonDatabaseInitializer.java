@@ -86,6 +86,13 @@ public class CommonDatabaseInitializer implements ApplicationRunner {
             ensureColumnExists(connection, "app_user", "display_name", "TEXT");
             ensureColumnExists(connection, "app_user", "updated_at", "TEXT");
             ensureColumnExists(connection, "app_user", "last_login_at", "TEXT");
+            // 用户安全相关字段
+            ensureColumnExists(connection, "app_user", "failed_attempts", "INTEGER DEFAULT 0");
+            ensureColumnExists(connection, "app_user", "locked_until", "TEXT");
+            ensureColumnExists(connection, "app_user", "token_version", "INTEGER DEFAULT 1");
+            ensureColumnExists(connection, "app_user", "email", "TEXT");
+            ensureColumnExists(connection, "app_user", "email_verified", "INTEGER DEFAULT 0");
+            ensureColumnExists(connection, "app_user", "verification_token", "TEXT");
             ensureTableExists(connection, """
                     CREATE TABLE IF NOT EXISTS ability_effect (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,

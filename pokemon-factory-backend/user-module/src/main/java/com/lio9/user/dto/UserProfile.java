@@ -6,6 +6,7 @@ public record UserProfile(
         String username,
         String displayName,
         String email,
+        Boolean emailVerified,
         String createdAt,
         String updatedAt,
         String lastLoginAt

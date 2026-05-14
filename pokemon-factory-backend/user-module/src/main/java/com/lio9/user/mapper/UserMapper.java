@@ -32,4 +32,15 @@ public interface UserMapper {
 
     /** 解锁账号 */
     void unlockAccount(@Param("id") Long id);
+
+    /** 更新邮箱和验证令牌 */
+    void updateEmailAndVerificationToken(@Param("id") Long id,
+                                          @Param("email") String email,
+                                          @Param("verificationToken") String verificationToken);
+
+    /** 验证邮箱 */
+    void verifyEmail(@Param("id") Long id);
+
+    /** 根据验证令牌查找用户 */
+    UserAccount findByVerificationToken(@Param("verificationToken") String verificationToken);
 }

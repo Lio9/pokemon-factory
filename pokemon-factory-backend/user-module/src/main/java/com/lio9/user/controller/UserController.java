@@ -1,5 +1,7 @@
 package com.lio9.user.controller;
 
+import com.lio9.common.config.RateLimit;
+import com.lio9.common.config.RateLimitKey;
 import com.lio9.common.response.ResponseCode;
 import com.lio9.common.response.ResultResponse;
 import com.lio9.user.dto.*;
@@ -28,6 +30,7 @@ public class UserController {
 
     /** 注册并立即返回登录态 */
     @PostMapping("/register")
+    @RateLimit(timeWindow = 60, maxRequests = 5, keyType = RateLimitKey.IP, message = "注册过于频繁，请1分钟后再试")
     public ResponseEntity<?> register(@RequestBody AuthRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResultResponse.buildCreated(userService.register(request)));
@@ -35,12 +38,14 @@ public class UserController {
 
     /** 登录并返回 access token + refresh token */
     @PostMapping("/login")
+    @RateLimit(timeWindow = 60, maxRequests = 10, keyType = RateLimitKey.IP, message = "登录尝试过于频繁，请1分钟后再试")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
         return ResponseEntity.ok(ResultResponse.buildSuccess("登录成功", userService.login(request)));
     }
 
     /** 用 refresh token 换取新的 access token 和 refresh token */
     @PostMapping("/refresh")
+    @RateLimit(timeWindow = 60, maxRequests = 30, keyType = RateLimitKey.USER, message = "令牌刷新过于频繁")
     public ResponseEntity<?> refresh(@RequestBody RefreshTokenRequest request) {
         return ResponseEntity.ok(ResultResponse.buildSuccess("令牌已刷新", userService.refresh(request)));
     }
@@ -87,5 +92,30 @@ public class UserController {
         }
         userService.logoutAll(authentication.getName());
         return ResponseEntity.ok(ResultResponse.buildSuccess("已登出所有设备", null));
+    }
+
+    /** 请求邮箱验证（发送验证邮件） */
+    @PostMapping("/me/email/request-verification")
+    @RateLimit(timeWindow = 300, maxRequests = 3, keyType = RateLimitKey.USER, message = "验证邮件发送过于频繁，请5分钟后再试")
+    public ResponseEntity<?> requestEmailVerification(Authentication authentication, 
+                                                       @RequestBody EmailVerificationRequest request) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ResultResponse.buildCustomErrorResponse(HttpStatus.UNAUTHORIZED.value(), "未登录", "unauthorized"));
+        }
+        // 开发环境返回验证令牌，生产环境应只返回成功消息
+        String token = userService.requestEmailVerification(authentication.getName(), request.email());
+        return ResponseEntity.ok(ResultResponse.buildSuccess(
+            "验证邮件已发送（开发模式：令牌为 " + token + "）", 
+            Map.of("message", "请查收邮箱并点击验证链接")
+        ));
+    }
+
+    /** 验证邮箱 */
+    @PostMapping("/email/verify")
+    @RateLimit(timeWindow = 60, maxRequests = 10, keyType = RateLimitKey.IP, message = "验证操作过于频繁")
+    public ResponseEntity<?> verifyEmail(@RequestBody VerifyEmailRequest request) {
+        userService.verifyEmail(request.token());
+        return ResponseEntity.ok(ResultResponse.buildSuccess("邮箱验证成功", null));
     }
 }

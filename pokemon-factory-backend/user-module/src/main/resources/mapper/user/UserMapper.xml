@@ -8,6 +8,8 @@
         <result property="displayName" column="display_name"/>
         <result property="passwordHash" column="password_hash"/>
         <result property="email" column="email"/>
+        <result property="emailVerified" column="email_verified"/>
+        <result property="verificationToken" column="verification_token"/>
         <result property="tokenVersion" column="token_version"/>
         <result property="failedAttempts" column="failed_attempts"/>
         <result property="lockedUntil" column="locked_until"/>
@@ -61,5 +63,24 @@
         UPDATE app_user SET failed_attempts = 0, locked_until = NULL
         WHERE id = #{id}
     </update>
+
+    <update id="updateEmailAndVerificationToken">
+        UPDATE app_user SET email = #{email},
+            verification_token = #{verificationToken},
+            email_verified = 0,
+            updated_at = datetime('now')
+        WHERE id = #{id}
+    </update>
+
+    <update id="verifyEmail">
+        UPDATE app_user SET email_verified = 1,
+            verification_token = NULL,
+            updated_at = datetime('now')
+        WHERE id = #{id}
+    </update>
+
+    <select id="findByVerificationToken" resultMap="UserAccountResultMap">
+        SELECT * FROM app_user WHERE verification_token = #{verificationToken}
+    </select>
 
 </mapper>

@@ -534,6 +534,15 @@ final class BattleRoundSupport {
                 }
                 int damage = engine.calculateDamage(actor, target, resolvedMove, random, helpingHandBoosts, state);
 
+                // 威力为 0 的招式应该失败（如 Spit-up 无蓄力、Natural Gift 无树果等）
+                if (damage == 0) {
+                    targetLog.put("result", "failed");
+                    targetLog.put("damage", 0);
+                    actionLogs.add(targetLog);
+                    events.add(actor.get("name") + " 的 " + move.get("name") + " 失败了");
+                    continue;
+                }
+
                 // Fire ON_DAMAGE — 允许特性/道具修改伤害量
                 {
                     EventResult dr = engine.getEventBus().fireEvent(BattleEventType.ON_DAMAGE,
