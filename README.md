@@ -16,6 +16,7 @@ Pokemon Factory is a Spring Boot + Vue 3 + SQLite project focused on three core 
 - Frontend features a lightweight locale layer (Chinese / English switching) and a consistent glass-morphism design system across all pages.
 - The battle system is aligned with **Pokemon Showdown Gen9 Doubles**. Core chain: 100% consistent. Extended mechanics: 89.5%.
 - API integration layer unified: 401 auto-clear session, centralized error handling, consistent response envelope.
+- **v2.0 Optimization Complete**: Performance monitoring, keyboard shortcuts, PWA offline support, enhanced UI animations.
 
 ### Repository structure
 
@@ -177,7 +178,7 @@ python scripts/init_db.py
 
 需携带有效 JWT 访问受保护资源。
 
-## 前端设计系统
+### 前端设计系统
 
 - **毛玻璃卡片**：`.glass-card` / `.glass-card-interactive` 统一容器风格
 - **属性色标签**：`.type-badge` 覆盖 18 种宝可梦属性色
@@ -185,6 +186,12 @@ python scripts/init_db.py
 - **入场动画**：交错 slide-up 动画 + 页面切换过渡
 - **骨架屏**：加载时脉冲骨架占位
 - **本地化**：中文 / English 双语言切换，支持日语字典拓展
+- **v2.0新增**：
+  - ✨ 光效扫过动画（shine-effect）
+  - 🎭 3D卡片倾斜效果
+  - 💫 浮动和脉冲发光动画
+  - ⌨️ 键盘快捷键系统（/, Escape, Alt+Home）
+  - 📊 性能监控系统
 
 ## 当前约束
 
@@ -199,6 +206,30 @@ python scripts/init_db.py
 - **P0 级错误**：0
 
 详见 [docs/battle_showdown_gap_analysis.md](./docs/battle_showdown_gap_analysis.md) 和 [docs/battle_system_optimization_roadmap.md](./docs/battle_system_optimization_roadmap.md).
+
+## v2.0 优化亮点
+
+### A. 界面美化
+- ImportManager视觉升级（光效扫过+渐变背景）
+- 全站动画统一化（3D倾斜、浮动、发光）
+
+### B. 性能优化
+- 新增 `performance.js` 监控系统（312行）
+- 页面加载时间记录（DNS/TCP/TTFB/DOM）
+- 组件渲染追踪 + API请求监控
+
+### C. 用户体验
+- 新增 `keyboard.js` 快捷键系统（107行）
+- PokemonList集成：`/`聚焦搜索、`Escape`清空、`Alt+Home`重置
+- 新增 `searchOptimizer.js` 搜索工具（254行）
+
+### D. PWA功能
+- 新增 `pwaEnhanced.js` 离线能力（392行）
+- IndexedDB缓存系统（pokemon/moves/abilities/battles）
+- 后台同步管理器 + 网络状态监听
+- 推送通知管理器
+
+详见 [docs/OPTIMIZATION_SUMMARY.md](./docs/OPTIMIZATION_SUMMARY.md) 和 [docs/OPTIMIZATION_REPORT.md](./docs/OPTIMIZATION_REPORT.md).
 
 ## 贡献指南
 
