@@ -134,37 +134,45 @@
         <div
           v-for="(move, index) in moves"
           :key="move.id"
-          class="glass-card-interactive glass-card p-4 cursor-pointer animate-slide-up"
+          class="shine-effect glass-card-interactive glass-card p-4 cursor-pointer animate-slide-up relative overflow-hidden group"
           :style="{ animationDelay: `${index * 25}ms` }"
           @click="showMoveDetail(move)"
         >
-          <div class="flex items-start justify-between mb-2">
-            <h3 class="font-semibold text-slate-800 text-sm leading-tight truncate flex-1">{{ move.name }}</h3>
-            <button
-              class="ml-1 flex-shrink-0 transition-transform duration-200 hover:scale-110"
-              :class="favorites.has(move.id) ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'"
-              @click.stop="toggleFavorite(move)"
-            >
-              <component :is="favorites.has(move.id) ? 'StarFilled' : 'Star'" class="w-4 h-4" />
-            </button>
-          </div>
-          <div class="flex flex-wrap gap-1.5 mb-2">
-            <span v-if="move.typeName" class="type-badge type-badge-sm" :style="{ backgroundColor: move.typeColor || '#888' }">{{ move.typeName }}</span>
-            <span
-              class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
-              :class="{
-                'bg-rose-100 text-rose-700': move.damageClass === 'physical',
-                'bg-blue-100 text-blue-700': move.damageClass === 'special',
-                'bg-purple-100 text-purple-700': move.damageClass === 'status'
-              }"
-            >
-              {{ move.damageClass === 'physical' ? tr('物理', 'Phys') : move.damageClass === 'special' ? tr('特殊', 'Spec') : tr('变化', 'Sts') }}
-            </span>
-          </div>
-          <div class="flex items-center gap-3 text-xs text-slate-500">
-            <span v-if="move.power != null" class="font-semibold text-slate-700">{{ tr('威力', 'Pwr') }} {{ move.power }}</span>
-            <span v-if="move.accuracy != null">{{ move.accuracy }}%</span>
-            <span>PP {{ move.pp }}</span>
+          <!-- 渐变背景遮罩 -->
+          <div 
+            class="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-10"
+            :style="{ background: `linear-gradient(135deg, ${move.typeColor || '#888'}20, ${move.typeColor || '#888'}40)` }"
+          ></div>
+          
+          <div class="relative z-10">
+            <div class="flex items-start justify-between mb-2">
+              <h3 class="font-semibold text-slate-800 text-sm leading-tight truncate flex-1 group-hover:text-blue-700 transition-colors">{{ move.name }}</h3>
+              <button
+                class="ml-1 flex-shrink-0 transition-all duration-200 hover:scale-125"
+                :class="favorites.has(move.id) ? 'text-amber-500 fav-bounce' : 'text-slate-300 hover:text-amber-400'"
+                @click.stop="toggleFavorite(move)"
+              >
+                <component :is="favorites.has(move.id) ? 'StarFilled' : 'Star'" class="w-4 h-4" />
+              </button>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mb-2">
+              <span v-if="move.typeName" class="type-badge type-badge-sm shadow-md" :style="{ backgroundColor: move.typeColor || '#888' }">{{ move.typeName }}</span>
+              <span
+                class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold shadow-sm"
+                :class="{
+                  'bg-rose-100 text-rose-700': move.damageClass === 'physical',
+                  'bg-blue-100 text-blue-700': move.damageClass === 'special',
+                  'bg-purple-100 text-purple-700': move.damageClass === 'status'
+                }"
+              >
+                {{ move.damageClass === 'physical' ? tr('物理', 'Phys') : move.damageClass === 'special' ? tr('特殊', 'Spec') : tr('变化', 'Sts') }}
+              </span>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-slate-500">
+              <span v-if="move.power != null" class="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">{{ tr('威力', 'Pwr') }} {{ move.power }}</span>
+              <span v-if="move.accuracy != null" class="font-medium">{{ move.accuracy }}%</span>
+              <span>PP {{ move.pp }}</span>
+            </div>
           </div>
         </div>
       </div>

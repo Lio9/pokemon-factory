@@ -26,18 +26,18 @@
 
     <!-- 统计卡片 -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div class="glass-card p-4 flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shadow-md">📦</div>
+      <div class="glass-card p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">📦</div>
         <div>
-          <div class="text-2xl font-bold text-slate-800">{{ total }}</div>
-          <div class="text-xs text-slate-500">{{ tr('总数', 'Total') }}</div>
+          <div class="text-3xl font-bold text-slate-800">{{ total }}</div>
+          <div class="text-xs text-slate-500 font-medium">{{ tr('总数', 'Total') }}</div>
         </div>
       </div>
-      <div class="glass-card p-4 flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-lg font-bold shadow-md">📥</div>
+      <div class="glass-card p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xl font-bold shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">📥</div>
         <div>
-          <div class="text-2xl font-bold text-slate-800">{{ loadedCount }}</div>
-          <div class="text-xs text-slate-500">{{ tr('已加载', 'Loaded') }}</div>
+          <div class="text-3xl font-bold text-slate-800">{{ loadedCount }}</div>
+          <div class="text-xs text-slate-500 font-medium">{{ tr('已加载', 'Loaded') }}</div>
         </div>
       </div>
     </div>
@@ -61,24 +61,32 @@
       <div
         v-for="(item, index) in items"
         :key="item.id"
-        class="glass-card-interactive glass-card p-4 text-center group animate-slide-up"
+        class="shine-effect glass-card-interactive glass-card p-4 text-center group animate-slide-up relative overflow-hidden"
         :style="{ animationDelay: `${index * 25}ms` }"
       >
-        <div class="aspect-square flex items-center justify-center mb-3 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-3">
-          <div v-if="!item._imageLoaded" class="w-12 h-12 rounded-full bg-slate-200 animate-pulse" />
-          <img
-            v-show="item._imageLoaded"
-            :src="item._imageUrl"
-            :alt="item.name"
-            class="w-14 h-14 object-contain transition-transform duration-300 group-hover:scale-110"
-            loading="lazy"
-            @load="item._imageLoaded = true"
-            @error="handleImageError(item)"
-          >
+        <!-- 渐变背景遮罩 -->
+        <div 
+          class="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-10"
+          style="background: linear-gradient(135deg, #6366f1 20, #a855f7 40)"
+        ></div>
+        
+        <div class="relative z-10">
+          <div class="aspect-square flex items-center justify-center mb-3 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-3 shadow-inner">
+            <div v-if="!item._imageLoaded" class="w-12 h-12 rounded-full bg-slate-200 animate-pulse" />
+            <img
+              v-show="item._imageLoaded"
+              :src="item._imageUrl"
+              :alt="item.name"
+              class="w-14 h-14 object-contain transition-all duration-300 group-hover:scale-125 group-hover:drop-shadow-xl float-animation"
+              loading="lazy"
+              @load="item._imageLoaded = true"
+              @error="handleImageError(item)"
+            >
+          </div>
+          <h3 class="font-semibold text-slate-800 text-sm truncate group-hover:text-indigo-700 transition-colors">{{ item.name }}</h3>
+          <p class="text-xs font-bold text-indigo-600 mt-1 bg-indigo-50 inline-block px-2 py-0.5 rounded-full">¥{{ item.cost || '-' }}</p>
+          <p v-if="item.description" class="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">{{ item.description }}</p>
         </div>
-        <h3 class="font-semibold text-slate-800 text-sm truncate">{{ item.name }}</h3>
-        <p class="text-xs text-slate-400 mt-0.5">¥{{ item.cost || '-' }}</p>
-        <p v-if="item.description" class="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">{{ item.description }}</p>
       </div>
     </transition-group>
 

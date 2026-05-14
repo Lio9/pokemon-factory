@@ -98,30 +98,38 @@
         <div
           v-for="(ability, index) in abilities"
           :key="ability.id"
-          class="glass-card-interactive glass-card p-5 cursor-pointer animate-slide-up"
+          class="shine-effect glass-card-interactive glass-card p-5 cursor-pointer animate-slide-up relative overflow-hidden group"
           :style="{ animationDelay: `${index * 30}ms` }"
           @click="showAbilityDetail(ability)"
         >
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm shadow-sm">✦</div>
-              <h3 class="font-semibold text-slate-800">{{ ability.name }}</h3>
+          <!-- 渐变背景遮罩 -->
+          <div 
+            class="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-10"
+            style="background: linear-gradient(135deg, #8b5cf6 20, #a855f7 40)"
+          ></div>
+          
+          <div class="relative z-10">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">✦</div>
+                <h3 class="font-semibold text-slate-800 group-hover:text-purple-700 transition-colors">{{ ability.name }}</h3>
+              </div>
+              <button
+                class="flex-shrink-0 transition-all duration-200 hover:scale-125"
+                :class="favorites.has(ability.id) ? 'text-amber-500 fav-bounce' : 'text-slate-300 hover:text-amber-400'"
+                @click.stop="toggleFavorite(ability)"
+              >
+                <component :is="favorites.has(ability.id) ? 'StarFilled' : 'Star'" class="w-4 h-4" />
+              </button>
             </div>
-            <button
-              class="flex-shrink-0 transition-transform duration-200 hover:scale-110"
-              :class="favorites.has(ability.id) ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'"
-              @click.stop="toggleFavorite(ability)"
-            >
-              <component :is="favorites.has(ability.id) ? 'StarFilled' : 'Star'" class="w-4 h-4" />
-            </button>
-          </div>
-          <p class="text-sm text-slate-600 leading-relaxed line-clamp-3">
-            {{ ability.description || ability.effect || '' }}
-          </p>
-          <div v-if="ability.generation" class="mt-3">
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
-              {{ tr('第 {gen} 世代', 'Gen {gen}', { gen: ability.generation }) }}
-            </span>
+            <p class="text-sm text-slate-600 leading-relaxed line-clamp-3">
+              {{ ability.description || ability.effect || '' }}
+            </p>
+            <div v-if="ability.generation" class="mt-3">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gradient-to-r from-violet-100 to-purple-100 text-violet-600 shadow-sm">
+                {{ tr('第 {gen} 世代', 'Gen {gen}', { gen: ability.generation }) }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
