@@ -1,16 +1,21 @@
 <template>
   <div class="import-manager space-y-6">
     <!-- 页面头部 -->
-    <section class="glass-card p-5 sm:p-7">
-      <div class="inline-flex rounded-full border border-white/70 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 shadow-sm">
-        {{ tr('数据管理', 'Data Management') }}
+    <section class="shine-effect glass-card p-6 sm:p-8 relative overflow-hidden group">
+      <!-- 渐变背景装饰 -->
+      <div class="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500" style="background: linear-gradient(135deg, #0ea5e9 20, #6366f1 40)"></div>
+          
+      <div class="relative z-10">
+        <div class="inline-flex rounded-full border border-white/70 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 shadow-sm">
+          {{ tr('数据管理', 'Data Management') }}
+        </div>
+        <h1 class="mt-4 text-[clamp(1.5rem,4vw,2rem)] font-black tracking-tight text-slate-950">
+          {{ tr('数据导入管理', 'Import Manager') }}
+        </h1>
+        <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+          {{ tr('这里用于启动后端已有的全量导入任务并查看任务状态；当前系统没有提供“清空数据库”的管理接口，因此页面只支持清空本地任务历史记录。', 'Use this page to start the existing backend full import task and inspect its status. The system does not expose a database wipe endpoint, so this page only clears local task history.') }}
+        </p>
       </div>
-      <h1 class="mt-4 text-[clamp(1.5rem,4vw,2rem)] font-black tracking-tight text-slate-950">
-        {{ tr('数据导入管理', 'Import Manager') }}
-      </h1>
-      <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-        {{ tr('这里用于启动后端已有的全量导入任务并查看任务状态；当前系统没有提供"清空数据库"的管理接口，因此页面只支持清空本地任务历史记录。', 'Use this page to start the existing backend full import task and inspect its status. The system does not expose a database wipe endpoint, so this page only clears local task history.') }}
-      </p>
     </section>
 
     <!-- 导入控制区 -->
@@ -91,9 +96,9 @@
       <div v-if="currentTask.data && Object.keys(currentTask.data).length > 0" class="mt-4 rounded-xl bg-slate-50 p-4">
         <h3 class="text-sm font-semibold text-slate-700 mb-3">{{ tr('导入结果', 'Import Result') }}</h3>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div v-for="(value, key) in currentTask.data" :key="key" class="glass-card p-3 text-center">
-            <div class="text-lg font-bold text-slate-800">{{ value }}</div>
-            <div class="text-xs text-slate-500 mt-0.5">{{ key }}</div>
+          <div v-for="(value, key) in currentTask.data" :key="key" class="shine-effect glass-card p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
+            <div class="text-2xl font-bold text-slate-800 group-hover:text-blue-700 transition-colors">{{ value }}</div>
+            <div class="text-xs text-slate-500 mt-1 font-medium">{{ key }}</div>
           </div>
         </div>
       </div>

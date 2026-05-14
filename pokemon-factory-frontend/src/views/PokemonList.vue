@@ -494,6 +494,8 @@ import { ElMessage } from 'element-plus'
 import { Search, Loading, ArrowUp, CircleCheck, ArrowDown, Grid, List } from '@element-plus/icons-vue'
 import { pokemonApi, typeApi, sprites } from '../services/api.js'
 import { dataCache } from '../services/cache.js'
+import { registerShortcuts, COMMON_SHORTCUTS } from '../services/keyboard'
+import { perfMonitor } from '../services/performance'
 
 export default {
   name: 'PokemonList',
@@ -818,11 +820,50 @@ export default {
       window.addEventListener('scroll', handleScroll, { passive: true })
       loadFavorites()
       await fetchTypes()
+      
+      // 记录页面加载性能
+      perfMonitor.recordPageLoad('PokemonList')
+      
       await fetchPokemons(false)
       
       nextTick(() => {
         setupObserver()
       })
+      
+      // 注册键盘快捷键
+      const cleanupShortcuts = registerShortcuts({
+        '/': {
+          handler: () => {
+            // 聚焦搜索框
+            const searchInput = document.querySelector('.search-input input')
+            if (searchInput) {
+              searchInput.focus()
+              ElMessage.info('已聚焦搜索框')
+            }
+          },
+          options: { preventDefault: true }
+        },
+        'Escape': {
+          handler: () => {
+            // 清空搜索
+            if (searchKeyword.value) {
+              searchKeyword.value = ''
+              handleSearch()
+              ElMessage.info('已清空搜索')
+            }
+          }
+        },
+        'Alt+Home': {
+          handler: () => {
+            // 重置筛选
+            resetFilters()
+            ElMessage.info('已重置所有筛选')
+          }
+        }
+      })
+      
+      // 保存清理函数以便组件卸载时调用
+      window.__pokemonListCleanup = cleanupShortcuts
     })
 
     // 清理
@@ -831,6 +872,11 @@ export default {
       if (observer) observer.disconnect()
       if (searchTimer) clearTimeout(searchTimer)
       if (scrollThrottleTimer) clearTimeout(scrollThrottleTimer)
+      
+      // 清理快捷键
+      if (window.__pokemonListCleanup) {
+        window.__pokemonListCleanup()
+      }
     })
 
     // 监听数据变化重新设置observer
