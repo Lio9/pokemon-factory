@@ -19,8 +19,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # module → (directory, default_port, jar_pattern)
 MODULES = {
-    'pokedex': ('poke-dex', '8081', 'pokedex-0.0.1-SNAPSHOT.jar'),
-    'battle':  ('battle-factory', '8090', 'battle-0.0.1-SNAPSHOT.jar'),
+    'pokedex': ('pokedex', '8081', 'pokedex-0.0.1-SNAPSHOT.jar'),
+    'battle':  ('battle', '8090', 'battle-0.0.1-SNAPSHOT.jar'),
 }
 
 
@@ -39,7 +39,7 @@ def main() -> int:
 
     mod_dir, default_port, jar_name = MODULES[args.module]
     port = args.port or os.getenv('PORT', default_port)
-    jar_path = ROOT / 'pokemon-factory-backend' / mod_dir / 'target' / jar_name
+    jar_path = ROOT / 'backend' / mod_dir / 'target' / jar_name
 
     if not jar_path.exists():
         print(f'[start-backend] JAR 不存在: {jar_path}', file=sys.stderr)

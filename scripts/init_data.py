@@ -13,7 +13,7 @@ import sqlite3, json, os, sys, time, urllib.request, urllib.error
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DB = os.getenv('SQLITE_DB_PATH') or str(ROOT / 'pokemon-factory-backend' / 'pokemon-factory.db')
+DB = os.getenv('SQLITE_DB_PATH') or str(ROOT / 'backend' / 'pokemon-factory.db')
 POKEAPI = "https://pokeapi.co/api/v2"
 DELAY = 0.12
 
@@ -154,7 +154,7 @@ def progress(cur, tot, label=""):
 def seed_schema(cur):
     cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
     if cur.fetchall(): return
-    sp = ROOT / 'pokemon-factory-backend' / 'common' / 'src' / 'main' / 'resources' / 'db' / 'init' / '001_core_schema.sql'
+    sp = ROOT / 'backend' / 'common' / 'src' / 'main' / 'resources' / 'db' / 'init' / '001_core_schema.sql'
     if sp.exists():
         with open(sp) as f: cur.executescript(f.read())
         log("Schema 已创建")
@@ -191,7 +191,7 @@ def seed_offline(cur):
 
     # effect seeds
     for fname, tbl, fk_col in [("ability-effects.json","ability_effect","ability_id"),("item-effects.json","item_effect","item_id")]:
-        fp = ROOT / 'pokemon-factory-backend' / 'common' / 'src' / 'main' / 'resources' / 'effect-seeds' / fname
+        fp = ROOT / 'backend' / 'common' / 'src' / 'main' / 'resources' / 'effect-seeds' / fname
         if fp.exists():
             for e in json.load(open(fp)):
                 cur.execute(f"INSERT OR IGNORE INTO {tbl}(id,{fk_col},effect_type,effect_value,target,condition,description) VALUES(?,?,?,?,?,?,?)",
