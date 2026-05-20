@@ -145,20 +145,11 @@ class DataCache {
   }
 
   /**
-   * 找出最久未使用的键
+   * 找出最久未使用的键 — O(1)
+   * Map 保持插入顺序，最早的键即为第一个
    */
   findOldestKey() {
-    let oldestKey = null
-    let oldestTime = Infinity
-    
-    for (const [key, time] of this.accessOrder.entries()) {
-      if (time < oldestTime) {
-        oldestTime = time
-        oldestKey = key
-      }
-    }
-    
-    return oldestKey
+    return this.accessOrder.keys().next().value || null
   }
 
   /**

@@ -14,9 +14,9 @@ WORKDIR /workspace
 
 COPY pom.xml pom.xml
 COPY common common
-COPY user-module user-module
-COPY poke-dex poke-dex
-COPY battle-factory battle-factory
+COPY user user
+COPY pokedex pokedex
+COPY battle battle
 
 RUN mvn -pl ${MODULE_PATH} -am -DskipTests package
 RUN cp /workspace/${MODULE_PATH}/target/${JAR_PATTERN} /workspace/app.jar

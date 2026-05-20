@@ -9,10 +9,21 @@
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    AutoImport({
+      resolvers: [ElementPlusResolver()]
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()]
+    })
+  ],
   server: {
     host: '0.0.0.0',
     port: 7890,
@@ -64,9 +75,7 @@ export default defineConfig({
       output: {
         // 手动分包，避免单个chunk过大
         manualChunks: {
-          'vue-vendor': ['vue', 'vue-router'],
-          'element-plus': ['element-plus'],
-          'lucide': ['lucide-vue-next']
+          'vue-vendor': ['vue', 'vue-router']
         }
       }
     },
@@ -74,7 +83,8 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true,
+        // 只丢弃 console.log/debug，保留 warn/error 用于生产诊断
+        drop_console: ['log', 'debug'],
         drop_debugger: true
       }
     },
@@ -85,6 +95,6 @@ export default defineConfig({
   },
   // 优化依赖预构建
   optimizeDeps: {
-    include: ['vue', 'vue-router', 'element-plus', 'lucide-vue-next']
+    include: ['vue', 'vue-router', 'lucide-vue-next']
   }
 })

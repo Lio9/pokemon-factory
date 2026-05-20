@@ -12,6 +12,7 @@ import api from '../services/api'
 import { useAuth } from './useAuth'
 import { useBattleDerivedState } from './battle/useBattleDerivedState'
 import { translate } from './useLocale'
+import { useBattlePolling } from './battle/useBattlePolling'
 import {
   buildBattleSettlement,
   buildMoveSubmission,
@@ -51,7 +52,6 @@ export function useBattlePageState() {
   const currentBattleId = ref(null)
   const busyAction = ref('')
   const requestError = ref('')
-  const pollingActive = ref(false)
   const lastUpdatedAt = ref(null)
   const showDebugPanel = ref(false)
   const leaderboardLoading = ref(false)
@@ -60,7 +60,6 @@ export function useBattlePageState() {
   const settlement = ref(null)
   const showLeaderboard = ref(false)
   const leaderboardData = ref([])
-  let pollTimer = null
   const pendingReplacementCount = computed(() => Number(summary.value?.playerPendingReplacementCount || 0))
   const {
     actionDescription,
@@ -127,13 +126,12 @@ export function useBattlePageState() {
     leadLimit
   })
 
-  function stopPolling() {
-    if (pollTimer) {
-      clearInterval(pollTimer)
-      pollTimer = null
-    }
-    pollingActive.value = false
-  }
+  // 轮询管理已抽取至 useBattlePolling composable
+  const {
+    pollingActive,
+    startPolling,
+    stopPolling
+  } = useBattlePolling(() => refreshStatus(true), 2000)
 
   function resetLocalSelections() {
     selectedActions.value = {}
@@ -443,14 +441,6 @@ export function useBattlePageState() {
     await runBusy('refresh-status', task).catch((error) => {
       resultText.value = translate('刷新失败: {message}', 'Refresh failed: {message}', { message: error.message || error })
     })
-  }
-
-  function startPolling() {
-    stopPolling()
-    pollingActive.value = true
-    pollTimer = setInterval(async () => {
-      await refreshStatus(true)
-    }, 2000)
   }
 
   async function confirmPreview() {

@@ -20,7 +20,8 @@ module.exports = [
       'vue/require-default-prop': 'off',
       'vue/no-unused-components': 'off',
       'vue/no-reserved-component-names': 'off',
-      'vue/no-unused-vars': 'off'
+      'vue/no-unused-vars': 'off',
+      'no-console': ['warn', { allow: ['warn', 'error'] }]
     }
   }
 ]

@@ -10,33 +10,10 @@
 import { computed } from 'vue'
 import { formatPokemonTypes, getTierName, moveNeedsOpponentTarget } from '../../services/contracts/battleContract'
 import { translate } from '../useLocale'
-
-const TYPE_EFFECTIVENESS = {
-  1: { 6: 50, 8: 0, 9: 50 },
-  2: { 1: 200, 3: 50, 4: 50, 6: 200, 7: 50, 8: 0, 9: 200, 15: 200, 17: 200, 18: 50 },
-  3: { 2: 200, 6: 50, 7: 200, 9: 50, 12: 200, 13: 50 },
-  4: { 4: 50, 5: 50, 6: 50, 8: 50, 12: 200, 18: 200 },
-  5: { 3: 0, 4: 200, 6: 200, 9: 200, 10: 200, 12: 50, 13: 200 },
-  6: { 2: 50, 3: 200, 7: 200, 9: 50, 10: 200, 15: 200 },
-  7: { 2: 50, 3: 50, 4: 50, 8: 50, 9: 50, 10: 50, 12: 200, 14: 200, 17: 200, 18: 50 },
-  8: { 1: 0, 8: 200, 14: 200, 17: 50 },
-  9: { 6: 200, 9: 50, 10: 50, 11: 50, 18: 200 },
-  10: { 6: 50, 7: 200, 9: 200, 10: 50, 11: 50, 12: 200, 15: 200, 16: 50 },
-  11: { 5: 200, 6: 200, 10: 200, 11: 50, 12: 50, 16: 50 },
-  12: { 3: 50, 4: 50, 5: 200, 6: 200, 7: 50, 9: 50, 10: 50, 11: 200, 12: 50, 16: 50 },
-  13: { 3: 200, 5: 0, 11: 200, 12: 50, 13: 50, 16: 50 },
-  14: { 2: 200, 4: 200, 9: 50, 14: 50, 17: 0 },
-  15: { 3: 200, 5: 200, 9: 50, 10: 50, 11: 50, 12: 200, 15: 50, 16: 200 },
-  16: { 9: 50, 16: 200, 18: 0 },
-  17: { 2: 50, 8: 200, 14: 200, 17: 50, 18: 50 },
-  18: { 2: 200, 4: 50, 9: 50, 10: 50, 16: 200, 17: 200 }
-}
-
-function resolveTypeId(type) {
-  return Number(type?.type_id ?? type?.typeId ?? 0)
-}
+import { getTypeEffectiveness, resolveTypeId } from '../../services/typeChart'
 
 function typeMultiplier(moveTypeId, defendingTypes) {
+  const TYPE_EFFECTIVENESS = getTypeEffectiveness()
   return (defendingTypes || []).reduce((multiplier, type) => {
     const factor = TYPE_EFFECTIVENESS[moveTypeId]?.[resolveTypeId(type)] ?? 100
     return multiplier * (factor / 100)

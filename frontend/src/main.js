@@ -11,26 +11,33 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import pinia from './stores'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
 import VueVirtualScroller from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import './index.css'
 import { registerServiceWorker, requestNotificationPermission } from './services/pwa'
+import { loadTypeEffectiveness } from './services/typeChart'
 
 const app = createApp(App)
 app.use(pinia)
-app.use(ElementPlus)
 app.use(router)
 app.use(VueVirtualScroller)
+
+// 初始化服务端相克表（后台静默加载，使用静态表兜底）
+loadTypeEffectiveness()
 
 // 注册 PWA Service Worker
 if (import.meta.env.PROD) {
   registerServiceWorker()
-  // 延迟请求通知权限，等待用户交互后
-  setTimeout(() => {
+  // 通知权限在用户首次交互时请求（浏览器要求用户手势触发）
+  const requestPermissionOnInteraction = () => {
     requestNotificationPermission()
-  }, 5000)
+    document.removeEventListener('click', requestPermissionOnInteraction)
+    document.removeEventListener('touchstart', requestPermissionOnInteraction)
+    document.removeEventListener('keydown', requestPermissionOnInteraction)
+  }
+  document.addEventListener('click', requestPermissionOnInteraction, { once: true })
+  document.addEventListener('touchstart', requestPermissionOnInteraction, { once: true })
+  document.addEventListener('keydown', requestPermissionOnInteraction, { once: true })
 }
 
 // 无限滚动指令
