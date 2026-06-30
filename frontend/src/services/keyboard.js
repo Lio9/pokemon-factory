@@ -1,4 +1,18 @@
 /**
+ * ============================================================
+ * 键盘快捷键管理 / Keyboard Shortcut Manager
+ * ============================================================
+ *
+ * 提供全局键盘快捷键的注册、取消注册、批量注册和启用/禁用管理。
+ * Manages global keyboard shortcuts: register, unregister, batch, enable/disable.
+ *
+ * 快捷键示例 / Shortcut Examples:
+ * - `/` 聚焦搜索 / Focus search
+ * - `Escape` 清空 / Clear search
+ * - `Ctrl+S` 保存 / Save
+ * - `Alt+Home` 重置筛选 / Reset filters
+ *
+ * @module services/keyboard
  * 键盘快捷键管理工具
  * 提供全局键盘快捷键注册和管理功能
  */

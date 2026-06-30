@@ -186,7 +186,8 @@ const emit = defineEmits([
   'reset-battle',
   'start-async',
   'start-factory',
-  'start-manual'
+  'start-manual',
+  'update-format'
 ])
 
 defineProps({

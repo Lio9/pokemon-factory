@@ -13,12 +13,54 @@ import java.util.Map;
 import java.util.Random;
 
 final class BattleConditionSupport {
-    /**
-     * 对战中的状态/特性/场地交互支持类。
-     * <p>
-     * 这里聚合了异常状态、volatile 状态、特性免疫、入场陷阱、接触反制等非纯伤害公式逻辑。
-     * 本轮重点是把 taunt / healBlock / torment / disable / encore 逐步迁移到统一 volatile 访问器风格，
-     * 同时保留旧字段镜像，确保现有调用点和历史测试数据仍然兼容。
+/**
+ * ============================================================
+ * 状态条件支持 / Status & Condition Support
+ * ============================================================
+ *
+ * ## 核心职责 / Core Responsibility
+ *
+ * 聚合所有"非纯伤害公式"的战斗逻辑：
+ * All non-damage-formula battle logic:
+ *
+ * - 异常状态施加（中毒/灼伤/麻痹/睡眠/冰冻/混乱/着迷）
+ *   Status condition application (poison/burn/paralysis/sleep/freeze/confusion/attract)
+ * - 特性免疫检查 / Ability immunity checks
+ * - 入场危险伤害（隐形岩/撒菱/毒菱/黏黏网）
+ *   Entry hazard damage (Stealth Rock/Spikes/Toxic Spikes/Sticky Web)
+ * - 接触反制效果（静电/火焰之躯/毒刺/粗糙皮肤）
+ *   Contact counter effects (static/flame-body/poison-point/rough-skin)
+ * - 形态变化（坚盾剑怪/达摩模式/鱼群/群聚变形/变身）
+ *   Form changes (Stance Change/Zen Mode/Schooling/Power Construct/Transform)
+ * - 回复封锁、挑衅、定身法、再来一次、无理取闹 等封锁效果
+ *   Heal Block/Taunt/Disable/Encore/Torment etc.
+ *
+ * ## 设计模式 / Design Pattern
+ *
+ * 每个异常状态有其独立的 applyXxx() 方法，内部依次检查：
+ * Each status has its own applyXxx() method, checking in order:
+ *
+ *   1. 神秘守护 / Safeguard
+ *   2. 场地保护 / Terrain protection (Electric → sleep, Misty → all)
+ *   3. 属性免疫 / Type immunity (Fire → burn, Electric → paralysis, etc.)
+ *   4. 特性免疫 / Ability immunity (via EffectRegistry.dispatchStatusImmunity)
+ *   5. 队友保护 / Ally protection (Sweet Veil, Pastel Veil, Flower Veil)
+ *   6. 粉末免疫 / Powder immunity (Overcoat, Safety Goggles)
+ *   7. 已有异常状态 / Already has a condition
+ *   8. 施加状态 / Apply the condition
+ *   9. 同步特性反射 / Synchronize reflection
+ *
+ * ## 与 PS 的对齐 / PS Alignment
+ *
+ * - 麻痹 25% 行动不能率，速度 ×0.5 / Paralysis: 25% full-para rate, speed ×0.5
+ * - 睡眠 1-3 回合，Sleep Talk 不唤醒 / Sleep: 1-3 turns, Sleep Talk doesn't wake
+ * - 冰冻 20% 解冻率（每次尝试），火系攻击必定解冻
+ *   Freeze: 20% thaw rate, Fire moves always thaw
+ * - 剧毒 1/16 → 2/16 → ... → 15/16 递增 / Toxic: escalating damage
+ * <p>
+ * 这里聚合了异常状态、volatile 状态、特性免疫、入场陷阱、接触反制等非纯伤害公式逻辑。
+ * 本轮重点是把 taunt / healBlock / torment / disable / encore 逐步迁移到统一 volatile 访问器风格，
+ * 同时保留旧字段镜像，确保现有调用点和历史测试数据仍然兼容。
      * </p>
      */
     private final BattleEngine engine;

@@ -1,107 +1,76 @@
 /**
- * 精灵图资源管理模块
+ * ============================================================
+ * 精灵图资源管理 / Sprite Resource Manager
+ * ============================================================
  *
- * 本模块负责管理宝可梦相关图片资源的 URL 构建。
- * 支持主站资源（配置化）和 GitHub 备用源（硬编码）。
- * 主站资源加载失败时自动回退到备用源。
+ * ## 图片加载策略 / Image Loading Strategy
+ *
+ *   优先级链 / Priority Chain:
+ *   1. 本地: /api/pokedex/images/pokemon/{id}.png
+ *      (由 PokeDexImageConfig 从 data/image/ 提供)
+ *   2. 远程备用: https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{id}.png
+ *      (PokeAPI GitHub 原始资源)
+ *   3. 默认: /api/pokedex/images/Unown_QU.png
+ *      (data/image/Unown_QU.png，已由用户提供)
+ *
+ * ## 使用方式 / Usage
+ *
+ *   <img :src="sprites.pokemon(id)" @error="handleImageError">
+ *
+ *   handleImageError 中实现三级回退：
+ *   - 当前为本地URL → 切换为远程备用
+ *   - 当前为远程备用 → 切换为默认图片
+ *   - 当前为默认图片 → 保持（不再重试）
  *
  * @module services/sprites
  */
 
-import { SPRITES_BASE } from './httpClient'
+// 本地图片基础路径（后端 PokeDexImageConfig 映射）
+// Local image base path (served by PokeDexImageConfig)
+const LOCAL_BASE = "/api/pokedex/images"
 
-// GitHub 备用源（当主站不可用时使用）
-const REMOTE_FALLBACK_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites'
+// 远程备用基础路径（PokeAPI GitHub）
+// Remote fallback base path (PokeAPI GitHub)
+const REMOTE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites"
 
 /**
- * 构建主站资源路径
- *
- * @param {string} path - 资源相对路径
- * @returns {string} 完整的主站资源 URL
+ * 构建资源路径 / Build resource path
+ * @param {string} base - 基础路径 / Base URL
+ * @param {string} path - 资源路径 / Resource path
+ * @returns {string} 完整 URL / Full URL
  */
-function buildPrimary(path) {
-  return `${SPRITES_BASE}${path}`
+function url(base, path) {
+  return base + path
 }
 
 /**
- * 构建备用资源路径
+ * 精灵图资源服务 / Sprite Resource Service
  *
- * @param {string} path - 资源相对路径
- * @returns {string} 完整的备用资源 URL
- */
-function buildFallback(path) {
-  return `${REMOTE_FALLBACK_BASE}${path}`
-}
-
-/**
- * 精灵图资源服务
- *
- * 提供各类宝可梦相关图片的 URL 生成函数。
- * 每个函数同时提供主站和备用源 URL。
+ * 提供本地优先、远程备用的图片 URL 生成。
+ * Provides local-first, remote-fallback image URL generation.
  *
  * @namespace sprites
  */
 export const sprites = {
-  /**
-   * 宝可梦正面/背面精灵图
-   * @param {number|string} id - 宝可梦全国图鉴编号
-   * @returns {string} 主站资源 URL
-   */
-  pokemon: (id) => buildPrimary(`/pokemon/${id}.png`),
+  /** 宝可梦正面图（本地）/ Pokemon front sprite (local) */
+  pokemon: (id) => url(LOCAL_BASE, "/pokemon/" + id + ".png"),
 
-  /**
-   * 官方艺术作品图（大图）
-   * @param {number|string} id - 宝可梦全国图鉴编号
-   * @returns {string} 主站资源 URL
-   */
-  official: (id) => buildPrimary(`/pokemon/other/official-artwork/${id}.png`),
+  /** 宝可梦正面图（远程备用）/ Pokemon front sprite (remote fallback) */
+  fallbackPokemon: (id) => url(REMOTE_BASE, "/pokemon/" + id + ".png"),
 
-  /**
-   * 属性类型图标
-   * @param {number|string} id - 属性类型 ID
-   * @returns {string} 主站资源 URL
-   */
-  type: (id) => buildPrimary(`/types/${id}.png`),
+  /** 官方艺术图（本地）/ Official artwork (local) */
+  official: (id) => url(LOCAL_BASE, "/pokemon/other/official-artwork/" + id + ".png"),
 
-  /**
-   * 道具图标
-   * @param {string} name - 道具名称
-   * @returns {string} 主站资源 URL
-   */
-  item: (name) => buildPrimary(`/items/${name}.png`),
+  /** 属性图标（本地）/ Type icon (local) */
+  type: (id) => url(LOCAL_BASE, "/types/" + id + ".png"),
 
-  /**
-   * 默认/占位精灵图
-   * @returns {string} 主站资源 URL
-   */
-  default: buildPrimary('/pokemon/0.png'),
+  /** 道具图标（本地）/ Item icon (local) */
+  item: (name) => url(LOCAL_BASE, "/items/" + name + ".png"),
 
-  // ========== 备用源（当主站加载失败时使用）==========
+  /** 默认图片（Unown_QU）/ Default image */
+  default: "/images/Unown_QU.png",
 
-  /**
-   * 宝可梦精灵图（备用源）
-   * @param {number|string} id - 宝可梦全国图鉴编号
-   * @returns {string} 备用资源 URL
-   */
-  fallbackPokemon: (id) => buildFallback(`/pokemon/${id}.png`),
-
-  /**
-   * 官方艺术作品图（备用源）
-   * @param {number|string} id - 宝可梦全国图鉴编号
-   * @returns {string} 备用资源 URL
-   */
-  fallbackOfficial: (id) => buildFallback(`/pokemon/other/official-artwork/${id}.png`),
-
-  /**
-   * 道具图标（备用源）
-   * @param {string} name - 道具名称
-   * @returns {string} 备用资源 URL
-   */
-  fallbackItem: (name) => buildFallback(`/items/${name}.png`),
-
-  /**
-   * 默认精灵图（备用源）
-   * @returns {string} 备用资源 URL
-   */
-  fallbackDefault: buildFallback('/pokemon/0.png')
+  // ========== 远程备用 / Remote Fallbacks ==========
+  fallbackOfficial: (id) => url(REMOTE_BASE, "/pokemon/other/official-artwork/" + id + ".png"),
+  fallbackItem: (name) => url(REMOTE_BASE, "/items/" + name + ".png"),
 }

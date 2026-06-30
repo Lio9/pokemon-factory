@@ -20,6 +20,7 @@
 		<module>user</module>
 		<module>pokedex</module>
 		<module>battle</module>
+        <module>one-server</module>
 	</modules>
 
 	<properties>
@@ -90,25 +91,22 @@
 	</dependencyManagement>
 
 	<build>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-maven-plugin</artifactId>
-					<version>4.0.5</version>
-					<configuration>
-						<mainClass>com.lio9.pokedex.PokeDexApplication</mainClass>
-					</configuration>
-					<executions>
-						<execution>
-							<goals>
-								<goal>repackage</goal>
-							</goals>
-						</execution>
-					</executions>
-				</plugin>
-			</plugins>
-		</pluginManagement>
+			<pluginManagement>
+				<plugins>
+					<plugin>
+						<groupId>org.springframework.boot</groupId>
+						<artifactId>spring-boot-maven-plugin</artifactId>
+						<version>4.0.5</version>
+						<executions>
+							<execution>
+								<goals>
+									<goal>repackage</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</pluginManagement>
 	</build>
 
 </project>

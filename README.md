@@ -1,119 +1,210 @@
 # Pokemon Factory 宝可梦工厂
 
-> **版本**: v2.0
-> **状态**: 生产就绪 ✅
-> **完整度**: 100%
-> **最后更新**: 2026-05-15
+> 一体化宝可梦对战平台 — 图鉴 + 对战引擎 + AI 对手
 
 ---
 
-## 📋 项目简介
+## 快速启动
 
-Pokemon Factory 是一个基于 **Spring Boot + Vue 3 + SQLite** 的宝可梦对战工厂项目，提供完整的宝可梦图鉴和对战系统。
+**前置：** JDK 21、Node.js 20+、Maven 3.9+
 
-### ✨ 核心功能
+```powershell
+# 1️⃣ 初始化数据库（15 秒，无需启动后端）
+python scripts/setup.py
 
-| 模块 | 功能 |
-|------|------|
-| **图鉴系统** | 宝可梦/技能/特性/物品查询 |
-| **用户系统** | 注册、登录、会话管理 |
-| **对战工厂** | VGC 风格双打对战、AI 对战 |
-| **高级系统** | Mega进化、Z招式、极巨化、太晶化 |
+# 2️⃣ 编译后端（首次或代码变更后）
+cd backend & mvn package -pl one-server -am -Dmaven.test.skip=true -q
 
-### 🛠️ 技术栈
+# 3️⃣ 启动后端（新窗口）
+java -jar one-server\target\one-server-0.0.1-SNAPSHOT.jar
 
-| 层级 | 技术 |
-|------|------|
-| 后端框架 | Spring Boot 4.0.5 |
-| 数据库 | SQLite |
-| 数据访问 | MyBatis / MyBatis-Plus |
-| 前端框架 | Vue.js 3.x + Vite |
-| UI | Tailwind CSS + Element Plus |
-| 状态管理 | Pinia |
+# 4️⃣ 启动前端（新窗口）
+cd frontend & npx vite --port 7894
+
+# 5️⃣ 打开 http://localhost:7894
+```
+
+等后端窗口出现 `Started OneServerApplication in X seconds` 后即可访问。
+
+> **注意：** 数据库初始化现在完全由 Python 脚本处理，后端不再自动建表。
+> 即使数据库已经初始化，`CommonDatabaseInitializer` 也会自动补齐缺失的列和索引。
+
+**前置：** JDK 21、Node.js 20+、Maven 3.9+
+
+```powershell
+# 1️⃣ 初始化数据库（15 秒，无需启动后端）
+python scripts/setup.py --quick
+
+# 2️⃣ 编译后端（首次或代码变更后）
+cd backend
+mvn package -pl one-server -am -Dmaven.test.skip=true -q
+
+# 3️⃣ 启动后端（新窗口）
+java -jar one-server\target\one-server-0.0.1-SNAPSHOT.jar
+
+# 4️⃣ 启动前端（新窗口）
+cd frontend
+npx vite --port 7894
+
+# 5️⃣ 打开 http://localhost:7894
+```
+
+等后端窗口出现 `Started OneServerApplication in X seconds` 后即可访问。
 
 ---
 
-## 📁 项目结构
+## 架构
+
+```
+┌──────────────┐     ┌──────────────────────────────────────┐
+│  前端(7894)  │────▶│  one-server (8081)                    │
+│  Vue 3+Vite  │     │  ├── battle: 对战引擎、访客模式、AI  │
+│  Element Plus│     │  ├── pokedex: 图鉴查询、伤害计算      │
+│  Tailwind    │     │  ├── user: 登录注册、JWT 认证          │
+│  PWA + 缓存  │     │  └── common: 数据库、CSV 导入          │
+└──────────────┘     └──────────────────────────────────────┘
+                         SQLite (pokemon-factory.db)
+```
+
+- **一个后端 JAR** 替代原来的三个独立服务
+- **SQLite 单文件数据库**，无需安装数据库服务
+- **Vite 反向代理** 把全部 `/api/*` 转发到 `localhost:8081`
+- **Python 初始化** 数据库无需启动 Java 后端
+
+---
+
+## 项目结构
 
 ```
 pokemon-factory/
-├── backend/                          # 后端项目
-│   ├── common/                       # 共享模块
-│   ├── pokedex/                      # 图鉴模块 (端口 8081)
-│   ├── battle/                       # 对战模块 (端口 8090)
-│   └── user/                         # 用户模块
-├── frontend/                         # 前端项目
+├── backend/                          # Java 后端（多模块 Maven）
+│   ├── common/                       # 数据库、CSV导入、速率限制
+│   ├── user/                         # 认证、JWT
+│   ├── pokedex/                      # 图鉴 CRUD
+│   ├── battle/                       # 对战引擎、AI、访客对战
+│   └── one-server/                   # ★ 一体化入口（编译此模块）
+├── frontend/                         # Vue 3 前端
 │   └── src/
-│       ├── views/                    # 页面组件
-│       ├── components/               # 通用组件
-│       ├── stores/                   # Pinia 状态管理
-│       └── services/                 # API 服务层
-├── scripts/                          # 工具脚本
-└── docs/                             # 文档
-    ├── README.md
-    ├── PROJECT_DOCUMENTATION.md
-    ├── PERFORMANCE_OPTIMIZATION.md
-    └── FULL_COMPLETENESS_VERIFICATION.md
+│       ├── views/                    # 12 个页面组件
+│       ├── components/               # 16 个通用组件
+│       ├── services/                 # HTTP 客户端、缓存、PWA
+│       └── stores/                   # Pinia 状态管理
+├── scripts/                          # ★ 工具脚本（见下）
+├── data/image/                       # 宝可梦精灵图（可选下载）
+└── docker-compose.yml               # Docker 部署
 ```
 
 ---
 
-## 🚀 快速启动
+## 脚本参考
 
-### 后端启动
+### 数据库初始化（无需后端）
+
+| 命令 | 说明 |
+|------|------|
+| `python scripts/setup.py` | **总控**：schema → data import → verify |
+| `python scripts/setup.py --quick` | 快速：schema + effects + verify（跳过数据导入） |
+| `python scripts/setup.py --verify` | 仅验证 52 个表的完整性 |
+| `python scripts/db_schema.py` | 建表/补列（幂等） |
+| `python scripts/db_effects.py` | 加载特性/道具 JSON 效果种子 |
+| `python scripts/init_data.py` | 离线数据导入（PokeAPI 备用） |
+
+### 数据维护
+
+| 命令 | 说明 |
+|------|------|
+| `python scripts/verify_sqlite.py` | 校验 SQLite 完整性和示例数据 |
+| `python scripts/backup_db.py` | 自动备份数据库（保留 30 天） |
+| `python scripts/download_sprites.py` | 从 PokeAPI 下载精灵图到 `data/image/` |
+| `python scripts/generate_effect_seeds.py` | 生成特性/道具效果种子 JSON |
 
 ```powershell
-# 初始化数据库
-cd backend/common
-mvn -DskipTests package
-python scripts/init_db.py
+# 数据库初始化（首次使用）
+python scripts/setup.py
 
-# 启动图鉴服务
-cd backend/pokedex
-mvn spring-boot:run
-
-# 启动对战服务 (新终端)
-cd backend/battle
-mvn spring-boot:run
+# 可选：下载宝可梦精灵图（前端自动回退远程源）
+python scripts/download_sprites.py --range 1 151
 ```
 
-### 前端启动
+---
 
+## 开发指引
+
+**后端测试（511 个用例）：**
+```powershell
+cd backend
+mvn test -pl battle -am
+```
+
+**前端校验：**
 ```powershell
 cd frontend
-npm install
-npm run dev
+npm run lint                      # ESLint
+npx vue-tsc --noEmit              # TypeScript
+```
+
+**API 文档：** 后端启动后 http://localhost:8081/swagger-ui.html
+
+**图片下载：**
+```powershell
+# 全部宝可梦（1–1025 号）
+python scripts/download_sprites.py
+
+# 仅第一世代
+python scripts/download_sprites.py --range 1 151
+
+# 校验已下载图片
+python scripts/download_sprites.py --verify
 ```
 
 ---
 
-## 📖 文档
+## Docker 部署
 
-| 文档 | 说明 |
-|------|------|
-| [docs/README.md](docs/README.md) | 文档索引 |
-| [docs/PROJECT_DOCUMENTATION.md](docs/PROJECT_DOCUMENTATION.md) | 项目完整文档 |
-| [docs/PERFORMANCE_OPTIMIZATION.md](docs/PERFORMANCE_OPTIMIZATION.md) | 性能优化指南 |
-| [docs/FULL_COMPLETENESS_VERIFICATION.md](docs/FULL_COMPLETENESS_VERIFICATION.md) | 完整度验证报告 |
+```powershell
+docker compose up -d
+```
 
----
-
-## ✅ 功能完整性
-
-| 维度 | 完整度 |
-|------|--------|
-| 第1-9世代系统 | 100% |
-| 高级系统（Mega/Z/极巨/太晶） | 100% |
-| 特性系统（180+特性） | 100% |
-| 道具系统（80+道具） | 100% |
-| 天气/场地效果 | 100% |
-| 测试覆盖 | 完整 |
+同时启动后端一体服务 + 前端 Nginx。
 
 ---
 
-## 📝 更新日志
+## 技术栈
 
-| 日期 | 版本 | 更新内容 |
-|------|------|----------|
-| 2026-05-15 | v2.0 | 项目结构优化、性能优化、完整度提升至100% |
-| 2026-05-14 | v1.x | 初始版本 |
+| 层 | 技术 | 版本 |
+|----|------|------|
+| JVM | OpenJDK | 21 |
+| 后端框架 | Spring Boot | 4.0.5 |
+| ORM | MyBatis + MyBatis-Plus | 4.0 + 3.5.9 |
+| 数据库 | SQLite (xerial JDBC) | 3.47 |
+| 前端 | Vue 3 + Vite | 6.x |
+| UI | Element Plus + Tailwind CSS | 2.x + 3.x |
+| 会话 | Pinia + JWT | — |
+| 图片 | 本地优先 → PokeAPI 回退 → 默认图 | — |
+| 图片 | 本地优先 → PokeAPI 回退 → 默认图 | — |
+| 部署 | Docker Compose (Nginx + JAR) | — |
+
+---
+
+## 数据库初始化迁移说明
+
+> **2025-06-30 重构：** 数据库全量初始化从 Java 后端剥离到 Python 脚本。
+
+### 变更内容
+
+- **移除** `CommonDatabaseInitializer` 中的 SQL 脚本执行和 CSV 数据导入
+- **简化** `application-common.yml`，移除 `initialize-on-startup` 和 `bootstrap-scripts`
+- **新增** `scripts/setup.py` 作为一键初始化入口
+- **保留** `CommonDatabaseInitializer` 仅做幂等的 schema 迁移（补充缺失列/索引）
+
+### 为什么这样做
+
+1. **解耦**：建表不用启动 Java 后端，调试更快
+2. **幂等**：后端只做安全的结构迁移，不破坏已有数据
+3. **脚本化**：CI/CD 流程中可独立执行初始化
+
+### 主类修复
+
+修复了 `Start-Class` 为 `com.lio9.pokedex.PokeDexApplication`（只扫描 pokedex + common 包）
+导致 battle 和 user 的 Bean 未注册的问题。现在 `Start-Class` 为 `com.lio9.server.OneServerApplication`
+（扫描 battle + pokedex + user + common 全部包）。

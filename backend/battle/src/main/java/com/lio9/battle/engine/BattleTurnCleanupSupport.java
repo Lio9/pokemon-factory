@@ -8,13 +8,59 @@ import java.util.Map;
 import java.util.Random;
 
 final class BattleTurnCleanupSupport {
-    /**
-     * 回合结束清算支持类。
-     * <p>
-     * 这里负责回合末残余伤害、回复、特性触发、Dynamax 倒计时，以及各类 volatile/控制状态的递减。
-     * 本轮特别将 taunt / healBlock / torment / disable / encore 的回合递减统一改为通过 BattleEngine
-     * 的
-     * volatile 访问器读写，以保证新旧状态结构同步。
+/**
+ * ============================================================
+ * 回合末清算 / End-of-Turn Cleanup
+ * ============================================================
+ *
+ * ## 核心职责 / Core Responsibility
+ *
+ * 负责每回合结束时所有"持续性效果"的结算：
+ * Manages ALL persistent effect resolutions at end of each turn:
+ *
+ * ## 执行顺序 / Execution Order （严格按此顺序 / Strict Order）
+ *
+ *   1. ON_TURN_END 事件（特性/道具响应）/ Turn End Event
+ *   2. 清除"本回合换入"标记 / Clear "justSwitchedIn" flag
+ *   3. 状态伤害 / Status Damage:
+ *      - 灼伤 (1/16 max HP) / Burn
+ *      - 中毒 (1/8 max HP) / Poison
+ *      - 剧毒 (1/16→2/16→...→15/16) / Toxic (escalating)
+ *   4. 剩饭回复 / Leftovers healing (1/16 max HP)
+ *   5. 青草场地回复 / Grassy Terrain healing (1/16)
+ *   6. 特性回合末效果 / Ability End-of-Turn Effects:
+ *      - 加速 Speed Boost / 随手变 Moody / 恶梦 Bad Dreams
+ *      - 雨盘 Rain Dish / 冰鳞粉 Ice Body / 毒疗 Poison Heal
+ *      - 湿润身躯 Hydration / 蜕皮 Shed Skin / 治愈之心 Healer
+ *      - 收获 Harvest / 饱了又饿 Hunger Switch
+ *   7. 道具回合末效果 / Item End-of-Turn Effects:
+ *      - 火焰宝珠 Flame Orb / 剧毒宝珠 Toxic Orb
+ *      - 黑色污泥 Black Sludge / 毒针 Sticky Barb
+ *      - 状态回复树果 / Status-curing berries
+ *   8. 反刍重新触发树果 / Cud Chew re-triggers berry
+ *   9. Volatile 状态效果:
+ *      - 寄生种子 (1/8) / 束缚绑定 (1/8) / 灭亡之歌 (归零→倒下)
+ *      - 水流环 (1/16) / 扎根 (1/16) / 恶梦 (1/8)
+ *      - 八爪束缚 (-1 防/特防) / 盐腌 (1/8, 钢/水1/4) / 诅咒 (1/4)
+ *   10. 场地伤害 / Field Damage:
+ *       - 沙暴 (非岩/地/钢 ×1/16) / Sandstorm
+ *       - 冰雹 (非冰 ×1/16) / Hail/Snow
+ *       - G-Max 持续伤害 (1/6) / G-Max persistent damage
+ *   11. 延迟攻击触发 / Future Sight / Doom Desire
+ *   12. 各类封锁递减 / Lock Effect Decrements:
+ *       - 挑衅 / 回复封锁 / 再来一次 / 无理取闹 / 定身法
+ *       - 哈欠 / 喉斩
+ *   13. 场地效果递减 / Field Effect Decrements:
+ *       - 所有 weather/terrain/screen/tailwind/room 持续回合
+ *   14. 极巨化递减 / Dynamax Decrement
+ *
+ * @see BattleEngine#playRound() 回合末调用
+ * @see BattleFieldEffectSupport#decrementFieldEffects() 场地效果递减
+ * <p>
+ * 这里负责回合末残余伤害、回复、特性触发、Dynamax 倒计时，以及各类 volatile/控制状态的递减。
+ * 本轮特别将 taunt / healBlock / torment / disable / encore 的回合递减统一改为通过 BattleEngine
+ * 的
+ * volatile 访问器读写，以保证新旧状态结构同步。
      * </p>
      */
     private final BattleEngine engine;

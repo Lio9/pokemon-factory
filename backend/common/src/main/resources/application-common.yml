@@ -1,18 +1,8 @@
-# application-common 文件说明
-# 所属模块：common 公共模块。
-# 文件类型：YAML 配置文件。
-# 核心职责：负责声明模块运行参数、环境配置和基础设施开关。
-# 阅读建议：建议优先确认不同 profile 或环境变量的覆盖关系。
-# 项目注释补全说明：本注释用于帮助后续维护时快速定位文件在整体架构中的职责。
-
 spring:
   datasource:
-    # 整个后端共享同一份 SQLite 数据库文件。
-    # 实际落点由 common 的路径解析器统一决定，避免因 user.dir 不同而生成多份数据库文件。
     url: ${SQLITE_DB_URL:}
     driver-class-name: org.sqlite.JDBC
     hikari:
-      # SQLite 并不适合大连接池，这里把连接数量控制在安全范围。
       maximum-pool-size: 5
       minimum-idle: 1
       connection-timeout: 30000
@@ -25,29 +15,21 @@ spring:
       pool-name: PokemonFactorySQLiteCP
   sql:
     init:
-      # 数据库初始化由 common 自己的 ApplicationRunner 接管，关闭 Spring Boot 默认 SQL 初始化链，
-      # 避免它在 Spring Boot 4 下对 MyBatis Mapper 做额外依赖探测时触发兼容性问题。
       mode: never
 
 mybatis:
-  # 统一扫描所有模块的 XML Mapper，业务模块只需要维护自己的 Mapper 接口。
   mapper-locations: classpath*:mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
 
 pokemon-factory:
   database:
-    # 默认情况下业务模块不会主动做数据库初始化，避免每次启动都重复跑脚本。
-    initialize-on-startup: false
-    import-csv-on-startup: false
-    # 兼容旧环境保留该配置；当前版本统一走远程 CSV 源，配置后也只会被忽略并打印警告。
+    # 仅做 schema 迁移（补充缺失列/索引），不做全量初始化
+    migrate-on-startup: true
+    # 兼容旧环境保留该配置；当前版本由 Python 脚本统一初始化
     csv-directory: ${CSV_DIR:}
     remote-csv-base-url: ${REMOTE_CSV_BASE_URL:https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv}
     csv-cache-directory: ${CSV_CACHE_DIR:}
-    bootstrap-scripts:
-      - classpath:db/init/001_core_schema.sql
-      - classpath:db/init/002_battle_schema.sql
-      - classpath:db/init/003_user_schema.sql
 
 logging:
   pattern:

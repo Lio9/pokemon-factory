@@ -42,12 +42,24 @@
       <table class="w-full">
         <thead>
           <tr class="border-b-2 border-gray-100">
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">技能</th>
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">属性</th>
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">分类</th>
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">威力</th>
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">命中</th>
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PP</th>
+            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+              技能
+            </th>
+            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+              属性
+            </th>
+            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+              分类
+            </th>
+            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+              威力
+            </th>
+            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+              命中
+            </th>
+            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+              PP
+            </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -57,7 +69,9 @@
             class="hover:bg-gradient-to-r from-gray-50 to-blue-50 transition-colors"
           >
             <td class="py-4 px-4">
-              <div class="font-bold text-gray-900">{{ move.name }}</div>
+              <div class="font-bold text-gray-900">
+                {{ move.name }}
+              </div>
               <div class="text-xs text-gray-500 mt-1">
                 <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">{{ move.learnMethod }}</span>
                 <span

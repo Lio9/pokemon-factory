@@ -1,4 +1,12 @@
 /**
+ * ============================================================
+ * 宝可梦 API / Pokemon API Module
+ * ============================================================
+ *
+ * 封装宝可梦详情、列表、招式、特性、进化链的查询接口。
+ * Wraps Pokemon detail, list, moves, abilities, and evolution chain APIs.
+ *
+ * @module services/modules/pokemonApi
  * 宝可梦 API 服务 - 优化版
  * 
  * 集成了高性能缓存系统，减少重复请求

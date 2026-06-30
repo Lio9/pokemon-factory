@@ -92,7 +92,7 @@ export function useBattleDerivedState(state) {
       const ll = leadLimit?.value ?? 2
       return translate(`先完成 6 选 ${rl} 与首发`, `Finish 6v${rl} selection and ${ll} lead(s)`)
     }
-    if (isReplacementPhase.value) return translate('需要补位 {count} 只', 'Need {count} replacements', { count: pendingReplacementCount.value }, '{count}体の交代が必要')
+    if (isReplacementPhase.value) return translate('需要补位 {count} 只', 'Need {count} replacements', '{count}体の交代が必要', { count: pendingReplacementCount.value })
     if (summary.value?.status === 'completed') {
       return summary.value?.winner === 'player'
         ? translate('本场获胜，检查结算与奖励', 'Battle won, review rewards and settlement', '勝利！報酬を確認')
@@ -129,7 +129,7 @@ export function useBattleDerivedState(state) {
 
   const progressSummary = computed(() => {
     if (factoryRun.value) {
-      return translate('工厂挑战 {wins} 胜 {losses} 负，第 {current} / {max} 轮。', 'Factory run: {wins} wins, {losses} losses, round {current} / {max}.', {
+      return translate('工厂挑战 {wins} 胜 {losses} 负，第 {current} / {max} 轮。', 'Factory run: {wins} wins, {losses} losses, round {current} / {max}.', '', {
         wins: factoryRun.value.wins || 0,
         losses: factoryRun.value.losses || 0,
         current: factoryRun.value.current_battle || 0,
@@ -142,7 +142,7 @@ export function useBattleDerivedState(state) {
         : translate('本场已结束，对手取得胜利。', 'This battle is over. The opponent won.')
     }
     if (currentBattleId.value) {
-      return translate('当前战斗编号 #{id}，已推进到第 {round} 回合。', 'Current battle #{id}, now at round {round}.', {
+      return translate('当前战斗编号 #{id}，已推进到第 {round} 回合。', 'Current battle #{id}, now at round {round}.', '', {
         id: currentBattleId.value,
         round: summary.value?.currentRound || 0
       })
@@ -217,7 +217,7 @@ export function useBattleDerivedState(state) {
     return playerTeam.value
       .map((pokemon, teamIndex) => ({
         value: teamIndex,
-         label: pokemon?.name || pokemon?.name_en || translate('替补 {slot}', 'Bench {slot}', { slot: teamIndex + 1 }),
+         label: pokemon?.name || pokemon?.name_en || translate('替补 {slot}', 'Bench {slot}', '', { slot: teamIndex + 1 }),
         hp: pokemon?.currentHp || 0
       }))
       .filter((pokemon) => pokemon.hp > 0 && !activeSlots.includes(pokemon.value))
@@ -490,7 +490,7 @@ export function useBattleDerivedState(state) {
         ? translate('已结束 · 玩家胜利', 'Finished · Player won')
         : translate('已结束 · 对手胜利', 'Finished · Opponent won')
     }
-    return translate('进行中 · 第 {round} 回合', 'In progress · Round {round}', { round: summary.value.currentRound || 0 })
+    return translate('进行中 · 第 {round} 回合', 'In progress · Round {round}', '', { round: summary.value.currentRound || 0 })
   })
 
   return {

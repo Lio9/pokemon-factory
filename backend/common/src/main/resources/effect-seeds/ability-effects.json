@@ -1,20 +1,634 @@
 [
-  { "id": 91,  "effect_type": "stab_multiplier",  "effect_value": "2.0",                                   "target": "attacker", "condition": "is_stab",                                              "description": "本系技能威力提升至2.0倍" },
-  { "id": 66,  "effect_type": "damage_multiplier", "effect_value": "1.5",                                   "target": "attacker", "condition": "type_id=10 AND hp_percent<=33",                       "description": "HP低于1/3时火系技能威力提升50%" },
-  { "id": 67,  "effect_type": "damage_multiplier", "effect_value": "1.5",                                   "target": "attacker", "condition": "type_id=11 AND hp_percent<=33",                       "description": "HP低于1/3时水系技能威力提升50%" },
-  { "id": 18,  "effect_type": "damage_multiplier", "effect_value": "1.5",                                   "target": "attacker", "condition": "type_id=7 AND hp_percent<=33",                        "description": "HP低于1/3时虫系技能威力提升50%" },
-  { "id": 65,  "effect_type": "damage_multiplier", "effect_value": "1.5",                                   "target": "attacker", "condition": "type_id=12 AND hp_percent<=33",                       "description": "HP低于1/3时草系技能威力提升50%" },
-  { "id": 152, "effect_type": "damage_multiplier", "effect_value": "1.3",                                   "target": "attacker", "condition": "is_contact",                                           "description": "接触技能威力提升30%" },
-  { "id": 232, "effect_type": "damage_multiplier", "effect_value": "1.2",                                   "target": "attacker", "condition": "is_punch",                                             "description": "拳类技能威力提升20%" },
-  { "id": 86,  "effect_type": "damage_multiplier", "effect_value": "1.5",                                   "target": "attacker", "condition": "power<=60",                                             "description": "威力60以下技能提升50%" },
-  { "id": 62,  "effect_type": "damage_multiplier", "effect_value": "0.5",                                   "target": "defender", "condition": "type_id IN (10, 14)",                                   "description": "火系和冰系伤害减半" },
-  { "id": 153, "effect_type": "damage_multiplier", "effect_value": "0.5",                                   "target": "defender", "condition": "hp_percent=100",                                         "description": "满HP时受到伤害减半" },
-  { "id": 216, "effect_type": "damage_multiplier", "effect_value": "0.5",                                   "target": "defender", "condition": "damage_class=physical",                                  "description": "物理伤害减半" },
-  { "id": 22,  "effect_type": "stat_boost",         "effect_value": "-1",                                   "target": "defender", "condition": "on_switch_in",                                         "description": "出场时降低对方攻击1级" },
-  { "id": 29,  "effect_type": "status_immunity",   "effect_value": "flinch",                               "target": "always",   "condition": "always",                                              "description": "免疫畏缩效果" },
-  { "id": 59,  "effect_type": "weather_effect",    "effect_value": null,                                    "target": "self",     "condition": "always",                                              "description": "免疫天气效果" },
-  { "id": 31,  "effect_type": "terrain_set",        "effect_value": "electric",                             "target": "self",     "condition": "on_switch_in",                                         "description": "出场时设置电气场地" },
-  { "id": 229, "effect_type": "terrain_set",        "effect_value": "grassy",                               "target": "self",     "condition": "on_switch_in",                                         "description": "出场时设置草地场地" },
-  { "id": 268, "effect_type": "terrain_set",        "effect_value": "psychic",                              "target": "self",     "condition": "on_switch_in",                                         "description": "出场时设置超能力场地" },
-  { "id": 243, "effect_type": "terrain_set",        "effect_value": "misty",                                "target": "self",     "condition": "on_switch_in",                                         "description": "出场时设置薄雾场地" }
+  {
+    "id": 91,
+    "effect_type": "damage_multiplier",
+    "effect_value": "2.0",
+    "target": "attacker",
+    "condition": "is_stab",
+    "description": "同属性技能x2"
+  },
+  {
+    "id": 66,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "type_id=12 and hp_pct<=33",
+    "description": "草系x1.5 HP<33%"
+  },
+  {
+    "id": 67,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "type_id=10 and hp_pct<=33",
+    "description": "火系x1.5 HP<33%"
+  },
+  {
+    "id": 65,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "type_id=11 and hp_pct<=33",
+    "description": "水系x1.5 HP<33%"
+  },
+  {
+    "id": 68,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "type_id=7 and hp_pct<=33",
+    "description": "虫系x1.5 HP<33%"
+  },
+  {
+    "id": 86,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "power<=60",
+    "description": "技术高手x1.5"
+  },
+  {
+    "id": 44,
+    "effect_type": "attack_stat_multiplier",
+    "effect_value": "2.0",
+    "target": "attacker",
+    "condition": "damage_class=physical",
+    "description": "大力士x2"
+  },
+  {
+    "id": 46,
+    "effect_type": "attack_stat_multiplier",
+    "effect_value": "2.0",
+    "target": "attacker",
+    "condition": "damage_class=physical",
+    "description": "单纯力量x2"
+  },
+  {
+    "id": 232,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "is_punch",
+    "description": "铁拳x1.2"
+  },
+  {
+    "id": 22,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "has_status and damage_class=physical",
+    "description": "毅力x1.5"
+  },
+  {
+    "id": 17,
+    "effect_type": "speed_multiplier",
+    "effect_value": "2.0",
+    "target": "self",
+    "condition": "weather=rain",
+    "description": "悠游自如x2(雨)"
+  },
+  {
+    "id": 34,
+    "effect_type": "speed_multiplier",
+    "effect_value": "2.0",
+    "target": "self",
+    "condition": "weather=sun",
+    "description": "叶绿素x2(晴)"
+  },
+  {
+    "id": 44,
+    "effect_type": "speed_multiplier",
+    "effect_value": "2.0",
+    "target": "self",
+    "condition": "weather=sandstorm",
+    "description": "沙之力和尚x2(沙)"
+  },
+  {
+    "id": 147,
+    "effect_type": "damage_multiplier",
+    "effect_value": "2.0",
+    "target": "attacker",
+    "condition": "type_eff<1",
+    "description": "有色透镜x2"
+  },
+  {
+    "id": 94,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.3",
+    "target": "attacker",
+    "condition": "has_effect_chance",
+    "description": "全力攻击x1.3"
+  },
+  {
+    "id": 73,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "is_bite or is_fang",
+    "description": "强壮之颚x1.5"
+  },
+  {
+    "id": 148,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "is_recoil",
+    "description": "鲁莽x1.2"
+  },
+  {
+    "id": 108,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "is_pulse or is_aura",
+    "description": "超级发射器x1.5"
+  },
+  {
+    "id": 219,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "is_slicing",
+    "description": "锋利x1.5"
+  },
+  {
+    "id": 56,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "damage_class=physical",
+    "description": "干劲x1.5"
+  },
+  {
+    "id": 23,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.3",
+    "target": "attacker",
+    "condition": "is_last_to_act",
+    "description": "分析x1.3"
+  },
+  {
+    "id": 30,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.3",
+    "target": "attacker",
+    "condition": "is_sound",
+    "description": "朋克摇滚x1.3"
+  },
+  {
+    "id": 134,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.3",
+    "target": "attacker",
+    "condition": "weather=sun or booster_energy",
+    "description": "原始之力x1.3"
+  },
+  {
+    "id": 135,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.3",
+    "target": "attacker",
+    "condition": "terrain=electric or booster_energy",
+    "description": "夸克驱动x1.3"
+  },
+  {
+    "id": 150,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.05",
+    "target": "attacker",
+    "condition": "per_fainted_ally",
+    "description": "霸主x1.05/只"
+  },
+  {
+    "id": 17,
+    "effect_type": "defense_multiplier",
+    "effect_value": "0.75",
+    "target": "defender",
+    "condition": "type_eff>1",
+    "description": "过滤x0.75"
+  },
+  {
+    "id": 34,
+    "effect_type": "defense_multiplier",
+    "effect_value": "0.5",
+    "target": "defender",
+    "condition": "damage_class=special",
+    "description": "冰鳞粉x0.5"
+  },
+  {
+    "id": 35,
+    "effect_type": "defense_multiplier",
+    "effect_value": "0.5",
+    "target": "defender",
+    "condition": "damage_class=physical",
+    "description": "毛皮大衣x0.5"
+  },
+  {
+    "id": 36,
+    "effect_type": "defense_multiplier",
+    "effect_value": "0.5",
+    "target": "defender",
+    "condition": "type_id in (10,15)",
+    "description": "厚脂肪x0.5"
+  },
+  {
+    "id": 38,
+    "effect_type": "defense_multiplier",
+    "effect_value": "0.5",
+    "target": "defender",
+    "condition": "hp_pct=100",
+    "description": "多重鳞片x0.5"
+  },
+  {
+    "id": 100,
+    "effect_type": "type_immunity",
+    "effect_value": "13",
+    "target": "self",
+    "condition": "type_id=13",
+    "description": "蓄电免疫电"
+  },
+  {
+    "id": 101,
+    "effect_type": "type_immunity",
+    "effect_value": "11",
+    "target": "self",
+    "condition": "type_id=11",
+    "description": "储水免疫水"
+  },
+  {
+    "id": 103,
+    "effect_type": "type_immunity",
+    "effect_value": "5",
+    "target": "self",
+    "condition": "type_id=5",
+    "description": "浮游免疫地"
+  },
+  {
+    "id": 104,
+    "effect_type": "type_immunity",
+    "effect_value": "10",
+    "target": "self",
+    "condition": "type_id=10",
+    "description": "引火免疫火"
+  },
+  {
+    "id": 105,
+    "effect_type": "type_immunity",
+    "effect_value": "12",
+    "target": "self",
+    "condition": "type_id=12",
+    "description": "食草免疫草"
+  },
+  {
+    "id": 106,
+    "effect_type": "type_immunity",
+    "effect_value": "13",
+    "target": "self",
+    "condition": "type_id=13",
+    "description": "避雷针免疫电"
+  },
+  {
+    "id": 38,
+    "effect_type": "stat_stage",
+    "effect_value": "-1",
+    "target": "defender",
+    "condition": "on_switch_in",
+    "description": "威吓-1攻"
+  },
+  {
+    "id": 78,
+    "effect_type": "stat_stage_boost",
+    "effect_value": "+2",
+    "target": "self",
+    "condition": "stat_dropped",
+    "description": "不服输+2攻"
+  },
+  {
+    "id": 74,
+    "effect_type": "stat_stage_boost",
+    "effect_value": "+2",
+    "target": "self",
+    "condition": "stat_dropped",
+    "description": "好胜+2特攻"
+  },
+  {
+    "id": 601,
+    "effect_type": "stat_stage_modifier",
+    "effect_value": "reverse",
+    "target": "self",
+    "condition": "always",
+    "description": "唱反调反转"
+  },
+  {
+    "id": 603,
+    "effect_type": "blocks_stat_drop",
+    "effect_value": "all",
+    "target": "self",
+    "condition": "always",
+    "description": "恒净之躯"
+  },
+  {
+    "id": 204,
+    "effect_type": "status_immunity",
+    "effect_value": "confusion",
+    "target": "self",
+    "condition": "always",
+    "description": "我行我素免混乱"
+  },
+  {
+    "id": 202,
+    "effect_type": "status_immunity",
+    "effect_value": "sleep",
+    "target": "self",
+    "condition": "always",
+    "description": "不眠免睡眠"
+  },
+  {
+    "id": 206,
+    "effect_type": "status_immunity",
+    "effect_value": "poison",
+    "target": "self",
+    "condition": "always",
+    "description": "免疫"
+  },
+  {
+    "id": 201,
+    "effect_type": "status_immunity",
+    "effect_value": "paralysis",
+    "target": "self",
+    "condition": "always",
+    "description": "柔软免麻痹"
+  },
+  {
+    "id": 205,
+    "effect_type": "status_immunity",
+    "effect_value": "freeze",
+    "target": "self",
+    "condition": "always",
+    "description": "熔岩铠甲免冰冻"
+  },
+  {
+    "id": 207,
+    "effect_type": "status_immunity",
+    "effect_value": "burn",
+    "target": "self",
+    "condition": "always",
+    "description": "水幕免灼伤"
+  },
+  {
+    "id": 401,
+    "effect_type": "inner-focus",
+    "effect_value": "flinch",
+    "target": "self",
+    "condition": "always",
+    "description": "精神力免畏缩"
+  },
+  {
+    "id": 402,
+    "effect_type": "oblivious",
+    "effect_value": "taunt",
+    "target": "self",
+    "condition": "always",
+    "description": "迟钝免挑衅"
+  },
+  {
+    "id": 701,
+    "effect_type": "pre_move_effect",
+    "effect_value": "change_type",
+    "target": "self",
+    "condition": "always",
+    "description": "变幻自如改属性"
+  },
+  {
+    "id": 702,
+    "effect_type": "pre_move_effect",
+    "effect_value": "change_type",
+    "target": "self",
+    "condition": "always",
+    "description": "自由者改属性"
+  },
+  {
+    "id": 1001,
+    "effect_type": "pre_move_effect",
+    "effect_value": "reflect_status",
+    "target": "self",
+    "condition": "always",
+    "description": "魔法镜反弹"
+  },
+  {
+    "id": 301,
+    "effect_type": "weather_set",
+    "effect_value": "rain",
+    "target": "self",
+    "condition": "on_switch_in",
+    "description": "降雨"
+  },
+  {
+    "id": 302,
+    "effect_type": "weather_set",
+    "effect_value": "sun",
+    "target": "self",
+    "condition": "on_switch_in",
+    "description": "大晴天"
+  },
+  {
+    "id": 303,
+    "effect_type": "weather_set",
+    "effect_value": "sandstorm",
+    "target": "self",
+    "condition": "on_switch_in",
+    "description": "扬沙"
+  },
+  {
+    "id": 304,
+    "effect_type": "weather_set",
+    "effect_value": "snow",
+    "target": "self",
+    "condition": "on_switch_in",
+    "description": "降雪"
+  },
+  {
+    "id": 305,
+    "effect_type": "terrain_set",
+    "effect_value": "electric",
+    "target": "self",
+    "condition": "on_switch_in",
+    "description": "电气制造者"
+  },
+  {
+    "id": 306,
+    "effect_type": "terrain_set",
+    "effect_value": "psychic",
+    "target": "self",
+    "condition": "on_switch_in",
+    "description": "精神制造者"
+  },
+  {
+    "id": 307,
+    "effect_type": "terrain_set",
+    "effect_value": "grassy",
+    "target": "self",
+    "condition": "on_switch_in",
+    "description": "青草制造者"
+  },
+  {
+    "id": 308,
+    "effect_type": "terrain_set",
+    "effect_value": "misty",
+    "target": "self",
+    "condition": "on_switch_in",
+    "description": "薄雾制造者"
+  },
+  {
+    "id": 801,
+    "effect_type": "heal",
+    "effect_value": "1/16",
+    "target": "self",
+    "condition": "weather=rain",
+    "description": "雨天每回合回1/16"
+  },
+  {
+    "id": 805,
+    "effect_type": "heal",
+    "effect_value": "1/3",
+    "target": "self",
+    "condition": "on_switch_out",
+    "description": "再生力回1/3"
+  },
+  {
+    "id": 806,
+    "effect_type": "heal",
+    "effect_value": "cure",
+    "target": "self",
+    "condition": "on_switch_out",
+    "description": "自然回复治愈"
+  },
+  {
+    "id": 401,
+    "effect_type": "contact_effect",
+    "effect_value": "paralysis",
+    "target": "attacker",
+    "condition": "always",
+    "description": "静电30%麻"
+  },
+  {
+    "id": 402,
+    "effect_type": "contact_effect",
+    "effect_value": "burn",
+    "target": "attacker",
+    "condition": "always",
+    "description": "火焰之躯30%灼伤"
+  },
+  {
+    "id": 403,
+    "effect_type": "contact_effect",
+    "effect_value": "poison",
+    "target": "attacker",
+    "condition": "always",
+    "description": "毒刺30%中毒"
+  },
+  {
+    "id": 404,
+    "effect_type": "contact_recoil",
+    "effect_value": "1/8",
+    "target": "attacker",
+    "condition": "always",
+    "description": "粗糙皮肤1/8"
+  },
+  {
+    "id": 405,
+    "effect_type": "contact_recoil",
+    "effect_value": "1/8",
+    "target": "attacker",
+    "condition": "always",
+    "description": "铁刺1/8"
+  },
+  {
+    "id": 501,
+    "effect_type": "speed_raise",
+    "effect_value": "+1",
+    "target": "self",
+    "condition": "end_of_turn",
+    "description": "加速每回合+1速"
+  },
+  {
+    "id": 502,
+    "effect_type": "speed_multiplier",
+    "effect_value": "1.5",
+    "target": "self",
+    "condition": "has_status",
+    "description": "飞毛腿1.5倍"
+  },
+  {
+    "id": 503,
+    "effect_type": "speed_multiplier",
+    "effect_value": "2.0",
+    "target": "self",
+    "condition": "item_consumed",
+    "description": "轻装2倍"
+  },
+  {
+    "id": 509,
+    "effect_type": "speed_raise",
+    "effect_value": "+1_priority",
+    "target": "self",
+    "condition": "hp_pct=100",
+    "description": "疾风之翼满血优先"
+  },
+  {
+    "id": 1301,
+    "effect_type": "secondary_effect_modifier",
+    "effect_value": "2.0",
+    "target": "self",
+    "condition": "always",
+    "description": "天恩追加乘2"
+  },
+  {
+    "id": 1302,
+    "effect_type": "blocks_secondary_effects",
+    "effect_value": "all",
+    "target": "self",
+    "condition": "always",
+    "description": "鳞粉防追加"
+  },
+  {
+    "id": 1401,
+    "effect_type": "weight_multiplier",
+    "effect_value": "2.0",
+    "target": "self",
+    "condition": "always",
+    "description": "重金属x2"
+  },
+  {
+    "id": 1402,
+    "effect_type": "weight_multiplier",
+    "effect_value": "0.5",
+    "target": "self",
+    "condition": "always",
+    "description": "轻金属/2"
+  },
+  {
+    "id": 901,
+    "effect_type": "flags",
+    "effect_value": "ignore_ability",
+    "target": "self",
+    "condition": "always",
+    "description": "破格无视特性"
+  },
+  {
+    "id": 1505,
+    "effect_type": "flags",
+    "effect_value": "pp_extra",
+    "target": "foe",
+    "condition": "always",
+    "description": "压迫感pp乘2"
+  },
+  {
+    "id": 405,
+    "effect_type": "flags",
+    "effect_value": "prevent_berries",
+    "target": "foe",
+    "condition": "always",
+    "description": "紧张感禁树果"
+  }
 ]

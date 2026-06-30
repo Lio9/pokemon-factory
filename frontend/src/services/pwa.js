@@ -1,4 +1,12 @@
 /**
+ * ============================================================
+ * PWA Service Worker / PWA Service Worker
+ * ============================================================
+ *
+ * 提供 PWA Service Worker 的注册、更新管理和通知权限请求。
+ * Manages PWA Service Worker registration, update handling, and notification permissions.
+ *
+ * @module services/pwa
  * Service Worker 注册工具
  */
 

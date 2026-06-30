@@ -26,44 +26,15 @@ export default defineConfig({
   ],
   server: {
     host: '0.0.0.0',
-    port: 7890,
+    port: 7894,
     historyApiFallback: true,
     proxy: {
-      // battleFactory (8090): 对战、用户认证
-      '/api/battle': {
-        target: 'http://localhost:8090',
-        changeOrigin: true
-      },
-      '/api/user': {
-        target: 'http://localhost:8090',
-        changeOrigin: true
-      },
-      // pokeDex (8081): 图鉴数据
+      // one-server (8081): 全部 API 由单个后端提供
       '/api/pokedex': {
         target: 'http://localhost:8081',
         changeOrigin: true
       },
-      '/api/pokemon': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/moves': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/abilities': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/items': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/damage': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/types': {
+      '/api': {
         target: 'http://localhost:8081',
         changeOrigin: true
       }
@@ -98,3 +69,4 @@ export default defineConfig({
     include: ['vue', 'vue-router', 'lucide-vue-next']
   }
 })
+

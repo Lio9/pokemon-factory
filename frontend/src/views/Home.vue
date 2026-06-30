@@ -3,18 +3,28 @@
     <!-- Hero Section -->
     <div class="mb-8 rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-8 text-white shadow-2xl sm:p-12 relative overflow-hidden">
       <!-- 装饰性背景元素 -->
-      <div class="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-white/10 blur-3xl"></div>
-      <div class="absolute bottom-0 left-0 -mb-10 -ml-10 h-40 w-40 rounded-full bg-white/10 blur-3xl"></div>
+      <div class="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+      <div class="absolute bottom-0 left-0 -mb-10 -ml-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
       
       <div class="relative z-10">
-        <h2 class="text-3xl font-bold sm:text-4xl mb-2">{{ tr('欢迎使用 Pokemon Factory', 'Welcome to Pokemon Factory') }}</h2>
-        <p class="text-lg text-blue-100 sm:text-xl">{{ tr('宝可梦图鉴与对战模拟平台', 'Pokemon Dex & Battle Simulator') }}</p>
+        <h2 class="text-3xl font-bold sm:text-4xl mb-2">
+          {{ tr('欢迎使用 Pokemon Factory', 'Welcome to Pokemon Factory') }}
+        </h2>
+        <p class="text-lg text-blue-100 sm:text-xl">
+          {{ tr('宝可梦图鉴与对战模拟平台', 'Pokemon Dex & Battle Simulator') }}
+        </p>
         <div class="mt-6 flex flex-wrap gap-3">
-          <router-link to="/battle" class="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-semibold text-blue-600 shadow-lg transition-all hover:scale-105 hover:shadow-xl">
+          <router-link
+            to="/battle"
+            class="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-semibold text-blue-600 shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+          >
             <span>⚔️</span>
             <span>{{ tr('开始对战', 'Start Battle') }}</span>
           </router-link>
-          <router-link to="/pokemon" class="inline-flex items-center gap-2 rounded-xl border-2 border-white/50 px-6 py-3 font-semibold text-white transition-all hover:bg-white/10 hover:border-white">
+          <router-link
+            to="/pokemon"
+            class="inline-flex items-center gap-2 rounded-xl border-2 border-white/50 px-6 py-3 font-semibold text-white transition-all hover:bg-white/10 hover:border-white"
+          >
             <span>📖</span>
             <span>{{ tr('浏览图鉴', 'Browse Dex') }}</span>
           </router-link>
@@ -34,7 +44,7 @@
         <div 
           class="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-10"
           :style="{ background: `linear-gradient(135deg, ${card.color}20, ${card.color}40)` }"
-        ></div>
+        />
         
         <div class="relative z-10 flex items-start gap-4">
           <div
@@ -44,12 +54,29 @@
             {{ card.icon }}
           </div>
           <div class="flex-1">
-            <h3 class="text-lg font-bold text-slate-800 transition-colors group-hover:text-slate-900">{{ card.name }}</h3>
-            <p class="mt-1 text-sm text-slate-500">{{ card.desc }}</p>
-            <div class="mt-3 flex items-center gap-1 text-xs font-medium" :style="{ color: card.color }">
+            <h3 class="text-lg font-bold text-slate-800 transition-colors group-hover:text-slate-900">
+              {{ card.name }}
+            </h3>
+            <p class="mt-1 text-sm text-slate-500">
+              {{ card.desc }}
+            </p>
+            <div
+              class="mt-3 flex items-center gap-1 text-xs font-medium"
+              :style="{ color: card.color }"
+            >
               <span>{{ tr('查看详情', 'View Details') }}</span>
-              <svg class="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              <svg
+                class="h-4 w-4 transition-transform group-hover:translate-x-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             </div>
           </div>
@@ -67,10 +94,14 @@
         <div 
           class="absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-10 transition-transform duration-500 group-hover:scale-150"
           :style="{ background: statColors[index] }"
-        ></div>
+        />
         <div class="relative z-10">
-          <div class="text-3xl font-bold text-slate-800">{{ stat.value }}</div>
-          <div class="mt-1 text-sm font-medium text-slate-500">{{ stat.label }}</div>
+          <div class="text-3xl font-bold text-slate-800">
+            {{ stat.value }}
+          </div>
+          <div class="mt-1 text-sm font-medium text-slate-500">
+            {{ stat.label }}
+          </div>
         </div>
       </div>
     </div>

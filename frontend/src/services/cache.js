@@ -1,5 +1,26 @@
 /**
- * 数据缓存服务 - 优化版
+ * ============================================================
+ * 数据缓存服务 / Data Cache Service
+ * ============================================================
+ *
+ * ## 架构定位 / Architecture
+ *
+ *   Views ──getOrFetch()──▶ DataCache ──get/set──▶ Memory (LRU)
+ *                             │
+ *                             ├── IndexedDB (Persistent)
+ *                             └── fetch() (Network fallback)
+ *
+ * ## 缓存层次 / Cache Levels (L1 → L2 → L3)
+ *   L1: 内存 LRU (最快 / Fastest, in-process)
+ *   L2: IndexedDB (跨会话持久 / Cross-session)
+ *   L3: fetchFn (网络 / Network, only when L1+L2 miss)
+ *
+ * ## 过期策略 / Expiry
+ *   short=2min normal=10min long=30min
+ *
+ * ## 并发控制 / Concurrency
+ *   相同 key 的并发 getOrFetch 自动合并为一次请求
+ *   Concurrent getOrFetch with same key auto-merge
  * 
  * 核心功能：
  * - 智能多级缓存（内存 + IndexedDB）
@@ -23,15 +44,15 @@ class DataCache {
     
     // 配置
     this.config = {
-      maxCacheSize: 200, // 增加缓存容量
+      maxCacheSize: 200,
       cacheExpiry: {
-        short: 2 * 60 * 1000,    // 2分钟 - 频繁变化数据
-        normal: 10 * 60 * 1000, // 10分钟 - 常规数据
-        long: 30 * 60 * 1000    // 30分钟 - 静态数据
+        short: 2 * 60 * 1000,
+        normal: 10 * 60 * 1000,
+        long: 30 * 60 * 1000
       },
-      maxImagePreload: 8, // 图片并发预加载数
-      enableIndexedDB: false, // 可选持久化缓存
-      hitLogEnabled: true // 缓存命中统计
+      maxImagePreload: 8,
+      enableIndexedDB: true,
+      hitLogEnabled: true
     }
     
     // 统计
@@ -41,42 +62,127 @@ class DataCache {
       requests: 0
     }
     
-    // IndexedDB 相关（可选）
+    // IndexedDB 持久化缓存
     this.db = null
     this.dbName = 'PokemonFactoryCache'
+    this.dbVersion = 2
     this.initIndexedDB()
   }
 
   /**
-   * 初始化 IndexedDB（可选）
+   * 初始化 IndexedDB — 用于跨会话持久化缓存
    */
   async initIndexedDB() {
     if (!this.config.enableIndexedDB) return
     
     try {
-      const request = indexedDB.open(this.dbName, 1)
+      const request = indexedDB.open(this.dbName, this.dbVersion)
       
       request.onupgradeneeded = (event) => {
         const db = event.target.result
         if (!db.objectStoreNames.contains('cache')) {
-          db.createObjectStore('cache')
+          const store = db.createObjectStore('cache', { keyPath: 'key' })
+          store.createIndex('timestamp', 'timestamp', { unique: false })
+          store.createIndex('expiry', 'expiry', { unique: false })
         }
       }
       
       this.db = await new Promise((resolve, reject) => {
         request.onsuccess = () => resolve(request.result)
-        request.onerror = () => reject(request.error)
+        request.onerror = () => {
+          console.warn('IndexedDB not available, using memory-only cache')
+          resolve(null)
+        }
       })
+
+      // 定期清理过期 IndexedDB 条目
+      if (this.db) {
+        this.cleanupIndexedDB()
+      }
     } catch (e) {
-      console.warn('IndexedDB not available, using memory-only cache')
+      console.warn('IndexedDB init failed, using memory-only cache')
     }
   }
 
   /**
+   * 从 IndexedDB 读取 (如果内存未命中)
+   */
+  async readFromIndexedDB(key) {
+    if (!this.db) return null
+    try {
+      const tx = this.db.transaction('cache', 'readonly')
+      const store = tx.objectStore('cache')
+      const result = await new Promise((resolve, reject) => {
+        const request = store.get(key)
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(null)
+      })
+      if (result && result.expiry > Date.now()) {
+        return result.data
+      }
+      // 过期则删除
+      if (result) {
+        this.deleteFromIndexedDB(key)
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * 写入 IndexedDB (异步，不阻塞)
+   */
+  writeToIndexedDB(key, data, expiryMs) {
+    if (!this.db) return
+    try {
+      const tx = this.db.transaction('cache', 'readwrite')
+      const store = tx.objectStore('cache')
+      store.put({
+        key,
+        data,
+        timestamp: Date.now(),
+        expiry: Date.now() + expiryMs
+      })
+    } catch { /* silent */ }
+  }
+
+  /**
+   * 从 IndexedDB 删除
+   */
+  deleteFromIndexedDB(key) {
+    if (!this.db) return
+    try {
+      const tx = this.db.transaction('cache', 'readwrite')
+      const store = tx.objectStore('cache')
+      store.delete(key)
+    } catch { /* silent */ }
+  }
+
+  /**
+   * 清理过期 IndexedDB 条目
+   */
+  async cleanupIndexedDB() {
+    if (!this.db) return
+    try {
+      const tx = this.db.transaction('cache', 'readwrite')
+      const store = tx.objectStore('cache')
+      const index = store.index('expiry')
+      const now = Date.now()
+      const range = IDBKeyRange.upperBound(now)
+      const request = index.openCursor(range)
+      request.onsuccess = (event) => {
+        const cursor = event.target.result
+        if (cursor) {
+          store.delete(cursor.primaryKey)
+          cursor.continue()
+        }
+      }
+    } catch { /* silent */ }
+  }
+
+  /**
    * 生成缓存键
-   * @param {string} type - 数据类型
-   * @param {object} params - 参数
-   * @returns {string} 缓存键
    */
   generateKey(type, params) {
     return `${type}:${JSON.stringify(params)}`
@@ -86,18 +192,12 @@ class DataCache {
    * 更新访问顺序（LRU）
    */
   updateAccessOrder(key) {
-    // 删除旧位置
     this.accessOrder.delete(key)
-    // 添加到最新位置
     this.accessOrder.set(key, Date.now())
   }
 
   /**
-   * 获取缓存数据
-   * @param {string} type - 数据类型
-   * @param {object} params - 参数
-   * @param {string} expiryMode - 过期模式: 'short' | 'normal' | 'long'
-   * @returns {any} 缓存数据
+   * 从内存获取
    */
   get(type, params, expiryMode = 'normal') {
     const key = this.generateKey(type, params)
@@ -110,7 +210,6 @@ class DataCache {
         this.updateAccessOrder(key)
         return item.data
       }
-      // 过期清理
       this.cache.delete(key)
       this.accessOrder.delete(key)
     }
@@ -120,17 +219,13 @@ class DataCache {
   }
 
   /**
-   * 设置缓存数据
-   * @param {string} type - 数据类型
-   * @param {object} params - 参数
-   * @param {any} data - 数据
+   * 设置内存缓存
    */
   set(type, params, data) {
     const key = this.generateKey(type, params)
     
-    // LRU 淘汰策略
     if (this.cache.size >= this.config.maxCacheSize) {
-      const oldestKey = this.findOldestKey()
+      const oldestKey = this.accessOrder.keys().next().value
       if (oldestKey) {
         this.cache.delete(oldestKey)
         this.accessOrder.delete(oldestKey)
@@ -145,39 +240,48 @@ class DataCache {
   }
 
   /**
-   * 找出最久未使用的键 — O(1)
-   * Map 保持插入顺序，最早的键即为第一个
-   */
-  findOldestKey() {
-    return this.accessOrder.keys().next().value || null
-  }
-
-  /**
-   * 获取或请求数据 - 高性能版本
-   * @param {string} type - 数据类型
-   * @param {object} params - 参数
-   * @param {Function} fetchFn - 获取函数
-   * @param {string} expiryMode - 过期模式
-   * @returns {Promise<any>}
+   * 获取或请求 — 内存 → IndexedDB → 网络
    */
   async getOrFetch(type, params, fetchFn, expiryMode = 'normal') {
     this.stats.requests++
-    
-    const cached = this.get(type, params, expiryMode)
-    if (cached) {
-      return cached
+    const key = this.generateKey(type, params)
+    const expiry = this.config.cacheExpiry[expiryMode]
+
+    // 1. 内存缓存
+    const memCached = this.cache.get(key)
+    if (memCached && Date.now() - memCached.timestamp < expiry) {
+      this.stats.hits++
+      this.updateAccessOrder(key)
+      return memCached.data
     }
 
-    // 检查并等待相同的进行中请求
-    const key = this.generateKey(type, params)
+    // 2. IndexedDB 持久缓存
+    if (this.config.enableIndexedDB) {
+      const idbCached = await this.readFromIndexedDB(key)
+      if (idbCached !== null) {
+        // 回填到内存
+        this.cache.set(key, { data: idbCached, timestamp: Date.now() })
+        this.updateAccessOrder(key)
+        this.stats.hits++
+        return idbCached
+      }
+    }
+
+    this.stats.misses++
+
+    // 3. 等待进行中的相同请求
     if (this.pendingRequests.has(key)) {
       return this.pendingRequests.get(key)
     }
 
-    // 发起新请求
+    // 4. 发起新请求
     const promise = fetchFn()
       .then(data => {
         this.set(type, params, data)
+        // 异步写入 IndexedDB
+        if (this.config.enableIndexedDB) {
+          this.writeToIndexedDB(key, data, expiry)
+        }
         this.pendingRequests.delete(key)
         return data
       })
@@ -191,10 +295,7 @@ class DataCache {
   }
 
   /**
-   * 批量获取或请求数据
-   * @param {Array} items - 数组项 { type, params, fetchFn }
-   * @param {string} expiryMode - 过期模式
-   * @returns {Promise<Array>}
+   * 批量获取或请求
    */
   async batchGetOrFetch(items, expiryMode = 'normal') {
     const results = []
@@ -209,10 +310,11 @@ class DataCache {
       }
     }
 
-    // 并发执行剩余请求
     if (pendingBatches.length > 0) {
       const pendingResults = await Promise.all(
-        pendingBatches.map(item => this.getOrFetch(item.type, item.params, item.fetchFn, expiryMode))
+        pendingBatches.map(item =>
+          this.getOrFetch(item.type, item.params, item.fetchFn, expiryMode)
+        )
       )
       results.push(...pendingResults)
     }
@@ -222,8 +324,6 @@ class DataCache {
 
   /**
    * 预加载单个图片
-   * @param {string} url - 图片URL
-   * @returns {Promise<HTMLImageElement>}
    */
   preloadImage(url) {
     if (this.imageCache.has(url)) {
@@ -238,27 +338,23 @@ class DataCache {
         this.imageCache.set(url, img)
         resolve(img)
       }
-      img.onerror = (error) => {
+      img.onerror = () => {
         this.imageCache.delete(url)
-        reject(error)
+        reject(new Error(`Image load failed: ${url}`))
       }
       img.src = url
     })
   }
 
   /**
-   * 批量预加载图片 - 智能控制并发
-   * @param {Array} urls - 图片URL数组
-   * @returns {Promise<Array>}
+   * 批量预加载图片 — 并发控制
    */
   async preloadImages(urls) {
-    // 过滤已缓存的
     const uncachedUrls = urls.filter(url => !this.imageCache.has(url))
     if (uncachedUrls.length === 0) {
       return urls.map(url => this.imageCache.get(url))
     }
 
-    // 分批次并发加载
     const results = []
     const maxConcurrent = this.config.maxImagePreload
     
@@ -270,16 +366,15 @@ class DataCache {
       results.push(...batchResults)
     }
 
-    // 返回所有（包括已缓存的）
     return urls.map(url => this.imageCache.get(url))
   }
 
   /**
-   * 获取缓存统计信息
+   * 缓存统计
    */
   getStats() {
-    const hitRate = this.stats.requests > 0 
-      ? (this.stats.hits / this.stats.requests * 100).toFixed(2) 
+    const hitRate = this.stats.requests > 0
+      ? (this.stats.hits / this.stats.requests * 100).toFixed(2)
       : '0.00'
     
     return {
@@ -292,24 +387,30 @@ class DataCache {
   }
 
   /**
-   * 清除所有缓存
+   * 清除所有缓存（内存 + IndexedDB）
    */
   clear() {
     this.cache.clear()
     this.imageCache.clear()
-    this.pendingRequests.clear()
     this.accessOrder.clear()
     this.stats = { hits: 0, misses: 0, requests: 0 }
+
+    if (this.db) {
+      const tx = this.db.transaction('cache', 'readwrite')
+      const store = tx.objectStore('cache')
+      store.clear()
+    }
   }
 
   /**
-   * 清除特定类型的缓存
+   * 清除特定类型缓存
    */
   clearType(type) {
     for (const key of this.cache.keys()) {
       if (key.startsWith(`${type}:`)) {
         this.cache.delete(key)
         this.accessOrder.delete(key)
+        this.deleteFromIndexedDB(key)
       }
     }
   }
@@ -319,8 +420,8 @@ class DataCache {
    */
   cleanExpired() {
     const now = Date.now()
+    const maxExpiry = Math.max(...Object.values(this.config.cacheExpiry))
     for (const [key, item] of this.cache.entries()) {
-      const maxExpiry = Math.max(...Object.values(this.config.cacheExpiry))
       if (now - item.timestamp > maxExpiry) {
         this.cache.delete(key)
         this.accessOrder.delete(key)
@@ -338,4 +439,11 @@ if (typeof window !== 'undefined') {
   setInterval(() => {
     dataCache.cleanExpired()
   }, 5 * 60 * 1000)
+
+  // 页面卸载前关闭 IndexedDB 连接
+  window.addEventListener('beforeunload', () => {
+    if (dataCache.db) {
+      dataCache.db.close()
+    }
+  })
 }

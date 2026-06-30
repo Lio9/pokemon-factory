@@ -1,0 +1,7 @@
+spring:
+  config:
+    import: optional:classpath:application-common.yml
+  application:
+    name: pokemon-factory
+server:
+  port: 8081

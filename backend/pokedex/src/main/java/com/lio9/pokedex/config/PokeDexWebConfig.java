@@ -1,22 +1,18 @@
 package com.lio9.pokedex.config;
 
-
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.Arrays;
 
-/**
- * pokeDex Web 层统一配置。
+/** Web layer configuration 应用 Web 层统一配置
  * <p>
- * 当前先把跨域策略集中到一处，避免散落在每个 controller 上：
- * 1. 默认只放行本地开发常见前端端口；
- * 2. 生产环境通过配置覆盖；
- * 3. 后续若引入网关，只需要在这里或网关层统一调整。
+ * Configures CORS and Pokemon image static resource serving.
+ * 配置跨域访问和宝可梦图片的静态资源映射。
  * </p>
  */
 @Configuration
@@ -25,7 +21,7 @@ public class PokeDexWebConfig implements WebMvcConfigurer {
     private final String[] allowedOrigins;
 
     public PokeDexWebConfig(
-        @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173}")
+        @Value("")
         String allowedOrigins
     ) {
         this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
@@ -41,5 +37,16 @@ public class PokeDexWebConfig implements WebMvcConfigurer {
             .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             .allowedHeaders("*")
             .maxAge(3600);
+    }
+
+    /** Serve Pokemon sprite images from data/image/ at /api/pokedex/images/**
+     *  将 data/image/ 目录映射为 /api/pokedex/images/** 的静态资源
+     *  Supports both running from project root and from backend/ directory.
+     *  支持从项目根目录或 backend/ 目录启动时的路径定位。 */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/api/pokedex/images/**")
+            .addResourceLocations("file:data/image/", "file:../data/image/")
+            .setCachePeriod(86400);
     }
 }

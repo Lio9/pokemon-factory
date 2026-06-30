@@ -5,20 +5,33 @@
     <!-- 纯文字模式开关 -->
     <div class="flex justify-end">
       <button 
-        @click="toggleTextMode" 
-        class="px-3 py-1 text-xs font-semibold rounded-full border transition-colors"
+        class="px-3 py-1 text-xs font-semibold rounded-full border transition-colors" 
         :class="isTextMode ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'"
+        @click="toggleTextMode"
       >
         {{ isTextMode ? tr('切换回图形模式', 'Switch to Graphic Mode') : tr('开启纯文字摸鱼模式', 'Enable Text-only Mode') }}
       </button>
     </div>
 
     <!-- 纯文字显示区域 -->
-    <div v-if="isTextMode" class="rounded-[24px] border border-slate-200 bg-black p-6 shadow-lg font-mono text-sm leading-relaxed overflow-auto max-h-[80vh]">
-      <div v-for="(log, index) in textLogs" :key="index" class="mb-1" :class="getLogClass(log)">
+    <div
+      v-if="isTextMode"
+      class="rounded-[24px] border border-slate-200 bg-black p-6 shadow-lg font-mono text-sm leading-relaxed overflow-auto max-h-[80vh]"
+    >
+      <div
+        v-for="(log, index) in textLogs"
+        :key="index"
+        class="mb-1"
+        :class="getLogClass(log)"
+      >
         {{ log.content }}
       </div>
-      <div v-if="!textLogs.length" class="text-slate-500">{{ tr('等待战斗开始...', 'Waiting for battle to start...') }}</div>
+      <div
+        v-if="!textLogs.length"
+        class="text-slate-500"
+      >
+        {{ tr('等待战斗开始...', 'Waiting for battle to start...') }}
+      </div>
     </div>
 
     <!-- 原有图形界面 -->

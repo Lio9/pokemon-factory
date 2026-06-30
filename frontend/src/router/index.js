@@ -1,5 +1,33 @@
 /**
- * 路由配置模块
+ * ============================================================
+ * 路由配置 / Router Configuration
+ * ============================================================
+ *
+ * ## 路由表 / Route Table
+ *
+ *   /                首页概览 / Home
+ *   /pokemon         宝可梦图鉴 / Pokemon Dex (列表 / List)
+ *   /pokemon/:id     宝可梦详情 / Pokemon Detail
+ *   /moves           技能列表 / Moves
+ *   /abilities       特性列表 / Abilities
+ *   /items           物品列表 / Items
+ *   /damage-calc     伤害计算 / Damage Calculator
+ *   /battle          对战工厂 / Battle (需认证 / Auth Required)
+ *   /login           登录 / Login
+ *   /import          导入管理 / Import Manager
+ *
+ * ## 导航守卫 / Navigation Guards
+ *
+ *   beforeEach 负责：
+ *   1. 同步更新页面标题 / Sync page title
+ *   2. 恢复用户会话 / Restore user session
+ *   3. 受保护路由的登录拦截 / Redirect to login for protected routes
+ *   4. 已登录用户访问登录页时自动跳转 / Skip login for authenticated users
+ *
+ * ## 代码分割 / Code Splitting
+ *
+ * 所有页面组件使用动态 import()，路由级自动分包。
+ * All views use dynamic import() for route-level code splitting.
  *
  * 本模块负责定义应用的所有路由规则和导航行为。
  * 使用 Vue Router 4 的动态导入实现路由级代码分割。
@@ -87,15 +115,14 @@ const routes = [
       title: { zh: '导入管理', en: 'Import Manager' }
     }
   },
-  {
-    path: '/battle',
-    name: 'Battle',
-    component: () => import('../views/Battle.vue'),
-    meta: {
-      title: { zh: '对战工厂', en: 'Battle Factory' },
-      requiresAuth: true
-    }
-  },
+    {
+      path: '/battle',
+      name: 'Battle',
+      component: () => import('../views/Battle.vue'),
+      meta: {
+        title: { zh: '对战工厂', en: 'Battle Factory' }
+      }
+    },
   {
     path: '/login',
     name: 'Login',

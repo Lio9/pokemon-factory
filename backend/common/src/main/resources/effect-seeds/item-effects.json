@@ -1,19 +1,266 @@
 [
-  { "id": 130, "effect_type": "damage_multiplier", "effect_value": "1.3",   "target": "attacker", "condition": "always",                   "description": "所有技能威力提升30%" },
-  { "id": 327, "effect_type": "damage_multiplier", "effect_value": "1.5",   "target": "attacker", "condition": "damage_class=special",     "description": "特攻技能威力提升50%" },
-  { "id": 299, "effect_type": "damage_multiplier", "effect_value": "1.5",   "target": "attacker", "condition": "damage_class=physical",    "description": "物理技能威力提升50%" },
-  { "id": 83,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=10",              "description": "火系技能威力提升20%" },
-  { "id": 171, "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=13",              "description": "电系技能威力提升20%" },
-  { "id": 91,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=9",               "description": "钢系技能威力提升20%" },
-  { "id": 85,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=12",              "description": "草系技能威力提升20%" },
-  { "id": 82,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=11",              "description": "水系技能威力提升20%" },
-  { "id": 239, "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=17",              "description": "恶系技能威力提升20%" },
-  { "id": 267, "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=14",              "description": "超能力系技能威力提升20%" },
-  { "id": 89,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=5",               "description": "地面系技能威力提升20%" },
-  { "id": 88,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=6",               "description": "岩石系技能威力提升20%" },
-  { "id": 87,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=15",              "description": "冰系技能威力提升20%" },
-  { "id": 84,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=4",               "description": "毒系技能威力提升20%" },
-  { "id": 90,  "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=3",               "description": "飞行系技能威力提升20%" },
-  { "id": 279, "effect_type": "damage_multiplier", "effect_value": "1.2",   "target": "attacker", "condition": "type_id=8",               "description": "岩石系技能威力提升20%" },
-  { "id": 305, "effect_type": "recoil",             "effect_value": "1/6",   "target": "attacker", "condition": "is_contact",             "description": "接触技能受到反伤1/6" }
+  {
+    "id": 270,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.3",
+    "target": "attacker",
+    "condition": "always",
+    "description": "命玉x1.3"
+  },
+  {
+    "id": 293,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_eff>1",
+    "description": "达人带x1.2"
+  },
+  {
+    "id": 272,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.1",
+    "target": "attacker",
+    "condition": "damage_class=physical",
+    "description": "力量头巾x1.1"
+  },
+  {
+    "id": 273,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.1",
+    "target": "attacker",
+    "condition": "damage_class=special",
+    "description": "智慧眼镜x1.1"
+  },
+  {
+    "id": 232,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=10",
+    "description": "木炭x1.2火"
+  },
+  {
+    "id": 233,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=11",
+    "description": "神秘水滴x1.2水"
+  },
+  {
+    "id": 234,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=13",
+    "description": "磁铁x1.2电"
+  },
+  {
+    "id": 235,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=12",
+    "description": "奇迹种子x1.2草"
+  },
+  {
+    "id": 236,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=15",
+    "description": "不融冰x1.2冰"
+  },
+  {
+    "id": 237,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=2",
+    "description": "黑带x1.2格斗"
+  },
+  {
+    "id": 238,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=4",
+    "description": "毒针x1.2毒"
+  },
+  {
+    "id": 239,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=5",
+    "description": "软沙x1.2地"
+  },
+  {
+    "id": 240,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=3",
+    "description": "锐利鸟喙x1.2飞"
+  },
+  {
+    "id": 241,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=14",
+    "description": "弯曲汤匙x1.2超"
+  },
+  {
+    "id": 242,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=7",
+    "description": "银粉x1.2虫"
+  },
+  {
+    "id": 243,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=6",
+    "description": "硬石x1.2岩"
+  },
+  {
+    "id": 244,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=8",
+    "description": "咒术之符x1.2鬼"
+  },
+  {
+    "id": 245,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=16",
+    "description": "龙之牙x1.2龙"
+  },
+  {
+    "id": 246,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=17",
+    "description": "黑色眼镜x1.2恶"
+  },
+  {
+    "id": 247,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=9",
+    "description": "金属膜x1.2钢"
+  },
+  {
+    "id": 248,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.2",
+    "target": "attacker",
+    "condition": "type_id=1",
+    "description": "丝绸围巾x1.2一"
+  },
+  {
+    "id": 321,
+    "effect_type": "attack_stat_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "damage_class=physical",
+    "description": "CBx1.5物攻"
+  },
+  {
+    "id": 322,
+    "effect_type": "attack_stat_multiplier",
+    "effect_value": "1.5",
+    "target": "attacker",
+    "condition": "damage_class=special",
+    "description": "CSx1.5特攻"
+  },
+  {
+    "id": 323,
+    "effect_type": "speed_multiplier",
+    "effect_value": "1.5",
+    "target": "self",
+    "condition": "always",
+    "description": "围巾x1.5速"
+  },
+  {
+    "id": 324,
+    "effect_type": "defense_stat_multiplier",
+    "effect_value": "1.5",
+    "target": "defender",
+    "condition": "damage_class=special",
+    "description": "AVx1.5特防"
+  },
+  {
+    "id": 325,
+    "effect_type": "defense_stat_multiplier",
+    "effect_value": "1.5",
+    "target": "defender",
+    "condition": "not_fully_evolved",
+    "description": "辉石x1.5双防"
+  },
+  {
+    "id": 326,
+    "effect_type": "speed_multiplier",
+    "effect_value": "0.5",
+    "target": "self",
+    "condition": "always",
+    "description": "铁球速度/2"
+  },
+  {
+    "id": 329,
+    "effect_type": "damage_multiplier",
+    "effect_value": "1.1",
+    "target": "attacker",
+    "condition": "is_punch",
+    "description": "拳套x1.1拳"
+  },
+  {
+    "id": 361,
+    "effect_type": "heal",
+    "effect_value": "1/16",
+    "target": "self",
+    "condition": "end_of_turn",
+    "description": "剩饭回1/16"
+  },
+  {
+    "id": 363,
+    "effect_type": "flags",
+    "effect_value": "survive_ko",
+    "target": "self",
+    "condition": "hp_pct=100",
+    "description": "气势披带"
+  },
+  {
+    "id": 365,
+    "effect_type": "contact_recoil",
+    "effect_value": "1/6",
+    "target": "attacker",
+    "condition": "is_contact",
+    "description": "凸凸头盔1/6"
+  },
+  {
+    "id": 374,
+    "effect_type": "type_immunity",
+    "effect_value": "5",
+    "target": "self",
+    "condition": "always",
+    "description": "气球免地"
+  },
+  {
+    "id": 376,
+    "effect_type": "blocks_secondary_effects",
+    "effect_value": "all",
+    "target": "self",
+    "condition": "always",
+    "description": "防尘护目镜"
+  }
 ]

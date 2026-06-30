@@ -249,7 +249,7 @@ final class BattleDamageSupport {
     int calculateMovePower(Map<String, Object> move, Map<String, Object> attacker, Map<String, Object> defender,
             Map<String, Object> state) {
         int basePower = engine.toInt(move.get("power"), 0);
-        if (basePower <= 0) return basePower;
+        // Dynamic power moves checked below (friendship/spitUp/naturalGift)
 
         if (MoveRegistry.isElectroBall(move)) {
             // 电球：威力取决于攻击方速度 / 防御方速度的比值
@@ -352,6 +352,7 @@ final class BattleDamageSupport {
             return 60;
         }
 
+        if (basePower <= 0 && !MoveRegistry.isFriendshipMove(move) && !MoveRegistry.isSpitUp(move) && !MoveRegistry.isNaturalGift(move) && !MoveRegistry.isWeatherBall(move) && !MoveRegistry.isTerrainPulse(move)) return 0;
         return basePower;
     }
 

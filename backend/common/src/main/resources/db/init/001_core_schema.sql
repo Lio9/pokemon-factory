@@ -724,6 +724,18 @@ INSERT INTO evolution_trigger (id, name, name_en) VALUES
 (12, '时间', 'time'),
 (13, '特定宝可梦在队伍中', 'turn-upside-down');
 
+
+-- 数据库迁移版本表（跟踪 schema 版本，避免重复执行 DROP TABLE）
+DROP TABLE IF EXISTS schema_version;
+CREATE TABLE schema_version (
+    version INTEGER PRIMARY KEY,
+    description TEXT NOT NULL,
+    applied_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    checksum TEXT
+);
+
+INSERT INTO schema_version (version, description) VALUES (1, '初始核心 schema');
+
 -- 创建索引以提高查询性能
 CREATE INDEX idx_pokemon_form_type_form_id ON pokemon_form_type(form_id);
 CREATE INDEX idx_pokemon_form_ability_form_id ON pokemon_form_ability(form_id);

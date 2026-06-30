@@ -1,4 +1,12 @@
 /**
+ * ============================================================
+ * 目录 API 服务 / Catalog API Service
+ * ============================================================
+ *
+ * 封装类型、特性、技能、道具、伤害计算的查询接口。
+ * Wraps query APIs for types, abilities, moves, items, and damage calculation.
+ *
+ * @module services/modules/catalogApi
  * 目录 API 服务 - 优化版
  * 
  * 技能、特性、物品、属性等静态数据API

@@ -3,7 +3,10 @@
     <!-- 页面头部 -->
     <section class="shine-effect glass-card p-6 sm:p-8 relative overflow-hidden group">
       <!-- 渐变背景装饰 -->
-      <div class="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500" style="background: linear-gradient(135deg, #0ea5e9 20, #6366f1 40)"></div>
+      <div
+        class="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500"
+        style="background: linear-gradient(135deg, #0ea5e9 20, #6366f1 40)"
+      />
           
       <div class="relative z-10">
         <div class="inline-flex rounded-full border border-white/70 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 shadow-sm">
@@ -29,7 +32,23 @@
           class="btn-primary"
           @click="startImport"
         >
-          <svg v-if="currentTask && currentTask.status === 'running'" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" /><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+          <svg
+            v-if="currentTask && currentTask.status === 'running'"
+            class="w-4 h-4 animate-spin"
+            fill="none"
+            viewBox="0 0 24 24"
+          ><circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          /><path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          /></svg>
           <span>{{ currentTask && currentTask.status === 'running' ? tr('导入中...', 'Importing...') : tr('开始全量导入', 'Start Full Import') }}</span>
         </button>
 
@@ -37,7 +56,17 @@
           class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-rose-300 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
           @click="clearAllData"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          ><path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+          /></svg>
           {{ tr('清空本地任务历史', 'Clear Local History') }}
         </button>
 
@@ -45,14 +74,27 @@
           class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           @click="refreshStatus"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          ><path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          /></svg>
           {{ tr('刷新状态', 'Refresh Status') }}
         </button>
       </div>
     </section>
 
     <!-- 当前任务 -->
-    <section v-if="currentTask" class="glass-card p-5 sm:p-6">
+    <section
+      v-if="currentTask"
+      class="glass-card p-5 sm:p-6"
+    >
       <h2 class="text-lg font-bold text-slate-900 mb-4">
         {{ tr('当前任务', 'Current Task') }}
       </h2>
@@ -68,7 +110,10 @@
           </div>
           <div class="flex justify-between items-center py-2 border-b border-slate-100">
             <span class="text-sm text-slate-500">{{ tr('状态', 'Status') }}</span>
-            <span class="text-sm font-semibold" :class="getStatusClass(currentTask.status)">{{ getStatusText(currentTask.status) }}</span>
+            <span
+              class="text-sm font-semibold"
+              :class="getStatusClass(currentTask.status)"
+            >{{ getStatusText(currentTask.status) }}</span>
           </div>
         </div>
         <div class="space-y-3">
@@ -87,18 +132,34 @@
           </div>
           <div class="flex justify-between items-center py-2 border-b border-slate-100">
             <span class="text-sm text-slate-500">{{ tr('消息', 'Message') }}</span>
-            <span class="text-sm text-slate-700 truncate max-w-[200px]" :title="currentTask.message">{{ currentTask.message }}</span>
+            <span
+              class="text-sm text-slate-700 truncate max-w-[200px]"
+              :title="currentTask.message"
+            >{{ currentTask.message }}</span>
           </div>
         </div>
       </div>
 
       <!-- 导入结果 -->
-      <div v-if="currentTask.data && Object.keys(currentTask.data).length > 0" class="mt-4 rounded-xl bg-slate-50 p-4">
-        <h3 class="text-sm font-semibold text-slate-700 mb-3">{{ tr('导入结果', 'Import Result') }}</h3>
+      <div
+        v-if="currentTask.data && Object.keys(currentTask.data).length > 0"
+        class="mt-4 rounded-xl bg-slate-50 p-4"
+      >
+        <h3 class="text-sm font-semibold text-slate-700 mb-3">
+          {{ tr('导入结果', 'Import Result') }}
+        </h3>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div v-for="(value, key) in currentTask.data" :key="key" class="shine-effect glass-card p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
-            <div class="text-2xl font-bold text-slate-800 group-hover:text-blue-700 transition-colors">{{ value }}</div>
-            <div class="text-xs text-slate-500 mt-1 font-medium">{{ key }}</div>
+          <div
+            v-for="(value, key) in currentTask.data"
+            :key="key"
+            class="shine-effect glass-card p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group"
+          >
+            <div class="text-2xl font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
+              {{ value }}
+            </div>
+            <div class="text-xs text-slate-500 mt-1 font-medium">
+              {{ key }}
+            </div>
           </div>
         </div>
       </div>
@@ -111,19 +172,32 @@
     </section>
 
     <!-- 任务历史 -->
-    <section v-if="taskList.length > 1" class="glass-card p-5 sm:p-6">
+    <section
+      v-if="taskList.length > 1"
+      class="glass-card p-5 sm:p-6"
+    >
       <h2 class="text-lg font-bold text-slate-900 mb-4">
         {{ tr('任务历史', 'Task History') }}
       </h2>
       <div class="space-y-2">
-        <div v-for="(task, index) in taskList.slice(0, 10)" :key="index" class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+        <div
+          v-for="(task, index) in taskList.slice(0, 10)"
+          :key="index"
+          class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
+        >
           <div class="flex items-center gap-3">
-            <div class="w-2 h-2 rounded-full" :class="task.status === 'completed' ? 'bg-emerald-500' : task.status === 'running' ? 'bg-blue-500 animate-pulse' : task.status === 'failed' ? 'bg-rose-500' : 'bg-slate-300'" />
+            <div
+              class="w-2 h-2 rounded-full"
+              :class="task.status === 'completed' ? 'bg-emerald-500' : task.status === 'running' ? 'bg-blue-500 animate-pulse' : task.status === 'failed' ? 'bg-rose-500' : 'bg-slate-300'"
+            />
             <span class="text-sm text-slate-600">{{ getTaskTypeText(task.taskType) }}</span>
           </div>
           <div class="flex items-center gap-3">
             <span class="text-xs text-slate-400">{{ formatTime(task.startTime) }}</span>
-            <span class="text-xs font-semibold" :class="getStatusClass(task.status)">{{ getStatusText(task.status) }}</span>
+            <span
+              class="text-xs font-semibold"
+              :class="getStatusClass(task.status)"
+            >{{ getStatusText(task.status) }}</span>
           </div>
         </div>
       </div>

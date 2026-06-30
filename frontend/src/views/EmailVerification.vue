@@ -7,17 +7,46 @@
       <div class="rounded-[28px] border border-slate-200/80 bg-white/95 p-6 shadow-[0_20px_70px_-50px_rgba(15,23,42,0.45)] backdrop-blur sm:p-8">
         <!-- Status Icon -->
         <div class="flex justify-center mb-6">
-          <div v-if="status === 'verifying'" class="relative">
-            <div class="w-20 h-20 rounded-full border-4 border-sky-200 border-t-sky-600 animate-spin"></div>
+          <div
+            v-if="status === 'verifying'"
+            class="relative"
+          >
+            <div class="w-20 h-20 rounded-full border-4 border-sky-200 border-t-sky-600 animate-spin" />
           </div>
-          <div v-else-if="status === 'success'" class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
-            <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          <div
+            v-else-if="status === 'success'"
+            class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center"
+          >
+            <svg
+              class="w-12 h-12 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
-          <div v-else-if="status === 'error'" class="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
-            <svg class="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          <div
+            v-else-if="status === 'error'"
+            class="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center"
+          >
+            <svg
+              class="w-12 h-12 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </div>
         </div>
@@ -35,13 +64,19 @@
         </p>
 
         <!-- Details Panel -->
-        <div v-if="verificationDetails" class="mt-6 rounded-2xl bg-slate-50 border border-slate-200 p-4">
+        <div
+          v-if="verificationDetails"
+          class="mt-6 rounded-2xl bg-slate-50 border border-slate-200 p-4"
+        >
           <div class="space-y-2 text-sm">
             <div class="flex justify-between">
               <span class="text-slate-500">{{ tr('验证类型', 'Type') }}:</span>
               <span class="font-semibold text-slate-900">{{ verificationDetails.type }}</span>
             </div>
-            <div v-if="verificationDetails.email" class="flex justify-between">
+            <div
+              v-if="verificationDetails.email"
+              class="flex justify-between"
+            >
               <span class="text-slate-500">{{ tr('邮箱', 'Email') }}:</span>
               <span class="font-semibold text-slate-900">{{ verificationDetails.email }}</span>
             </div>
@@ -52,17 +87,17 @@
         <div class="mt-6 space-y-3">
           <button
             v-if="status === 'error'"
-            @click="retryVerification"
             :disabled="loading"
             class="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            @click="retryVerification"
           >
             {{ loading ? tr('重试中...', 'Retrying...') : tr('重新验证', 'Retry Verification') }}
           </button>
 
           <button
             v-if="status === 'success' || status === 'error'"
-            @click="goToLogin"
             class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            @click="goToLogin"
           >
             {{ tr('前往登录', 'Go to Login') }}
           </button>

@@ -1,4 +1,12 @@
 /*
+ * ============================================================
+ * 用户 API / User API Module
+ * ============================================================
+ *
+ * 封装用户注册、登录、个人资料等认证接口。
+ * Wraps user authentication APIs: register, login, profile.
+ *
+ * @module services/modules/userApi
  * userApi 文件说明
  * 所属模块：前端应用。
  * 文件类型：前端接口模块文件。

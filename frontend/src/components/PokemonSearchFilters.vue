@@ -80,10 +80,22 @@
           class="w-full"
           @change="onSortChange"
         >
-          <el-option label="图鉴编号" value="id" />
-          <el-option label="名称" value="name" />
-          <el-option label="攻击" value="attack" />
-          <el-option label="速度" value="speed" />
+          <el-option
+            label="图鉴编号"
+            value="id"
+          />
+          <el-option
+            label="名称"
+            value="name"
+          />
+          <el-option
+            label="攻击"
+            value="attack"
+          />
+          <el-option
+            label="速度"
+            value="speed"
+          />
         </el-select>
       </div>
 

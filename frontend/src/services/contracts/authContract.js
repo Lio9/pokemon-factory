@@ -1,4 +1,15 @@
 /*
+ * ============================================================
+ * 认证契约 / Auth Contract
+ * ============================================================
+ *
+ * 用户认证相关数据结构的标准化和验证。
+ * Auth data model normalization and validation.
+ *
+ * 包含 / Includes:
+ * - 登录/注册请求响应格式化 / Login/Register request/response format
+ * - 用户资料标准化 / User profile normalization
+ * - Token 存储结构 / Token storage structure
  * authContract 文件说明
  * 所属模块：前端应用。
  * 文件类型：前端接口契约文件。

@@ -8,6 +8,14 @@ secrets.json
 credentials.json
 
 # ========================
+# 环境变量
+# ========================
+.env.local
+.env.*.local
+.env.production.local
+**/config/jwt.key
+
+# ========================
 # Python (scripts/)
 # ========================
 __pycache__/
@@ -47,7 +55,14 @@ coverage/
 *.db
 *.sqlite
 *.sqlite3
+*.bak
+*.bak.*
 !pokemon-factory-backend/common/src/main/resources/db/**/*.sql
+
+# ========================
+# 旧构建目录（无源码，纯 target/ 产物）
+# ========================
+pokemon-factory-backend/
 
 # ========================
 # IDE
@@ -81,13 +96,26 @@ csv/
 # 临时文件
 # ========================
 *.tmp
-*.bak
-*.bak.*
 *.swp
 
 # ========================
-# 环境变量样例外的本地配置
+# 测试覆盖率
 # ========================
-.env.local
-.env.*.local
-**/config/jwt.key 
+coverage/
+.history/
+
+# ========================
+# IDE / AI 配置
+# ========================
+.claude/
+.deepseek/
+
+# ========================
+# 数据库备份
+# ========================
+backups/
+
+# ========================
+# 其他
+# ========================
+data/image/pokemon/

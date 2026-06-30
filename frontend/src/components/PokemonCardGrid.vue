@@ -273,11 +273,11 @@ export default {
     'scroll-to-top',
     'reset-filters'
   ],
+  expose: ['loadMoreTrigger'],
   setup() {
     const loadMoreTrigger = ref(null)
     return { loadMoreTrigger }
   },
-  expose: ['loadMoreTrigger'],
   methods: {
     onToggleFavorite(pokemon) {
       this.$emit('toggle-favorite', pokemon)

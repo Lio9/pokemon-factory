@@ -7,7 +7,63 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 场地效果管理：顺风、戏法空间、天气、terrain 等全场效果的创建与清除。
+ * ============================================================
+ * 场地效果管理 / Field Effect Manager
+ * ============================================================
+ *
+ * ## 核心职责 / Core Responsibility
+ *
+ * 管理所有全场效果的"创建→持续→清除"生命周期。
+ * Manages the full lifecycle (creation → duration → removal) of all field effects.
+ *
+ * ## 效果分类 / Effect Categories
+ *
+ * 1. 天气 / Weather:
+ *    雨(rain)/晴(sun)/沙暴(sand)/雪(snow)
+ *    持续 5 回合，延道具(Damp/Heat/Smooth/Icy Rock) → 8 回合
+ *    Duration 5 turns, extension items → 8 turns
+ *    Cloud Nine / Air Lock 抑制所有天气效果
+ *    Cloud Nine / Air Lock suppress all weather effects
+ *
+ * 2. 场地 / Terrain:
+ *    电气(Electric)/精神(Psychic)/青草(Grassy)/薄雾(Misty)
+ *    持续 5 回合，Terrain Extender → 8 回合
+ *    Duration 5 turns, Terrain Extender → 8 turns
+ *    同时只能存在一种场地 / Only one terrain can exist at a time
+ *
+ * 3. 屏障 / Screens:
+ *    反射壁(Reflect)/光墙(Light Screen)/极光幕(Aurora Veil)/神秘守护(Safeguard)
+ *    持续 5 回合，Light Clay → 8 回合
+ *    Duration 5 turns, Light Clay → 8 turns
+ *
+ * 4. 顺风 / Tailwind: 持续 4 回合 / Duration 4 turns
+ *
+ * 5. 空间类 / Room Effects:
+ *    戏法空间(Trick Room)/奇妙空间(Wonder Room)/魔法空间(Magic Room)
+ *    持续 5 回合 / Duration 5 turns
+ *    重复使用则取消 / Re-use to cancel
+ *
+ * 6. 重力 / Gravity: 持续 5 回合 / Duration 5 turns
+ *
+ * 7. 入场危险 / Entry Hazards:
+ *    隐形岩(Stealth Rock)/撒菱(Spikes 1-3层)/毒菱(Toxic Spikes 1-2层)/黏黏网(Sticky Web)
+ *
+ * 8. 延迟攻击 / Delayed Attacks:
+ *    Future Sight / Doom Desire: 2 回合后命中 / Hit after 2 turns
+ *
+ * 9. G-Max 持续伤害:
+ *    G-Max Wildfire/Cannonade/Vine Lash: 持续 4 回合 / 4 turns
+ *
+ * ## 设计要点 / Design Notes
+ *
+ * - 所有效果存储在 state.fieldEffects 中（Map）
+ *   All effects stored in state.fieldEffects (Map)
+ * - 使用 decrementFieldEffects() 在回合末统一递减
+ *   decrementFieldEffects() at turn-end decrements all durations
+ * - 天气抑制不影响场地/屏障/etc
+ *   Weather suppression doesn't affect terrain/screens/etc
+ *
+ * @see BattleTurnCleanupSupport#applyEndTurnEffects() 回合末调用递减
  */
 final class BattleFieldEffectSupport {
     private final BattleEngine engine;

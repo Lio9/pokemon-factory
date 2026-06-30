@@ -1,4 +1,15 @@
 /*
+ * ============================================================
+ * 对战契约 / Battle Contract
+ * ============================================================
+ *
+ * 对战相关数据结构的标准化和验证。
+ * Battle data model normalization and validation.
+ *
+ * 包含 / Includes:
+ * - 战斗状态格式化 / Battle state formatting
+ * - 行动请求标准化 / Action request normalization
+ * - 战斗结果解析 / Battle result parsing
  * battleContract 文件说明
  * 所属模块：前端应用。
  * 文件类型：前端接口契约文件。

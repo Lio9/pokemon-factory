@@ -85,6 +85,14 @@
             {{ loading ? tr('提交中...', 'Submitting...') : tr('注册并登录', 'Register and sign in') }}
           </button>
         </div>
+        <div class="mt-3">
+          <button
+            class="rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 w-full px-4 py-3 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+            @click="startGuest"
+          >
+            {{ tr("游客模式 — 无需登录直接对战", "Guest Mode — Battle without signing in") }}
+          </button>
+        </div>
         <p
           v-if="error"
           class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600"

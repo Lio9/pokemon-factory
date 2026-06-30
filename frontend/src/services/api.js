@@ -1,4 +1,14 @@
 /**
+ * ============================================================
+ * API 统一导出 / API Unified Export
+ * ============================================================
+ *
+ * 所有后端 API 模块的统一出口，提供两种引用方式：
+ * Unified export for all backend API modules with two import styles:
+ * - 解构导入: `import { pokemonApi, battleApi } from '@/services/api'`
+ * - 命名空间: `import api from '@/services/api'; api.pokemon.getList()`
+ *
+ * @module services/api
  * 统一 API 导出模块
  *
  * 本模块作为 API 服务的统一出口，整合所有后端 API 模块。

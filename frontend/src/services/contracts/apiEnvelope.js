@@ -1,4 +1,17 @@
 /*
+ * ============================================================
+ * API 响应信封 / API Response Envelope
+ * ============================================================
+ *
+ * 定义后端 API 的标准响应结构 { code, data, message, success }，
+ * 并提供类型检查（isStandardResponse）和错误提取工具。
+ * Defines the standard API response envelope { code, data, message, success }
+ * with type checking and error extraction helpers.
+ *
+ * 使用方 / Used by:
+ * - httpClient.js 解析后端响应
+ * - 各 API 模块验证返回数据
+ *
  * apiEnvelope 文件说明
  * 所属模块：前端应用。
  * 文件类型：前端接口契约文件。

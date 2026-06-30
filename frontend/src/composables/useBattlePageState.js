@@ -9,6 +9,7 @@
 
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import api from '../services/api'
+import { guestApi } from '../services/modules/battleApi'
 import { useAuth } from './useAuth'
 import { useBattleDerivedState } from './battle/useBattleDerivedState'
 import { translate } from './useLocale'
@@ -25,6 +26,19 @@ import {
 
 export function useBattlePageState() {
   const auth = useAuth()
+  
+  /**
+   * 自动路由 API 请求到认证接口或游客接口
+   * Auto-route API requests to auth or guest endpoints
+   * 已登录 → api.battle (需要 JWT)
+   * 未登录 → guestApi (无需 JWT)
+   */
+  const bat = new Proxy({}, {
+    get: (_, method) => (...args) => {
+      const impl = auth.isAuthenticated.value ? api.battle : guestApi
+      return impl[method](...args)
+    }
+  })
 
   const resultText = ref(translate('等待开始对战', 'Waiting to start a battle'))
   const summary = ref(null)
@@ -386,11 +400,11 @@ export function useBattlePageState() {
     await runBusy('start-manual', async () => {
       stopPolling()
       resultText.value = translate('正在开始手动对战...', 'Starting a manual battle...')
-      const res = await api.battle.start({ format: battleFormat.value })
+      const res = await bat.start({ format: battleFormat.value })
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-      resultText.value = translate('开始失败: {message}', 'Failed to start: {message}', { message: error.message || error })
+      resultText.value = translate('开始失败: {message}', 'Failed to start: {message}', '', { message: error.message || error })
     })
   }
 
@@ -398,13 +412,13 @@ export function useBattlePageState() {
     await runBusy('start-async', async () => {
       stopPolling()
       resultText.value = translate('正在提交异步模拟...', 'Submitting async simulation...')
-      const res = await api.battle.startAsync({ format: battleFormat.value })
+      const res = await bat.startAsync({ format: battleFormat.value })
       currentBattleId.value = res.battleId
       resultText.value = JSON.stringify(res, null, 2)
       await refreshStatus(true)
       startPolling()
     }).catch((error) => {
-      resultText.value = translate('提交失败: {message}', 'Submit failed: {message}', { message: error.message || error })
+      resultText.value = translate('提交失败: {message}', 'Submit failed: {message}', '', { message: error.message || error })
     })
   }
 
@@ -420,7 +434,7 @@ export function useBattlePageState() {
     }
 
     const task = async () => {
-      const res = await api.battle.status(currentBattleId.value)
+      const res = await bat.status(currentBattleId.value)
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
       if (summary.value?.status === 'completed') {
@@ -433,13 +447,13 @@ export function useBattlePageState() {
         await task()
       } catch (error) {
         requestError.value = error?.message || String(error)
-        resultText.value = translate('刷新失败: {message}', 'Refresh failed: {message}', { message: error.message || error })
+        resultText.value = translate('刷新失败: {message}', 'Refresh failed: {message}', '', { message: error.message || error })
       }
       return
     }
 
     await runBusy('refresh-status', task).catch((error) => {
-      resultText.value = translate('刷新失败: {message}', 'Refresh failed: {message}', { message: error.message || error })
+      resultText.value = translate('刷新失败: {message}', 'Refresh failed: {message}', '', { message: error.message || error })
     })
   }
 
@@ -452,14 +466,14 @@ export function useBattlePageState() {
     }
 
     await runBusy('confirm-preview', async () => {
-      const res = await api.battle.preview(currentBattleId.value, {
+      const res = await bat.preview(currentBattleId.value, {
         pickedRosterIndexes: selectedRosterIndexes.value,
         leadRosterIndexes: leadRosterIndexes.value
       })
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-      resultText.value = translate('确认失败: {message}', 'Confirmation failed: {message}', { message: error.message || error })
+      resultText.value = translate('确认失败: {message}', 'Confirmation failed: {message}', '', { message: error.message || error })
     })
   }
 
@@ -483,30 +497,30 @@ export function useBattlePageState() {
         selectedTargets: selectedTargets.value,
         selectedMoveObject
       })
-      const res = await api.battle.move(currentBattleId.value, {
+      const res = await bat.move(currentBattleId.value, {
         playerMoveMap
       })
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-      resultText.value = translate('提交失败: {message}', 'Submit failed: {message}', { message: error.message || error })
+      resultText.value = translate('提交失败: {message}', 'Submit failed: {message}', '', { message: error.message || error })
     })
   }
 
   async function confirmReplacement() {
     if (!canConfirmReplacement.value) {
-      resultText.value = translate('请选择 {count} 只后备宝可梦上场', 'Choose {count} bench Pokemon to send in', { count: pendingReplacementCount.value })
+      resultText.value = translate('请选择 {count} 只后备宝可梦上场', 'Choose {count} bench Pokemon to send in', '', { count: pendingReplacementCount.value })
       return
     }
 
     await runBusy('confirm-replacement', async () => {
-      const res = await api.battle.replacement(currentBattleId.value, {
+      const res = await bat.replacement(currentBattleId.value, {
         replacementIndexes: selectedReplacementIndexes.value
       })
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-      resultText.value = translate('补位失败: {message}', 'Replacement failed: {message}', { message: error.message || error })
+      resultText.value = translate('补位失败: {message}', 'Replacement failed: {message}', '', { message: error.message || error })
     })
   }
 
@@ -518,7 +532,7 @@ export function useBattlePageState() {
     }
 
     await runBusy('confirm-exchange', async () => {
-      const res = await api.battle.exchange({
+      const res = await bat.exchange({
         battleId: currentBattleId.value,
         replacedIndex: replacedIndex.value,
         newPokemonJson: JSON.stringify(picked)
@@ -531,7 +545,7 @@ export function useBattlePageState() {
         replacedHighlight.value = -1
       }, 4000)
     }).catch((error) => {
-      resultText.value = translate('交换失败: {message}', 'Exchange failed: {message}', { message: error.message || error })
+      resultText.value = translate('交换失败: {message}', 'Exchange failed: {message}', '', { message: error.message || error })
     })
   }
 
@@ -608,7 +622,7 @@ export function useBattlePageState() {
 
   async function loadProfile() {
     try {
-      const res = await api.battle.profile()
+      const res = await bat.profile()
       playerProfile.value = res?.profile || res
       return playerProfile.value
     } catch (error) {
@@ -619,7 +633,7 @@ export function useBattlePageState() {
 
   async function loadFactoryStatus() {
     try {
-      const res = await api.battle.factoryStatus()
+      const res = await bat.factoryStatus()
       const run = normalizeFactoryRun(res?.activeRun || res)
       if (run && run.id) {
         factoryRun.value = run
@@ -637,7 +651,7 @@ export function useBattlePageState() {
   async function loadLeaderboard() {
     try {
       leaderboardLoading.value = true
-      leaderboardData.value = await api.battle.leaderboard() || []
+      leaderboardData.value = await bat.leaderboard() || []
       return leaderboardData.value
     } catch (error) {
       leaderboardData.value = []
@@ -661,7 +675,7 @@ export function useBattlePageState() {
     await runBusy('factory-start', async () => {
       stopPolling()
        resultText.value = translate('正在开始工厂挑战...', 'Starting the factory challenge...')
-      const res = await api.battle.factoryStart()
+      const res = await bat.factoryStart()
       const nextRun = normalizeFactoryRun(res.run || res)
       factoryRun.value = nextRun
 
@@ -673,7 +687,7 @@ export function useBattlePageState() {
           await refreshStatus(true)
         }
       } else if (nextRun?.id) {
-        const nextBattleRes = await api.battle.factoryNext(nextRun.id)
+        const nextBattleRes = await bat.factoryNext(nextRun.id)
         factoryRun.value = normalizeFactoryRun(nextBattleRes.run || nextBattleRes) || nextRun
         if (nextBattleRes.battleId || nextBattleRes.battle?.id) {
           currentBattleId.value = nextBattleRes.battleId || nextBattleRes.battle?.id
@@ -691,7 +705,7 @@ export function useBattlePageState() {
       resultText.value = JSON.stringify(res, null, 2)
       await loadProfile().catch(() => null)
     }).catch((error) => {
-       resultText.value = translate('开始挑战失败: {message}', 'Failed to start the challenge: {message}', { message: error.message || error })
+       resultText.value = translate('开始挑战失败: {message}', 'Failed to start the challenge: {message}', '', { message: error.message || error })
     })
   }
 
@@ -704,7 +718,7 @@ export function useBattlePageState() {
     await runBusy('factory-next', async () => {
       stopPolling()
        resultText.value = translate('正在进入下一轮...', 'Entering the next round...')
-      const res = await api.battle.factoryNext(factoryRun.value.id)
+      const res = await bat.factoryNext(factoryRun.value.id)
       factoryRun.value = normalizeFactoryRun(res.run || res) || factoryRun.value
       if (res.battleId || res.battle?.id) {
         currentBattleId.value = res.battleId || res.battle?.id
@@ -716,18 +730,18 @@ export function useBattlePageState() {
       }
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-       resultText.value = translate('进入下一轮失败: {message}', 'Failed to enter the next round: {message}', { message: error.message || error })
+       resultText.value = translate('进入下一轮失败: {message}', 'Failed to enter the next round: {message}', '', { message: error.message || error })
     })
   }
 
   async function abandonFactoryRun() {
     await runBusy('factory-abandon', async () => {
-      await api.battle.factoryAbandon()
+      await bat.factoryAbandon()
       resetBattleState({ keepFactoryRun: false, keepResultText: true })
        resultText.value = translate('已放弃本次工厂挑战', 'The current factory run has been abandoned')
       await loadProfile().catch(() => null)
     }).catch((error) => {
-       resultText.value = translate('放弃失败: {message}', 'Abandon failed: {message}', { message: error.message || error })
+       resultText.value = translate('放弃失败: {message}', 'Abandon failed: {message}', '', { message: error.message || error })
     })
   }
 
@@ -738,11 +752,11 @@ export function useBattlePageState() {
   async function forfeitBattle() {
     if (!currentBattleId.value) return
     await runBusy('forfeit-battle', async () => {
-      const res = await api.battle.forfeit(currentBattleId.value)
+      const res = await bat.forfeit(currentBattleId.value)
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
-       resultText.value = translate('投降失败: {message}', 'Forfeit failed: {message}', { message: error.message || error })
+       resultText.value = translate('投降失败: {message}', 'Forfeit failed: {message}', '', { message: error.message || error })
     })
   }
 
@@ -875,3 +889,4 @@ export function useBattlePageState() {
     refreshStatus
   }
 }
+

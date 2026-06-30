@@ -123,54 +123,96 @@
         <!-- 基本信息 -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-            <div class="text-gray-500 text-xs font-medium mb-1">身高</div>
-            <div class="text-xl font-bold text-gray-900">{{ currentForm?.height || '-' }}m</div>
+            <div class="text-gray-500 text-xs font-medium mb-1">
+              身高
+            </div>
+            <div class="text-xl font-bold text-gray-900">
+              {{ currentForm?.height || '-' }}m
+            </div>
           </div>
           <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-            <div class="text-gray-500 text-xs font-medium mb-1">体重</div>
-            <div class="text-xl font-bold text-gray-900">{{ currentForm?.weight || '-' }}kg</div>
+            <div class="text-gray-500 text-xs font-medium mb-1">
+              体重
+            </div>
+            <div class="text-xl font-bold text-gray-900">
+              {{ currentForm?.weight || '-' }}kg
+            </div>
           </div>
           <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-            <div class="text-gray-500 text-xs font-medium mb-1">捕获率</div>
-            <div class="text-xl font-bold text-gray-900">{{ pokemon.captureRate || '-' }}</div>
+            <div class="text-gray-500 text-xs font-medium mb-1">
+              捕获率
+            </div>
+            <div class="text-xl font-bold text-gray-900">
+              {{ pokemon.captureRate || '-' }}
+            </div>
           </div>
           <div class="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-4 text-center border border-gray-100 hover:shadow-md transition-shadow">
-            <div class="text-gray-500 text-xs font-medium mb-1">亲密度</div>
-            <div class="text-xl font-bold text-gray-900">{{ pokemon.baseHappiness || '-' }}</div>
+            <div class="text-gray-500 text-xs font-medium mb-1">
+              亲密度
+            </div>
+            <div class="text-xl font-bold text-gray-900">
+              {{ pokemon.baseHappiness || '-' }}
+            </div>
           </div>
         </div>
 
         <!-- 补充信息 -->
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-3 border border-blue-100">
-            <div class="text-blue-600 text-xs font-medium mb-1">性别比例</div>
-            <div class="text-base font-semibold text-gray-900">{{ getGenderRatioText(pokemon.genderRate) }}</div>
+            <div class="text-blue-600 text-xs font-medium mb-1">
+              性别比例
+            </div>
+            <div class="text-base font-semibold text-gray-900">
+              {{ getGenderRatioText(pokemon.genderRate) }}
+            </div>
           </div>
           <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-3 border border-purple-100">
-            <div class="text-purple-600 text-xs font-medium mb-1">蛋群</div>
-            <div class="text-base font-semibold text-gray-900">{{ (pokemon.eggGroups || []).join(' / ') || '-' }}</div>
+            <div class="text-purple-600 text-xs font-medium mb-1">
+              蛋群
+            </div>
+            <div class="text-base font-semibold text-gray-900">
+              {{ (pokemon.eggGroups || []).join(' / ') || '-' }}
+            </div>
           </div>
           <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-3 border border-green-100">
-            <div class="text-green-600 text-xs font-medium mb-1">孵化步数</div>
-            <div class="text-base font-semibold text-gray-900">{{ pokemon.hatchCounter ? `${pokemon.hatchCounter * 255}` : '-' }}</div>
+            <div class="text-green-600 text-xs font-medium mb-1">
+              孵化步数
+            </div>
+            <div class="text-base font-semibold text-gray-900">
+              {{ pokemon.hatchCounter ? `${pokemon.hatchCounter * 255}` : '-' }}
+            </div>
           </div>
           <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-3 border border-amber-100">
-            <div class="text-amber-600 text-xs font-medium mb-1">成长类型</div>
-            <div class="text-base font-semibold text-gray-900">{{ pokemon.growthRate || '-' }}</div>
+            <div class="text-amber-600 text-xs font-medium mb-1">
+              成长类型
+            </div>
+            <div class="text-base font-semibold text-gray-900">
+              {{ pokemon.growthRate || '-' }}
+            </div>
           </div>
           <div class="bg-gradient-to-br from-rose-50 to-red-50 rounded-xl p-3 border border-rose-100">
-            <div class="text-rose-600 text-xs font-medium mb-1">基础经验</div>
-            <div class="text-base font-semibold text-gray-900">{{ currentForm?.baseExperience || '-' }}</div>
+            <div class="text-rose-600 text-xs font-medium mb-1">
+              基础经验
+            </div>
+            <div class="text-base font-semibold text-gray-900">
+              {{ currentForm?.baseExperience || '-' }}
+            </div>
           </div>
           <div class="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-xl p-3 border border-cyan-100">
-            <div class="text-cyan-600 text-xs font-medium mb-1">世代</div>
-            <div class="text-base font-semibold text-gray-900">第 {{ pokemon.generationId }} 世代</div>
+            <div class="text-cyan-600 text-xs font-medium mb-1">
+              世代
+            </div>
+            <div class="text-base font-semibold text-gray-900">
+              第 {{ pokemon.generationId }} 世代
+            </div>
           </div>
         </div>
 
         <!-- 描述 -->
         <div class="bg-gradient-to-r from-slate-50 to-gray-50 rounded-2xl p-5 border border-gray-100">
-          <p class="text-gray-700 leading-relaxed">{{ pokemon.description || '暂无描述' }}</p>
+          <p class="text-gray-700 leading-relaxed">
+            {{ pokemon.description || '暂无描述' }}
+          </p>
         </div>
       </div>
     </div>

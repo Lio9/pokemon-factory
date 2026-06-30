@@ -9,6 +9,8 @@ import com.lio9.battle.mapper.BattleRoundMapper;
 import com.lio9.battle.mapper.JobMapper;
 import com.lio9.battle.mapper.TeamMapper;
 import jakarta.annotation.PostConstruct;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -61,7 +63,8 @@ public class BattleExecutor {
     /**
      * 初始化线程池，并尝试恢复进程重启前遗留的异步任务。
      */
-    @PostConstruct
+    /** Run after DB migration to ensure tables exist | 在数据库迁移后执行，保证表已创建 */
+    @EventListener(ApplicationReadyEvent.class)
     public void init() {
         this.executor = Executors.newFixedThreadPool(2);
         recoverPendingJobs();

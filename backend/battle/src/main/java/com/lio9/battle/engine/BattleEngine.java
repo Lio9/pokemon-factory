@@ -152,7 +152,72 @@ public class BattleEngine {
     }
 
     /**
-     * 推进一整个回合。
+     * ============================================================
+     * 推进一整个回合 / Execute One Full Round
+     * ============================================================
+     *
+     * 这是对战引擎最核心的方法——执行一回合的全部战斗逻辑。
+     * This is the MOST CRITICAL method — executes one full turn of battle.
+     *
+     * ## 执行流程 / Execution Flow
+     *
+     *   playRound() 方法按以下顺序执行：
+     *
+     *   1. 状态初始化 / State Initialization
+     *      - 克隆状态（避免修改调用方引用）/ Clone state (immutable pattern)
+     *      - 检查是否可执行 / Check if battle is running
+     *      - 递减技能冷却 / Decrement cooldowns
+     *      - 修剪已倒下宝可梦的活动槽 / Prune fainted Pokemon from active slots
+     *      - 清除本回合受击记录（反击/镜面反射用）/ Clear damage tracking
+     *
+     *   2. 回合递增 / Increment Round Counter
+     *      - currentRound += 1
+     *      - 生成本回合随机种子（基于全局 seed + round × 97）
+     *        Generate round-specific RNG seed (global seed + round × 97)
+     *
+     *   3. ON_TURN_START 事件 / Turn Start Event
+     *      - 触发特性/道具的回合开始钩子（通过 EventBus）
+     *        Fire turn-start hooks for abilities/items (via EventBus)
+     *
+     *   4. 构建动作 / Build Actions
+     *      - 收集本回合所有动作（玩家输入 + AI 决策）
+     *        Collect all actions (player input + AI decisions)
+     *      - 应用动作顺序修正（Quick Claw/Custap/Lagging Tail/Stall）
+     *        Apply order modifiers (Quick Claw/Custap/Lagging Tail/Stall)
+     *
+     *   5. 排序 / Sort Actions
+     *      - 优先级(Priority) → 顺序修正(Order Boost) → 速度(Speed)
+     *        → 随机解同速(Random tie-breaker)
+     *      - 戏法空间下速度排序反转 / Trick Room inverts speed order
+     *
+     *   6. 执行动作 / Execute Actions (按排序逐个执行)
+     *      - processAction() in BattleRoundSupport
+     *      - 每个动作的完整管线参见 BattleRoundSupport.processAction()
+     *        Full pipeline documented in BattleRoundSupport.processAction()
+     *
+     *   7. 回合末结算 / End-of-Turn Cleanup
+     *      - applyEndTurnEffects() in BattleTurnCleanupSupport
+     *      - 状态伤害(灼伤/中毒/剧毒) / Status damage (burn/poison/toxic)
+     *      - 场地效果递减 / Field effect decrements
+     *      - 天气伤害 / Weather damage (sandstorm/hail)
+     *      - 青草场地回复 / Grassy Terrain healing
+     *      - 各类封锁回合递减 / Lock effect decrements
+     *      - 极巨化倒计时 / Dynamax countdown
+     *      - 灭亡之歌/寄生种子/恶梦等 / Perish Song/Leech Seed/Nightmare
+     *
+     *   8. 收尾 / Finalization
+     *      - 清除畏缩/忍耐/同命等回合级 volatile
+     *        Clear flinch/endure/destinyBond etc.
+     *      - 胜负判定 / Win/Loss determination
+     *      - 补位阶段检查 / Replacement phase check
+     *      - 拾取特性触发 / Pickup ability trigger
+     *
+     * ## 幂等性 / Idempotency
+     *
+     * 该方法返回新状态副本，不修改调用方传入的 rawState 引用。
+     * Returns a NEW state copy, does NOT modify the caller's rawState reference.
+     * 多次调用同一状态应产生相同结果（给定相同的 seed 和 playerMoveMap）。
+     * Multiple calls with same state should produce same result (given same seed and moveMap).
      * <p>
      * 核心流程：预处理 -> 收集动作 -> 顺序修正 -> 执行动作 -> 回合结算 -> 结果刷新。
      * 该方法返回新状态副本，不直接修改调用方传入的 rawState 引用。

@@ -4,7 +4,6 @@ package com.lio9.battle;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.ComponentScan;
 
 /**
@@ -22,8 +21,6 @@ import org.springframework.context.annotation.ComponentScan;
 // battleFactory 只扫描自己的业务 Bean 和 user-module 的认证 Bean；
 // common 中的 ServiceImpl 主要服务图鉴模块，不能再整包扫进来，否则会把不需要的 MyBatis-Plus 依赖一起拉入启动链。
 @ComponentScan(basePackages = {"com.lio9.battle","com.lio9.user"})
-// 对战计算当前直接复用 pokeDex 中的图鉴相性 mapper，因此这里显式扫描 pokeDex.mapper。
-@MapperScan({"com.lio9.battle.mapper","com.lio9.user.mapper","com.lio9.pokedex.mapper"})
 public class BattleFactoryApplication {
 
     /**

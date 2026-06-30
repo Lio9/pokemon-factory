@@ -1,5 +1,8 @@
 <template>
-  <div id="app" class="app-shell min-h-screen text-slate-800">
+  <div
+    id="app"
+    class="app-shell min-h-screen text-slate-800"
+  >
     <!-- 导航栏 -->
     <el-header
       class="sticky top-0 z-30 h-auto border-b border-white/70 bg-white/80 px-0 shadow-sm backdrop-blur-xl"
@@ -7,7 +10,10 @@
     >
       <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-3 sm:h-16 sm:px-6 lg:px-8">
         <!-- Logo -->
-        <router-link to="/" class="flex items-center gap-2.5 sm:gap-3 group">
+        <router-link
+          to="/"
+          class="flex items-center gap-2.5 sm:gap-3 group"
+        >
           <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-sm font-bold text-white shadow-md transition-transform duration-300 group-hover:scale-105 sm:h-10 sm:w-10">
             PF
           </div>
@@ -59,7 +65,10 @@
           >
             {{ tr('登录', 'Login') }}
           </router-link>
-          <div v-else class="flex items-center gap-2">
+          <div
+            v-else
+            class="flex items-center gap-2"
+          >
             <span class="text-sm text-slate-600">{{ authDisplayName }}</span>
             <button
               class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-all duration-200 hover:bg-slate-200"
@@ -70,16 +79,37 @@
           </div>
 
           <!-- 移动端菜单 -->
-          <el-dropdown trigger="click" class="md:hidden">
+          <el-dropdown
+            trigger="click"
+            class="md:hidden"
+          >
             <button class="flex items-center justify-center rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100">
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             </button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item v-for="item in navItems" :key="item.path">
-                  <router-link :to="item.path" class="block w-full text-sm font-medium">{{ item.name }}</router-link>
+                <el-dropdown-item
+                  v-for="item in navItems"
+                  :key="item.path"
+                >
+                  <router-link
+                    :to="item.path"
+                    class="block w-full text-sm font-medium"
+                  >
+                    {{ item.name }}
+                  </router-link>
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -118,6 +148,38 @@
 </template>
 
 <script setup>
+/**
+ * ============================================================
+ * 应用主入口组件 / App Shell Component
+ * ============================================================
+ *
+ * ## 布局结构 / Layout Structure
+ *
+ *   ┌────────────────────────────────────────┐
+ *   │  el-header (导航栏 / Navigation Bar)    │
+ *   │  ├── Logo (Pokemon Factory)            │
+ *   │  ├── Desktop Nav (router-links)        │
+ *   │  ├── Language Switch (中/EN)          │
+ *   │  ├── Auth (Login / User Menu)          │
+ *   │  └── Mobile Menu (el-dropdown)         │
+ *   ├────────────────────────────────────────┤
+ *   │  el-main (router-view + page transition)│
+ *   │  └── <transition name="page">           │
+ *   ├────────────────────────────────────────┤
+ *   │  el-footer (版权信息 / Copyright)       │
+ *   └────────────────────────────────────────┘
+ *
+ * ## 关键特性 / Key Features
+ *
+ * - 响应式导航（桌面 nav 隐藏 → 移动端 dropdown）
+ *   Responsive nav (desktop nav → mobile dropdown)
+ * - 页面切换动画 (fade + translateY)
+ *   Page transition animation
+ * - 中英文语言切换 / Chinese-English locale switch
+ * - JWT 会话自动恢复 / Auto session restore on mount
+ *
+ * @component AppShell
+ */
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ErrorHandler from './components/ErrorHandler.vue'

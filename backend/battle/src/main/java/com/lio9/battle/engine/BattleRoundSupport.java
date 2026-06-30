@@ -13,11 +13,56 @@ import java.util.Random;
 import java.util.Set;
 
 final class BattleRoundSupport {
-    /**
-     * 单回合动作执行器。
-     * <p>
-     * 该类负责把已经排好序的 Action 真正落地到战斗状态中，包括：
-     * 行动前阻断（畏缩/睡眠/混乱等）、保护类判定、命中判定、伤害结算、追加效果与回合日志记录。
+/**
+ * ============================================================
+ * 单回合动作执行器 / Single Round Action Executor
+ * ============================================================
+ *
+ * ## 核心职责 / Core Responsibility
+ *
+ * 将排好序的 Action 逐一落地执行，管理整个"动作 → 判定 → 结算"管线。
+ * Executes sorted actions one by one, managing the action → resolution pipeline.
+ *
+ * ## 执行管线 / Execution Pipeline
+ *
+ *   processAction() 对每个 Action 执行以下检查链：
+ *   for each action, the following check chain is executed:
+ *
+ *   1. 蓄力回复检查 / Recharge cooldown check
+ *   2. 畏缩检查 / Flinch check
+ *   3. 冰冻检查 / Freeze check (handleFrozenBeforeAction)
+ *   4. 麻痹检查（1/4 概率跳过）/ Paralysis check (25% skip)
+ *   5. 睡眠检查 / Sleep check (Sleep Talk / Snore 可以行动)
+ *   6. 混乱检查（1/3 概率自伤）/ Confusion check (33% self-hit)
+ *   7. 着迷检查（50% 概率无法行动）/ Infatuation check (50% skip)
+ *   8. 蓄力招式继续执行 / Charging move continuation
+ *   9. 换人处理 / Switch handling
+ *   10. 太晶化/Z招式/极巨化触发 / Special system activation
+ *   11. 挑衅检查（封变化招式）/ Taunt check (blocks status)
+ *   12. 定身法检查 / Disable check
+ *   13. 封印检查 / Imprison check
+ *   14. 喉斩检查（封声音招式）/ Throat Chop check (blocks sound)
+ *   15. 保护类招式处理 / Protection move handling
+ *   16. 变化招式处理 / Status move handling
+ *   17. 伤害目标检查 + 命中判定 / Target resolution + accuracy check
+ *   18. 伤害计算与结算 / Damage calculation and application
+ *   19. 追加效果处理 / Secondary effect resolution
+ *   20. 换人后处理（快速折返等）/ Post-move switching (U-turn etc.)
+ *
+ * ## 关键设计决策 / Key Design Decisions
+ *
+ * - 所有"行动前阻断"状态集中在此处理，不分散到各个模块
+ *   All pre-action blocking states are centralized here
+ * - 保护成功率使用 PS 公式：连续使用 n 次后成功率 = 1/3^n
+ *   Protection success uses PS formula: success after n uses = 1/3^n
+ * - Protean/Libero 在命中前就改变属性
+ *   Protean/Libero changes type before the move hits
+ *
+ * @see BattleEngine#playRound() 调用此类的入口
+ * @see BattleConditionSupport 异常状态和特性交互
+ * <p>
+ * 该类负责把已经排好序的 Action 真正落地到战斗状态中，包括：
+ * 行动前阻断（畏缩/睡眠/混乱等）、保护类判定、命中判定、伤害结算、追加效果与回合日志记录。
      * </p>
      */
     private final BattleEngine engine;

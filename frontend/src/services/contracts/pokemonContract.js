@@ -1,4 +1,15 @@
 /*
+ * ============================================================
+ * 宝可梦数据契约 / Pokemon Data Contract
+ * ============================================================
+ *
+ * 宝可梦相关数据结构的标准化和验证。
+ * Pokemon data model normalization and validation.
+ *
+ * 包含 / Includes:
+ * - 宝可梦详情标准化 / Pokemon detail normalization
+ * - 列表数据格式化 / List data formatting
+ * - 招式/特性集合处理 / Move/Ability collection handling
  * pokemonContract 文件说明
  * 所属模块：前端应用。
  * 文件类型：前端接口契约文件。

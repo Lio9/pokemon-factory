@@ -1,30 +1,22 @@
 package com.lio9.common.config;
 
-
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.core.io.Resource;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
 import java.sql.Statement;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.List;
 
-/**
- * 数据库初始化执行器。
+/** Database migration executor 数据库迁移执行器
  * <p>
- * 设计目标：
- * 1. 只在 common 模块启动时主动初始化数据库；
- * 2. 兼容“全新空库”和“已有旧库”两类场景；
- * 3. 对 battle / user 的补充脚本保持幂等，重复执行也不会破坏已有数据。
+ * Only performs safe schema migrations (adding missing columns/indexes),
+ * NOT full database initialization. Full init is done by Python scripts
+ * in the scripts/ directory.
+ * 仅执行安全的数据库结构迁移（补充缺失的列和索引），
+ * 不进行全量数据库初始化。完整初始化由 scripts/ 目录下的 Python 脚本完成。
  * </p>
  */
 @Component
@@ -33,94 +25,167 @@ public class CommonDatabaseInitializer implements ApplicationRunner {
 
     private final DataSource dataSource;
     private final CommonDatabaseProperties properties;
-    private final CommonCsvDataImporter csvDataImporter;
-    private final EffectSeedLoader effectSeedLoader;
-    private final DefaultResourceLoader resourceLoader = new DefaultResourceLoader();
 
-    public CommonDatabaseInitializer(DataSource dataSource, CommonDatabaseProperties properties,
-                                     CommonCsvDataImporter csvDataImporter,
-                                     EffectSeedLoader effectSeedLoader) {
+    public CommonDatabaseInitializer(DataSource dataSource, CommonDatabaseProperties properties) {
         this.dataSource = dataSource;
         this.properties = properties;
-        this.csvDataImporter = csvDataImporter;
-        this.effectSeedLoader = effectSeedLoader;
     }
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        if (!properties.isInitializeOnStartup()) {
-            log.debug("当前进程未启用数据库初始化，跳过 common 初始化器。");
+        if (!properties.isMigrateOnStartup()) {
+            log.debug("Schema migration disabled, skipping.");
             return;
         }
 
-        List<String> scripts = properties.getBootstrapScripts();
-        if (scripts == null || scripts.isEmpty()) {
-            log.warn("未配置任何数据库初始化脚本，跳过初始化。");
-            return;
-        }
-
-        log.info("开始执行 common 数据库初始化，共 {} 个脚本。", scripts.size());
-        try (Connection connection = dataSource.getConnection()) {
-            initializeCoreSchemaIfNeeded(connection, scripts.get(0));
-
-            // 核心库存在后，其余脚本全部按幂等方式补齐当前最终结构。
-            for (int i = 1; i < scripts.size(); i++) {
-                executeScript(scripts.get(i));
-            }
-
-            // SQLite 不支持 "ALTER TABLE ... ADD COLUMN IF NOT EXISTS"，
-            // 因此这里用元数据判断列是否存在，再按需补齐老库缺失字段。
-            ensureColumnExists(connection, "team", "version", "INTEGER DEFAULT 0");
-            ensureColumnExists(connection, "battle", "player_move_map", "TEXT");
-            ensureColumnExists(connection, "battle", "player_team_json", "TEXT");
-            ensureColumnExists(connection, "battle", "battle_phase", "TEXT DEFAULT 'team-preview'");
-            ensureColumnExists(connection, "battle", "factory_run_id", "INTEGER");
-            ensureColumnExists(connection, "battle", "run_battle_number", "INTEGER");
-            ensureColumnExists(connection, "player", "tier", "INTEGER DEFAULT 0");
-            ensureColumnExists(connection, "player", "tier_points", "INTEGER DEFAULT 0");
-            ensureColumnExists(connection, "player", "total_points", "INTEGER DEFAULT 0");
-            ensureColumnExists(connection, "player", "highest_tier", "INTEGER DEFAULT 0");
-            ensureColumnExists(connection, "player", "wins", "INTEGER DEFAULT 0");
-            ensureColumnExists(connection, "player", "losses", "INTEGER DEFAULT 0");
-            ensureColumnExists(connection, "player", "tier_reached_at", "TEXT");
-            ensureColumnExists(connection, "app_user", "display_name", "TEXT");
-            ensureColumnExists(connection, "app_user", "updated_at", "TEXT");
-            ensureColumnExists(connection, "app_user", "last_login_at", "TEXT");
-            // 用户安全相关字段
-            ensureColumnExists(connection, "app_user", "failed_attempts", "INTEGER DEFAULT 0");
-            ensureColumnExists(connection, "app_user", "locked_until", "TEXT");
-            ensureColumnExists(connection, "app_user", "token_version", "INTEGER DEFAULT 1");
-            ensureColumnExists(connection, "app_user", "email", "TEXT");
-            ensureColumnExists(connection, "app_user", "email_verified", "INTEGER DEFAULT 0");
-            ensureColumnExists(connection, "app_user", "verification_token", "TEXT");
-            ensureTableExists(connection, """
+        log.info("Starting schema migration...");
+        try (Connection conn = dataSource.getConnection()) {
+            // ====== 1. Ensure battle/extension tables exist (if 002 schema wasn't applied yet)
+            // 确保对战相关表存在（如果 002 号脚本未执行过）
+            ensureTableExists(conn, """
+                    CREATE TABLE IF NOT EXISTS player (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT NOT NULL UNIQUE,
+                        tier INTEGER DEFAULT 0,
+                        tier_points INTEGER DEFAULT 0,
+                        total_points INTEGER DEFAULT 0,
+                        highest_tier INTEGER DEFAULT 0,
+                        wins INTEGER DEFAULT 0,
+                        losses INTEGER DEFAULT 0,
+                        tier_reached_at TEXT,
+                        rank INTEGER DEFAULT 0,
+                        points INTEGER DEFAULT 0,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """);
+            ensureTableExists(conn, """
+                    CREATE TABLE IF NOT EXISTS team (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        player_id INTEGER, name TEXT, team_json TEXT, source TEXT DEFAULT 'player',
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP, version INTEGER DEFAULT 0,
+                        FOREIGN KEY(player_id) REFERENCES player(id) ON DELETE SET NULL)
+                    """);
+            ensureTableExists(conn, """
+                    CREATE TABLE IF NOT EXISTS battle (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        player_id INTEGER NOT NULL, opponent_team_id INTEGER,
+                        factory_run_id INTEGER, run_battle_number INTEGER,
+                        started_at TEXT DEFAULT CURRENT_TIMESTAMP, ended_at TEXT,
+                        winner_player_id INTEGER, rounds INTEGER DEFAULT 0,
+                        summary_json TEXT, player_move_map TEXT, player_team_json TEXT,
+                        battle_phase TEXT DEFAULT 'team-preview',
+                        FOREIGN KEY(player_id) REFERENCES player(id) ON DELETE CASCADE)
+                    """);
+            ensureTableExists(conn, """
+                    CREATE TABLE IF NOT EXISTS battle_job (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        battle_id INTEGER,
+                        status TEXT,
+                        payload TEXT,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT
+                    )
+                    """);
+            ensureTableExists(conn, """
+                    CREATE TABLE IF NOT EXISTS battle_round (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        battle_id INTEGER NOT NULL,
+                        round_number INTEGER NOT NULL,
+                        log_json TEXT,
+                        FOREIGN KEY(battle_id) REFERENCES battle(id) ON DELETE CASCADE
+                    )
+                    """);
+            ensureTableExists(conn, """
+                    CREATE TABLE IF NOT EXISTS factory_run (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        player_id INTEGER NOT NULL,
+                        current_battle INTEGER DEFAULT 0,
+                        max_battles INTEGER DEFAULT 9,
+                        wins INTEGER DEFAULT 0, losses INTEGER DEFAULT 0,
+                        status TEXT DEFAULT "active", team_json TEXT,
+                        tier_at_start INTEGER DEFAULT 0,
+                        points_earned INTEGER DEFAULT 0,
+                        current_battle_id INTEGER,
+                        started_at TEXT DEFAULT CURRENT_TIMESTAMP, ended_at TEXT,
+                        FOREIGN KEY(player_id) REFERENCES player(id) ON DELETE CASCADE
+                    )
+                    """);
+            ensureTableExists(conn, """
+                    CREATE TABLE IF NOT EXISTS battle_exchange (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        battle_id INTEGER NOT NULL,
+                        player_team_id INTEGER,
+                        opponent_team_id INTEGER,
+                        replaced_index INTEGER,
+                        replaced_pokemon_json TEXT,
+                        new_pokemon_json TEXT,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(battle_id) REFERENCES battle(id) ON DELETE CASCADE
+                    )
+                    """);
+            ensureTableExists(conn, """
+                    CREATE TABLE IF NOT EXISTS opponent_pool (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        team_id INTEGER NOT NULL,
+                        rank INTEGER DEFAULT 0,
+                        source TEXT DEFAULT "pool",
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(team_id) REFERENCES team(id) ON DELETE CASCADE
+                    )
+                    """);
+            ensureTableExists(conn, """
+                    CREATE TABLE IF NOT EXISTS skill_catalog (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL UNIQUE,
+                        default_cooldown INTEGER DEFAULT 0,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """);
+            ensureTableExists(conn, """
                     CREATE TABLE IF NOT EXISTS ability_effect (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        ability_id INTEGER NOT NULL,
-                        effect_type TEXT NOT NULL,
-                        effect_value TEXT,
-                        target TEXT NOT NULL,
-                        condition TEXT,
-                        description TEXT,
-                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        ability_id INTEGER NOT NULL, effect_type TEXT NOT NULL,
+                        effect_value TEXT, target TEXT NOT NULL, condition TEXT,
+                        description TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         FOREIGN KEY (ability_id) REFERENCES ability(id)
                     )
                     """);
-            ensureTableExists(connection, """
+            ensureTableExists(conn, """
                     CREATE TABLE IF NOT EXISTS item_effect (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        item_id INTEGER NOT NULL,
-                        effect_type TEXT NOT NULL,
-                        effect_value TEXT,
-                        target TEXT NOT NULL,
-                        condition TEXT,
-                        description TEXT,
-                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        item_id INTEGER NOT NULL, effect_type TEXT NOT NULL,
+                        effect_value TEXT, target TEXT NOT NULL, condition TEXT,
+                        description TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         FOREIGN KEY (item_id) REFERENCES item(id)
                     )
                     """);
 
-            // 补充索引（对已有库幂等追加）
+            // ====== 2. Ensure columns exist on legacy schemas (migration)
+            // 确保旧数据库中缺失的列被补充
+
+            ensureColumnExists(conn, "team", "version", "INTEGER DEFAULT 0");
+            ensureColumnExists(conn, "battle", "player_move_map", "TEXT");
+            ensureColumnExists(conn, "battle", "player_team_json", "TEXT");
+            ensureColumnExists(conn, "battle", "battle_phase", "TEXT DEFAULT 'team-preview'");
+            ensureColumnExists(conn, "battle", "factory_run_id", "INTEGER");
+            ensureColumnExists(conn, "battle", "run_battle_number", "INTEGER");
+            ensureColumnExists(conn, "player", "tier", "INTEGER DEFAULT 0");
+            ensureColumnExists(conn, "player", "tier_points", "INTEGER DEFAULT 0");
+            ensureColumnExists(conn, "player", "total_points", "INTEGER DEFAULT 0");
+            ensureColumnExists(conn, "player", "highest_tier", "INTEGER DEFAULT 0");
+            ensureColumnExists(conn, "player", "wins", "INTEGER DEFAULT 0");
+            ensureColumnExists(conn, "player", "losses", "INTEGER DEFAULT 0");
+            ensureColumnExists(conn, "player", "tier_reached_at", "TEXT");
+            ensureColumnExists(conn, "app_user", "display_name", "TEXT");
+            ensureColumnExists(conn, "app_user", "updated_at", "TEXT");
+            ensureColumnExists(conn, "app_user", "last_login_at", "TEXT");
+            ensureColumnExists(conn, "app_user", "failed_attempts", "INTEGER DEFAULT 0");
+            ensureColumnExists(conn, "app_user", "locked_until", "TEXT");
+            ensureColumnExists(conn, "app_user", "token_version", "INTEGER DEFAULT 1");
+            ensureColumnExists(conn, "app_user", "email", "TEXT");
+            ensureColumnExists(conn, "app_user", "email_verified", "INTEGER DEFAULT 0");
+            ensureColumnExists(conn, "app_user", "verification_token", "TEXT");
+
+            // ====== 3. Ensure indexes exist
+            // 确保索引存在（幂等追加）
             String[] extraIndexes = {
                 "CREATE INDEX IF NOT EXISTS idx_player_tier_total ON player(tier, total_points DESC)",
                 "CREATE INDEX IF NOT EXISTS idx_battle_round_battle ON battle_round(battle_id, round_number)",
@@ -133,122 +198,48 @@ public class CommonDatabaseInitializer implements ApplicationRunner {
                 "CREATE INDEX IF NOT EXISTS idx_item_effect_type ON item_effect(effect_type)"
             };
             for (String ddl : extraIndexes) {
-                try (var stmt = connection.createStatement()) {
+                try (var stmt = conn.createStatement()) {
                     stmt.execute(ddl);
-                } catch (Exception ignored) {}
-            }
-
-            csvDataImporter.importIfNeeded(connection);
-            effectSeedLoader.syncEffectSeeds(connection);
-        }
-        log.info("common 数据库初始化完成。");
-    }
-
-    /**
-     * 只有在核心公共表尚不存在时，才执行全量核心 schema 脚本。
-     * <p>
-     * 001_core_schema.sql 内部包含 DROP TABLE，用于空库冷启动初始化；
-     * 因此这里必须先做存在性判断，避免误伤已经初始化过的数据。
-     * 如果数据库文件已经存在，并且内部已经有任意业务表，即使核心表缺失，
-     * 也不能贸然执行这份脚本，否则会把现有数据整库覆盖掉。
-     * </p>
-     */
-    private void initializeCoreSchemaIfNeeded(Connection connection, String scriptLocation) throws Exception {
-        if (tableExists(connection, "generation") && tableExists(connection, "pokemon") && tableExists(connection, "move")) {
-            log.info("检测到核心公共表已存在，跳过核心 schema 初始化。");
-            return;
-        }
-
-        if (hasExistingBusinessTables(connection)) {
-            log.warn("检测到当前数据库已经存在业务表，但核心公共表不完整。为避免覆盖已有数据，跳过 {}。", scriptLocation);
-            return;
-        }
-
-        log.info("检测到数据库尚未完成核心初始化，开始执行 {}。", scriptLocation);
-        executeScript(scriptLocation);
-    }
-
-    /**
-     * 执行单个 SQL 资源文件。
-     */
-    private void executeScript(String scriptLocation) {
-        Resource resource = resourceLoader.getResource(scriptLocation);
-        ResourceDatabasePopulator populator = new ResourceDatabasePopulator(false, false, "UTF-8", resource);
-        populator.execute(dataSource);
-        log.info("已执行数据库脚本：{}", scriptLocation);
-    }
-
-    /**
-     * 判断指定表是否已经存在。
-     * <p>
-     * 这里直接查询 sqlite_master，而不是依赖业务表本身，
-     * 目的是在初始化阶段保持最小依赖，避免“表还没建好时无法判断”的问题。
-     * </p>
-     */
-    private boolean tableExists(Connection connection, String tableName) throws Exception {
-        try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")) {
-            statement.setString(1, tableName);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next();
-            }
-        }
-    }
-
-    /**
-     * 判断当前数据库里是否已经存在任意非 sqlite 系统表。
-     * <p>
-     * 这里的目的不是判断“库是否完备”，而是判断“这是不是一个已经被使用过的库”。
-     * 只要存在业务表，就说明库里很可能已经有真实数据，此时必须禁止执行带 DROP TABLE 的冷启动脚本。
-     * </p>
-     */
-    private boolean hasExistingBusinessTables(Connection connection) throws Exception {
-        try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 1");
-             ResultSet resultSet = statement.executeQuery()) {
-            return resultSet.next();
-        }
-    }
-
-    /**
-     * 按需为旧表补齐缺失列。
-     * <p>
-     * 之所以不把这类语句直接写进 SQL 脚本，是因为当前 SQLite 方言并不支持
-     * "ALTER TABLE ... ADD COLUMN IF NOT EXISTS"；如果脚本里直接写，会让 common
-     * 在全新初始化后仍然启动失败。这里先查表结构，再执行普通 ALTER TABLE，
-     * 才能同时兼容空库初始化和旧库升级。
-     * </p>
-     */
-    private void ensureColumnExists(Connection connection, String tableName, String columnName, String columnDefinition) throws Exception {
-        if (!tableExists(connection, tableName) || columnExists(connection, tableName, columnName)) {
-            return;
-        }
-
-        String sql = "ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefinition;
-        try (Statement statement = connection.createStatement()) {
-            statement.execute(sql);
-        }
-        log.info("已为表 {} 补齐缺失列 {}。", tableName, columnName);
-    }
-
-    private void ensureTableExists(Connection connection, String ddl) throws Exception {
-        try (Statement statement = connection.createStatement()) {
-            statement.execute(ddl);
-        }
-    }
-
-    /**
-     * 判断指定列是否已经存在。
-     */
-    private boolean columnExists(Connection connection, String tableName, String columnName) throws Exception {
-        try (PreparedStatement statement = connection.prepareStatement("PRAGMA table_info(" + tableName + ")");
-             ResultSet resultSet = statement.executeQuery()) {
-            while (resultSet.next()) {
-                if (columnName.equalsIgnoreCase(resultSet.getString("name"))) {
-                    return true;
+                } catch (Exception ex) {
+                    log.warn("Failed to create index: {}", ddl, ex);
                 }
             }
-            return false;
         }
+        log.info("Schema migration completed.");
+    }
+
+    /** Check if a column exists in a table, add it if missing. 检查列是否存在，缺失则添加 */
+    private void ensureColumnExists(Connection conn, String tableName, String columnName, String columnDefinition) throws Exception {
+        if (!tableExists(conn, tableName) || columnExists(conn, tableName, columnName)) {
+            return;
+        }
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefinition);
+        }
+        log.info("Added missing column {}.{}", tableName, columnName);
+    }
+
+    /** Create table if not exists (idempotent). 幂等地创建表 */
+    private void ensureTableExists(Connection conn, String ddl) throws Exception {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute(ddl);
+        }
+    }
+
+    /** Check if a table exists. 检查表是否存在 */
+    private boolean tableExists(Connection conn, String tableName) throws Exception {
+        try (var stmt = conn.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")) {
+            stmt.setString(1, tableName);
+            try (var rs = stmt.executeQuery()) { return rs.next(); }
+        }
+    }
+
+    /** Check if a column exists in a table. 检查列是否存在 */
+    private boolean columnExists(Connection conn, String tableName, String columnName) throws Exception {
+        try (var stmt = conn.createStatement();
+             var rs = stmt.executeQuery("PRAGMA table_info(" + tableName + ")")) {
+            while (rs.next()) { if (columnName.equalsIgnoreCase(rs.getString("name"))) return true; }
+        }
+        return false;
     }
 }
