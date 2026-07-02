@@ -144,11 +144,12 @@ onMounted(async () => {
     const res = await fetch(`${API_BASE}/summary`)
     if (res.ok) {
       const data = await res.json()
+      const d = data.data ?? data
       stats.value = [
-        { label: tr('宝可梦', 'Pokemon'), value: data.pokemon ?? '-' },
-        { label: tr('招式', 'Moves'), value: data.moves ?? '-' },
-        { label: tr('特性', 'Abilities'), value: data.abilities ?? '-' },
-        { label: tr('物品', 'Items'), value: data.items ?? '-' },
+        { label: tr('宝可梦', 'Pokemon'), value: d.pokemonCount ?? d.pokemon ?? '-' },
+        { label: tr('招式', 'Moves'), value: d.moveCount ?? d.moves ?? '-' },
+        { label: tr('特性', 'Abilities'), value: d.abilityCount ?? d.abilities ?? '-' },
+        { label: tr('物品', 'Items'), value: d.itemCount ?? d.items ?? '-' },
       ]
     }
   } catch {

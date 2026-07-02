@@ -36,6 +36,10 @@ export function useBattlePageState() {
   const bat = new Proxy({}, {
     get: (_, method) => (...args) => {
       const impl = auth.isAuthenticated.value ? api.battle : guestApi
+      if (typeof impl[method] !== 'function') {
+        // guestApi 没有 factoryStart/factoryNext/factoryAbandon/profile 等方法时回退到认证 API
+        return api.battle[method](...args)
+      }
       return impl[method](...args)
     }
   })
@@ -75,6 +79,36 @@ export function useBattlePageState() {
   const showLeaderboard = ref(false)
   const leaderboardData = ref([])
   const pendingReplacementCount = computed(() => Number(summary.value?.playerPendingReplacementCount || 0))
+  // 轮询管理 — 必须在 useBattleDerivedState 之前初始化
+  const {
+    pollingActive,
+    startPolling,
+    stopPolling
+  } = useBattlePolling(() => refreshStatus(true), 2000)
+
+  const derived = useBattleDerivedState({
+    busyAction,
+    currentBattleId,
+    displayName: auth.displayName,
+    factoryRun,
+    lastUpdatedAt,
+    leadRosterIndexes,
+    pendingReplacementCount,
+    playerProfile,
+    pollingActive,
+    selectedActions,
+    selectedMoves,
+    selectedReplacementIndexes,
+    selectedRosterIndexes,
+    selectedSwitchTargets,
+    selectedTargets,
+    settlement,
+    summary,
+    battleFormat,
+    rosterLimit,
+    leadLimit
+  })
+
   const {
     actionDescription,
     actionHeadline,
@@ -117,35 +151,7 @@ export function useBattlePageState() {
     tierDisplayName,
     teraTypeLabel,
     tierTextClass
-  } = useBattleDerivedState({
-    busyAction,
-    currentBattleId,
-    displayName: auth.displayName,
-    factoryRun,
-    lastUpdatedAt,
-    leadRosterIndexes,
-    pendingReplacementCount,
-    playerProfile,
-    pollingActive,
-    selectedActions,
-    selectedMoves,
-    selectedReplacementIndexes,
-    selectedRosterIndexes,
-    selectedSwitchTargets,
-    selectedTargets,
-    settlement,
-    summary,
-    battleFormat,
-    rosterLimit,
-    leadLimit
-  })
-
-  // 轮询管理已抽取至 useBattlePolling composable
-  const {
-    pollingActive,
-    startPolling,
-    stopPolling
-  } = useBattlePolling(() => refreshStatus(true), 2000)
+  } = derived
 
   function resetLocalSelections() {
     selectedActions.value = {}

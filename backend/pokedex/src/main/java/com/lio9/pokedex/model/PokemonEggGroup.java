@@ -20,9 +20,9 @@ public class PokemonEggGroup {
     private Long id;
     
     /**
-     * 宝可梦ID
+     * 宝可梦ID（对应数据库 species_id 列）
      */
-    private Long pokemonId;
+    private Long speciesId;
     
     /**
      * 蛋组ID

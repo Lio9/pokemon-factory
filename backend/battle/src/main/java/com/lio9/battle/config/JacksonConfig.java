@@ -1,19 +1,25 @@
 package com.lio9.battle.config;
 
-
-
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * 为 battleFactory 提供统一的 JSON 序列化器，避免运行时依赖自动配置缺失导致核心服务无法注入。
+ * 统一 JSON 序列化器配置
+ *
+ * 直接创建 Jackson 3.x 的 JsonMapper，避免对 Spring Boot 4.x 中
+ * 不存在的 Jackson2ObjectMapperBuilder 的依赖。
  */
 @Configuration
 public class JacksonConfig {
 
     @Bean
     public ObjectMapper objectMapper() {
-        return new ObjectMapper();
+        return JsonMapper.builder()
+            .findAndAddModules()
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .build();
     }
 }

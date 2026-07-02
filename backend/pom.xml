@@ -20,7 +20,6 @@
 		<module>user</module>
 		<module>pokedex</module>
 		<module>battle</module>
-        <module>one-server</module>
 	</modules>
 
 	<properties>

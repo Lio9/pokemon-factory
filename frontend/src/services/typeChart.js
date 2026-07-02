@@ -52,7 +52,7 @@ export async function loadTypeEffectiveness() {
       'type:chart',
       {},
       async () => {
-        const response = await fetch('/api/damage/types/efficacy')
+        const response = await fetch('/api/damage/type-efficacy')
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const { data } = await response.json()
         return normalizeServerData(data)
@@ -69,15 +69,34 @@ export async function loadTypeEffectiveness() {
 }
 
 /**
- * 将后端返回的相克数组归一化为前端查找表格式
- * @param {Array} efficacyList - [{ damage_type_id, target_type_id, damage_factor }]
+ * 将后端返回的相克数据归一化为前端查找表格式
+ * 支持两种格式：
+ *   1. 数组 [{ damage_type_id, target_type_id, damage_factor }]
+ *   2. 嵌套 Map { damageTypeId: { targetTypeId: factor, ... }, ... }
+ * @param {Array|Object} data
  * @returns {Object} { moveTypeId: { targetTypeId: factor, ... }, ... }
  */
-function normalizeServerData(efficacyList) {
-  if (!Array.isArray(efficacyList)) return null
+function normalizeServerData(data) {
+  if (data == null) return null
+
+  // 格式2: 嵌套 Map { "1": { "6": 50, "8": 0 }, ... }
+  if (!Array.isArray(data) && typeof data === 'object') {
+    const lookup = {}
+    for (const [moveTypeStr, targetMap] of Object.entries(data)) {
+      const moveType = Number(moveTypeStr)
+      lookup[moveType] = {}
+      for (const [targetTypeStr, factor] of Object.entries(targetMap)) {
+        lookup[moveType][Number(targetTypeStr)] = factor
+      }
+    }
+    return Object.keys(lookup).length > 0 ? lookup : null
+  }
+
+  // 格式1: 数组 [{ damage_type_id, target_type_id, damage_factor }]
+  if (!Array.isArray(data)) return null
 
   const lookup = {}
-  for (const entry of efficacyList) {
+  for (const entry of data) {
     const moveType = entry.damage_type_id ?? entry.damageTypeId
     const targetType = entry.target_type_id ?? entry.targetTypeId
     const factor = entry.damage_factor ?? entry.damageFactor

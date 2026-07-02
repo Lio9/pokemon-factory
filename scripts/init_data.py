@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DB = os.getenv('SQLITE_DB_PATH') or str(ROOT / 'backend' / 'pokemon-factory.db')
 POKEAPI = "https://pokeapi.co/api/v2"
-DELAY = 0.12
+DELAY = 0.06
 
 # ============================================================
 # 离线数据

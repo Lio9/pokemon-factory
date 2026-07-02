@@ -225,7 +225,7 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
 
         // 3. 获取蛋群
         QueryWrapper<com.lio9.pokedex.model.PokemonEggGroup> eggGroupWrapper = new QueryWrapper<>();
-        eggGroupWrapper.eq("pokemon_id", speciesId);
+        eggGroupWrapper.eq("species_id", speciesId);
         List<com.lio9.pokedex.model.PokemonEggGroup> pokemonEggGroups = pokemonEggGroupMapper.selectList(eggGroupWrapper);
         if (!pokemonEggGroups.isEmpty()) {
             List<Long> eggGroupIds = pokemonEggGroups.stream()
@@ -367,17 +367,35 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
 
 /**
      * 获取指定形态在指定版本组下可学的技能列表。
-     * <p>
-     * 参数：
-     *  - formId: 形态 ID（非空）
-     *  - versionGroupId: 版本组 ID（可为空，表示所有版本）
-     * </p>
-     * 返回 MoveVO 列表；当前为占位实现（返回空列表），后续可按数据库表完善查询并缓存。
      */
     @Override
     public List<MoveVO> getFormMoves(Integer formId, Integer versionGroupId) {
-        // Placeholder implementation: return an empty list until feature is implemented.
-        return List.of();
+        List<Map<String, Object>> rawMoves = moveMapper.selectMovesByFormId(formId);
+        return rawMoves.stream()
+                .filter(m -> versionGroupId == null || versionGroupId.equals(m.get("version_group_id")))
+                .map(m -> {
+                    MoveVO vo = new MoveVO();
+                    vo.setId(toInt(m.get("id")));
+                    vo.setName((String) m.get("name"));
+                    vo.setNameEn((String) m.get("name_en"));
+                    vo.setTypeName((String) m.get("type_name"));
+                    vo.setTypeColor((String) m.get("type_color"));
+                    vo.setDamageClass((String) m.get("damage_class_name"));
+                    vo.setPower(toInt(m.get("power")));
+                    vo.setAccuracy(toInt(m.get("accuracy")));
+                    vo.setPp(toInt(m.get("pp")));
+                    vo.setPriority(toInt(m.get("priority")));
+                    vo.setDescription((String) m.get("description"));
+                    vo.setLearnMethod((String) m.get("learn_method"));
+                    vo.setLevel(toInt(m.get("level")));
+                    return vo;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private Integer toInt(Object value) {
+        if (value instanceof Number) return ((Number) value).intValue();
+        return null;
     }
 
     @Override

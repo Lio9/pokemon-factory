@@ -29,13 +29,9 @@ export default defineConfig({
     port: 7894,
     historyApiFallback: true,
     proxy: {
-      // one-server (8081): 全部 API 由单个后端提供
-      '/api/pokedex': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
+      // battle 服务 (8084): 图鉴+用户+对战全部功能
       '/api': {
-        target: 'http://localhost:8081',
+        target: 'http://localhost:8084',
         changeOrigin: true
       }
     }

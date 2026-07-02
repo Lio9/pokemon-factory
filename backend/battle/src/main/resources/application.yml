@@ -1,8 +1,20 @@
+server:
+  port: 8084
+
 spring:
   config:
     import: optional:classpath:application-common.yml
   application:
     name: battle
 
-server:
-  port: 8090
+mybatis:
+  mapper-locations: classpath*:mapper/**/*.xml
+
+pokemon-factory:
+  assets:
+    image-base-url: https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites
+
+logging:
+  level:
+    org.mybatis: debug
+    com.baomidou: debug

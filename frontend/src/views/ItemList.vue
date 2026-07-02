@@ -1,8 +1,5 @@
 <template>
-  <div
-    ref="listContainer"
-    class="item-list"
-  >
+  <div class="item-list">
     <!-- 搜索栏 -->
     <div class="glass-card mb-6 p-4 sticky top-[4.25rem] z-10 sm:top-[4.75rem]">
       <div class="flex flex-col sm:flex-row gap-4">
@@ -58,23 +55,40 @@
           </div>
         </div>
       </div>
+      <div class="glass-card p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center text-white text-xl font-bold shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+          🗂️
+        </div>
+        <div>
+          <div class="text-3xl font-bold text-slate-800">
+            {{ categories }}
+          </div>
+          <div class="text-xs text-slate-500 font-medium">
+            {{ tr('分类', 'Categories') }}
+          </div>
+        </div>
+      </div>
+      <div class="glass-card p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xl font-bold shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+          📄
+        </div>
+        <div>
+          <div class="text-3xl font-bold text-slate-800">
+            {{ pageSize }}
+          </div>
+          <div class="text-xs text-slate-500 font-medium">
+            {{ tr('每页', 'Per page') }}
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 加载骨架 -->
-    <div
+    <CatalogSkeleton
       v-if="loading && items.length === 0"
-      class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4"
-    >
-      <div
-        v-for="i in 12"
-        :key="i"
-        class="glass-card p-4 animate-pulse"
-      >
-        <div class="aspect-square rounded-xl bg-slate-200 mb-3" />
-        <div class="h-3 bg-slate-200 rounded w-3/4 mb-2" />
-        <div class="h-2 bg-slate-100 rounded w-1/2" />
-      </div>
-    </div>
+      :count="12"
+      :view-mode="'grid'"
+    />
 
     <!-- 物品网格 -->
     <transition-group
@@ -89,12 +103,10 @@
         class="shine-effect glass-card-interactive glass-card p-4 text-center group animate-slide-up relative overflow-hidden"
         :style="{ animationDelay: `${index * 25}ms` }"
       >
-        <!-- 渐变背景遮罩 -->
-        <div 
+        <div
           class="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-10"
           style="background: linear-gradient(135deg, #6366f1 20, #a855f7 40)"
         />
-        
         <div class="relative z-10">
           <div class="aspect-square flex items-center justify-center mb-3 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-3 shadow-inner">
             <div
@@ -108,7 +120,7 @@
               class="w-14 h-14 object-contain transition-all duration-300 group-hover:scale-125 group-hover:drop-shadow-xl float-animation"
               loading="lazy"
               @load="item._imageLoaded = true"
-              @error="handleImageError(item)"
+              @error="onImageError(item)"
             >
           </div>
           <h3 class="font-semibold text-slate-800 text-sm truncate group-hover:text-indigo-700 transition-colors">
@@ -127,75 +139,43 @@
       </div>
     </transition-group>
 
-    <div
-      v-else
-      class="text-center py-16"
-    >
-      <div class="text-4xl mb-4">
-        🔍
-      </div>
-      <p class="text-slate-500">
-        {{ tr('没有找到物品', 'No items found') }}
-      </p>
-    </div>
+    <!-- 空状态 -->
+    <EmptyState
+      v-if="!loading && items.length === 0"
+      :message="tr('没有找到物品', 'No items found')"
+    />
 
     <!-- 加载更多 -->
-    <div
-      ref="loadMoreTrigger"
-      class="text-center py-8"
-    >
-      <div
-        v-if="loadingMore"
-        class="flex items-center justify-center gap-3"
-      >
-        <div class="loading-dots">
-          <span /><span /><span />
-        </div>
-        <span class="text-sm text-slate-400">{{ tr('加载中...', 'Loading...') }}</span>
-      </div>
-      <div
-        v-else-if="!hasMore && items.length > 0"
-        class="text-sm text-slate-400"
-      >
-        {{ tr('已加载全部 {total} 个物品', 'All {total} items loaded', { total }) }}
-      </div>
-      <div
-        v-else-if="!hasMore"
-        class="text-sm text-slate-400"
-      >
-        {{ tr('下拉加载更多...', 'Scroll to load more...') }}
-      </div>
-    </div>
+    <LoadMoreTrigger
+      :loading-more="loadingMore"
+      :has-more="hasMore"
+      :loaded-count="loadedCount"
+      :total="total"
+      @load-more="fetchItems(true)"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+/**
+ * 物品列表页 / Item List Page
+ *
+ * 使用 useCatalogList 管理分页、搜索、IntersectionObserver。
+ * 保留独特的统计卡片和图片处理逻辑。
+ */
+import { computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { itemApi, sprites } from '../services/api.js'
 import { useLocale } from '../composables/useLocale'
+import { useCatalogList } from '../composables/useCatalogList'
+import CatalogSkeleton from '../components/CatalogSkeleton.vue'
+import LoadMoreTrigger from '../components/LoadMoreTrigger.vue'
+import EmptyState from '../components/EmptyState.vue'
 
 const { translate: tr } = useLocale()
 
-const listContainer = ref(null)
-const loadMoreTrigger = ref(null)
-
-const loading = ref(false)
-const loadingMore = ref(false)
-const items = ref([])
-const keyword = ref('')
-const currentPage = ref(0)
-const pageSize = ref(48)
-const total = ref(0)
-
-let searchTimer = null
-let observer = null
-
-const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
-const hasMore = computed(() => currentPage.value < totalPages.value)
-const loadedCount = computed(() => items.value.length)
-
-const processItemData = (data) => {
+// ---- 图片处理 ----
+function processItemData(data) {
   return data.map(item => ({
     ...item,
     _imageUrl: item.spriteUrl || getItemImage(item),
@@ -203,131 +183,57 @@ const processItemData = (data) => {
   }))
 }
 
-const getItemImage = (item) => {
+function getItemImage(item) {
   if (item.nameEn) {
     return sprites.item(item.nameEn.toLowerCase().replace(/[^a-z0-9]/g, '-'))
   }
   return sprites.default
 }
 
-const handleImageError = (item) => {
+function onImageError(item) {
   item._imageLoaded = true
   item._imageUrl = sprites.default
 }
 
-const fetchItems = async (isLoadMore = false) => {
-  if (loading.value || loadingMore.value) return
-  if (isLoadMore && !hasMore.value) return
-
-  if (isLoadMore) {
-    loadingMore.value = true
-  } else {
-    loading.value = true
-    currentPage.value = 0
-    items.value = []
-  }
-
-  try {
-    const nextPage = currentPage.value + 1
-    const result = await itemApi.getList({
-      current: nextPage,
-      size: pageSize.value,
-      keyword: keyword.value || undefined
-    })
+// ---- 通用列表逻辑（分页、搜索、Observer） ----
+const {
+  items,
+  keyword,
+  handleSearchInput,
+  handleSearch,
+  loading,
+  loadingMore,
+  hasMore,
+  loadedCount,
+  total,
+  fetchItems
+} = useCatalogList({
+  fetchFn: async (params) => {
+    const result = await itemApi.getList(params)
     if (result.code === 200) {
-      const processedData = processItemData(result.data.records || [])
-      items.value = [...items.value, ...processedData]
-      total.value = result.data.total || 0
-      currentPage.value = nextPage
+      result.data.records = processItemData(result.data.records || [])
     }
-  } catch (error) {
-    console.error('获取物品列表失败:', error)
-  } finally {
-    loading.value = false
-    loadingMore.value = false
-  }
-}
-
-const handleSearchInput = () => {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => handleSearch(), 300)
-}
-
-const handleSearch = () => {
-  fetchItems(false)
-}
-
-const setupObserver = () => {
-  if (observer) observer.disconnect()
-  observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting && hasMore.value && !loadingMore.value) {
-          fetchItems(true)
-        }
-      })
-    },
-    { rootMargin: '200px', threshold: 0 }
-  )
-  if (loadMoreTrigger.value) {
-    observer.observe(loadMoreTrigger.value)
-  }
-}
-
-onMounted(() => {
-  fetchItems(false)
-  nextTick(() => setupObserver())
+    return result
+  },
+  pageSize: 48
 })
 
-onUnmounted(() => {
-  if (observer) observer.disconnect()
-  if (searchTimer) clearTimeout(searchTimer)
-})
-
-watch(() => items.value.length, () => {
-  nextTick(() => {
-    if (loadMoreTrigger.value && observer) {
-      observer.disconnect()
-      observer.observe(loadMoreTrigger.value)
-    }
-  })
+// ---- 统计 ----
+const pageSize = 48
+const categories = computed(() => {
+  const cats = new Set(items.value.map(i => i.category).filter(Boolean))
+  return cats.size || '-'
 })
 </script>
 
 <style scoped>
-.item-list {
-  padding-bottom: 1rem;
-}
+.item-list { padding-bottom: 1rem; }
 
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-/* 加载动画 */
-.loading-dots {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  align-items: center;
-}
-
-.loading-dots span {
-  width: 8px;
-  height: 8px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out both;
-}
-
-.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
-.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
 }
 
 @keyframes slideUp {
@@ -340,20 +246,10 @@ watch(() => items.value.length, () => {
 }
 
 /* Transition group */
-.item-card-enter-active {
-  transition: all 0.3s ease-out;
-}
-.item-card-leave-active {
-  transition: all 0.2s ease-in;
-}
-.item-card-enter-from {
-  opacity: 0;
-  transform: scale(0.9);
-}
-.item-card-leave-to {
-  opacity: 0;
-  transform: scale(0.9);
-}
+.item-card-enter-active { transition: all 0.3s ease-out; }
+.item-card-leave-active { transition: all 0.2s ease-in; }
+.item-card-enter-from { opacity: 0; transform: scale(0.9); }
+.item-card-leave-to { opacity: 0; transform: scale(0.9); }
 
 @media (max-width: 640px) {
   .item-list { padding-bottom: 0.5rem; }

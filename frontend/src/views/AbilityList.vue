@@ -1,8 +1,5 @@
 <template>
-  <div
-    ref="listContainer"
-    class="ability-list"
-  >
+  <div class="ability-list">
     <!-- 搜索和筛选 -->
     <div class="glass-card mb-6 p-4 sticky top-[4.25rem] z-10 sm:top-[4.75rem]">
       <div class="flex flex-col gap-4">
@@ -125,7 +122,7 @@
                 v-model="sortBy"
                 size="default"
                 class="w-full"
-                @change="handleSort"
+                @change="applyFilters"
               >
                 <el-option
                   :label="tr('默认', 'Default')"
@@ -161,38 +158,29 @@
     </div>
 
     <!-- 加载骨架 -->
-    <div
-      v-if="loading && abilities.length === 0"
-      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-    >
-      <div
-        v-for="i in 8"
-        :key="i"
-        class="glass-card p-4 animate-pulse"
-      >
-        <div class="h-5 bg-slate-200 rounded w-2/3 mb-3" />
-        <div class="h-12 bg-slate-100 rounded w-full" />
-      </div>
-    </div>
+    <CatalogSkeleton
+      v-if="loading && items.length === 0"
+      :count="8"
+      :view-mode="viewMode"
+    />
 
     <!-- 网格视图 -->
-    <template v-if="viewMode === 'grid'">
+    <template v-if="viewMode === 'grid' && !loading">
       <div
-        v-if="abilities.length"
+        v-if="filteredItems.length"
         class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
       >
         <div
-          v-for="(ability, index) in abilities"
+          v-for="(ability, index) in filteredItems"
           :key="ability.id"
           class="shine-effect glass-card-interactive glass-card p-5 cursor-pointer animate-slide-up relative overflow-hidden group"
           :style="{ animationDelay: `${index * 30}ms` }"
-          @click="showAbilityDetail(ability)"
+          @click="showDetail(ability)"
         >
-          <div 
+          <div
             class="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-10"
             style="background: linear-gradient(135deg, #8b5cf6 20, #a855f7 40)"
           />
-          
           <div class="relative z-10">
             <div class="flex items-start justify-between mb-3">
               <div class="flex items-center gap-2">
@@ -203,16 +191,11 @@
                   {{ ability.name }}
                 </h3>
               </div>
-              <button
-                class="flex-shrink-0 transition-all duration-200 hover:scale-125"
-                :class="favorites.has(ability.id) ? 'text-amber-500 fav-bounce' : 'text-slate-300 hover:text-amber-400'"
-                @click.stop="toggleFavorite(ability)"
-              >
-                <component
-                  :is="favorites.has(ability.id) ? 'StarFilled' : 'Star'"
-                  class="w-4 h-4"
-                />
-              </button>
+              <FavoriteButton
+                :is-favorited="favorites.has(ability.id)"
+                size="sm"
+                @toggle="toggleFavorite(ability)"
+              />
             </div>
             <p class="text-sm text-slate-600 leading-relaxed line-clamp-3">
               {{ ability.description || ability.effect || '' }}
@@ -231,17 +214,17 @@
     </template>
 
     <!-- 列表视图 -->
-    <template v-else>
+    <template v-if="viewMode === 'list' && !loading">
       <div
-        v-if="abilities.length"
+        v-if="filteredItems.length"
         class="space-y-2"
       >
         <div
-          v-for="(ability, index) in abilities"
+          v-for="(ability, index) in filteredItems"
           :key="ability.id"
           class="glass-card-interactive glass-card p-4 flex items-center gap-4 cursor-pointer animate-slide-up"
           :style="{ animationDelay: `${index * 20}ms` }"
-          @click="showAbilityDetail(ability)"
+          @click="showDetail(ability)"
         >
           <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm shadow-sm flex-shrink-0">
             ✦
@@ -260,53 +243,29 @@
               {{ ability.description || ability.effect || '' }}
             </p>
           </div>
-          <button
-            class="flex-shrink-0 transition-transform duration-200 hover:scale-110"
-            :class="favorites.has(ability.id) ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'"
-            @click.stop="toggleFavorite(ability)"
-          >
-            <component
-              :is="favorites.has(ability.id) ? 'StarFilled' : 'Star'"
-              class="w-5 h-5"
-            />
-          </button>
+          <FavoriteButton
+            :is-favorited="favorites.has(ability.id)"
+            size="lg"
+            @toggle="toggleFavorite(ability)"
+          />
         </div>
       </div>
     </template>
 
-    <div
-      v-if="!loading && abilities.length === 0"
-      class="text-center py-16"
-    >
-      <div class="text-4xl mb-4">
-        🔍
-      </div>
-      <p class="text-slate-500">
-        {{ tr('没有找到特性', 'No abilities found') }}
-      </p>
-    </div>
+    <!-- 空状态 -->
+    <EmptyState
+      v-if="!loading && filteredItems.length === 0"
+      :message="tr('没有找到特性', 'No abilities found')"
+    />
 
     <!-- 加载更多 -->
-    <div
-      ref="loadMoreTrigger"
-      class="text-center py-8"
-    >
-      <div
-        v-if="loadingMore"
-        class="flex items-center justify-center gap-3"
-      >
-        <div class="loading-dots">
-          <span /><span /><span />
-        </div>
-        <span class="text-sm text-slate-400">{{ tr('加载中...', 'Loading...') }}</span>
-      </div>
-      <div
-        v-else-if="!hasMore && abilities.length > 0"
-        class="text-sm text-slate-400"
-      >
-        {{ tr('已加载全部 {total} 个特性', 'All {total} abilities loaded', { total }) }}
-      </div>
-    </div>
+    <LoadMoreTrigger
+      :loading-more="loadingMore"
+      :has-more="hasMore"
+      :loaded-count="loadedCount"
+      :total="total"
+      @load-more="fetchItems(true)"
+    />
 
     <!-- 详情弹窗 -->
     <el-dialog
@@ -335,14 +294,12 @@
             >{{ tr('第 {gen} 世代引入', 'Introduced in Gen {gen}', { gen: selectedAbility.generation }) }}</span>
           </div>
         </div>
-
         <div class="rounded-xl bg-slate-50 p-4 text-sm text-slate-700 leading-relaxed">
           <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
             {{ tr('效果', 'Effect') }}
           </div>
           {{ selectedAbility.description || selectedAbility.effect || tr('暂无描述', 'No description') }}
         </div>
-
         <div
           v-if="selectedAbility.effect && selectedAbility.effect !== selectedAbility.description"
           class="rounded-xl bg-violet-50 p-4 text-sm text-violet-700 leading-relaxed"
@@ -358,79 +315,60 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+/**
+ * 特性列表页 / Ability List Page
+ *
+ * 使用 useCatalogList 管理通用列表逻辑（分页、收藏、视图、IntersectionObserver），
+ * 保留客户端筛选和详情弹窗的独特逻辑。
+ */
+import { ref, computed, watch } from 'vue'
 import { abilityApi } from '../services/api.js'
 import { useLocale } from '../composables/useLocale'
+import { useCatalogList } from '../composables/useCatalogList'
+import CatalogSkeleton from '../components/CatalogSkeleton.vue'
+import LoadMoreTrigger from '../components/LoadMoreTrigger.vue'
+import EmptyState from '../components/EmptyState.vue'
+import FavoriteButton from '../components/FavoriteButton.vue'
 
 const { translate: tr } = useLocale()
 
-const FAVORITES_KEY = 'pokemon-factory-ability-favorites'
+// ---- 通用列表逻辑（分页、收藏、视图、Observer） ----
+const {
+  items,
+  keyword,
+  handleSearchInput,
+  handleSearch,
+  favorites,
+  toggleFavorite,
+  isShowFavorites,
+  toggleFavorites,
+  viewMode,
+  toggleViewMode,
+  loading,
+  loadingMore,
+  hasMore,
+  loadedCount,
+  total,
+  fetchItems,
+  onListMounted,
+  onListUnmounted
+} = useCatalogList({
+  fetchFn: abilityApi.getList,
+  favoritesKey: 'ability-favorites',
+  pageSize: 36
+})
 
-// DOM references
-const listContainer = ref(null)
-const loadMoreTrigger = ref(null)
-
-// Search & filter state
-const keyword = ref('')
+// ---- 筛选状态 ----
+const showFilters = ref(false)
 const selectedGeneration = ref('')
 const descriptionLength = ref('')
 const sortBy = ref('default')
-const viewMode = ref('grid')
-const showFilters = ref(false)
 
-const isShowFavorites = ref(false)
-const favorites = ref(new Set())
+// ---- 筛选后的数据 ----
+const filteredItems = ref([])
 
-// Data
-const abilities = ref([])
-const currentPage = ref(0)
-const pageSize = ref(36)
-const total = ref(0)
-
-// UI state
-const loading = ref(false)
-const loadingMore = ref(false)
-const showDetailDialog = ref(false)
-const selectedAbility = ref(null)
-
-const filteredAbilities = ref([])
-
-let searchTimer = null
-let observer = null
-
-const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
-const hasMore = computed(() => currentPage.value < totalPages.value)
-const loadedCount = computed(() => abilities.value.length)
-
-// ---- Favorites ----
-const loadFavorites = () => {
-  try {
-    const saved = localStorage.getItem(FAVORITES_KEY)
-    if (saved) favorites.value = new Set(JSON.parse(saved))
-  } catch { /* ignore */ }
-}
-
-const saveFavorites = () => {
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites.value]))
-}
-
-const toggleFavorite = (ability) => {
-  if (favorites.value.has(ability.id)) {
-    favorites.value.delete(ability.id)
-  } else {
-    favorites.value.add(ability.id)
-  }
-  saveFavorites()
-}
-
-const toggleFavorites = () => {
-  isShowFavorites.value = !isShowFavorites.value
-  applyFilters()
-}
-
-// ---- Filters ----
-const applyFilters = () => {
-  let result = [...abilities.value]
+function applyFilters() {
+  let result = [...items.value]
 
   if (keyword.value) {
     const kw = keyword.value.toLowerCase()
@@ -468,116 +406,27 @@ const applyFilters = () => {
     })
   }
 
-  filteredAbilities.value = result
+  filteredItems.value = result
 }
 
-const handleSort = () => { applyFilters() }
+// items 变化时重新筛选
+watch(() => items.value.length, () => { applyFilters() })
+watch([selectedGeneration, descriptionLength, sortBy, isShowFavorites], () => { applyFilters() })
 
-const toggleViewMode = () => {
-  viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid'
-}
+// ---- 详情弹窗 ----
+const showDetailDialog = ref(false)
+const selectedAbility = ref(null)
 
-// ---- Data fetching ----
-const fetchAbilities = async (isLoadMore = false) => {
-  if (loading.value || loadingMore.value) return
-  if (isLoadMore && !hasMore.value) return
-
-  if (isLoadMore) {
-    loadingMore.value = true
-  } else {
-    loading.value = true
-    currentPage.value = 0
-    abilities.value = []
-  }
-
-  try {
-    const nextPage = currentPage.value + 1
-    const result = await abilityApi.getList({
-      current: nextPage,
-      size: pageSize.value,
-      keyword: keyword.value || undefined
-    })
-    if (result.code === 200) {
-      abilities.value = [...abilities.value, ...(result.data.records || [])]
-      total.value = result.data.total || 0
-      currentPage.value = nextPage
-      applyFilters()
-    }
-  } catch (error) {
-    console.error('获取特性列表失败:', error)
-  } finally {
-    loading.value = false
-    loadingMore.value = false
-  }
-}
-
-const handleSearchInput = () => {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => handleSearch(), 300)
-}
-
-const handleSearch = () => { fetchAbilities(false) }
-
-const showAbilityDetail = (ability) => {
+function showDetail(ability) {
   selectedAbility.value = ability
   showDetailDialog.value = true
 }
 
-// ---- Intersection Observer ----
-const setupObserver = () => {
-  if (observer) observer.disconnect()
-  observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting && hasMore.value && !loadingMore.value) {
-          fetchAbilities(true)
-        }
-      })
-    },
-    { rootMargin: '200px', threshold: 0 }
-  )
-  if (loadMoreTrigger.value) {
-    observer.observe(loadMoreTrigger.value)
-  }
-}
-
-// ---- Lifecycle ----
-onMounted(() => {
-  loadFavorites()
-  fetchAbilities(false)
-  nextTick(() => setupObserver())
-})
-
-onUnmounted(() => {
-  if (observer) observer.disconnect()
-  if (searchTimer) clearTimeout(searchTimer)
-})
-
-watch(() => abilities.value.length, () => {
-  nextTick(() => {
-    if (loadMoreTrigger.value && observer) {
-      observer.disconnect()
-      observer.observe(loadMoreTrigger.value)
-    }
-  })
-})
-
-watch([keyword, selectedGeneration, descriptionLength, isShowFavorites], () => {
-  applyFilters()
-})
+// 生命周期由 useCatalogList 自动管理
 </script>
 
 <style scoped>
-.ability-list {
-  padding-bottom: 1rem;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+.ability-list { padding-bottom: 1rem; }
 
 .line-clamp-3 {
   display: -webkit-box;
@@ -595,22 +444,10 @@ watch([keyword, selectedGeneration, descriptionLength, isShowFavorites], () => {
   animation: slideUp 0.4s ease-out both;
 }
 
-:deep(.detail-dialog .el-dialog) {
-  border-radius: 1.5rem !important;
-}
-
-:deep(.detail-dialog .el-dialog__header) {
-  padding: 1.5rem 1.5rem 0;
-}
-
-:deep(.detail-dialog .el-dialog__body) {
-  padding: 1.5rem;
-}
-
-:deep(.detail-dialog .el-dialog__title) {
-  font-weight: 700;
-  font-size: 1.25rem;
-}
+:deep(.detail-dialog .el-dialog) { border-radius: 1.5rem !important; }
+:deep(.detail-dialog .el-dialog__header) { padding: 1.5rem 1.5rem 0; }
+:deep(.detail-dialog .el-dialog__body) { padding: 1.5rem; }
+:deep(.detail-dialog .el-dialog__title) { font-weight: 700; font-size: 1.25rem; }
 
 @media (max-width: 640px) {
   .ability-list { padding-bottom: 0.5rem; }

@@ -6,23 +6,20 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.ComponentScan;
 
 /**
- * PokeDex module entry point (library mode) PokeDex 模块入口（仅作库使用）
- * <p>
- * Note: @MapperScan is NOT used here — OneServerApplication handles all mapper scans.
- * Run OneServerApplication instead of this class directly.
- * 注意：此处不使用 @MapperScan，由 OneServerApplication 统一管理所有 mapper 扫描。
- * 请直接运行 OneServerApplication。
- * </p>
+ * PokeDex 独立服务入口
+ *
+ * 端口：8082
+ * 职责：宝可梦图鉴查询、伤害计算
+ *
+ * 注意：@MapperScan 由主启动类（battle）统一管理。
+ * 独立启动时 PokeDexApplication 使用 MyBatis 自动配置。
  */
-@SpringBootApplication(excludeName = {
-    "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration"
-})
+@SpringBootApplication
 @ComponentScan(basePackages = {"com.lio9.pokedex", "com.lio9.common"})
 @ConfigurationPropertiesScan(basePackages = {"com.lio9.pokedex.config", "com.lio9.common.config"})
 public class PokeDexApplication {
 
     public static void main(String[] args) {
-        System.setProperty("spring.main.allow-bean-definition-overriding", "true");
         SpringApplication.run(PokeDexApplication.class, args);
     }
 }

@@ -89,6 +89,12 @@ public class BattleFactoryDataSourceConfig {
 
     private Path discoverExistingDatabase(Path workingDirectory) {
         for (Path base : ancestry(workingDirectory)) {
+            // 优先查找 backend/pokemon-factory.db（项目主数据库）
+            Path backendDbDir = base.resolve("backend").resolve("pokemon-factory.db");
+            if (Files.exists(backendDbDir)) {
+                return backendDbDir.toAbsolutePath().normalize();
+            }
+
             Path direct = base.resolve("pokemon-factory.db");
             if (Files.exists(direct)) {
                 return direct.toAbsolutePath().normalize();
@@ -104,13 +110,19 @@ public class BattleFactoryDataSourceConfig {
 
     private Path defaultDatabasePath(Path workingDirectory) {
         for (Path base : ancestry(workingDirectory)) {
+            // 优先使用 backend/ 目录下的数据库
+            Path backendDir = base.resolve("backend");
+            if (Files.isDirectory(backendDir) && Files.exists(backendDir.resolve("pom.xml"))) {
+                return backendDir.resolve("pokemon-factory.db").toAbsolutePath().normalize();
+            }
+
             if ("pokemon-factory-backend".equalsIgnoreCase(String.valueOf(base.getFileName()))) {
                 return base.resolve("pokemon-factory.db").toAbsolutePath().normalize();
             }
 
-            Path backendDir = base.resolve("pokemon-factory-backend");
-            if (Files.isDirectory(backendDir)) {
-                return backendDir.resolve("pokemon-factory.db").toAbsolutePath().normalize();
+            Path factoryBackendDir = base.resolve("pokemon-factory-backend");
+            if (Files.isDirectory(factoryBackendDir)) {
+                return factoryBackendDir.resolve("pokemon-factory.db").toAbsolutePath().normalize();
             }
         }
         return null;

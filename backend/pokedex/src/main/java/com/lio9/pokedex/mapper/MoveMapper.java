@@ -20,19 +20,16 @@ public interface MoveMapper extends BaseMapper<Move> {
     /**
      * 获取形态可学技能列表
      */
-    @Select("SELECT m.*, t.name as type_name, t.color as type_color, " +
+    @Select("SELECT m.id, m.name, m.name_en, m.power, m.accuracy, m.pp, m.priority, m.description, " +
+            "t.name as type_name, t.color as type_color, " +
             "mdc.name as damage_class_name, mlm.name as learn_method, " +
-            "pfm.level, pfm.version_group_id, " +
-            "GROUP_CONCAT(DISTINCT mf.identifier ORDER BY mf.id SEPARATOR ',') AS flags " +
+            "pfm.level, pfm.version_group_id " +
             "FROM move m " +
             "JOIN pokemon_form_move pfm ON pfm.move_id = m.id " +
             "LEFT JOIN type t ON t.id = m.type_id " +
             "LEFT JOIN move_damage_class mdc ON mdc.id = m.damage_class_id " +
             "LEFT JOIN move_learn_method mlm ON mlm.id = pfm.learn_method_id " +
-            "LEFT JOIN move_flag_map mfm ON mfm.move_id = m.id " +
-            "LEFT JOIN move_flags mf ON mf.id = mfm.flag_id " +
             "WHERE pfm.form_id = #{formId} " +
-            "GROUP BY m.id, t.name, t.color, mdc.name, mlm.name, pfm.level, pfm.version_group_id " +
             "ORDER BY mlm.id, pfm.level, m.id")
     List<Map<String, Object>> selectMovesByFormId(@Param("formId") Integer formId);
     
@@ -51,14 +48,10 @@ public interface MoveMapper extends BaseMapper<Move> {
     /**
      * 获取技能详情（包含属性名称和伤害类型）
      */
-    @Select("SELECT m.*, t.name as type_name, t.color as type_color, mdc.name as damage_class_name, " +
-            "GROUP_CONCAT(DISTINCT mf.identifier ORDER BY mf.id SEPARATOR ',') AS flags " +
+    @Select("SELECT m.*, t.name as type_name, t.color as type_color, mdc.name as damage_class_name " +
             "FROM move m " +
             "LEFT JOIN type t ON t.id = m.type_id " +
             "LEFT JOIN move_damage_class mdc ON mdc.id = m.damage_class_id " +
-            "LEFT JOIN move_flag_map mfm ON mfm.move_id = m.id " +
-            "LEFT JOIN move_flags mf ON mf.id = mfm.flag_id " +
-            "WHERE m.id = #{moveId} " +
-            "GROUP BY m.id, t.name, t.color, mdc.name")
+            "WHERE m.id = #{moveId}")
     Map<String, Object> selectMoveDetailById(@Param("moveId") Integer moveId);
 }
