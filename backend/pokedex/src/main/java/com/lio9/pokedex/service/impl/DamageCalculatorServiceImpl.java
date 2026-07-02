@@ -252,6 +252,8 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
             multipliers.put("Total", totalModifier);
             result.setAllMultipliers(multipliers);
             
+            // 24. 构建计算步骤（前端已从 allMultipliers 和结果字段自行渲染）
+            
         } catch (Exception e) {
             // 错误处理
             result.setMinDamage(0);
@@ -786,13 +788,13 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
         koEstimate.setAvgHits(avgHits);
         
         // 使用蒙特卡洛模拟计算击杀概率
-        double koChance = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000);
+        double koChance = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, maxHits);
         
         koEstimate.setKoChance(koChance);
         
-        // 计算百分比范围
-        double koChanceMin = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000);
-        double koChanceMax = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000);
+        // 分别按最小/最大击倒次数计算概率
+        double koChanceMin = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, minHits);
+        double koChanceMax = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, maxHits);
         
         koEstimate.setKoPercentRange(String.format("%.1f%% - %.1f%%", koChanceMin * 100, koChanceMax * 100));
         
@@ -803,18 +805,14 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
      * 使用蒙特卡洛模拟计算击杀概率
      */
     private double calculateKoChanceMonteCarlo(int minDamage, int maxDamage, int defenderHp, 
-                                              int simulations) {
+                                               int simulations, int maxHits) {
         int koCount = 0;
         
         for (int i = 0; i < simulations; i++) {
             int totalDamage = 0;
-            int hits = 0;
             
-            while (totalDamage < defenderHp && hits < 4) { // 最多4次攻击
-                // 生成随机伤害
-                double randomDamage = minDamage + Math.random() * (maxDamage - minDamage);
-                totalDamage += (int) Math.floor(randomDamage);
-                hits++;
+            for (int h = 0; h < maxHits; h++) {
+                totalDamage += minDamage + (int)(Math.random() * (maxDamage - minDamage + 1));
             }
             
             if (totalDamage >= defenderHp) {
@@ -900,6 +898,15 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
     /**
      * 判断是否是连续攻击技能
      */
+    private void addStep(List<DamageResultVO.CalculationStep> steps, String name, String desc, Double value, String category) {
+        DamageResultVO.CalculationStep step = new DamageResultVO.CalculationStep();
+        step.setName(name);
+        step.setDescription(desc);
+        step.setValue(value);
+        step.setCategory(category);
+        steps.add(step);
+    }
+
     private int getHits(Move move) {
         if (move.getNameEn() == null) return 1;
         
