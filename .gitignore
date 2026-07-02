@@ -122,3 +122,7 @@ backups/
 # 其他
 # ========================
 data/image/pokemon/
+
+# SQLite WAL/SHM
+*.db-shm
+*.db-wal
