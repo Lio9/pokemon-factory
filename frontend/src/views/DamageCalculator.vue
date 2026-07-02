@@ -30,8 +30,11 @@
       <div class="space-y-6">
         <!-- 基础选择 -->
         <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 class="text-lg font-bold text-slate-900">基础选择</h2>
-          <div class="mt-4 grid gap-4 lg:grid-cols-2">
+          <div class="flex items-center gap-2 mb-5">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">⚔</div>
+            <h2 class="text-lg font-bold text-slate-900">基础选择</h2>
+          </div>
+          <div class="grid gap-4 lg:grid-cols-2">
             <div class="space-y-2">
               <label class="text-sm font-bold text-slate-700">攻击方宝可梦</label>
               <el-select v-model="form.attackerPokemonId" filterable remote reserve-keyword default-first-option placeholder="选择攻击方" class="w-full" :loading="pokemonLoading" :remote-method="searchPokemonOptions" @change="handleAttackerChange">
@@ -45,7 +48,7 @@
               </el-select>
             </div>
             <div class="lg:col-span-2 flex gap-2">
-              <el-button plain :disabled="!form.attackerPokemonId || !form.defenderPokemonId" @click="swapPokemonSides">交换攻防方</el-button>
+              <el-button plain :disabled="!form.attackerPokemonId || !form.defenderPokemonId" @click="swapPokemonSides">⇄ 交换攻防方</el-button>
             </div>
             <div class="space-y-2 lg:col-span-2">
               <label class="text-sm font-bold text-slate-700">攻击招式</label>
@@ -58,8 +61,11 @@
 
         <!-- 战斗条件 -->
         <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 class="text-lg font-bold text-slate-900">战斗条件</h2>
-          <div class="mt-4 grid gap-4 lg:grid-cols-3">
+          <div class="flex items-center gap-2 mb-5">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold">⚡</div>
+            <h2 class="text-lg font-bold text-slate-900">战斗条件</h2>
+          </div>
+          <div class="grid gap-4 lg:grid-cols-3">
             <div class="space-y-2">
               <label class="text-sm font-bold text-slate-700">等级</label>
               <el-input-number v-model="form.attackerLevel" :min="1" :max="100" class="w-full" />
@@ -67,101 +73,124 @@
             <div class="space-y-2">
               <label class="text-sm font-bold text-slate-700">天气</label>
               <el-select v-model="form.weather" placeholder="无天气" clearable class="w-full">
-                <el-option label="晴天" value="sun" />
-                <el-option label="下雨" value="rain" />
-                <el-option label="沙暴" value="sand" />
-                <el-option label="冰雹/雪天" value="snow" />
+                <el-option label="☀ 晴天" value="sun" />
+                <el-option label="🌧 下雨" value="rain" />
+                <el-option label="🌪 沙暴" value="sand" />
+                <el-option label="❄ 冰雹/雪天" value="snow" />
               </el-select>
             </div>
             <div class="space-y-2">
               <label class="text-sm font-bold text-slate-700">场地</label>
               <el-select v-model="form.terrain" placeholder="无场地" clearable class="w-full">
-                <el-option label="电气场地" value="electric" />
-                <el-option label="精神场地" value="psychic" />
-                <el-option label="青草场地" value="grassy" />
-                <el-option label="薄雾场地" value="misty" />
+                <el-option label="⚡电气场地" value="electric" />
+                <el-option label="🔮精神场地" value="psychic" />
+                <el-option label="🌿青草场地" value="grassy" />
+                <el-option label="🌫薄雾场地" value="misty" />
               </el-select>
             </div>
             <div class="space-y-2">
-              <label class="text-sm font-bold text-slate-700">攻击方能力阶级</label>
+              <label class="text-sm font-bold text-slate-700">攻击方攻击/特攻阶级</label>
               <el-select v-model="form.attackerAttackBoost" placeholder="±0" class="w-full">
                 <el-option v-for="i in [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]" :key="i" :label="`${i>0?'+':''}${i}`" :value="i" />
               </el-select>
             </div>
             <div class="space-y-2">
-              <label class="text-sm font-bold text-slate-700">防御方能力阶级</label>
+              <label class="text-sm font-bold text-slate-700">防御方防御/特防阶级</label>
               <el-select v-model="form.defenderDefenseBoost" placeholder="±0" class="w-full">
                 <el-option v-for="i in [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]" :key="i" :label="`${i>0?'+':''}${i}`" :value="i" />
               </el-select>
             </div>
-            <div class="space-y-2">
-              <label class="text-sm font-bold text-slate-700">攻击方能力</label>
-              <el-select v-model="form.attackerSpAttackBoost" placeholder="±0" class="w-full">
-                <el-option v-for="i in [-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]" :key="i" :label="`${i>0?'+':''}${i}`" :value="i" />
-              </el-select>
-            </div>
           </div>
-          <div class="mt-4 flex flex-wrap gap-3">
-            <el-switch v-model="form.isCritical" inline-prompt :active-text="'暴击'" :inactive-text="'普通命中'" />
+          <div class="mt-5 pt-4 border-t border-slate-100 flex flex-wrap gap-3">
+            <el-switch v-model="form.isCritical" inline-prompt :active-text="'🎯 暴击'" :inactive-text="'普通命中'" />
             <el-switch v-model="form.isDoubleBattle" inline-prompt :active-text="'双打'" :inactive-text="'单打'" />
-            <el-switch v-model="form.attackerBurned" inline-prompt :active-text="'攻击方烧伤'" :inactive-text="'未烧伤'" />
-            <el-switch v-model="form.reflectActive" inline-prompt :active-text="'反射壁'" :inactive-text="'无反射壁'" />
-            <el-switch v-model="form.lightScreenActive" inline-prompt :active-text="'光墙'" :inactive-text="'无光墙'" />
-            <el-switch v-model="form.auroraVeilActive" inline-prompt :active-text="'极光幕'" :inactive-text="'无极光幕'" />
-          </div>
-        </div>
-
-        <!-- 能力值覆盖（留空则使用数据库默认值） -->
-        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 class="text-lg font-bold text-slate-900">能力值覆盖 <span class="text-xs font-normal text-slate-400">留空则使用数据库默认值</span></h2>
-          <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div class="space-y-1"><label class="text-xs text-slate-500">攻击方攻击</label><el-input-number v-model="form.attackerAtkOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-            <div class="space-y-1"><label class="text-xs text-slate-500">攻击方特攻</label><el-input-number v-model="form.attackerSpAOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-            <div class="space-y-1"><label class="text-xs text-slate-500">攻击方速度</label><el-input-number v-model="form.attackerSpeOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-            <div class="space-y-1"><label class="text-xs text-slate-500">防御方HP</label><el-input-number v-model="form.defenderHpOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-            <div class="space-y-1"><label class="text-xs text-slate-500">防御方攻击</label><el-input-number v-model="form.defenderAtkOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-            <div class="space-y-1"><label class="text-xs text-slate-500">防御方防御</label><el-input-number v-model="form.defenderDefOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-            <div class="space-y-1"><label class="text-xs text-slate-500">防御方特攻</label><el-input-number v-model="form.defenderSpAOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-            <div class="space-y-1"><label class="text-xs text-slate-500">防御方特防</label><el-input-number v-model="form.defenderSpDOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-            <div class="space-y-1"><label class="text-xs text-slate-500">防御方速度</label><el-input-number v-model="form.defenderSpeOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+            <el-switch v-model="form.attackerBurned" inline-prompt :active-text="'🔥 攻击方烧伤'" :inactive-text="'未烧伤'" />
+            <el-switch v-model="form.reflectActive" inline-prompt :active-text="'🛡 反射壁'" :inactive-text="'无反射壁'" />
+            <el-switch v-model="form.lightScreenActive" inline-prompt :active-text="'✨ 光墙'" :inactive-text="'无光墙'" />
+            <el-switch v-model="form.auroraVeilActive" inline-prompt :active-text="'🌈 极光幕'" :inactive-text="'无极光幕'" />
           </div>
         </div>
 
         <!-- 特性与道具 -->
         <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 class="text-lg font-bold text-slate-900">特性与道具</h2>
-          <div class="mt-4 grid gap-4 lg:grid-cols-2">
-            <div class="space-y-2">
-              <label class="text-sm font-bold text-slate-700">攻击方特性</label>
-              <el-select v-model="form.attackerAbilityId" filterable placeholder="选特性（可选）" clearable class="w-full">
-                <el-option v-for="a in filteredAttackerAbilities" :key="'aa-'+a.id" :label="a.name" :value="a.id" />
-              </el-select>
+          <div class="flex items-center gap-2 mb-5">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white text-xs font-bold">✦</div>
+            <h2 class="text-lg font-bold text-slate-900">特性与道具</h2>
+          </div>
+          <div class="grid gap-4 lg:grid-cols-2">
+            <div class="rounded-2xl bg-gradient-to-br from-indigo-50/60 to-white border border-indigo-100 p-4">
+              <div class="text-xs font-bold uppercase tracking-wider text-indigo-500 mb-3">攻击方</div>
+              <div class="space-y-3">
+                <div>
+                  <label class="text-xs font-bold text-slate-600">特性</label>
+                  <el-select v-model="form.attackerAbilityId" filterable placeholder="选特性（可选）" clearable class="w-full mt-1">
+                    <el-option v-for="a in filteredAttackerAbilities" :key="'aa-'+a.id" :label="a.name" :value="a.id" />
+                  </el-select>
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-slate-600">道具</label>
+                  <el-select v-model="form.attackerItemId" filterable remote :remote-method="searchItems" placeholder="选道具（可选）" clearable class="w-full mt-1" :loading="itemLoading">
+                    <el-option v-for="i in itemOptions" :key="'ai-'+i.id" :label="i.name" :value="i.id" />
+                  </el-select>
+                </div>
+              </div>
             </div>
-            <div class="space-y-2">
-              <label class="text-sm font-bold text-slate-700">防御方特性</label>
-              <el-select v-model="form.defenderAbilityId" filterable placeholder="选特性（可选）" clearable class="w-full">
-                <el-option v-for="a in filteredDefenderAbilities" :key="'da-'+a.id" :label="a.name" :value="a.id" />
-              </el-select>
+            <div class="rounded-2xl bg-gradient-to-br from-rose-50/60 to-white border border-rose-100 p-4">
+              <div class="text-xs font-bold uppercase tracking-wider text-rose-500 mb-3">防御方</div>
+              <div class="space-y-3">
+                <div>
+                  <label class="text-xs font-bold text-slate-600">特性</label>
+                  <el-select v-model="form.defenderAbilityId" filterable placeholder="选特性（可选）" clearable class="w-full mt-1">
+                    <el-option v-for="a in filteredDefenderAbilities" :key="'da-'+a.id" :label="a.name" :value="a.id" />
+                  </el-select>
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-slate-600">道具</label>
+                  <el-select v-model="form.defenderItemId" filterable remote :remote-method="searchItems" placeholder="选道具（可选）" clearable class="w-full mt-1" :loading="itemLoading">
+                    <el-option v-for="i in itemOptions" :key="'di-'+i.id" :label="i.name" :value="i.id" />
+                  </el-select>
+                </div>
+              </div>
             </div>
-            <div class="space-y-2">
-              <label class="text-sm font-bold text-slate-700">攻击方道具</label>
-              <el-select v-model="form.attackerItemId" filterable remote :remote-method="searchItems" placeholder="选道具（可选）" clearable class="w-full" :loading="itemLoading">
-                <el-option v-for="i in itemOptions" :key="'ai-'+i.id" :label="i.name" :value="i.id" />
-              </el-select>
+          </div>
+        </div>
+
+        <!-- 能力值覆盖 -->
+        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="flex items-center gap-2 mb-5">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold">📊</div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">能力值覆盖</h2>
+              <p class="text-xs text-slate-400">留空则使用数据库默认种族值</p>
             </div>
-            <div class="space-y-2">
-              <label class="text-sm font-bold text-slate-700">防御方道具</label>
-              <el-select v-model="form.defenderItemId" filterable remote :remote-method="searchItems" placeholder="选道具（可选）" clearable class="w-full" :loading="itemLoading">
-                <el-option v-for="i in itemOptions" :key="'di-'+i.id" :label="i.name" :value="i.id" />
-              </el-select>
+          </div>
+          <div class="grid gap-5 lg:grid-cols-2">
+            <div class="rounded-2xl bg-gradient-to-br from-indigo-50/60 to-white border border-indigo-100 p-4">
+              <div class="text-xs font-bold uppercase tracking-wider text-indigo-500 mb-3">攻击方</div>
+              <div class="grid grid-cols-3 gap-2">
+                <div><label class="text-[10px] text-slate-500">攻击</label><el-input-number v-model="form.attackerAtkOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">特攻</label><el-input-number v-model="form.attackerSpAOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">速度</label><el-input-number v-model="form.attackerSpeOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+              </div>
+            </div>
+            <div class="rounded-2xl bg-gradient-to-br from-rose-50/60 to-white border border-rose-100 p-4">
+              <div class="text-xs font-bold uppercase tracking-wider text-rose-500 mb-3">防御方</div>
+              <div class="grid grid-cols-3 gap-2">
+                <div><label class="text-[10px] text-slate-500">HP</label><el-input-number v-model="form.defenderHpOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">攻击</label><el-input-number v-model="form.defenderAtkOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">防御</label><el-input-number v-model="form.defenderDefOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">特攻</label><el-input-number v-model="form.defenderSpAOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">特防</label><el-input-number v-model="form.defenderSpDOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">速度</label><el-input-number v-model="form.defenderSpeOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 计算按钮 -->
-        <div class="flex flex-wrap items-center gap-3">
-          <el-button type="primary" size="large" :loading="calculating" :disabled="!canCalculate" @click="calculateDamage">计算伤害</el-button>
-          <el-button size="large" @click="resetCalculator">重置条件</el-button>
+        <div class="flex flex-wrap items-center gap-3 p-2">
+          <el-button type="primary" size="large" :loading="calculating" :disabled="!canCalculate" @click="calculateDamage" class="!px-8 !text-base !font-bold !shadow-lg !bg-gradient-to-r !from-blue-600 !to-indigo-600 !border-none hover:!from-blue-700 hover:!to-indigo-700">🎯 计算伤害</el-button>
+          <el-button size="large" @click="resetCalculator">↺ 重置条件</el-button>
           <span class="text-sm text-slate-500">{{ helperText }}</span>
         </div>
       </div>
@@ -483,7 +512,9 @@ async function calculateDamage() {
       attackerItemId: form.attackerItemId,
       defenderItemId: form.defenderItemId,
       attackerAttackBoost: form.attackerAttackBoost,
+      attackerSpAttackBoost: form.attackerAttackBoost,
       defenderDefenseBoost: form.defenderDefenseBoost,
+      defenderSpDefenseBoost: form.defenderDefenseBoost,
       attackerAttack: form.attackerAtkOv || undefined,
       attackerSpAttack: form.attackerSpAOv || undefined,
       defenderHp: form.defenderHpOv || undefined,
