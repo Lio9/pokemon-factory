@@ -790,13 +790,10 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
         // 使用蒙特卡洛模拟计算击杀概率
         double koChance = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, maxHits);
         
-        koEstimate.setKoChance(koChance);
-        
-        // 分别按最小/最大击倒次数计算概率
-        double koChanceMin = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, minHits);
-        double koChanceMax = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, maxHits);
-        
-        koEstimate.setKoPercentRange(String.format("%.1f%% - %.1f%%", koChanceMin * 100, koChanceMax * 100));
+        // 计算 maxHits 内的总击倒概率（单一数值）
+        double koChanceOverall = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, maxHits);
+        koEstimate.setKoChance(koChanceOverall);
+        koEstimate.setKoPercentRange(String.format("%.1f%%", koChanceOverall * 100));
         
         result.setKoEstimate(koEstimate);
     }
