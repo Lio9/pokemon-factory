@@ -371,26 +371,39 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
     @Override
     public List<MoveVO> getFormMoves(Integer formId, Integer versionGroupId) {
         List<Map<String, Object>> rawMoves = moveMapper.selectMovesByFormId(formId);
-        return rawMoves.stream()
-                .filter(m -> versionGroupId == null || versionGroupId.equals(m.get("version_group_id")))
-                .map(m -> {
-                    MoveVO vo = new MoveVO();
-                    vo.setId(toInt(m.get("id")));
-                    vo.setName((String) m.get("name"));
-                    vo.setNameEn((String) m.get("name_en"));
-                    vo.setTypeName((String) m.get("type_name"));
-                    vo.setTypeColor((String) m.get("type_color"));
-                    vo.setDamageClass((String) m.get("damage_class_name"));
-                    vo.setPower(toInt(m.get("power")));
-                    vo.setAccuracy(toInt(m.get("accuracy")));
-                    vo.setPp(toInt(m.get("pp")));
-                    vo.setPriority(toInt(m.get("priority")));
-                    vo.setDescription((String) m.get("description"));
-                    vo.setLearnMethod((String) m.get("learn_method"));
-                    vo.setLevel(toInt(m.get("level")));
-                    return vo;
-                })
-                .collect(Collectors.toList());
+        // 按 move_id 去重，优先保留等级最低的学习方式
+        Map<Integer, MoveVO> unique = new LinkedHashMap<>();
+        for (Map<String, Object> m : rawMoves) {
+            if (versionGroupId != null && !versionGroupId.equals(m.get("version_group_id"))) continue;
+            Integer mid = toInt(m.get("id"));
+            if (mid == null) continue;
+            MoveVO existing = unique.get(mid);
+            if (existing == null) {
+                MoveVO vo = new MoveVO();
+                vo.setId(mid);
+                vo.setName((String) m.get("name"));
+                vo.setNameEn((String) m.get("name_en"));
+                vo.setTypeName((String) m.get("type_name"));
+                vo.setTypeColor((String) m.get("type_color"));
+                vo.setDamageClass((String) m.get("damage_class_name"));
+                vo.setPower(toInt(m.get("power")));
+                vo.setAccuracy(toInt(m.get("accuracy")));
+                vo.setPp(toInt(m.get("pp")));
+                vo.setPriority(toInt(m.get("priority")));
+                vo.setDescription((String) m.get("description"));
+                vo.setLearnMethod((String) m.get("learn_method"));
+                vo.setLevel(toInt(m.get("level")));
+                unique.put(mid, vo);
+            } else {
+                // 已有记录则保留更低等级的学习方式
+                Integer newLevel = toInt(m.get("level"));
+                if (newLevel != null && (existing.getLevel() == null || newLevel < existing.getLevel())) {
+                    existing.setLevel(newLevel);
+                    existing.setLearnMethod((String) m.get("learn_method"));
+                }
+            }
+        }
+        return new ArrayList<>(unique.values());
     }
 
     private Integer toInt(Object value) {
