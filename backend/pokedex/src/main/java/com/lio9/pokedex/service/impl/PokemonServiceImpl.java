@@ -213,17 +213,21 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
                     List<PokemonFormStat> stats = entry.getValue();
                     
                     StatVO statVO = new StatVO();
+                    int total = 0;
                     for (PokemonFormStat stat : stats) {
+                        int base = stat.getBaseStat();
+                        total += base;
                         switch (stat.getStatId()) {
-                            case 1: statVO.setHp(stat.getBaseStat()); break;
-                            case 2: statVO.setAttack(stat.getBaseStat()); break;
-                            case 3: statVO.setDefense(stat.getBaseStat()); break;
-                            case 4: statVO.setSpAttack(stat.getBaseStat()); break;
-                            case 5: statVO.setSpDefense(stat.getBaseStat()); break;
-                            case 6: statVO.setSpeed(stat.getBaseStat()); break;
+                            case 1: statVO.setHp(base); break;
+                            case 2: statVO.setAttack(base); break;
+                            case 3: statVO.setDefense(base); break;
+                            case 4: statVO.setSpAttack(base); break;
+                            case 5: statVO.setSpDefense(base); break;
+                            case 6: statVO.setSpeed(base); break;
                             default: break;
                         }
                     }
+                    statVO.setTotal(total);
                     formStatsMap.put(formId, statVO);
                 }
             }

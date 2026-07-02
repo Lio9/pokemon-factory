@@ -1,13 +1,10 @@
 package com.lio9.pokedex.vo;
 
+import lombok.Getter;
+import lombok.Setter;
 
-
-import lombok.Data;
-
-/**
- * 种族值VO
- */
-@Data
+@Getter
+@Setter
 public class StatVO {
     private Integer hp;
     private Integer attack;

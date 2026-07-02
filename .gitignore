@@ -86,6 +86,7 @@ Thumbs.db
 logs/
 *.log
 *.log.gz
+*.err
 
 # ========================
 # 原始数据 (PokeAPI CSV)

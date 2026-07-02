@@ -314,16 +314,20 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
                     List<com.lio9.pokedex.model.PokemonFormStat> stats = entry.getValue();
 
                     StatVO statVO = new StatVO();
+                    int total = 0;
                     for (com.lio9.pokedex.model.PokemonFormStat stat : stats) {
+                        int base = stat.getBaseStat();
+                        total += base;
                         switch (stat.getStatId()) {
-                            case 1: statVO.setHp(stat.getBaseStat()); break;
-                            case 2: statVO.setAttack(stat.getBaseStat()); break;
-                            case 3: statVO.setDefense(stat.getBaseStat()); break;
-                            case 4: statVO.setSpAttack(stat.getBaseStat()); break;
-                            case 5: statVO.setSpDefense(stat.getBaseStat()); break;
-                            case 6: statVO.setSpeed(stat.getBaseStat()); break;
+                            case 1: statVO.setHp(base); break;
+                            case 2: statVO.setAttack(base); break;
+                            case 3: statVO.setDefense(base); break;
+                            case 4: statVO.setSpAttack(base); break;
+                            case 5: statVO.setSpDefense(base); break;
+                            case 6: statVO.setSpeed(base); break;
                         }
                     }
+                    statVO.setTotal(total);
                     formStatsMap.put(formId, statVO);
                 }
             }
@@ -436,30 +440,103 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
      */
     @Override
     public Page<AbilityVO> getAbilityList(int current, int size, String keyword) {
-        // Placeholder implementation: return empty page until implemented.
-        return new Page<>(current, size);
+        QueryWrapper<Ability> wrapper = new QueryWrapper<>();
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            wrapper.and(w -> w.like("name", keyword.trim()).or().like("name_en", keyword.trim()));
+        }
+        wrapper.orderByAsc("id");
+
+        List<Ability> abilities = abilityMapper.selectList(wrapper);
+        List<AbilityVO> records = abilities.stream().map(a -> {
+            AbilityVO vo = new AbilityVO();
+            vo.setId(a.getId());
+            vo.setName(a.getName());
+            vo.setNameEn(a.getNameEn());
+            vo.setDescription(a.getDescription());
+            return vo;
+        }).collect(Collectors.toList());
+
+        Page<AbilityVO> page = new Page<>(current, size, records.size());
+        page.setRecords(records);
+        return page;
     }
 
-/**
-     * 获取技能分页列表。
-     * <p>
-     * 支持按属性（typeId）和关键字搜索（keyword）。当前为占位实现，返回空分页。
-     */
     @Override
     public Page<MoveVO> getMoveList(int current, int size, Integer typeId, String keyword) {
-        // Placeholder implementation: return empty page until implemented.
-        return new Page<>(current, size);
+        // 预加载类型和伤害分类映射
+        Map<Integer, Type> typeMap = typeMapper.selectList(null).stream()
+                .collect(Collectors.toMap(Type::getId, t -> t));
+
+        QueryWrapper<Move> wrapper = new QueryWrapper<>();
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            wrapper.and(w -> w.like("name", keyword.trim()).or().like("name_en", keyword.trim()));
+        }
+        if (typeId != null) {
+            wrapper.eq("type_id", typeId);
+        }
+        wrapper.orderByAsc("id");
+
+        List<Move> moves = moveMapper.selectList(wrapper);
+        List<MoveVO> records = moves.stream().map(m -> {
+            MoveVO vo = new MoveVO();
+            vo.setId(m.getId());
+            vo.setName(m.getName());
+            vo.setNameEn(m.getNameEn());
+
+            Type t = typeMap.get(m.getTypeId());
+            if (t != null) {
+                vo.setTypeName(t.getName());
+                vo.setTypeColor(t.getColor());
+            }
+
+            // damage_class: 1=物理, 2=特殊, 3=变化
+            if (m.getDamageClassId() != null) {
+                switch (m.getDamageClassId()) {
+                    case 1: vo.setDamageClass("物理"); break;
+                    case 2: vo.setDamageClass("特殊"); break;
+                    case 3: vo.setDamageClass("变化"); break;
+                }
+            }
+
+            vo.setPower(m.getPower());
+            vo.setAccuracy(m.getAccuracy());
+            vo.setPp(m.getPp());
+            vo.setPriority(m.getPriority());
+            vo.setDescription(m.getDescription());
+            return vo;
+        }).collect(Collectors.toList());
+
+        Page<MoveVO> page = new Page<>(current, size, records.size());
+        page.setRecords(records);
+        return page;
     }
 
-/**
-     * 获取物品分页列表。
-     * <p>
-     * 支持按分类（categoryId）和关键字搜索（keyword）。当前为占位实现，返回空分页。
-     */
     @Override
     public Page<ItemVO> getItemList(int current, int size, Integer categoryId, String keyword) {
-        // Placeholder implementation: return empty page until implemented.
-        return new Page<>(current, size);
+        QueryWrapper<Item> wrapper = new QueryWrapper<>();
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            wrapper.and(w -> w.like("name", keyword.trim()).or().like("name_en", keyword.trim()));
+        }
+        if (categoryId != null) {
+            wrapper.eq("category_id", categoryId);
+        }
+        wrapper.orderByAsc("id");
+
+        List<Item> items = itemMapper.selectList(wrapper);
+        List<ItemVO> records = items.stream().map(item -> {
+            ItemVO vo = new ItemVO();
+            vo.setId(item.getId());
+            vo.setName(item.getName());
+            vo.setNameEn(item.getNameEn());
+            vo.setCost(item.getCost());
+            vo.setDescription(item.getDescription());
+            vo.setSpriteUrl(item.getSpriteUrl());
+            return vo;
+        }).collect(Collectors.toList());
+
+        Page<ItemVO> page = new Page<>(current, size, records.size());
+        page.setRecords(records);
+        return page;
     }
 
     @Override

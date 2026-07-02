@@ -40,6 +40,7 @@ declare module 'vue' {
     EvolutionChainPanel: typeof import('./src/components/EvolutionChainPanel.vue')['default']
     ExchangeModal: typeof import('./src/components/ExchangeModal.vue')['default']
     FavoriteButton: typeof import('./src/components/FavoriteButton.vue')['default']
+    ItemDetailDialog: typeof import('./src/components/ItemDetailDialog.vue')['default']
     LoadMoreTrigger: typeof import('./src/components/LoadMoreTrigger.vue')['default']
     MoveDetailDialog: typeof import('./src/components/MoveDetailDialog.vue')['default']
     PokemonAbilitiesPanel: typeof import('./src/components/PokemonAbilitiesPanel.vue')['default']

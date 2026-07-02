@@ -1,7 +1,7 @@
 <template>
   <div class="ability-list">
     <!-- 搜索和筛选 -->
-    <div class="glass-card mb-6 p-4 sticky top-[4.25rem] z-10 sm:top-[4.75rem]">
+    <div class="glass-card mb-6 p-4">
       <div class="flex flex-col gap-4">
         <div class="flex flex-wrap gap-3">
           <div class="flex-1 min-w-[200px]">
@@ -349,9 +349,8 @@ const {
   hasMore,
   loadedCount,
   total,
-  fetchItems,
-  onListMounted,
-  onListUnmounted
+  displayCount,
+  fetchItems
 } = useCatalogList({
   fetchFn: abilityApi.getList,
   favoritesKey: 'ability-favorites',
@@ -406,11 +405,12 @@ function applyFilters() {
     })
   }
 
-  filteredItems.value = result
+  filteredItems.value = result.slice(0, displayCount.value)
 }
 
-// items 变化时重新筛选
+// items 或 displayCount 变化时重新筛选（支持懒加载）
 watch(() => items.value.length, () => { applyFilters() })
+watch(() => displayCount.value, () => { applyFilters() })
 watch([selectedGeneration, descriptionLength, sortBy, isShowFavorites], () => { applyFilters() })
 
 // ---- 详情弹窗 ----

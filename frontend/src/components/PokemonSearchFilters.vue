@@ -1,5 +1,5 @@
 <template>
-  <div class="search-section mb-6 rounded-2xl border border-transparent p-4 shadow-lg transition-all duration-300 hover:shadow-xl sticky top-[4.25rem] z-10 sm:mb-8 sm:p-6 sm:top-[4.75rem] card-glass">
+  <div class="search-section mb-6 rounded-2xl border border-transparent p-4 shadow-lg transition-all duration-300 hover:shadow-xl card-glass">
     <div class="flex flex-col lg:flex-row gap-4">
       <!-- 搜索框 -->
       <div class="flex-1">

@@ -1,7 +1,7 @@
 <template>
   <div class="move-list">
     <!-- 搜索和筛选 -->
-    <div class="glass-card mb-6 p-4 sticky top-[4.25rem] z-10 sm:top-[4.75rem]">
+    <div class="glass-card mb-6 p-4">
       <div class="flex flex-col gap-4">
         <div class="flex flex-wrap gap-3">
           <div class="flex-1 min-w-[200px]">
@@ -427,6 +427,15 @@ import MoveDetailDialog from '../components/MoveDetailDialog.vue'
 
 const { translate: tr } = useLocale()
 
+// ---- 筛选状态（必须在 useCatalogList 之前定义，否则 TDZ 报错） ----
+const selectedType = ref('')
+const selectedDamageClass = ref('')
+const powerRange = ref('')
+const accuracyRange = ref('')
+const ppRange = ref('')
+const sortBy = ref('default')
+const showFilters = ref(false)
+
 // ---- 通用列表逻辑 ----
 const {
   items,       // 原始 moves 数据（未筛选）
@@ -444,6 +453,7 @@ const {
   hasMore,
   loadedCount,
   total,
+  displayCount,
   fetchItems
 } = useCatalogList({
   fetchFn: (params) => moveApi.getList({
@@ -453,15 +463,6 @@ const {
   favoritesKey: 'move-favorites',
   pageSize: 48
 })
-
-// ---- 筛选状态 ----
-const selectedType = ref('')
-const selectedDamageClass = ref('')
-const powerRange = ref('')
-const accuracyRange = ref('')
-const ppRange = ref('')
-const sortBy = ref('default')
-const showFilters = ref(false)
 
 // ---- 类型数据 ----
 const types = ref([])
@@ -527,11 +528,13 @@ function applyFilters() {
     })
   }
 
-  filteredMoves.value = result
+  // 客户端分页：只展示当前页的数据
+  filteredMoves.value = result.slice(0, displayCount.value)
 }
 
-// items 变化时重新筛选
+// items 或 displayCount 变化时重新筛选（支持懒加载）
 watch(() => items.value.length, () => { applyFilters() })
+watch(() => displayCount.value, () => { applyFilters() })
 watch([selectedType, selectedDamageClass, powerRange, accuracyRange, ppRange, sortBy, isShowFavorites], () => {
   applyFilters()
 })

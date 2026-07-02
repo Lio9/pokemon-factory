@@ -1,7 +1,7 @@
 <template>
   <div class="item-list">
     <!-- 搜索栏 -->
-    <div class="glass-card mb-6 p-4 sticky top-[4.25rem] z-10 sm:top-[4.75rem]">
+    <div class="glass-card mb-6 p-4">
       <div class="flex flex-col sm:flex-row gap-4">
         <div class="flex-1">
           <el-input
@@ -98,10 +98,11 @@
       class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4"
     >
       <div
-        v-for="(item, index) in items"
+        v-for="(item, index) in displayItems"
         :key="item.id"
-        class="shine-effect glass-card-interactive glass-card p-4 text-center group animate-slide-up relative overflow-hidden"
+        class="shine-effect glass-card-interactive glass-card p-4 text-center group animate-slide-up relative overflow-hidden cursor-pointer"
         :style="{ animationDelay: `${index * 25}ms` }"
+        @click="showItemDetail(item)"
       >
         <div
           class="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-10"
@@ -109,17 +110,11 @@
         />
         <div class="relative z-10">
           <div class="aspect-square flex items-center justify-center mb-3 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-3 shadow-inner">
-            <div
-              v-if="!item._imageLoaded"
-              class="w-12 h-12 rounded-full bg-slate-200 animate-pulse"
-            />
             <img
-              v-show="item._imageLoaded"
               :src="item._imageUrl"
               :alt="item.name"
               class="w-14 h-14 object-contain transition-all duration-300 group-hover:scale-125 group-hover:drop-shadow-xl float-animation"
               loading="lazy"
-              @load="item._imageLoaded = true"
               @error="onImageError(item)"
             >
           </div>
@@ -153,6 +148,12 @@
       :total="total"
       @load-more="fetchItems(true)"
     />
+
+    <!-- 详情弹窗 -->
+    <ItemDetailDialog
+      v-model:visible="showDetailDialog"
+      :item="selectedItem"
+    />
   </div>
 </template>
 
@@ -163,7 +164,7 @@
  * 使用 useCatalogList 管理分页、搜索、IntersectionObserver。
  * 保留独特的统计卡片和图片处理逻辑。
  */
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { itemApi, sprites } from '../services/api.js'
 import { useLocale } from '../composables/useLocale'
@@ -171,6 +172,7 @@ import { useCatalogList } from '../composables/useCatalogList'
 import CatalogSkeleton from '../components/CatalogSkeleton.vue'
 import LoadMoreTrigger from '../components/LoadMoreTrigger.vue'
 import EmptyState from '../components/EmptyState.vue'
+import ItemDetailDialog from '../components/ItemDetailDialog.vue'
 
 const { translate: tr } = useLocale()
 
@@ -178,20 +180,21 @@ const { translate: tr } = useLocale()
 function processItemData(data) {
   return data.map(item => ({
     ...item,
-    _imageUrl: item.spriteUrl || getItemImage(item),
-    _imageLoaded: false
+    _imageUrl: item.spriteUrl || getItemImage(item)
   }))
 }
 
+const FALLBACK_ITEM_URL = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items'
+
 function getItemImage(item) {
   if (item.nameEn) {
-    return sprites.item(item.nameEn.toLowerCase().replace(/[^a-z0-9]/g, '-'))
+    const name = item.nameEn.toLowerCase().replace(/[^a-z0-9]/g, '-')
+    return `${FALLBACK_ITEM_URL}/${name}.png`
   }
   return sprites.default
 }
 
 function onImageError(item) {
-  item._imageLoaded = true
   item._imageUrl = sprites.default
 }
 
@@ -206,6 +209,8 @@ const {
   hasMore,
   loadedCount,
   total,
+  displayItems,
+  displayCount,
   fetchItems
 } = useCatalogList({
   fetchFn: async (params) => {
@@ -224,6 +229,15 @@ const categories = computed(() => {
   const cats = new Set(items.value.map(i => i.category).filter(Boolean))
   return cats.size || '-'
 })
+
+// ---- 详情弹窗 ----
+const showDetailDialog = ref(false)
+const selectedItem = ref(null)
+
+function showItemDetail(item) {
+  selectedItem.value = item
+  showDetailDialog.value = true
+}
 </script>
 
 <style scoped>

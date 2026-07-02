@@ -25,12 +25,12 @@
 
     <PokemonCardGrid
       ref="cardGridRef"
-      :pokemons="pokemons"
+      :pokemons="displayPokemons"
       :view-mode="viewMode"
       :loading="loading"
       :loading-more="loadingMore"
       :has-more="hasMore"
-      :total="total"
+      :total="allRecords.length"
       :show-back-top="showBackTop"
       :is-favorite="isFavorite"
       @toggle-favorite="toggleFavorite"
@@ -52,11 +52,9 @@ import { perfMonitor } from '../services/performance'
 import PokemonSearchFilters from '../components/PokemonSearchFilters.vue'
 import PokemonCardGrid from '../components/PokemonCardGrid.vue'
 
-// DOM references
 const listContainer = ref(null)
 const cardGridRef = ref(null)
 
-// Reactive state
 const loading = ref(false)
 const loadingMore = ref(false)
 const pokemons = ref([])
@@ -69,12 +67,11 @@ const viewMode = ref('grid')
 const activeQuickFilters = ref([])
 const favorites = ref(new Set())
 
-// Pagination
-const currentPage = ref(0)
+// 客户端分页：allRecords 存后端返回的全部数据，pokemons 只放当前页要显示的
 const pageSize = ref(24)
-const total = ref(0)
+const displayCount = ref(pageSize.value)
+const allRecords = ref([])
 
-// Scroll state
 const showBackTop = ref(false)
 let observer = null
 let scrollThrottleTimer = null
@@ -97,8 +94,8 @@ const quickFilters = [
   { key: 'baby', label: '幼崽', icon: '👶' }
 ]
 
-const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
-const hasMore = computed(() => currentPage.value < totalPages.value)
+const hasMore = computed(() => displayCount.value < allRecords.value.length)
+const displayPokemons = computed(() => allRecords.value.slice(0, displayCount.value))
 
 // ---- Favorite helpers ----
 const loadFavorites = () => {
@@ -134,7 +131,7 @@ const toggleQuickFilter = (filterKey) => {
   } else {
     activeQuickFilters.value.push(filterKey)
   }
-  handleFilter()
+  applyFilters()
 }
 
 const resetFilters = () => {
@@ -142,28 +139,63 @@ const resetFilters = () => {
   selectedType.value = null
   selectedGeneration.value = null
   activeQuickFilters.value = []
-  handleFilter()
+  applyFilters()
 }
 
-// ---- Sort ----
-const sortPokemons = (data) => {
-  const sorted = [...data]
+const applyFilters = () => {
+  // 从 allRecords 中筛选，然后重置显示
+  let filtered = allRecords.value
+
+  // 类型筛选
+  if (selectedType.value) {
+    filtered = filtered.filter(p => p.types?.some?.(t => t.id === selectedType.value))
+  }
+
+  // 传说/神话/幼崽
+  if (activeQuickFilters.value.length > 0) {
+    filtered = filtered.filter(p =>
+      activeQuickFilters.value.every(f => {
+        if (f === 'legendary') return p.isLegendary
+        if (f === 'mythical') return p.isMythical
+        if (f === 'baby') return p.isBaby
+        return true
+      })
+    )
+  }
+
+  // 搜索关键字
+  if (searchKeyword.value.trim()) {
+    const kw = searchKeyword.value.trim().toLowerCase()
+    filtered = filtered.filter(p =>
+      p.name?.toLowerCase().includes(kw) ||
+      p.nameEn?.toLowerCase().includes(kw)
+    )
+  }
+
+  // 排序
+  filtered = [...filtered]
   switch (sortBy.value) {
     case 'name':
-      sorted.sort((a, b) => a.name.localeCompare(b.name))
+      filtered.sort((a, b) => a.name?.localeCompare(b.name) || 0)
       break
     case 'attack':
-      sorted.sort((a, b) => (b.formStats?.attack || 0) - (a.formStats?.attack || 0))
+      filtered.sort((a, b) => (b.formStats?.attack || 0) - (a.formStats?.attack || 0))
       break
     case 'speed':
-      sorted.sort((a, b) => (b.formStats?.speed || 0) - (a.formStats?.speed || 0))
+      filtered.sort((a, b) => (b.formStats?.speed || 0) - (a.formStats?.speed || 0))
       break
     case 'id':
     default:
-      sorted.sort((a, b) => a.id - b.id)
+      filtered.sort((a, b) => a.id - b.id)
   }
-  return sorted
+
+  pokemons.value = filtered
+  allRecords.value = filtered
+  displayCount.value = pageSize.value
 }
+
+// ---- Sort ----
+watch(() => sortBy.value, () => applyFilters())
 
 // ---- Data fetching ----
 const fetchTypes = async () => {
@@ -184,54 +216,33 @@ const processPokemonData = (data) => {
   }))
 }
 
-const applyQuickFilters = (data) => {
-  if (activeQuickFilters.value.length === 0) return data
-  return data.filter(pokemon =>
-    activeQuickFilters.value.every(filter => {
-      switch (filter) {
-        case 'legendary': return pokemon.isLegendary
-        case 'mythical': return pokemon.isMythical
-        case 'baby': return pokemon.isBaby
-        default: return true
-      }
-    })
-  )
-}
-
 const fetchPokemons = async (isLoadMore = false) => {
   if (loading.value || loadingMore.value) return
-  if (isLoadMore && !hasMore.value) return
 
   if (isLoadMore) {
-    loadingMore.value = true
-  } else {
-    loading.value = true
-    currentPage.value = 0
-    pokemons.value = []
+    displayCount.value += pageSize.value
+    return
   }
 
+  loading.value = true
+  pokemons.value = []
+  allRecords.value = []
+
   try {
-    const nextPage = currentPage.value + 1
-    const params = {
-      current: nextPage,
-      size: pageSize.value,
+    const result = await pokemonApi.getList({
+      current: 1,
+      size: 10000,
       typeId: selectedType.value,
       generationId: selectedGeneration.value,
       keyword: searchKeyword.value || undefined
-    }
-
-    const result = await pokemonApi.getList(params)
+    })
 
     if (result.code === 200) {
       let records = result.data.records || []
-      total.value = result.data.total || 0
-      currentPage.value = nextPage
-
-      records = applyQuickFilters(records)
-      const processedData = processPokemonData(records)
-      pokemons.value = [...pokemons.value, ...processedData]
-
-      preloadNextPageData(nextPage + 1)
+      const processed = processPokemonData(records)
+      allRecords.value = processed
+      pokemons.value = processed
+      displayCount.value = pageSize.value
     } else {
       ElMessage.error(result.message || '获取数据失败')
     }
@@ -240,20 +251,7 @@ const fetchPokemons = async (isLoadMore = false) => {
     ElMessage.error('网络错误，请稍后重试')
   } finally {
     loading.value = false
-    loadingMore.value = false
   }
-}
-
-const preloadNextPageData = async (page) => {
-  if (page > totalPages.value) return
-  const params = {
-    current: page,
-    size: pageSize.value,
-    typeId: selectedType.value,
-    generationId: selectedGeneration.value,
-    keyword: searchKeyword.value || undefined
-  }
-  dataCache.getOrFetch('pokemon:list', params, () => pokemonApi.getList(params)).catch(() => {})
 }
 
 const handleImageLoad = (pokemon) => { pokemon._imageLoaded = true }
@@ -270,10 +268,6 @@ const handleSearch = () => {
 const handleFilter = () => {
   dataCache.clearType('pokemon')
   fetchPokemons(false)
-}
-
-const handleSort = () => {
-  pokemons.value = sortPokemons(pokemons.value)
 }
 
 const scrollToTop = () => {
@@ -311,15 +305,35 @@ const setupObserver = () => {
 // ---- Lifecycle ----
 let cleanupShortcuts = null
 
-onMounted(async () => {
-  window.addEventListener('scroll', handleScroll, { passive: true })
-  loadFavorites()
-  await fetchTypes()
+// 在 setup 阶段发起首次数据加载，让首次渲染直接显示骨架屏
+loading.value = true
+loadFavorites()
+fetchTypes()
 
+// 直接发起首次加载（不经过 fetchPokemons 的 loading 守卫）
+;(async () => {
   perfMonitor.recordPageLoad('PokemonList')
-  await fetchPokemons(false)
-
+  dataCache.clearType('pokemon')
+  try {
+    const result = await pokemonApi.getList({
+      current: 1, size: 10000,
+      typeId: null, generationId: null
+    })
+    if (result.code === 200) {
+      const records = result.data.records || []
+      allRecords.value = processPokemonData(records)
+      pokemons.value = allRecords.value
+      displayCount.value = pageSize.value
+    }
+  } catch (e) {
+    console.error('初始加载失败:', e)
+  }
+  loading.value = false
   nextTick(() => setupObserver())
+})()
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll, { passive: true })
 
   cleanupShortcuts = registerShortcuts({
     '/': {
@@ -360,8 +374,6 @@ onUnmounted(() => {
   }
 })
 
-watch(() => sortBy.value, () => handleSort())
-
 watch(() => pokemons.value.length, () => {
   nextTick(() => {
     const trigger = cardGridRef.value?.loadMoreTrigger
@@ -375,24 +387,30 @@ watch(() => pokemons.value.length, () => {
 
 <style scoped>
 .pokemon-list {
-  scroll-behavior: smooth;
+  padding-bottom: 2rem;
 }
 
-.pokemon-list::-webkit-scrollbar {
+@media (max-width: 768px) {
+  .pokemon-list {
+    padding-bottom: 1rem;
+  }
+}
+
+.overflow-y-auto::-webkit-scrollbar {
   width: 8px;
 }
 
-.pokemon-list::-webkit-scrollbar-track {
+.overflow-y-auto::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 4px;
 }
 
-.pokemon-list::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #888;
   border-radius: 4px;
 }
 
-.pokemon-list::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #2563eb, #7c3aed);
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 </style>

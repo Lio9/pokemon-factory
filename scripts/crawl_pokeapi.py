@@ -196,13 +196,63 @@ class Crawler:
                 if aid in existing: continue
                 zh = lang_name(data)
                 en = data['name']
-                desc = ''
+                # 中文描述：优先从 flavor_text_entries 取 zh-hans（按世代优先级）
+                desc_zh = ''
+                flavor_entries = data.get('flavor_text_entries', [])
+                gen_priority = ["scarlet-violet", "sword-shield", "ultra-sun-ultra-moon",
+                                "sun-moon", "omega-ruby-alpha-sapphire", "x-y",
+                                "black-2-white-2", "black-white"]
+                for gen in gen_priority:
+                    for entry in flavor_entries:
+                        if entry.get('language', {}).get('name') == 'zh-hans' and entry.get('version_group', {}).get('name') == gen:
+                            text = entry.get('flavor_text', '').replace('\n', ' ').replace('\r', '').replace('\f', ' ').strip()
+                            if text:
+                                desc_zh = text
+                                break
+                    if desc_zh:
+                        break
+                # fallback: 任何世代的 zh-hans flavor_text
+                if not desc_zh:
+                    for entry in flavor_entries:
+                        if entry.get('language', {}).get('name') == 'zh-hans':
+                            text = entry.get('flavor_text', '').replace('\n', ' ').replace('\r', '').replace('\f', ' ').strip()
+                            if text:
+                                desc_zh = text
+                                break
+                # fallback: zh-hant flavor_text
+                if not desc_zh:
+                    for entry in flavor_entries:
+                        if entry.get('language', {}).get('name') == 'zh-hant':
+                            text = entry.get('flavor_text', '').replace('\n', ' ').replace('\r', '').replace('\f', ' ').strip()
+                            if text:
+                                desc_zh = text
+                                break
+                # fallback: effect_entries zh-hans short_effect
+                if not desc_zh:
+                    for e in data.get('effect_entries', []):
+                        if e.get('language', {}).get('name') == 'zh-hans':
+                            text = e.get('short_effect', e.get('effect', '')).replace('\n', ' ').replace('\r', '').replace('\f', ' ').strip()
+                            if text:
+                                desc_zh = text
+                                break
+                # 英文描述：优先 effect_entries short_effect，fallback flavor_text
+                desc_en = ''
                 for e in data.get('effect_entries', []):
-                    if e.get('language', {}).get('name') in ('zh-Hans', 'en'):
-                        desc = e.get('short_effect', e.get('effect', ''))
+                    if e.get('language', {}).get('name') == 'en':
+                        text = e.get('short_effect', e.get('effect', '')).replace('\n', ' ').replace('\r', '').replace('\f', ' ').strip()
+                        if text:
+                            desc_en = text
+                            break
+                if not desc_en:
+                    for entry in flavor_entries:
+                        if entry.get('language', {}).get('name') == 'en':
+                            text = entry.get('flavor_text', '').replace('\n', ' ').replace('\r', '').replace('\f', ' ').strip()
+                            if text:
+                                desc_en = text
+                                break
                 gen = gen_num(data)
-                cur.execute("INSERT OR IGNORE INTO ability(id,name,name_en,description,generation_id,is_main_series) VALUES(?,?,?,?,?,1)",
-                            (aid, zh, en, desc, gen))
+                cur.execute("INSERT OR IGNORE INTO ability(id,name,name_en,description,description_en,generation_id,is_main_series) VALUES(?,?,?,?,?,?,1)",
+                            (aid, zh, en, desc_zh, desc_en, gen))
                 count += 1
             conn.commit()
             log(f"  导入 abilities: {count} 条")

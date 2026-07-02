@@ -57,7 +57,7 @@ export const pokemonApi = {
    */
   getDetail(id) {
     return dataCache.getOrFetch(
-      `${CACHE_PREFIX}:detail`,
+      `${CACHE_PREFIX}:detail:v2`,
       { id },
       () => request(`${API_BASE}/pokemon/${id}`),
       'long'

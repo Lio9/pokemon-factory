@@ -28,14 +28,18 @@ npm run dev
 
 等后端日志出现 `Started BattleFactoryApplication` 后即可访问。
 
-### 补充完整数据（含中文名，需联网，约 20-40 分钟）
+### 补充完整数据（含中文名、描述、效果，需联网，约 20-40 分钟）
 
 ```powershell
 # 从 PokeAPI v2 补充完整数据（含 zh-Hans 中文名）
 python scripts/init_data.py --online
+
+# 补全技能/道具的描述、效果、分类
+python scripts/data_maintenance.py
 ```
 
 > **注意：** PokeAPI 国际服请求限速，首次下载耗时较长。数据会缓存到 `data/pokeapi-cache/`，再次运行会跳过已下载内容。
+> `data_maintenance.py` 专用于补全离线种子缺少的描述、效果、分类数据。
 
 ---
 
@@ -106,24 +110,26 @@ pokemon-factory/
 
 | 命令 | 说明 |
 |------|------|
+| `python scripts/data_maintenance.py` | 补全技能/道具的描述、效果、分类（需联网） |
+| `python scripts/data_maintenance.py --verify` | 检查数据完整性 |
+| `python scripts/data_maintenance.py --fix moves` | 仅修复技能数据 |
+| `python scripts/data_maintenance.py --fix items` | 仅修复道具数据 |
 | `python scripts/verify_sqlite.py` | 校验 SQLite 完整性和示例数据 |
 | `python scripts/backup_db.py` | 自动备份数据库（保留 30 天） |
 | `python scripts/download_sprites.py` | 下载精灵图到 `data/image/` |
 | `python scripts/generate_effect_seeds.py` | 生成特性/道具效果种子 JSON |
 
-### 数据源说明
+### 数据状态
 
-| 数据 | 来源 | 中文名 |
-|------|------|--------|
-| 属性/相克 | 硬编码 + PokeAPI CSV | ✅ 全部 |
-| 特性 (358) | PokeAPI v2 JSON | ⚠️ 离线种子 34 条有中文名 |
-| 道具 (728+) | PokeAPI v2 JSON | ⚠️ 离线种子 46 条有中文名 |
-| 技能 (77+) | PokeAPI v2 JSON | ⚠️ 离线种子 77 条有中文名 |
-| 宝可梦物种 | PokeAPI v2 JSON (下载中) | ⚠️ 需运行 `--online` |
-| 进化链 | PokeAPI v2 JSON (下载中) | ❌ 需运行 `--online` |
+| 数据 | 数量 | 中文名 | 描述/效果 | 分类 |
+|------|------|--------|-----------|------|
+| 宝可梦 | 1025 个物种 | ✅ | ✅ | — |
+| 技能 | 874 个 | ✅ | ✅ 785/874 | ✅ |
+| 特性 | 358 个 | ✅ | ✅ 252/358 | — |
+| 道具 | 2135 个 | ✅ | ⚠️ 需运行 `data_maintenance.py` | ⚠️ 同上 |
+| 属性/相克 | 18 种 | ✅ | ✅ | — |
 
-> PokeAPI v2 JSON 接口含 `zh-Hans` 语言名，是中文名的主要来源。
-> 运行 `python scripts/init_data.py --online` 可补充下载。
+> 运行 `python scripts/data_maintenance.py` 可补全道具描述/效果/分类。
 
 ---
 

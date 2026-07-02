@@ -38,12 +38,12 @@ export const abilityApi = {
   getList(params = {}) {
     const queryParams = new URLSearchParams({
       current: params.current || 1,
-      size: params.size || 20,
+      size: params.size || 2000,
       ...(params.keyword && { keyword: params.keyword })
     })
     
     return dataCache.getOrFetch(
-      'catalog:abilities',
+      'catalog:abilities:v1',
       params,
       () => request(`${API_BASE}/abilities/list?${queryParams}`),
       'normal'
@@ -58,14 +58,14 @@ export const moveApi = {
   getList(params = {}) {
     const queryParams = new URLSearchParams({
       current: params.current || 1,
-      size: params.size || 20,
+      size: params.size || 2000,
       ...(params.typeId && { typeId: params.typeId }),
       ...(params.generation && { generation: params.generation }),
       ...(params.keyword && { keyword: params.keyword })
     })
     
     return dataCache.getOrFetch(
-      'catalog:moves',
+      'catalog:moves:v1',
       params,
       () => request(`${API_BASE}/moves/list?${queryParams}`),
       'normal'
@@ -80,13 +80,13 @@ export const itemApi = {
   getList(params = {}) {
     const queryParams = new URLSearchParams({
       current: params.current || 1,
-      size: params.size || 20,
+      size: params.size || 2000,
       ...(params.categoryId && { categoryId: params.categoryId }),
       ...(params.keyword && { keyword: params.keyword })
     })
     
     return dataCache.getOrFetch(
-      'catalog:items',
+      'catalog:items:v1',
       params,
       () => request(`${API_BASE}/items/list?${queryParams}`),
       'normal'

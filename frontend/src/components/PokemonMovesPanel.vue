@@ -146,17 +146,17 @@ export default {
 
     const moveFilters = [
       { key: 'all', label: '全部' },
-      { key: 'level-up', label: '升级' },
-      { key: 'machine', label: '学习机' },
-      { key: 'egg', label: '遗传' },
-      { key: 'tutor', label: '教学' }
+      { key: '升级', label: '升级' },
+      { key: '机器', label: '学习机' },
+      { key: '蛋', label: '遗传' },
+      { key: '教学', label: '教学' }
     ]
 
     const filteredMoves = computed(() => {
       if (selectedFilter.value === 'all') return props.moves
       return props.moves.filter(move => {
-        const method = move.learnMethod?.toLowerCase() || ''
-        return method.includes(selectedFilter.value)
+        const method = move.learnMethod || ''
+        return method === selectedFilter.value || method.includes(selectedFilter.value)
       })
     })
 
