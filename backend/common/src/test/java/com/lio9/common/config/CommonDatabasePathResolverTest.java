@@ -24,7 +24,7 @@ class CommonDatabasePathResolverTest {
 
         String jdbcUrl = resolver.resolveJdbcUrl(null, null, backendRoot);
 
-        assertEquals("jdbc:sqlite:" + backendRoot.resolve("pokemon-factory.db").toAbsolutePath().normalize(), jdbcUrl);
+        assertEquals("jdbc:sqlite:" + backendRoot.resolve("backend/pokemon-factory.db").toAbsolutePath().normalize(), jdbcUrl);
     }
 
     @Test
@@ -34,13 +34,14 @@ class CommonDatabasePathResolverTest {
 
         String jdbcUrl = resolver.resolveJdbcUrl(null, null, moduleRoot);
 
-        assertEquals("jdbc:sqlite:" + backendRoot.resolve("pokemon-factory.db").toAbsolutePath().normalize(), jdbcUrl);
+        assertEquals("jdbc:sqlite:" + backendRoot.resolve("backend/pokemon-factory.db").toAbsolutePath().normalize(), jdbcUrl);
     }
 
     private Path createBackendLayout(Path root) throws IOException {
         Path repoRoot = Files.createDirectories(root.resolve("repo"));
         Path backendRoot = Files.createDirectories(repoRoot.resolve("pokemon-factory-backend"));
-        Files.writeString(backendRoot.resolve("pokemon-factory.db"), "test");
+        Path dbDir = Files.createDirectories(backendRoot.resolve("backend"));
+        Files.writeString(dbDir.resolve("pokemon-factory.db"), "test");
         return backendRoot;
     }
 }
