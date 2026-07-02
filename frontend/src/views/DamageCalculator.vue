@@ -111,20 +111,36 @@
           </div>
         </div>
 
+        <!-- 能力值覆盖（留空则使用数据库默认值） -->
+        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 class="text-lg font-bold text-slate-900">能力值覆盖 <span class="text-xs font-normal text-slate-400">留空则使用数据库默认值</span></h2>
+          <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div class="space-y-1"><label class="text-xs text-slate-500">攻击方攻击</label><el-input-number v-model="form.attackerAtkOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+            <div class="space-y-1"><label class="text-xs text-slate-500">攻击方特攻</label><el-input-number v-model="form.attackerSpAOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+            <div class="space-y-1"><label class="text-xs text-slate-500">攻击方速度</label><el-input-number v-model="form.attackerSpeOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+            <div class="space-y-1"><label class="text-xs text-slate-500">防御方HP</label><el-input-number v-model="form.defenderHpOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+            <div class="space-y-1"><label class="text-xs text-slate-500">防御方攻击</label><el-input-number v-model="form.defenderAtkOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+            <div class="space-y-1"><label class="text-xs text-slate-500">防御方防御</label><el-input-number v-model="form.defenderDefOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+            <div class="space-y-1"><label class="text-xs text-slate-500">防御方特攻</label><el-input-number v-model="form.defenderSpAOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+            <div class="space-y-1"><label class="text-xs text-slate-500">防御方特防</label><el-input-number v-model="form.defenderSpDOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+            <div class="space-y-1"><label class="text-xs text-slate-500">防御方速度</label><el-input-number v-model="form.defenderSpeOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+          </div>
+        </div>
+
         <!-- 特性与道具 -->
         <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 class="text-lg font-bold text-slate-900">特性与道具</h2>
           <div class="mt-4 grid gap-4 lg:grid-cols-2">
             <div class="space-y-2">
               <label class="text-sm font-bold text-slate-700">攻击方特性</label>
-              <el-select v-model="form.attackerAbilityId" filterable remote :remote-method="searchAbilities" placeholder="选特性（可选）" clearable class="w-full" :loading="abilityLoading">
-                <el-option v-for="a in abilityOptions" :key="'aa-'+a.id" :label="a.name" :value="a.id" />
+              <el-select v-model="form.attackerAbilityId" filterable placeholder="选特性（可选）" clearable class="w-full">
+                <el-option v-for="a in filteredAttackerAbilities" :key="'aa-'+a.id" :label="a.name" :value="a.id" />
               </el-select>
             </div>
             <div class="space-y-2">
               <label class="text-sm font-bold text-slate-700">防御方特性</label>
-              <el-select v-model="form.defenderAbilityId" filterable remote :remote-method="searchAbilities" placeholder="选特性（可选）" clearable class="w-full" :loading="abilityLoading">
-                <el-option v-for="a in abilityOptions" :key="'da-'+a.id" :label="a.name" :value="a.id" />
+              <el-select v-model="form.defenderAbilityId" filterable placeholder="选特性（可选）" clearable class="w-full">
+                <el-option v-for="a in filteredDefenderAbilities" :key="'da-'+a.id" :label="a.name" :value="a.id" />
               </el-select>
             </div>
             <div class="space-y-2">
@@ -292,13 +308,18 @@ const DEFAULT_FORM = () => ({
   attackerAttackBoost: 0,
   attackerSpAttackBoost: 0,
   defenderDefenseBoost: 0,
-  defenderSpDefenseBoost: 0
+  defenderSpDefenseBoost: 0,
+  attackerAtkOv: null, attackerSpAOv: null, attackerSpeOv: null,
+  defenderHpOv: null, defenderAtkOv: null, defenderDefOv: null,
+  defenderSpAOv: null, defenderSpDOv: null, defenderSpeOv: null
 })
 
 const form = reactive(DEFAULT_FORM())
 const pokemonOptions = ref([])
 const attackerMoves = ref([])
 const abilityOptions = ref([])
+const attackerAbilityIds = ref([])
+const defenderAbilityIds = ref([])
 const itemOptions = ref([])
 const result = ref(null)
 const pokemonLoading = ref(false)
@@ -307,6 +328,13 @@ const abilityLoading = ref(false)
 const itemLoading = ref(false)
 const calculating = ref(false)
 let latestPokemonSearchToken = 0
+
+const filteredAttackerAbilities = computed(() =>
+  abilityOptions.value.filter(a => attackerAbilityIds.value.length === 0 || attackerAbilityIds.value.includes(a.id))
+)
+const filteredDefenderAbilities = computed(() =>
+  abilityOptions.value.filter(a => defenderAbilityIds.value.length === 0 || defenderAbilityIds.value.includes(a.id))
+)
 
 const attackerPokemon = computed(() => pokemonOptions.value.find(p => p.id === form.attackerPokemonId) || null)
 const defenderPokemon = computed(() => pokemonOptions.value.find(p => p.id === form.defenderPokemonId) || null)
@@ -392,8 +420,40 @@ async function loadAttackerMoves() {
   } finally { moveLoading.value = false }
 }
 
-async function handleAttackerChange() { result.value = null; await loadAttackerMoves() }
-function handleDefenderChange() { result.value = null }
+async function fetchPokemonFormAbilities(pokemonId, isAttacker) {
+  try {
+    const res = await api.pokemon.getDetail(pokemonId)
+    if (res.code === 200) {
+      const forms = res.data?.forms || []
+      const allAbilities = []
+      for (const f of forms) {
+        if (f.abilities) {
+          for (const a of f.abilities) {
+            if (!allAbilities.find(x => x.id === a.id)) allAbilities.push(a)
+          }
+        }
+      }
+      const ids = allAbilities.map(a => a.id)
+      if (isAttacker) attackerAbilityIds.value = ids
+      else defenderAbilityIds.value = ids
+    }
+  } catch { /* ignore */ }
+}
+
+async function handleAttackerChange() {
+  result.value = null
+  attackerAbilityIds.value = []
+  form.attackerAbilityId = null
+  if (form.attackerPokemonId) await fetchPokemonFormAbilities(form.attackerPokemonId, true)
+  await loadAttackerMoves()
+}
+
+function handleDefenderChange() {
+  result.value = null
+  defenderAbilityIds.value = []
+  form.defenderAbilityId = null
+  if (form.defenderPokemonId) fetchPokemonFormAbilities(form.defenderPokemonId, false)
+}
 
 async function swapPokemonSides() {
   if (!form.attackerPokemonId || !form.defenderPokemonId) return
@@ -423,7 +483,12 @@ async function calculateDamage() {
       attackerItemId: form.attackerItemId,
       defenderItemId: form.defenderItemId,
       attackerAttackBoost: form.attackerAttackBoost,
-      defenderDefenseBoost: form.defenderDefenseBoost
+      defenderDefenseBoost: form.defenderDefenseBoost,
+      attackerAttack: form.attackerAtkOv || undefined,
+      attackerSpAttack: form.attackerSpAOv || undefined,
+      defenderHp: form.defenderHpOv || undefined,
+      defenderDefense: form.defenderDefOv || undefined,
+      defenderSpDefense: form.defenderSpDOv || undefined
     })
     result.value = res.data || null
     ElMessage.success('伤害计算完成')
