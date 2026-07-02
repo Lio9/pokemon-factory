@@ -223,9 +223,18 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
             // 21. 计算命中率
             calculateAccuracy(move, request, result);
             
-            // 22. 计算击杀预估
-            if (request.getDefenderHp() != null && request.getDefenderHp() > 0) {
-                calculateKoEstimate(damageRange, request.getDefenderHp(), result);
+            // 22. 计算击杀预估（自动从数据库获取防御方HP）
+            Integer defenderHp = request.getDefenderHp();
+            if (defenderHp == null || defenderHp <= 0) {
+                List<PokemonFormStat> stats = pokemonFormStatMapper.selectList(
+                    new QueryWrapper<PokemonFormStat>().eq("form_id", request.getDefenderFormId()).eq("stat_id", 1)
+                );
+                if (!stats.isEmpty()) {
+                    defenderHp = stats.get(0).getBaseStat();
+                }
+            }
+            if (defenderHp != null && defenderHp > 0) {
+                calculateKoEstimate(damageRange, defenderHp, result);
             }
             
             // 23. 构建修正因子汇总

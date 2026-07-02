@@ -18,24 +18,13 @@ import java.util.Arrays;
 @Configuration
 public class PokeDexWebConfig implements WebMvcConfigurer {
 
-    private final String[] allowedOrigins;
-
-    public PokeDexWebConfig(
-        @Value("")
-        String allowedOrigins
-    ) {
-        this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
-            .map(String::trim)
-            .filter(StringUtils::hasText)
-            .toArray(String[]::new);
-    }
-
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-            .allowedOrigins(allowedOrigins)
+            .allowedOriginPatterns("*")
             .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             .allowedHeaders("*")
+            .allowCredentials(true)
             .maxAge(3600);
     }
 
