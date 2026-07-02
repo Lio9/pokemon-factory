@@ -3,16 +3,17 @@ package com.lio9.user;
 import com.lio9.common.config.CommonDataSourceConfig;
 import com.lio9.common.config.CommonDatabaseInitializer;
 import com.lio9.common.config.CommonDatabaseProperties;
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.util.Map;
 
 /**
- * user-module 独立启动入口。
+ * user-module 独立启动入口（端口 8083）。
  *
- * 注意：@MapperScan 由主启动类（battle）统一管理，此处不再重复声明。
- * 独立启动时通过 mybatis.mapper-locations 自动发现 mapper XML。
+ * 注意：由 BattleFactoryApplication 统一启动时不需要此入口，
+ * 独立运行 user 模块时使用此入口。
  */
 @SpringBootApplication(
         scanBasePackageClasses = {
@@ -26,6 +27,7 @@ import java.util.Map;
                 "org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration"
         }
 )
+@MapperScan("com.lio9.user.mapper")
 public class UserModuleApplication {
 
     public static void main(String[] args) {

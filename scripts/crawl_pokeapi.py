@@ -83,9 +83,9 @@ def api_get_url(url):
 # 语言工具
 # ============================================================
 
-def lang_name(data, lang='zh-Hans'):
+def lang_name(data, lang='zh-hans'):
     for n in data.get('names', []):
-        if n.get('language', {}).get('name') == lang:
+        if n.get('language', {}).get('name').lower() == lang:
             return n['name']
     for n in data.get('names', []):
         if n.get('language', {}).get('name') == 'en':
@@ -481,6 +481,57 @@ def main():
             crawler.results[res_type] = data
             log(f"  缓存 {label}: {len(data)} 项")
         crawler.import_to_db()
+        return
+
+    if mode == '--update-zh':
+        """从缓存更新数据库中的中文名"""
+        log("更新中文名...")
+        conn = sqlite3.connect(DB)
+        conn.execute("PRAGMA journal_mode=WAL")
+        cur = conn.cursor()
+
+        for prefix, table, name_col in [
+            ('pokemon-species_', 'pokemon_species', 'name'),
+            ('ability-', 'ability', 'name'),
+            ('item-', 'item', 'name'),
+        ]:
+            updated = 0
+            for f in CACHE_DIR.glob(f"{prefix}*.json"):
+                if 'limit' in f.name: continue
+                try:
+                    data = json.loads(f.read_text())
+                    did = data['id']
+                    zh = lang_name(data)
+                    if zh:
+                        cur.execute(f"UPDATE [{table}] SET {name_col}=? WHERE id=?", (zh, did))
+                        updated += cur.rowcount
+                except:
+                    pass
+            conn.commit()
+            log(f"  {table}: 更新 {updated} 条中文名")
+
+        # 处理 moves（不在缓存中）
+        # 从 PokeAPI live 获取
+        log("  下载 moves 中文名...")
+        move_list = [{'name': 'pound'}, {'name': 'karate-chop'}, {'name': 'double-slap'}]
+        move_list = crawler.get_list("move")
+        for i, mv in enumerate(move_list):
+            data = api_get("move", mv['name'])
+            if not data: continue
+            zh = lang_name(data)
+            if zh:
+                cur.execute("UPDATE move SET name=? WHERE id=?", (zh, data['id']))
+            if (i+1) % 100 == 0:
+                conn.commit()
+                log(f"    moves: {i+1}/{len(move_list)}")
+        conn.commit()
+
+        # 验证
+        for t, label in [('pokemon_species','宝可梦'),('ability','特性'),('item','道具'),('move','技能')]:
+            cnt = cur.execute(f"SELECT COUNT(*) FROM [{t}]").fetchone()[0]
+            cn = cur.execute(f"SELECT COUNT(*) FROM [{t}] WHERE name GLOB '*[\x80-\xFF]*'").fetchone()[0]
+            log(f"  {label}: {cnt} total, {cn} CN")
+        conn.close()
         return
 
     log(f"多线程爬虫启动（{WORKERS} 线程）")
