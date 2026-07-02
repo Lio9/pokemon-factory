@@ -766,7 +766,8 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
     }
     
     /**
-     * 计算击杀预估（优化版，考虑随机性）
+     * 计算击杀预估 — 参考 Pokémon Showdown 风格
+     * 显示：伤害百分比(min%-max%) + OHKO概率（如适用）
      */
     private void calculateKoEstimate(int[] damageRange, int defenderHp, DamageResultVO result) {
         DamageResultVO.KOsEstimate koEstimate = new DamageResultVO.KOsEstimate();
@@ -775,25 +776,20 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
         int minDamage = damageRange[0];
         int maxDamage = damageRange[1];
         
-        // 最小伤害需要的攻击次数（最坏情况）
-        int minHits = (int) Math.ceil((double) defenderHp / maxDamage);
-        // 最大伤害需要的攻击次数（最好情况）
-        int maxHits = (int) Math.ceil((double) defenderHp / minDamage);
-        // 平均伤害需要的攻击次数
-        double avgDamage = (minDamage + maxDamage) / 2.0;
-        double avgHits = Math.ceil(defenderHp / avgDamage);
+        // 伤害占 HP 的百分比
+        double minPct = (double) minDamage / defenderHp * 100;
+        double maxPct = (double) maxDamage / defenderHp * 100;
         
-        koEstimate.setMinHits(minHits);
-        koEstimate.setMaxHits(maxHits);
-        koEstimate.setAvgHits(avgHits);
+        // OHKO概率：如果最大伤害 ≥ HP，计算单次伤害即 KO 的概率
+        double ohko = 0;
+        if (maxDamage >= defenderHp) {
+            ohko = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, 1);
+        }
         
-        // 使用蒙特卡洛模拟计算击杀概率
-        double koChance = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, maxHits);
-        
-        // 计算 maxHits 内的总击倒概率（单一数值）
-        double koChanceOverall = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, maxHits);
-        koEstimate.setKoChance(koChanceOverall);
-        koEstimate.setKoPercentRange(String.format("%.1f%%", koChanceOverall * 100));
+        koEstimate.setKoPercentRange(String.format("%.1f%% - %.1f%%", minPct, maxPct));
+        if (ohko > 0) {
+            koEstimate.setKoChance(ohko);
+        }
         
         result.setKoEstimate(koEstimate);
     }

@@ -164,10 +164,12 @@
                 <div class="mt-1 text-sm text-slate-300">平均 {{ formatNumber(result.avgDamage) }}</div>
               </div>
               <div class="rounded-2xl bg-emerald-50 px-4 py-4">
-                <div class="text-xs uppercase tracking-[0.2em] text-emerald-600">击倒估算</div>
+                <div class="text-xs uppercase tracking-[0.2em] text-emerald-600">伤害占比</div>
                 <div class="mt-2 text-lg font-bold text-emerald-900">{{ result.koEstimate?.koPercentRange || '暂无' }}</div>
-                <div class="mt-1 text-sm text-emerald-700">最少 {{ result.koEstimate?.minHits ?? '-' }} 次，最多 {{ result.koEstimate?.maxHits ?? '-' }} 次</div>
-                <div class="text-xs text-emerald-500 mt-0.5">防御方 HP: {{ result.koEstimate?.defenderHp ?? '-' }}</div>
+                <div class="mt-1 text-sm text-emerald-700">防御方 HP: {{ result.koEstimate?.defenderHp ?? '-' }}</div>
+                <div v-if="result.koEstimate?.koChance" class="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-800 text-xs font-bold">
+                   OHKO {{ (result.koEstimate.koChance * 100).toFixed(1) }}%
+                </div>
               </div>
             </div>
 
