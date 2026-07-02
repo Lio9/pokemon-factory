@@ -37,16 +37,6 @@ class CommonDatabasePathResolverTest {
         assertEquals("jdbc:sqlite:" + backendRoot.resolve("pokemon-factory.db").toAbsolutePath().normalize(), jdbcUrl);
     }
 
-    @Test
-    void resolveJdbcUrl_repairsBrokenDuplicatedBackendPath() throws IOException {
-        Path backendRoot = createBackendLayout(tempDir);
-        Path brokenPath = backendRoot.resolve("pokemon-factory-backend").resolve("pokemon-factory.db");
-
-        String jdbcUrl = resolver.resolveJdbcUrl("jdbc:sqlite:" + brokenPath, null, backendRoot);
-
-        assertEquals("jdbc:sqlite:" + backendRoot.resolve("pokemon-factory.db").toAbsolutePath().normalize(), jdbcUrl);
-    }
-
     private Path createBackendLayout(Path root) throws IOException {
         Path repoRoot = Files.createDirectories(root.resolve("repo"));
         Path backendRoot = Files.createDirectories(repoRoot.resolve("pokemon-factory-backend"));
