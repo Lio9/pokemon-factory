@@ -155,33 +155,33 @@
           </div>
         </div>
 
-        <!-- 能力值覆盖 -->
+        <!-- 加点（个体值默认31满，努力值改为直接加点） -->
         <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="flex items-center gap-2 mb-5">
             <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold">📊</div>
             <div>
-              <h2 class="text-lg font-bold text-slate-900">能力值覆盖</h2>
-              <p class="text-xs text-slate-400">留空则使用数据库默认种族值</p>
+              <h2 class="text-lg font-bold text-slate-900">加点调整</h2>
+              <p class="text-xs text-slate-400">个体值默认 31 满 · 填入数值直接覆盖该项能力</p>
             </div>
           </div>
           <div class="grid gap-5 lg:grid-cols-2">
             <div class="rounded-2xl bg-gradient-to-br from-indigo-50/60 to-white border border-indigo-100 p-4">
-              <div class="text-xs font-bold uppercase tracking-wider text-indigo-500 mb-3">攻击方</div>
+              <div class="text-xs font-bold uppercase tracking-wider text-indigo-500 mb-3">攻击方加点</div>
               <div class="grid grid-cols-3 gap-2">
-                <div><label class="text-[10px] text-slate-500">攻击</label><el-input-number v-model="form.attackerAtkOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-                <div><label class="text-[10px] text-slate-500">特攻</label><el-input-number v-model="form.attackerSpAOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-                <div><label class="text-[10px] text-slate-500">速度</label><el-input-number v-model="form.attackerSpeOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">攻击</label><el-input-number v-model="form.attackerAtkOv" :min="0" :max="999" :step="5" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">特攻</label><el-input-number v-model="form.attackerSpAOv" :min="0" :max="999" :step="5" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">速度</label><el-input-number v-model="form.attackerSpeOv" :min="0" :max="999" :step="5" size="small" class="w-full" /></div>
               </div>
             </div>
             <div class="rounded-2xl bg-gradient-to-br from-rose-50/60 to-white border border-rose-100 p-4">
-              <div class="text-xs font-bold uppercase tracking-wider text-rose-500 mb-3">防御方</div>
+              <div class="text-xs font-bold uppercase tracking-wider text-rose-500 mb-3">防御方加点</div>
               <div class="grid grid-cols-3 gap-2">
-                <div><label class="text-[10px] text-slate-500">HP</label><el-input-number v-model="form.defenderHpOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-                <div><label class="text-[10px] text-slate-500">攻击</label><el-input-number v-model="form.defenderAtkOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-                <div><label class="text-[10px] text-slate-500">防御</label><el-input-number v-model="form.defenderDefOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-                <div><label class="text-[10px] text-slate-500">特攻</label><el-input-number v-model="form.defenderSpAOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-                <div><label class="text-[10px] text-slate-500">特防</label><el-input-number v-model="form.defenderSpDOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
-                <div><label class="text-[10px] text-slate-500">速度</label><el-input-number v-model="form.defenderSpeOv" :min="0" :max="999" :step="1" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">HP</label><el-input-number v-model="form.defenderHpOv" :min="0" :max="999" :step="5" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">攻击</label><el-input-number v-model="form.defenderAtkOv" :min="0" :max="999" :step="5" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">防御</label><el-input-number v-model="form.defenderDefOv" :min="0" :max="999" :step="5" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">特攻</label><el-input-number v-model="form.defenderSpAOv" :min="0" :max="999" :step="5" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">特防</label><el-input-number v-model="form.defenderSpDOv" :min="0" :max="999" :step="5" size="small" class="w-full" /></div>
+                <div><label class="text-[10px] text-slate-500">速度</label><el-input-number v-model="form.defenderSpeOv" :min="0" :max="999" :step="5" size="small" class="w-full" /></div>
               </div>
             </div>
           </div>
@@ -340,7 +340,9 @@ const DEFAULT_FORM = () => ({
   defenderSpDefenseBoost: 0,
   attackerAtkOv: null, attackerSpAOv: null, attackerSpeOv: null,
   defenderHpOv: null, defenderAtkOv: null, defenderDefOv: null,
-  defenderSpAOv: null, defenderSpDOv: null, defenderSpeOv: null
+  defenderSpAOv: null, defenderSpDOv: null, defenderSpeOv: null,
+  // 个体值默认 31 满，无需设置
+  // 加点步长 5（对应努力值约 252/4 = 63 点 → 取整 5 一跳）
 })
 
 const form = reactive(DEFAULT_FORM())
