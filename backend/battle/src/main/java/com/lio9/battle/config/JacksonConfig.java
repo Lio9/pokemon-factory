@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
  * 直接创建 Jackson 3.x 的 JsonMapper，避免对 Spring Boot 4.x 中
  * 不存在的 Jackson2ObjectMapperBuilder 的依赖。
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class JacksonConfig {
 
     @Bean

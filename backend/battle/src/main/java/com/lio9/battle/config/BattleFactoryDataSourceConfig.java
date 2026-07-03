@@ -21,7 +21,7 @@ import java.util.Set;
 /**
  * battleFactory 本地显式声明 SQLite 数据源，避免依赖方因为模块化构建或工作目录不同而指向错误库文件。
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class BattleFactoryDataSourceConfig {
 
     @Bean

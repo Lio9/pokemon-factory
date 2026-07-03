@@ -17,7 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *   <li>{@code /api/battle/guest/**} → 匿名访问（不经过 JWT 过滤器）</li>
  * </ul>
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtFilter;
 
