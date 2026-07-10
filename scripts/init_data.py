@@ -134,7 +134,7 @@ def api_get(path, retries=3):
             req = urllib.request.Request(f"{POKEAPI}/{path}", headers={"User-Agent":"pokemon-factory/1.0"})
             with urllib.request.urlopen(req, timeout=15) as r:
                 return json.loads(r.read().decode())
-        except: time.sleep(DELAY*3)
+        except Exception: time.sleep(DELAY*3)
     return None
 
 def api_list(resource, lim=10000):
@@ -210,27 +210,31 @@ def seed_pokeapi(cur):
 
     # 1. 特性
     log("PokeAPI: abilities...")
-    for i,ab in enumerate(api_list("ability")):
+    abilities_list = api_list("ability")
+    total_abilities = len(abilities_list)
+    for i,ab in enumerate(abilities_list):
         data = api_get(f"ability/{slug(ab['name'])}")
         if not data: continue
         eng = next((e for e in data.get("names",[]) if e.get("language",{}).get("name")=="en"),{})
         zh = next((e for e in data.get("names",[]) if e.get("language",{}).get("name")=="zh-Hans"),{})
         eng_eff = next((e for e in data.get("effect_entries",[]) if e.get("language",{}).get("name")=="en"),{})
-        cur.execute("INSERT OR IGNORE INTO ability(id,name,name_en,description,generation_id,is_main_series) VALUES(?,?,?,?,?,1)",
-            (data['id'],zh.get('name',data['name']),data['name'],eng_eff.get('short_effect',''),
+        cur.execute("INSERT OR IGNORE INTO ability(id,name,name_en,generation_id) VALUES(?,?,?,?)",
+            (data['id'],zh.get('name',data['name']),data['name'],
              str(data.get('generation',{}).get('name','')).replace('generation-','')))
         for ef in data.get('effect_entries',[]):
             la=ef.get('language',{}).get('name','')
             if la in ('en','zh-Hans'):
                 cur.execute("INSERT OR IGNORE INTO ability_effect(ability_id,effect_type,effect_value,target,condition,description) VALUES(?,?,?,?,?,?)",
                     (data['id'],'description',ef.get('effect',''),la,ef.get('short_effect',''),''))
-        progress(i+1, len(api_list("ability")), "abilities")
+        progress(i+1, total_abilities, "abilities")
         time.sleep(DELAY)
     conn.commit()
 
     # 2. 道具
     log("PokeAPI: items...")
-    for i,it in enumerate(api_list("item",2000)):
+    items_list = api_list("item",2000)
+    total_items = len(items_list)
+    for i,it in enumerate(items_list):
         data = api_get(f"item/{slug(it['name'])}")
         if not data: continue
         eng = next((e for e in data.get("names",[]) if e.get("language",{}).get("name")=="en"),{})
@@ -243,7 +247,7 @@ def seed_pokeapi(cur):
             if la in ('en','zh-Hans'):
                 cur.execute("INSERT OR IGNORE INTO item_effect(item_id,effect_type,effect_value,target,condition,description) VALUES(?,?,?,?,?,?)",
                     (data['id'],'effect',ef.get('effect',''),la,ef.get('short_effect',''),''))
-        progress(i+1, len(api_list("item",2000)), "items")
+        progress(i+1, total_items, "items")
         time.sleep(DELAY)
     conn.commit()
 
@@ -255,7 +259,9 @@ def seed_pokeapi(cur):
     TGT_MAP = {'adjacent-allies':3,'adjacent-foe':1,'all-adjacent':4,'all-adjacent-foes':2,'all-other-pokemon':10,
                'ally':3,'any':1,'entire-field':10,'random-opponent':1,'self':3,'selected-pokemon':1,'user':3,
                'user-or-ally':1,'users-field':3,'opponents-field':2}
-    for i,mv in enumerate(api_list("move",2000)):
+    moves_list = api_list("move",2000)
+    total_moves = len(moves_list)
+    for i,mv in enumerate(moves_list):
         data = api_get(f"move/{slug(mv['name'])}")
         if not data: continue
         eng = next((e for e in data.get("names",[]) if e.get("language",{}).get("name")=="en"),{})
@@ -269,7 +275,7 @@ def seed_pokeapi(cur):
         if meta:
             cur.execute("INSERT OR IGNORE INTO move_meta(move_id,min_hits,max_hits,drain,healing,crit_rate) VALUES(?,?,?,?,?,?)",
                 (data['id'],meta.get('min_hits'),meta.get('max_hits'),meta.get('drain'),meta.get('healing'),meta.get('crit_rate')))
-        progress(i+1, len(api_list("move",2000)), "moves")
+        progress(i+1, total_moves, "moves")
         time.sleep(DELAY)
     conn.commit()
 

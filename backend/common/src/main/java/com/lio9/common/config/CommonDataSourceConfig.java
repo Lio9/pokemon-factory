@@ -25,7 +25,6 @@ public class CommonDataSourceConfig {
     }
 
     @Bean
-    @Primary
     @ConditionalOnMissingBean(DataSource.class)
     @ConfigurationProperties("spring.datasource.hikari")
     public HikariDataSource dataSource(Environment environment, CommonDatabasePathResolver pathResolver) {

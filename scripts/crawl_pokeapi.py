@@ -34,7 +34,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 TYPE_MAP = {'normal':1,'fighting':2,'flying':3,'poison':4,'ground':5,'rock':6,'bug':7,'ghost':8,
             'steel':9,'fire':10,'water':11,'grass':12,'electric':13,'psychic':14,'ice':15,'dragon':16,'dark':17,'fairy':18}
 DC_MAP = {'physical':1,'special':2,'status':3}
-TGT_MAP = {'selected-pokemon':10,'random-opponent':1,'all-opponents':2,'self':3,
+TGT_MAP = {'selected-pokemon':1,'random-opponent':1,'all-opponents':2,'self':3,
            'all-adjacent':4,'all-adjacent-foes':2,'ally':3,'all-allies':7,
            'opponents-field':2,'allies-field':3,'entire-field':10,'user-or-ally':1}
 LEARN_METHOD_MAP = {'level-up':1,'egg':2,'tutor':3,'machine':4,'form-change':5}
@@ -68,7 +68,7 @@ def fetch(url, cache_key):
             if e.code == 404:
                 return None
             time.sleep(DELAY * (attempt + 1) * 2)
-        except:
+        except Exception:
             time.sleep(DELAY * (attempt + 1) * 2)
     return None
 
@@ -96,7 +96,7 @@ def gen_num(data):
     g = data.get('generation') or {}
     n = g.get('name', '')
     try: return int(n.replace('generation-', ''))
-    except: return 9
+    except Exception: return 9
 
 # ============================================================
 # 爬虫引擎
@@ -408,7 +408,7 @@ class Crawler:
                         mid = mv_data['id']
                         for vgd in me.get('version_group_details', []):
                             vg_name = (vgd.get('version_group') or {}).get('name', '')
-                            vg_id = 20 if vg_name in ('scarlet-violet',) else 20
+                            vg_id = 20 if vg_name in ('scarlet-violet',) else 15
                             lm_name = (vgd.get('move_learn_method') or {}).get('name', 'level-up')
                             lmid = LEARN_METHOD_MAP.get(lm_name, 1)
                             lvl = vgd.get('level_learned_at', 0)
@@ -555,7 +555,7 @@ def main():
                     if zh:
                         cur.execute(f"UPDATE [{table}] SET {name_col}=? WHERE id=?", (zh, did))
                         updated += cur.rowcount
-                except:
+                except Exception:
                     pass
             conn.commit()
             log(f"  {table}: 更新 {updated} 条中文名")

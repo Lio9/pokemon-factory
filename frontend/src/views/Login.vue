@@ -132,6 +132,11 @@ onMounted(async () => {
   }
 })
 
+// 游客模式：跳转到对战页面，携带 guest 查询参数
+function startGuest() {
+  router.push('/battle?mode=guest')
+}
+
 // 统一构造登录/注册使用的入参，并在前端先做最基本的非空校验。
 function buildCredentials() {
   if (!username.value.trim() || !password.value) {

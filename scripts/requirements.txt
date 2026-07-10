@@ -1,0 +1,5 @@
+# Pokemon Factory Scripts - Python Dependencies
+# Python >= 3.10 required
+#
+# All dependencies are from the Python standard library.
+# No third-party packages are needed for the current scripts.

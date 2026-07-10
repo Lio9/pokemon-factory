@@ -15,11 +15,11 @@ FAILED = IMG / "_failed.json"
 def get(url):
     for i in range(3):
         try:
-            req = urllib.request.Request(url, headers=dict(UserAgent="pokemon-factory"))
+            req = urllib.request.Request(url, headers={"User-Agent": "pokemon-factory"})
             with urllib.request.urlopen(req, timeout=30) as r:
                 data = r.read()
-                if len(data) > 100 and data[0:4] == b"\\x89PNG": return data
-        except:
+                if len(data) > 100 and data[0:4] == b"\x89PNG": return data
+        except Exception:
             time.sleep(2 * (i + 1))
     return None
 
@@ -62,7 +62,7 @@ def verify():
     ok, bad = 0, 0
     for f in files:
         data = f.read_bytes()
-        if len(data) > 100 and data[0:4] == b"\\x89PNG": ok += 1
+        if len(data) > 100 and data[0:4] == b"\x89PNG": ok += 1
         else: bad += 1; print("Corrupt: " + f.name)
     print("Verified: " + str(ok) + " ok, " + str(bad) + " bad, " + str(len(files)) + " total")
 

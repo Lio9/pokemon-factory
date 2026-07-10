@@ -1,4 +1,4 @@
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, nextTick, onUnmounted, watch } from 'vue'
 
 export function useCatalogList(options) {
   const { fetchFn, favoritesKey, pageSize = 36, debounceMs = 300 } = options
@@ -15,7 +15,8 @@ export function useCatalogList(options) {
   const total = ref(0)
 
   const keyword = ref('')
-  const favorites = ref(new Set())
+  // 使用数组而非 Set，确保 Vue 响应式能正确追踪变化
+  const favorites = ref([])
   const isShowFavorites = ref(false)
   const viewMode = ref('grid')
   const loading = ref(false)
@@ -28,22 +29,23 @@ export function useCatalogList(options) {
   function loadFavorites() {
     try {
       const saved = localStorage.getItem(`pokemon-factory-${favoritesKey}`)
-      if (saved) favorites.value = new Set(JSON.parse(saved))
+      if (saved) favorites.value = JSON.parse(saved)
     } catch { /* ignore */ }
   }
 
   function saveFavorites() {
     localStorage.setItem(
       `pokemon-factory-${favoritesKey}`,
-      JSON.stringify([...favorites.value])
+      JSON.stringify(favorites.value)
     )
   }
 
   function toggleFavorite(item) {
-    if (favorites.value.has(item.id)) {
-      favorites.value.delete(item.id)
+    const idx = favorites.value.indexOf(item.id)
+    if (idx >= 0) {
+      favorites.value.splice(idx, 1)
     } else {
-      favorites.value.add(item.id)
+      favorites.value.push(item.id)
     }
     saveFavorites()
   }
@@ -122,8 +124,6 @@ export function useCatalogList(options) {
     nextTick(() => setupObserver())
   })
 
-  onMounted(() => {})
-
   onUnmounted(() => {
     if (observer) observer.disconnect()
     if (searchTimer) clearTimeout(searchTimer)
@@ -157,7 +157,6 @@ export function useCatalogList(options) {
     hasMore,
     loadedCount,
     displayCount,
-    displayItems,
     loadMoreTrigger,
     fetchItems
   }

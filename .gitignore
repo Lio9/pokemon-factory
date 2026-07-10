@@ -13,6 +13,7 @@ credentials.json
 .env.local
 .env.*.local
 .env.production.local
+frontend/.env
 **/config/jwt.key
 
 # ========================
@@ -105,7 +106,6 @@ data/pokeapi-cache/
 # ========================
 # 测试覆盖率
 # ========================
-coverage/
 .history/
 
 # ========================
@@ -123,6 +123,7 @@ backups/
 # 其他
 # ========================
 data/image/pokemon/
+data/image/*.png
 
 # SQLite WAL/SHM
 *.db-shm

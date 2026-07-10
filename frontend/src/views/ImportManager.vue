@@ -5,7 +5,7 @@
       <!-- 渐变背景装饰 -->
       <div
         class="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500"
-        style="background: linear-gradient(135deg, #0ea5e9 20, #6366f1 40)"
+        style="background: linear-gradient(135deg, #0ea5e920, #6366f140)"
       />
           
       <div class="relative z-10">
@@ -211,7 +211,7 @@ import { importApi } from '../services/api.js'
 import { useLocale } from '../composables/useLocale'
 import { ElMessage } from 'element-plus'
 
-const { translate: tr } = useLocale()
+const { translate: tr, locale } = useLocale()
 
 const STORAGE_KEY = 'pokemon-factory-import-tasks'
 const IMPORT_SUCCESS_CODES = new Set([200, 201, 10000])

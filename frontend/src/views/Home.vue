@@ -110,8 +110,8 @@
 
 <script setup>
 import { useLocale } from '../composables/useLocale'
-import { API_BASE } from '../services/httpClient'
-import { onMounted, ref } from 'vue'
+import { API_BASE, request } from '../services/httpClient'
+import { onMounted, ref, computed } from 'vue'
 
 const { translate: tr } = useLocale()
 
@@ -123,14 +123,14 @@ const statColors = [
   'linear-gradient(135deg, #f59e0b, #10b981)'
 ]
 
-const cards = [
+const cards = computed(() => [
   { name: tr('宝可梦图鉴', 'Pokemon Dex'), desc: tr('浏览和搜索宝可梦', 'Browse and search Pokemon'), path: '/pokemon', icon: '⚡', color: '#3b82f6' },
   { name: tr('技能列表', 'Moves'), desc: tr('查询招式数据', 'Move data lookup'), path: '/moves', icon: '🔥', color: '#ef4444' },
   { name: tr('特性列表', 'Abilities'), desc: tr('查看特性效果', 'Ability details'), path: '/abilities', icon: '✨', color: '#8b5cf6' },
   { name: tr('物品列表', 'Items'), desc: tr('道具数据一览', 'Item catalog'), path: '/items', icon: '🎒', color: '#f59e0b' },
   { name: tr('伤害计算器', 'Damage Calc'), desc: tr('模拟招式伤害', 'Simulate move damage'), path: '/damage-calculator', icon: '📊', color: '#06b6d4' },
   { name: tr('对战工厂', 'Battle'), desc: tr('双打对战模拟', 'Doubles battle sim'), path: '/battle', icon: '🏟️', color: '#10b981' },
-]
+])
 
 const stats = ref([
   { label: tr('宝可梦', 'Pokemon'), value: '-' },
@@ -141,17 +141,14 @@ const stats = ref([
 
 onMounted(async () => {
   try {
-    const res = await fetch(`${API_BASE}/summary`)
-    if (res.ok) {
-      const data = await res.json()
-      const d = data.data ?? data
+    const data = await request(`${API_BASE}/summary`)
+    const d = data.data ?? data
       stats.value = [
         { label: tr('宝可梦', 'Pokemon'), value: d.pokemonCount ?? d.pokemon ?? '-' },
         { label: tr('招式', 'Moves'), value: d.moveCount ?? d.moves ?? '-' },
         { label: tr('特性', 'Abilities'), value: d.abilityCount ?? d.abilities ?? '-' },
         { label: tr('物品', 'Items'), value: d.itemCount ?? d.items ?? '-' },
       ]
-    }
   } catch {
     // stats stay as "-"
   }

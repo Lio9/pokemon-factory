@@ -10,11 +10,16 @@ spring:
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml
 
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
 pokemon-factory:
   assets:
     image-base-url: https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites
 
 logging:
   level:
-    org.mybatis: debug
-    com.baomidou: debug
+    org.mybatis: info
+    com.baomidou: info

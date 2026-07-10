@@ -94,7 +94,7 @@ def main():
             if cnt > 0:
                 log(f"{table}: 已有 {cnt} 条，跳过主表导入")
                 continue
-        except:
+        except Exception:
             pass
 
         # 从 CSV 逐行导入，字段映射
@@ -128,7 +128,7 @@ def main():
             if existing > 0:
                 log(f"{table}: 已有 {existing} 条，跳过")
                 continue
-        except:
+        except Exception:
             pass
 
         text = download(table)
@@ -146,7 +146,7 @@ def main():
         try:
             cnt = cur.execute(f"SELECT COUNT(*) FROM [{t}]").fetchone()[0]
             log(f"  {t}: {cnt}")
-        except:
+        except Exception:
             log(f"  {t}: ERROR")
 
     conn.close()

@@ -179,8 +179,9 @@ async function verifyEmail() {
     
     // Auto redirect after 3 seconds
     setTimeout(() => {
-      const targetPath = redirectTo.value.startsWith('/') 
-        ? redirectTo.value 
+      // 防止开放重定向：必须以 / 开头且不是 //
+      const targetPath = (redirectTo.value.startsWith('/') && !redirectTo.value.startsWith('//'))
+        ? redirectTo.value
         : '/login'
       router.push(targetPath)
     }, 3000)
@@ -215,20 +216,8 @@ async function verifyToken(tokenValue, verificationType) {
     
     return await response.json()
   } catch (error) {
-    // If backend API is not available, simulate success for demo
-    // In production, remove this fallback
-    console.warn('Backend verification not available, using mock verification')
-    
-    // Mock successful verification
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          email: 'user@example.com',
-          message: tr('验证成功（演示模式）', 'Verification successful (demo mode)')
-        })
-      }, 1500)
-    })
+    // 直接抛出，不提供模拟回退
+    throw error
   }
 }
 

@@ -81,8 +81,6 @@ abstract class AIStrategy {
  * EASY难度策略：随机选择
  */
 class EasyAIStrategy extends AIStrategy {
-    private final Random random = new Random();
-    
     EasyAIStrategy(BattleEngine engine) {
         super(engine, AIDifficulty.EASY);
     }
@@ -96,7 +94,7 @@ class EasyAIStrategy extends AIStrategy {
         if (available.isEmpty()) return null;
         
         // 随机选择一个招式
-        return available.get(random.nextInt(available.size()));
+        return available.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(available.size()));
     }
     
     @Override
@@ -113,7 +111,7 @@ class EasyAIStrategy extends AIStrategy {
         }
         
         if (aliveTeam.isEmpty()) return null;
-        return aliveTeam.get(random.nextInt(aliveTeam.size()));
+        return aliveTeam.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(aliveTeam.size()));
     }
 }
 

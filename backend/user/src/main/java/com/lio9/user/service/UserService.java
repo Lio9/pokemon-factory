@@ -168,7 +168,7 @@ public class UserService {
         }
         checkRateLimit("refresh:" + extractSubjectFromToken(request.refreshToken()));
 
-        String username = validateTokenAndGetUsername(request.refreshToken());
+        String username = validateTokenAndGetUsername(request.refreshToken(), "refresh");
         if (username == null) {
             throw new ResponseStatusException(UNAUTHORIZED, "refreshToken 无效或已过期");
         }
@@ -312,11 +312,28 @@ public class UserService {
      * @return 校验通过返回用户名，否则返回 null
      */
     public String validateTokenAndGetUsername(String token) {
+        return validateTokenAndGetUsername(token, null);
+    }
+
+    /**
+     * 校验 token 并提取用户名，可选校验令牌类型。
+     *
+     * @param token JWT 令牌
+     * @param requiredType 期望的 type 值（null 表示不校验类型）
+     * @return 校验通过返回用户名，否则返回 null
+     */
+    public String validateTokenAndGetUsername(String token, String requiredType) {
         try {
             var claims = Jwts.parserBuilder().setSigningKey(signingKey).build()
                     .parseClaimsJws(token).getBody();
             String username = claims.getSubject();
             if (username == null) return null;
+
+            // 令牌类型校验（refresh 接口要求 type=refresh）
+            if (requiredType != null) {
+                String tokenType = claims.get("type", String.class);
+                if (!requiredType.equals(tokenType)) return null;
+            }
 
             // 令牌版本号校验
             int tokenVersion = claims.get("tver", Integer.class);
@@ -389,14 +406,19 @@ public class UserService {
     /** 内存滑动窗口频率限制：每 key 每分钟最多 {@value #RATE_LIMIT_PER_MINUTE} 次 */
     private void checkRateLimit(String key) {
         long now = System.currentTimeMillis() / 60_000; // 当前分钟
-        rateLimitMap.compute(key, (k, v) -> {
+        int[] val = rateLimitMap.compute(key, (k, v) -> {
             if (v == null || v[0] != now) return new int[]{ (int) now, 1 };
-            if (v[1] >= RATE_LIMIT_PER_MINUTE) {
-                throw new ResponseStatusException(TOO_MANY_REQUESTS, "操作过于频繁，请稍后重试");
-            }
             v[1]++;
             return v;
         });
+        if (val[1] > RATE_LIMIT_PER_MINUTE) {
+            throw new ResponseStatusException(TOO_MANY_REQUESTS, "操作过于频繁，请稍后重试");
+        }
+        // 防止内存泄漏：Map 超过 1000 条时清理过期条目
+        if (rateLimitMap.size() > 1000) {
+            long currentMinute = now;
+            rateLimitMap.entrySet().removeIf(entry -> entry.getValue()[0] < currentMinute);
+        }
     }
 
     private boolean isAccountLocked(UserAccount account) {
@@ -415,9 +437,7 @@ public class UserService {
 
     private void lockAccount(Long id) {
         LocalDateTime lockedUntil = LocalDateTime.now().plusMinutes(LOCK_DURATION_MINUTES);
-        userMapper.incrementFailedAttempts(id);
-        // 直接通过 SQL update locked_until（简单实现：第二次 UPDATE）
-        // 实际可用一条 SQL 完成，这里为保持 XML 简洁
+        userMapper.lockAccount(id, lockedUntil.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
     }
 
     private String extractSubjectFromToken(String token) {

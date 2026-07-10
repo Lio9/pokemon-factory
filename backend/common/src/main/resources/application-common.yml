@@ -22,6 +22,11 @@ mybatis:
   configuration:
     map-underscore-to-camel-case: true
 
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
 pokemon-factory:
   database:
     # 仅做 schema 迁移（补充缺失列/索引），不做全量初始化
@@ -47,14 +52,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,shutdown
+        include: health,info
   endpoint:
     health:
       probes:
         enabled: true
     shutdown:
-      enabled: true
-      show-details: never
+      enabled: false
 
 info:
   app:

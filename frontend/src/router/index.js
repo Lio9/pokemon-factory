@@ -120,7 +120,8 @@ const routes = [
       name: 'Battle',
       component: () => import('../views/Battle.vue'),
       meta: {
-        title: { zh: '对战工厂', en: 'Battle Factory' }
+        title: { zh: '对战工厂', en: 'Battle Factory' },
+        requiresAuth: true
       }
     },
   {

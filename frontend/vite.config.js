@@ -27,7 +27,6 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 7894,
-    historyApiFallback: true,
     proxy: {
       // battle 服务 (8084): 图鉴+用户+对战全部功能
       '/api': {

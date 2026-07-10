@@ -3,6 +3,7 @@ package com.lio9.common.config;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +16,11 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerExecutionChain;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -42,8 +47,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, 
                                     HttpServletResponse response, 
                                     FilterChain filterChain) throws ServletException, IOException {
+        // 包装请求，缓存 body 使 getHandler() 不会消耗 InputStream
+        CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest(request);
         try {
-            HandlerExecutionChain executionChain = handlerMapping.getHandler(request);
+            HandlerExecutionChain executionChain = handlerMapping.getHandler(wrappedRequest);
             if (executionChain == null) {
                 filterChain.doFilter(request, response);
                 return;
@@ -70,10 +77,50 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     }
                 }
             }
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(wrappedRequest, response);
         } catch (Exception e) {
             log.error("Rate limit filter error", e);
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(wrappedRequest, response);
+        }
+    }
+    
+    /**
+     * 缓存请求 body 的包装类，解决 InputStream 只能读一次的问题。
+     * getHandler() 和 @RequestBody 都能正常读取 body。
+     */
+    private static class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
+        private final byte[] cachedBody;
+
+        CachedBodyHttpServletRequest(HttpServletRequest request) throws IOException {
+            super(request);
+            // 读取并缓存 body 内容
+            try (var is = request.getInputStream()) {
+                this.cachedBody = is.readAllBytes();
+            }
+        }
+
+        @Override
+        public jakarta.servlet.ServletInputStream getInputStream() {
+            return new jakarta.servlet.ServletInputStream() {
+                private final ByteArrayInputStream bais = new ByteArrayInputStream(cachedBody);
+
+                @Override
+                public int read() { return bais.read(); }
+
+                @Override
+                public boolean isFinished() { return bais.available() == 0; }
+
+                @Override
+                public boolean isReady() { return true; }
+
+                @Override
+                public void setReadListener(jakarta.servlet.ReadListener listener) { }
+            };
+        }
+
+        @Override
+        public BufferedReader getReader() {
+            return new BufferedReader(new InputStreamReader(getInputStream(), StandardCharsets.UTF_8));
         }
     }
     
@@ -81,7 +128,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
         StringBuilder keyBuilder = new StringBuilder("rate_limit:");
         switch (rateLimit.keyType()) {
             case IP: keyBuilder.append("ip:").append(getClientIp(request)); break;
-            case USER: keyBuilder.append("user:").append(request.getHeader("X-User-Id")); break;
+            case USER:
+                // 优先从认证上下文获取用户 ID，避免客户端伪造 Header
+                String remoteUser = request.getRemoteUser();
+                if (remoteUser != null && !remoteUser.isEmpty()) {
+                    keyBuilder.append("user:").append(remoteUser);
+                } else {
+                    // 回退到 IP 限流，避免 Header 伪造绕过
+                    keyBuilder.append("user:ip:").append(getClientIp(request));
+                }
+                break;
             case API: keyBuilder.append("api:").append(request.getRequestURI()); break;
             default: keyBuilder.append("default:").append(getClientIp(request));
         }

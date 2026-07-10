@@ -65,7 +65,7 @@ const selectedGeneration = ref(null)
 const sortBy = ref('id')
 const viewMode = ref('grid')
 const activeQuickFilters = ref([])
-const favorites = ref(new Set())
+const favorites = ref([])
 
 // 客户端分页：allRecords 存后端返回的全部数据，pokemons 只放当前页要显示的
 const pageSize = ref(24)
@@ -101,27 +101,28 @@ const displayPokemons = computed(() => allRecords.value.slice(0, displayCount.va
 const loadFavorites = () => {
   try {
     const saved = localStorage.getItem('pokemon-favorites')
-    if (saved) favorites.value = new Set(JSON.parse(saved))
+    if (saved) favorites.value = JSON.parse(saved)
   } catch { /* ignore */ }
 }
 
 const saveFavorites = () => {
-  localStorage.setItem('pokemon-favorites', JSON.stringify([...favorites.value]))
+  localStorage.setItem('pokemon-favorites', JSON.stringify(favorites.value))
 }
 
 const toggleFavorite = (pokemon) => {
   const id = pokemon.id
-  if (favorites.value.has(id)) {
-    favorites.value.delete(id)
+  const idx = favorites.value.indexOf(id)
+  if (idx >= 0) {
+    favorites.value.splice(idx, 1)
     ElMessage.success(`已取消收藏 ${pokemon.name}`)
   } else {
-    favorites.value.add(id)
+    favorites.value.push(id)
     ElMessage.success(`已收藏 ${pokemon.name}`)
   }
   saveFavorites()
 }
 
-const isFavorite = (id) => favorites.value.has(id)
+const isFavorite = (id) => favorites.value.includes(id)
 
 // ---- Filters ----
 const toggleQuickFilter = (filterKey) => {

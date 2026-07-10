@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -141,7 +142,7 @@ public class BattleController {
 
     private String authenticatedUsername(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal() == null) {
-            throw new IllegalStateException("authenticated user missing");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
         }
         return authentication.getName();
     }

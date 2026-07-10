@@ -414,7 +414,7 @@ async function calculateDamage() {
       attackerAbilityId: form.attackerAbilityId, defenderAbilityId: form.defenderAbilityId,
       attackerItemId: form.attackerItemId, defenderItemId: form.defenderItemId,
       attackerAttackBoost: form.attackerAttackBoost,
-      attackerSpAttackBoost: form.attackerAttackBoost,
+      attackerSpAttackBoost: form.attackerSpAttackBoost || form.attackerAttackBoost,
       defenderDefenseBoost: form.defenderDefenseBoost,
       defenderSpDefenseBoost: form.defenderDefenseBoost,
       attackerAttack: form.attackerAtkOv || undefined,

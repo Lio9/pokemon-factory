@@ -106,7 +106,7 @@
       >
         <div
           class="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-10"
-          style="background: linear-gradient(135deg, #6366f1 20, #a855f7 40)"
+          style="background: linear-gradient(135deg, #6366f120, #a855f740)"
         />
         <div class="relative z-10">
           <div class="aspect-square flex items-center justify-center mb-3 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-3 shadow-inner">

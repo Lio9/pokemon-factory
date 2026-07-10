@@ -45,7 +45,7 @@
                 :is="isShowFavorites ? 'StarFilled' : 'Star'"
                 class="w-4 h-4"
               />
-              <span class="ml-1">{{ isShowFavorites ? tr('全部', 'All') : `${tr('收藏', 'Fav')} (${favorites.size})` }}</span>
+              <span class="ml-1">{{ isShowFavorites ? tr('全部', 'All') : `${tr('收藏', 'Fav')} (${favorites.length})` }}</span>
             </el-button>
             <el-button
               size="large"
@@ -179,7 +179,7 @@
         >
           <div
             class="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-10"
-            style="background: linear-gradient(135deg, #8b5cf6 20, #a855f7 40)"
+            style="background: linear-gradient(135deg, #8b5cf620, #a855f740)"
           />
           <div class="relative z-10">
             <div class="flex items-start justify-between mb-3">
@@ -192,7 +192,7 @@
                 </h3>
               </div>
               <FavoriteButton
-                :is-favorited="favorites.has(ability.id)"
+                :is-favorited="favorites.includes(ability.id)"
                 size="sm"
                 @toggle="toggleFavorite(ability)"
               />
@@ -244,7 +244,7 @@
             </p>
           </div>
           <FavoriteButton
-            :is-favorited="favorites.has(ability.id)"
+            :is-favorited="favorites.includes(ability.id)"
             size="lg"
             @toggle="toggleFavorite(ability)"
           />
@@ -393,7 +393,7 @@ function applyFilters() {
   }
 
   if (isShowFavorites.value) {
-    result = result.filter(a => favorites.value.has(a.id))
+    result = result.filter(a => favorites.value.includes(a.id))
   }
 
   if (sortBy.value !== 'default') {

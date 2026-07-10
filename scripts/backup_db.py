@@ -26,8 +26,8 @@ def parse_args():
     parser.add_argument(
         '--db-path',
         type=str,
-        default='pokemon-factory.db',
-        help='数据库文件路径 (默认: pokemon-factory.db)'
+        default=str(Path(__file__).resolve().parent.parent / 'backend' / 'pokemon-factory.db'),
+        help='数据库文件路径 (默认: backend/pokemon-factory.db)'
     )
     parser.add_argument(
         '--backup-dir',

@@ -45,14 +45,14 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Map<String, Object> handleDataImportException(DataImportException ex) {
         log.error("数据导入异常: {}", ex.getMessage(), ex);
-        return ResultResponse.buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, ex.getMessage(), null);
+        return ResultResponse.buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, "数据导入失败", null);
     }
 
     @ExceptionHandler(CalculationException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Map<String, Object> handleCalculationException(CalculationException ex) {
         log.error("计算异常: {}", ex.getMessage(), ex);
-        return ResultResponse.buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, ex.getMessage(), null);
+        return ResultResponse.buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, "计算失败", null);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -95,6 +95,6 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Map<String, Object> handleException(Exception ex) {
         log.error("未捕获的异常", ex);
-        return ResultResponse.buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, "服务器内部错误", ex.getMessage());
+        return ResultResponse.buildCustomErrorResponse(ResponseCode.INTERNAL_SERVER_ERROR, "服务器内部错误", null);
     }
 }

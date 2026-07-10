@@ -113,7 +113,7 @@ def import_csv(cur, table, col_map=None):
         if existing > 0:
             log(f"  {table}: 已有 {existing} 条，跳过")
             return 0
-    except:
+    except Exception:
         pass
     count = 0
     for row in rows:
@@ -188,7 +188,7 @@ def main():
         try:
             cur.execute(f"SELECT COUNT(*) FROM [{table}]")
             existing = cur.fetchone()[0]
-        except:
+        except Exception:
             existing = 0
         if existing > 0:
             log(f"  {table}: 已有 {existing} 条")
@@ -199,7 +199,7 @@ def main():
                 placeholders = ','.join(['?'] * len(row))
                 cur.execute(f"INSERT INTO [{table}] VALUES({placeholders})", row)
                 count += 1
-            except:
+            except Exception:
                 pass
         conn.commit()
         log(f"  {table}: 导入 {count} 条")
@@ -216,7 +216,7 @@ def main():
         for lid, ident in rows:
             if ident == 'zh-Hans': lang_zh = lid
             if ident == 'en': lang_en = lid
-    except:
+    except Exception:
         pass
 
     # 宝可梦中文名
@@ -242,7 +242,7 @@ def main():
                     break
             if zh_name:
                 cur.execute("UPDATE pokemon_species SET name = ? WHERE id = ?", (zh_name, sid))
-        except:
+        except Exception:
             pass
         if (i + 1) % 100 == 0:
             conn.commit()
@@ -251,7 +251,7 @@ def main():
 
     # 特性中文名
     log("补充特性中文名...")
-    rows = cur.execute("SELECT a.id, an.name FROM abilities a LEFT JOIN ability_names an ON an.ability_id = a.id AND an.local_language_id = ? WHERE a.name IS NULL OR a.name = a.name_en", (lang_zh,)).fetchall()
+    rows = cur.execute("SELECT a.id, an.name FROM ability a LEFT JOIN ability_names an ON an.ability_id = a.id AND an.local_language_id = ? WHERE a.name IS NULL OR a.name = a.name_en", (lang_zh,)).fetchall()
     total = len(rows)
     for i, (aid, zh_name) in enumerate(rows):
         if zh_name:
@@ -263,7 +263,7 @@ def main():
 
     # 技能中文名
     log("补充技能中文名...")
-    rows = cur.execute("SELECT m.id, mn.name FROM moves m LEFT JOIN move_names mn ON mn.move_id = m.id AND mn.local_language_id = ? WHERE m.name IS NULL OR m.name = m.name_en", (lang_zh,)).fetchall()
+    rows = cur.execute("SELECT m.id, mn.name FROM move m LEFT JOIN move_names mn ON mn.move_id = m.id AND mn.local_language_id = ? WHERE m.name IS NULL OR m.name = m.name_en", (lang_zh,)).fetchall()
     total = len(rows)
     for i, (mid, zh_name) in enumerate(rows):
         if zh_name:
@@ -275,7 +275,7 @@ def main():
 
     # 物品中文名
     log("补充物品中文名...")
-    rows = cur.execute("SELECT i.id, in2.name FROM items i LEFT JOIN item_names in2 ON in2.item_id = i.id AND in2.local_language_id = ? WHERE i.name IS NULL OR i.name = i.name_en", (lang_zh,)).fetchall()
+    rows = cur.execute("SELECT i.id, in2.name FROM item i LEFT JOIN item_names in2 ON in2.item_id = i.id AND in2.local_language_id = ? WHERE i.name IS NULL OR i.name = i.name_en", (lang_zh,)).fetchall()
     total = len(rows)
     for i, (iid, zh_name) in enumerate(rows):
         if zh_name:

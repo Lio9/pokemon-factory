@@ -93,7 +93,7 @@
                 :is="isShowFavorites ? 'StarFilled' : 'Star'"
                 class="w-4 h-4"
               />
-              <span class="ml-1">{{ isShowFavorites ? tr('全部', 'All') : `${tr('收藏', 'Fav')} (${favorites.size})` }}</span>
+              <span class="ml-1">{{ isShowFavorites ? tr('全部', 'All') : `${tr('收藏', 'Fav')} (${favorites.length})` }}</span>
             </el-button>
             <el-button
               size="large"
@@ -293,7 +293,7 @@
                 {{ move.name }}
               </h3>
               <FavoriteButton
-                :is-favorited="favorites.has(move.id)"
+                :is-favorited="favorites.includes(move.id)"
                 size="sm"
                 @toggle="toggleFavorite(move)"
               />
@@ -374,7 +374,7 @@
             <span>PP {{ move.pp }}</span>
           </div>
           <FavoriteButton
-            :is-favorited="favorites.has(move.id)"
+            :is-favorited="favorites.includes(move.id)"
             size="lg"
             @toggle="toggleFavorite(move)"
           />
@@ -482,7 +482,7 @@ function applyFilters() {
   let result = [...items.value]
 
   if (isShowFavorites.value) {
-    result = result.filter(m => favorites.value.has(m.id))
+    result = result.filter(m => favorites.value.includes(m.id))
   }
   if (selectedType.value) {
     result = result.filter(m => m.typeId === selectedType.value)

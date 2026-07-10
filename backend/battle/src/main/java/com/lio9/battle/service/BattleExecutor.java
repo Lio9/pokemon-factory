@@ -9,6 +9,7 @@ import com.lio9.battle.mapper.BattleRoundMapper;
 import com.lio9.battle.mapper.JobMapper;
 import com.lio9.battle.mapper.TeamMapper;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.slf4j.Logger;
@@ -21,8 +22,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 异步对战执行器。
@@ -70,8 +69,25 @@ public class BattleExecutor {
         recoverPendingJobs();
     }
 
+    /** Spring 容器关闭时优雅停止线程池 */
+    @PreDestroy
+    public void shutdown() {
+        if (executor != null) {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(30, java.util.concurrent.TimeUnit.SECONDS)) {
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
     /**
      * 提交一场异步自动模拟任务。
+     * 立即返回 battleId，后台线程异步执行对战。
      */
     public Integer submitAsyncBattle(Integer playerId, String playerTeamJson, String playerMoveMapJson) {
         try {
@@ -84,19 +100,15 @@ public class BattleExecutor {
             battleMapper.insertInitial(playerId, null, 0, playerMoveMapJson, finalPlayerTeamJson, "queued", null, null);
             Integer battleId = battleMapper.lastInsertId();
             jobMapper.insertJob(battleId, "PENDING", playerMoveMapJson);
-                        Future<?> battleFuture = executor.submit(() -> runBattle(battleId, playerId, finalPlayerTeamJson));
-            try {
-                battleFuture.get(5, TimeUnit.MINUTES);
-            } catch (Exception e) {
-                battleFuture.cancel(true);
-                log.error("异步对战超时, battleId={}", battleId, e);
+            // 异步提交，不阻塞调用线程
+            executor.submit(() -> {
                 try {
-                    battleMapper.updateBattle(battleId, null, "{\"status\":\"completed\",\"phase\":\"completed\",\"winner\":\"opponent\",\"error\":\"timeout\"}", 0, null, "completed");
-                    markJobDone(battleId, "TIMEOUT");
-                } catch (Exception nested) {
-                    log.error("超时后兜底落库失败, battleId={}", battleId, nested);
+                    runBattle(battleId, playerId, finalPlayerTeamJson);
+                } catch (Exception e) {
+                    log.error("异步对战执行异常, battleId={}", battleId, e);
+                    handleBattleFailure(battleId);
                 }
-            }
+            });
             return battleId;
         } catch (Exception e) {
             log.error("提交异步对战失败, playerId={}", playerId, e);
@@ -141,12 +153,17 @@ public class BattleExecutor {
             markJobDone(battleId, "DONE");
         } catch (Exception e) {
             log.error("执行异步对战失败, battleId={}, playerId={}", battleId, playerId, e);
-            try {
-                battleMapper.updateBattle(battleId, null, "{\"status\":\"completed\",\"phase\":\"completed\",\"winner\":\"opponent\",\"error\":\"executor_failed\"}", 0, null, "completed");
-                markJobDone(battleId, "FAILED");
-            } catch (Exception nested) {
-                log.error("异步对战失败后的兜底落库也失败, battleId={}", battleId, nested);
-            }
+            handleBattleFailure(battleId);
+        }
+    }
+
+    /** 对战失败后的兜底落库：标记为 opponent 胜利 + job FAILED */
+    private void handleBattleFailure(Integer battleId) {
+        try {
+            battleMapper.updateBattle(battleId, null, "{\"status\":\"completed\",\"phase\":\"completed\",\"winner\":\"opponent\",\"error\":\"executor_failed\"}", 0, null, "completed");
+            markJobDone(battleId, "FAILED");
+        } catch (Exception nested) {
+            log.error("异步对战失败后的兜底落库也失败, battleId={}", battleId, nested);
         }
     }
 

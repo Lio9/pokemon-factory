@@ -32,7 +32,7 @@ def run(script, label):
     if not fp.exists():
         print(f"[setup] SKIP {script} (not found / 未找到)")
         return True
-    print(f"\\n{'='*60}\\n[{label}] Running {script}...\\n{'='*60}")
+    print(f"\n{'='*60}\n[{label}] Running {script}...\n{'='*60}")
     ret = subprocess.call([sys.executable, str(fp)] + sys.argv[1:])
     if ret != 0:
         print(f"[setup] FAILED: {script} (exit code {ret})")
@@ -57,15 +57,13 @@ def main():
     # Full setup / 完整初始化
     for script, label in STEPS:
         if not run(script, label):
-            print(f"\\n[setup] Failed at step: {label}")
+            print(f"\n[setup] Failed at step: {label}")
             sys.exit(1)
 
-    print(f"\\n{'='*60}")
+    print(f"\n{'='*60}")
     print("Setup complete! / 初始化完成!")
     print("Start the backend with / 启动后端:")
-    print("  cd backend && mvn.cmd spring-boot:run -pl one-server")
-    print("Or run the JAR directly / 或直接运行 JAR:")
-    print("  cd backend && java -jar one-server/target/one-server-0.0.1-SNAPSHOT.jar")
+    print("  cd backend && java -jar battle/target/battle-0.0.1-SNAPSHOT.jar")
     print(f"{'='*60}")
 
 if __name__ == '__main__':

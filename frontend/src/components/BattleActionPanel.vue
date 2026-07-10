@@ -195,6 +195,7 @@ defineProps({
   actionHeadline: { type: String, default: '' },
   availableActionCount: { type: Number, default: 0 },
   availableActionDescription: { type: String, default: '' },
+  battleFormat: { type: String, default: 'singles' },
   busyAction: { type: String, default: '' },
   currentBattleId: { type: [Number, String], default: null },
   factoryRun: { type: Object, default: null },

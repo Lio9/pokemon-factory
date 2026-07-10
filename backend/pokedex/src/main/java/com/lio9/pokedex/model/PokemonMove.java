@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * 宝可梦技能关联实体类
  */
 @Data
-@TableName("pokemon_move")
+@TableName("pokemon_form_move")
 public class PokemonMove {
     /**
      * 关联ID
@@ -22,9 +22,9 @@ public class PokemonMove {
     private Long id;
     
     /**
-     * 宝可梦ID
+     * 形态ID
      */
-    private Long pokemonId;
+    private Long formId;
     
     /**
      * 技能ID
@@ -32,9 +32,9 @@ public class PokemonMove {
     private Long moveId;
     
     /**
-     * 学习方式
+     * 学习方式ID
      */
-    private String learnMethod;
+    private Long learnMethodId;
     
     /**
      * 学习等级
@@ -42,46 +42,7 @@ public class PokemonMove {
     private Integer level;
     
     /**
-     * 版本组
+     * 版本组ID
      */
-    private String versionGroup;
-    
-    /**
-     * 创建时间
-     */
-    private LocalDateTime createdAt;
-    
-    /**
-     * 更新时间
-     */
-    private LocalDateTime updatedAt;
-    
-    // 手动添加setter方法
-    public void setPokemonId(Long pokemonId) {
-        this.pokemonId = pokemonId;
-    }
-    
-    public void setMoveId(Long moveId) {
-        this.moveId = moveId;
-    }
-    
-    public void setLearnMethod(String learnMethod) {
-        this.learnMethod = learnMethod;
-    }
-    
-    public void setLevel(Integer level) {
-        this.level = level;
-    }
-    
-    public void setVersionGroup(String versionGroup) {
-        this.versionGroup = versionGroup;
-    }
-    
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-    
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+    private Long versionGroupId;
 }

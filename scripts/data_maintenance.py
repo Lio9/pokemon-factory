@@ -96,7 +96,7 @@ def fix_move_types_and_damage(cur):
                 correct = TYPE_NAME_TO_LOCAL.get(data["type"]["name"])
                 if correct:
                     cur.execute("UPDATE move SET type_id = ? WHERE id = ?", (correct, mid))
-                    conn.commit()
+                    cur.connection.commit()
             progress(idx + 1, len(bad_types), "type_id")
     else:
         print("\ntype_id 全部正确")
@@ -111,7 +111,7 @@ def fix_move_types_and_damage(cur):
             if data and data.get("damage_class"):
                 correct = DC_MAP.get(data["damage_class"]["name"], 3)
                 cur.execute("UPDATE move SET damage_class_id = ? WHERE damage_class_id = ?", (correct, dcid))
-                conn.commit()
+                cur.connection.commit()
                 print(f"  ID {dcid} -> {correct} ({data['damage_class']['name']})")
                 time.sleep(DELAY)
     else:
@@ -133,7 +133,7 @@ def fix_move_descriptions(cur):
         desc = get_zh_flavor(data) or get_en_effect(data)
         if desc:
             cur.execute("UPDATE move SET description = ? WHERE id = ?", (desc, mid))
-            conn.commit()
+            cur.connection.commit()
             updated += 1
         progress(idx + 1, len(moves), "moves")
         time.sleep(DELAY)
@@ -170,13 +170,13 @@ def fix_item_data(cur):
                 cur.execute("UPDATE item SET category_id = ? WHERE id = ?", (cat_row[0], iid))
             else:
                 cur.execute("INSERT INTO item_category(name, name_en) VALUES(?, ?)", (cat_name, cat_name.lower().replace(" ", "-")))
-                conn.commit()
+                cur.connection.commit()
                 cur.execute("SELECT id FROM item_category WHERE name = ?", (cat_name,))
                 new_cat = cur.fetchone()
                 if new_cat:
                     cur.execute("UPDATE item SET category_id = ? WHERE id = ?", (new_cat[0], iid))
 
-        conn.commit()
+        cur.connection.commit()
         updated += 1
         progress(idx + 1, len(items), "items")
         time.sleep(DELAY)
@@ -195,7 +195,7 @@ def verify(cur):
         "item 缺描述": ("item", 2135, "description IS NULL OR description = ''", 0),
     }
     print("\n=== 数据完整性检查 ===")
-    for label, table, *rest in checks.items():
+    for label, (table, *rest) in checks.items():
         if len(rest) == 1:
             cur.execute(f"SELECT COUNT(*) FROM {table}")
             count = cur.fetchone()[0]

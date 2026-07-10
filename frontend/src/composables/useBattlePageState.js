@@ -855,7 +855,6 @@ export function useBattlePageState() {
     setSelectedAction,
     availableSpecialSystems,
     activeSpecialSystemLabel,
-    moveEffectivenessHints,
     selectedMoveObject,
     selectedMoves,
     setSelectedMove,

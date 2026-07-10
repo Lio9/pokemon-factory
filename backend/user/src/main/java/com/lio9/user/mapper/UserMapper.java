@@ -33,6 +33,9 @@ public interface UserMapper {
     /** 解锁账号 */
     void unlockAccount(@Param("id") Long id);
 
+    /** 锁定账号直到指定时间 */
+    void lockAccount(@Param("id") Long id, @Param("lockedUntil") String lockedUntil);
+
     /** 更新邮箱和验证令牌 */
     void updateEmailAndVerificationToken(@Param("id") Long id,
                                           @Param("email") String email,

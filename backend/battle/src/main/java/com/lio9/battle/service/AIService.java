@@ -467,7 +467,7 @@ public class AIService {
             selectedItem = "assault-vest";
         } else {
             // 中速：随机选择
-            selectedItem = itemPool.get(new Random().nextInt(itemPool.size()));
+            selectedItem = itemPool.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(itemPool.size()));
         }
 
         // 从道具池中移除已选道具，避免重复

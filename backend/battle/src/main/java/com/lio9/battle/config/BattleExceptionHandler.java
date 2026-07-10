@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -18,6 +19,14 @@ import java.util.Map;
 public class BattleExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(BattleExceptionHandler.class);
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
+        log.warn("请求拒绝: {} {}", ex.getStatusCode(), ex.getReason());
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        String message = ex.getReason() != null ? ex.getReason() : "请求处理失败";
+        return BattleApiResponseSupport.error(status, "request_rejected", message);
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException ex) {

@@ -123,7 +123,6 @@ CREATE INDEX IF NOT EXISTS idx_battle_round_battle ON battle_round(battle_id, ro
 CREATE INDEX IF NOT EXISTS idx_battle_job_status ON battle_job(status);
 CREATE INDEX IF NOT EXISTS idx_factory_run_player_status ON factory_run(player_id, status);
 CREATE INDEX IF NOT EXISTS idx_battle_exchange_battle ON battle_exchange(battle_id);
-CREATE INDEX IF NOT EXISTS idx_battle_exchange_battle ON battle_exchange(battle_id);
 CREATE INDEX IF NOT EXISTS idx_factory_run_player ON factory_run(player_id);
 CREATE INDEX IF NOT EXISTS idx_factory_run_status ON factory_run(status);
 

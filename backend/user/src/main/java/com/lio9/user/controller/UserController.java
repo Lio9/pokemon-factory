@@ -104,9 +104,9 @@ public class UserController {
                     .body(ResultResponse.buildCustomErrorResponse(HttpStatus.UNAUTHORIZED.value(), "未登录", "unauthorized"));
         }
         // 开发环境返回验证令牌，生产环境应只返回成功消息
-        String token = userService.requestEmailVerification(authentication.getName(), request.email());
+        userService.requestEmailVerification(authentication.getName(), request.email());
         return ResponseEntity.ok(ResultResponse.buildSuccess(
-            "验证邮件已发送（开发模式：令牌为 " + token + "）", 
+            "验证邮件已发送，请查收邮箱并点击验证链接",
             Map.of("message", "请查收邮箱并点击验证链接")
         ));
     }
