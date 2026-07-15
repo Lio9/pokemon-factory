@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 
 /**
  * 工厂挑战服务：管理 9 轮连续对战的完整流程。
@@ -25,12 +26,15 @@ public class FactoryRunService {
     private final PlayerMapper playerMapper;
     private final BattleService battleService;
     private final AIService aiService;
+    private final BanService banService;
 
-    public FactoryRunService(FactoryRunMapper runMapper, PlayerMapper playerMapper, BattleService battleService, AIService aiService) {
+    public FactoryRunService(FactoryRunMapper runMapper, PlayerMapper playerMapper,
+                             BattleService battleService, AIService aiService, BanService banService) {
         this.runMapper = runMapper;
         this.playerMapper = playerMapper;
         this.battleService = battleService;
         this.aiService = aiService;
+        this.banService = banService;
     }
 
     /**
@@ -73,6 +77,78 @@ public class FactoryRunService {
         response.put("tierName", TierService.tierName(tier));
         response.put("profile", buildProfileSummary(profile));
         response.put("message", "工厂挑战开始！你将进行 " + MAX_BATTLES + " 轮连续对战。");
+        return response;
+    }
+
+    /**
+     * 开始一次带 ban 的工厂挑战。
+     *
+     * @param username 玩家用户名
+     * @param req 请求体，包含 bannedPokemon 列表（宝可梦名称数组）
+     * @return 工厂挑战初始化信息
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> startRunWithBan(String username, Map<String, Object> req) {
+        playerMapper.insertIgnore(username);
+        Integer playerId = playerMapper.findIdByUsername(username);
+        Map<String, Object> profile = playerMapper.findByUsername(username);
+        int tier = toInt(profile.get("tier"), 0);
+        int totalPoints = toInt(profile.get("total_points"), 0);
+
+        // 检查是否已有活跃的工厂挑战
+        Map<String, Object> existingRun = runMapper.findActiveRun(playerId);
+        if (existingRun != null) {
+            return resumeRun(existingRun, username, profile);
+        }
+
+        // 解析 ban 列表
+        Set<String> bannedNames = new HashSet<>();
+        Object bannedObj = req.get("bannedPokemon");
+        if (bannedObj instanceof List<?> bannedList) {
+            for (Object item : bannedList) {
+                if (item != null) {
+                    bannedNames.add(String.valueOf(item));
+                }
+            }
+        }
+
+        // 验证 ban 费用
+        int banCount = bannedNames.size();
+        String validationError = banService.validateBan(banCount, totalPoints);
+        if (validationError != null) {
+            return Map.of("error", "invalid_ban", "message", validationError);
+        }
+
+        // 扣除 ban 费用
+        int newTotalPoints = banService.deductBanCost(banCount, totalPoints);
+        if (newTotalPoints != totalPoints) {
+            int currentTierPoints = toInt(profile.get("tier_points"), 0);
+            playerMapper.updateTierProgress(playerId, tier, currentTierPoints, newTotalPoints,
+                    toInt(profile.get("highest_tier"), 0), toInt(profile.get("wins"), 0), toInt(profile.get("losses"), 0));
+        }
+
+        // 生成初始 6 只队伍（排除被 ban 的宝可梦）
+        long seed = System.currentTimeMillis();
+        String teamJson = aiService.generateFactoryTeamJson(6, tier, seed, bannedNames);
+
+        runMapper.insertRun(playerId, MAX_BATTLES, teamJson, tier);
+        Integer runId = runMapper.lastInsertId();
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("runId", runId);
+        response.put("status", "active");
+        response.put("currentBattle", 0);
+        response.put("maxBattles", MAX_BATTLES);
+        response.put("wins", 0);
+        response.put("losses", 0);
+        response.put("teamJson", teamJson);
+        response.put("tier", tier);
+        response.put("tierName", TierService.tierName(tier));
+        response.put("bannedPokemon", bannedNames);
+        response.put("banCost", banService.calculateBanCost(banCount));
+        response.put("remainingPoints", newTotalPoints);
+        response.put("profile", buildProfileSummary(profile));
+        response.put("message", "工厂挑战开始！已 ban " + banCount + " 只宝可梦，扣除 " + banService.calculateBanCost(banCount) + " 积分。");
         return response;
     }
 
@@ -176,6 +252,11 @@ public class FactoryRunService {
         String teamJson = updatedTeamJson != null ? updatedTeamJson : String.valueOf(run.get("team_json"));
 
         runMapper.updateProgress(factoryRunId, currentBattle, wins, losses, null, teamJson);
+
+        // 更新 run 对象，确保 finishRun 使用最新数据
+        run.put("wins", wins);
+        run.put("losses", losses);
+        run.put("team_json", teamJson);
 
         // 检查是否达到终止条件
         int maxBattles = toInt(run.get("max_battles"), MAX_BATTLES);

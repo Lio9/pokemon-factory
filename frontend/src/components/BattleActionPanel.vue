@@ -62,6 +62,13 @@
         {{ busyAction === 'factory-start' ? tr('正在创建挑战...', 'Creating run...') : tr('开始工厂挑战（9 轮）', 'Start factory challenge (9 rounds)') }}
       </button>
       <button
+        class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+        :disabled="isBusy"
+        @click="emit('open-ban')"
+      >
+        🚫 {{ tr('Ban 后开始挑战', 'Ban & Start') }}
+      </button>
+      <button
         class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         :disabled="isBusy"
         @click="emit('start-manual')"
@@ -93,7 +100,9 @@
       </button>
     </template>
     <template v-else>
+      <!-- 战斗进行中：刷新 + 投降 -->
       <button
+        v-if="summary?.status === 'running'"
         class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
         :disabled="!currentBattleId || isBusy"
         @click="emit('refresh-status')"
@@ -108,6 +117,23 @@
       >
         {{ busyAction === 'forfeit-battle' ? tr('投降处理中...', 'Forfeiting...') : tr('投降', 'Forfeit') }}
       </button>
+      <!-- 战斗已完成：准备下一轮 / 清空战场 -->
+      <button
+        v-if="showContinueFactoryButton"
+        class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+        :disabled="isBusy"
+        @click="emit('prepare-next')"
+      >
+        {{ tr('准备下一轮', 'Prepare next round') }}
+      </button>
+      <button
+        v-if="showResetBattleButton"
+        class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+        :disabled="isBusy"
+        @click="emit('reset-battle')"
+      >
+        {{ tr('清空当前战场', 'Reset battlefield') }}
+      </button>
     </template>
     <button
       class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -115,22 +141,6 @@
       @click="emit('open-leaderboard')"
     >
       {{ tr('排行榜', 'Leaderboard') }}
-    </button>
-    <button
-      v-if="showContinueFactoryButton"
-      class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-      :disabled="isBusy"
-      @click="emit('prepare-next')"
-    >
-      {{ tr('准备下一轮', 'Prepare next round') }}
-    </button>
-    <button
-      v-if="showResetBattleButton"
-      class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
-      :disabled="isBusy"
-      @click="emit('reset-battle')"
-    >
-      {{ tr('清空当前战场', 'Reset battlefield') }}
     </button>
   </div>
 
@@ -181,6 +191,7 @@ const emit = defineEmits([
   'forfeit-battle',
   'next-factory',
   'open-leaderboard',
+  'open-ban',
   'prepare-next',
   'refresh-status',
   'reset-battle',

@@ -280,12 +280,14 @@ final class BattleAISupport {
                         if (engine.toInt(target.get("currentHp"), 0) <= 0)
                             continue;
 
-                        // 模拟太晶化后的伤害（简化处理：假设太晶化后该招式威力提升 50%）
-                        Map<String, Object> teraMove = new java.util.LinkedHashMap<>(selectedMove);
-                        teraMove.put("power", engine.toInt(teraMove.get("power"), 0) * 1.5);
-
-                        int predictedDamage = engine.calculateDamage(mon, target, teraMove, new java.util.Random(),
+                        // 模拟太晶化后的伤害：正常计算后乘以太晶 STAB 倍率
+                        int baseDamage = engine.calculateDamage(mon, target, selectedMove, new java.util.Random(),
                                 new java.util.HashMap<>(), state);
+                        // 招式匹配原始属性+太晶属性时 STAB 为 2.0x，仅匹配太晶属性时为 1.5x
+                        boolean matchesOriginal = engine.targetHasType(mon, moveTypeId);
+                        boolean matchesTera = teraTypeId == moveTypeId;
+                        double teraStab = (matchesOriginal && matchesTera) ? 2.0 : 1.5;
+                        int predictedDamage = (int) Math.floor(baseDamage * teraStab);
                         if (predictedDamage >= engine.toInt(target.get("currentHp"), 0)) {
                             return "tera"; // 太晶化后可实现击杀
                         }

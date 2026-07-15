@@ -903,7 +903,9 @@ public class BattleEngine {
         }
         Map<String, Object> copied = cloneMap(move);
         copied.put("priority", effectivePriority);
-        copied.put("pranksterBoosted", effectivePriority > currentPriority);
+        // pranksterBoosted 只在 Prankster 特性提升优先级时设置，Triage/Gale Wings 不应设置
+        boolean isPrankster = "prankster".equalsIgnoreCase(abilityName(mon));
+        copied.put("pranksterBoosted", isPrankster && effectivePriority > currentPriority && isStatusMove(move));
         return copied;
     }
 
@@ -1848,6 +1850,11 @@ public class BattleEngine {
                 actionLog.put("zStatusBoost", true);
                 events.add(mon.get("name") + " 的 Z 力量让全能力提升了！");
             }
+        }
+
+        // 将 Z-Power 写入招式对象，供伤害计算使用
+        if (move != null && basePower > 0) {
+            move.put("power", zPower);
         }
 
         actionLog.put("zMove", true);

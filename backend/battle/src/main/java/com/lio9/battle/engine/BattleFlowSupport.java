@@ -44,10 +44,33 @@ final class BattleFlowSupport {
             } else if (!opponentAlive && playerAlive) {
                 winner = "player";
             } else {
-                // 双方同时倒下或平局判定：比较剩余总 HP
-                int playerHp = totalRemainingHp(engine.team(state, true));
-                int opponentHp = totalRemainingHp(engine.team(state, false));
-                winner = (playerHp >= opponentHp) ? "player" : "opponent";
+                // 双方同时倒下或回合上限判定
+                int playerAliveCount = aliveCount(engine.team(state, true));
+                int opponentAliveCount = aliveCount(engine.team(state, false));
+
+                if (playerAliveCount > opponentAliveCount) {
+                    winner = "player";
+                } else if (opponentAliveCount > playerAliveCount) {
+                    winner = "opponent";
+                } else {
+                    // 剩余数量相同，比较 HP 百分比
+                    int playerHp = totalRemainingHp(engine.team(state, true));
+                    int opponentHp = totalRemainingHp(engine.team(state, false));
+                    int playerMaxHp = totalMaxHp(engine.team(state, true));
+                    int opponentMaxHp = totalMaxHp(engine.team(state, false));
+
+                    double playerPct = playerMaxHp > 0 ? (double) playerHp / playerMaxHp : 0;
+                    double opponentPct = opponentMaxHp > 0 ? (double) opponentHp / opponentMaxHp : 0;
+
+                    if (playerPct > opponentPct) {
+                        winner = "player";
+                    } else if (opponentPct > playerPct) {
+                        winner = "opponent";
+                    } else {
+                        // 完全平局，默认判对手胜（对玩家不利，避免刷分）
+                        winner = "opponent";
+                    }
+                }
             }
 
             state.put("winner", winner);
@@ -181,6 +204,14 @@ final class BattleFlowSupport {
         int total = 0;
         for (Map<String, Object> mon : team) {
             total += Math.max(0, engine.toInt(mon.get("currentHp"), 0));
+        }
+        return total;
+    }
+
+    private int totalMaxHp(List<Map<String, Object>> team) {
+        int total = 0;
+        for (Map<String, Object> mon : team) {
+            total += engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 0);
         }
         return total;
     }

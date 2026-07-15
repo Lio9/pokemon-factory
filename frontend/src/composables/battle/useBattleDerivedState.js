@@ -247,12 +247,15 @@ export function useBattleDerivedState(state) {
   }
 
   function canUseSpecialSystem(mon, system) {
-    if (!mon || summary.value?.playerSpecialUsed) {
-      return false
+    if (!mon) return false
+    // 太晶化可以独立于其他特殊系统使用（后端规则：playerSpecialUsed 不影响太晶化）
+    if (system === 'tera') {
+      return !mon.terastallized && Number(mon.teraTypeId || mon?.teraType?.type_id || 0) > 0
+        && !summary.value?.playerTeraUsed
     }
+    // 其他特殊系统（Mega/Z招式/极巨化）互斥，使用过一次后全部锁定
+    if (summary.value?.playerSpecialUsed) return false
     switch (system) {
-      case 'tera':
-        return !mon.terastallized && Number(mon.teraTypeId || mon?.teraType?.type_id || 0) > 0
       case 'mega':
         return Boolean(mon.megaEligible) && !mon.megaEvolved
       case 'z-move':
@@ -275,21 +278,21 @@ export function useBattleDerivedState(state) {
 
   function teraTypeLabel(mon) {
     const teraType = mon?.teraType || {}
-    return teraType.name || teraType.name_en || `属性${teraType.type_id || mon?.teraTypeId || ''}`
+    return teraType.name || teraType.name_en || translate(`属性${teraType.type_id || mon?.teraTypeId || ''}`, `Type ${teraType.type_id || mon?.teraTypeId || '?'}`)
   }
 
   function specialSystemLabel(system) {
     switch (system) {
       case 'tera':
-        return '太晶化'
+        return translate('太晶化', 'Terastal')
       case 'mega':
-        return 'Mega 进化'
+        return translate('Mega 进化', 'Mega Evolution')
       case 'z-move':
-        return 'Z 招式'
+        return translate('Z 招式', 'Z-Move')
       case 'dynamax':
-        return '极巨化'
+        return translate('极巨化', 'Dynamax')
       default:
-        return system || '特殊系统'
+        return system || translate('特殊系统', 'Special System')
     }
   }
 
@@ -338,7 +341,10 @@ export function useBattleDerivedState(state) {
   }
 
   const canSubmitMove = computed(() => {
-    if (!currentBattleId.value || summary.value?.status !== 'running' || !playerActiveMons.value.length || isReplacementPhase.value) {
+    if (!currentBattleId.value || summary.value?.status !== 'running'
+        || !playerActiveMons.value.length
+        || isPreviewPhase.value
+        || isReplacementPhase.value) {
       return false
     }
 

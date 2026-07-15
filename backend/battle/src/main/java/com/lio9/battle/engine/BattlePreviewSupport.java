@@ -44,8 +44,10 @@ final class BattlePreviewSupport {
             entry.put("rosterIndex", index);
             sorted.add(entry);
         }
-        sorted.sort(Comparator.comparingInt((Map<String, Object> mon) -> toInt(mon.get("battleScore"), 0)).reversed()
-                .thenComparingInt(mon -> toInt(stateSupport.castMap(mon.get("stats")).get("speed"), 0)).reversed());
+        // 按战斗力评分降序排列，同分时按速度降序（取负值实现降序）
+        sorted.sort(Comparator
+                .comparingInt((Map<String, Object> mon) -> -toInt(mon.get("battleScore"), 0))
+                .thenComparingInt((Map<String, Object> mon) -> -toInt(stateSupport.castMap(mon.get("stats")).get("speed"), 0)));
         for (int index = 0; index < Math.min(battleTeamSize, sorted.size()); index++) {
             picked.add(toInt(sorted.get(index).get("rosterIndex"), index));
         }

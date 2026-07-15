@@ -1124,11 +1124,12 @@ public final class MoveRegistry {
 
     /**
      * 检查是否为群体技能 (双打中攻击多个目标)
+     * target_id: 9=all other active, 11=all opponents, 12=all active, 13=all adjacent, 14=all active(field-wide)
+     * target_id 10 = single opponent (NOT spread)
      */
     public static boolean isSpreadMove(Map<String, Object> move) {
         int targetId = BattleUtils.toInt(move.get("target_id"), 10);
-        // Target IDs: 9=all adjacent foes, 10=all adjacent, 11=random opponent, etc.
-        return targetId == 9 || targetId == 10 || targetId == 11 || targetId == 12 || targetId == 13 || targetId == 14;
+        return targetId == 9 || targetId == 11 || targetId == 12 || targetId == 13 || targetId == 14;
     }
 
     /**

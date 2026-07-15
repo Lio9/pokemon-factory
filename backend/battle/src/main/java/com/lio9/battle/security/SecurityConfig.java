@@ -37,6 +37,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/damage/**").permitAll()
                 .requestMatchers("/api/pokedex/**").permitAll()
                 .requestMatchers("/api/battle/guest/**").permitAll()
+                .requestMatchers("/api/battle/leaderboard").permitAll()
+                .requestMatchers("/api/battle/pool").permitAll()
                 .requestMatchers("/api/user/me").authenticated()
                 .requestMatchers("/api/battle/**").authenticated()
                 .anyRequest().permitAll()

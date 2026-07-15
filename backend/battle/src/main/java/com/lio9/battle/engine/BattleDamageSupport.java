@@ -174,14 +174,15 @@ final class BattleDamageSupport {
 
         // Type effectiveness
         double typeModifier = typeModifier(defender, moveTypeId);
-        // Ring Target: 持有者招式无视属性免疫（但不改变正常/效果绝佳/效果不佳）
-        boolean ringTargetActive = "ring-target".equalsIgnoreCase(heldItem(attacker))
-                || "ring target".equalsIgnoreCase(heldItem(attacker));
+        // Ring Target: 持有者失去属性免疫（应检查防御方的道具）
+        boolean ringTargetActive = "ring-target".equalsIgnoreCase(heldItem(defender))
+                || "ring target".equalsIgnoreCase(heldItem(defender));
         if (typeModifier <= 0.0d && ringTargetActive) {
             typeModifier = 1.0d;
         }
-        // Scrappy & Mind's Eye: Normal-type moves hit Ghost types
-        if (typeModifier <= 0.0d && moveTypeId == DamageCalculatorUtil.TYPE_NORMAL
+        // Scrappy & Mind's Eye: Normal/Fighting-type moves hit Ghost types
+        if (typeModifier <= 0.0d
+                && (moveTypeId == DamageCalculatorUtil.TYPE_NORMAL || moveTypeId == DamageCalculatorUtil.TYPE_FIGHTING)
                 && (hasAbility(attacker, "scrappy", "mind's-eye", "mind's eye"))) {
             typeModifier = 1.0d;
         }
@@ -210,9 +211,7 @@ final class BattleDamageSupport {
         if (engine.isDynamaxed(attacker)) {
             modifier *= 1.3d;
         }
-        if (engine.isZMoveActive(attacker, engine.toInt(state.get("currentRound"), 0), move)) {
-            modifier *= 1.5d;
-        }
+        // Z 招式威力已通过 activateZMove 写入 move.power，无需额外倍率
 
         // Wind Power: 充电状态下电系招式伤害 x2
         if (engine.volatileFlag(attacker, "windPowerCharged") && moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC) {
@@ -563,8 +562,11 @@ final class BattleDamageSupport {
         if (Boolean.TRUE.equals(attacker.get("terastallized"))) {
             int teraTypeId = engine.toInt(attacker.get("teraTypeId"), 0);
             if (teraTypeId == moveTypeId) {
-                // Tera STAB: 2.0x if also matches original type, otherwise 1.5x
+                // 招式匹配太晶属性：2.0x（同时也匹配原始属性），否则 1.5x
                 stab = matchesOriginalType ? 2.0d : 1.5d;
+            } else if (matchesOriginalType) {
+                // 招式匹配原始属性但不匹配太晶属性：保留 1.5x STAB
+                stab = 1.5d;
             }
         } else if (matchesOriginalType) {
             // Normal STAB: 1.5x
@@ -582,15 +584,14 @@ final class BattleDamageSupport {
     /**
      * Spread move modifier for Doubles battles
      * Multi-target moves deal 75% damage in Pokemon Showdown
+     * target_id: 9=all other active, 11=all opponents, 12=all active, 13=all adjacent, 14=all active(field-wide)
+     * target_id 10 = single opponent (NOT spread)
      */
     double spreadMoveModifier(Map<String, Object> move, Map<String, Object> state) {
-        // Check if this is a spread move (targets multiple opponents)
         Integer targetId = engine.toInt(move.get("target_id"), 10);
-        // Target IDs: 10 = all adjacent foes, 11 = all adjacent, etc.
-        boolean isSpreadMove = (targetId == 10 || targetId == 11 || targetId == 12);
+        boolean isSpreadMove = (targetId == 9 || targetId == 11 || targetId == 12 || targetId == 13 || targetId == 14);
 
         if (isSpreadMove) {
-            // 默认回退值给 2，是为了与双打群攻的常见情况对齐；但真正由上层按存活目标数覆盖时才最准确。
             int spreadTargetCount = engine.toInt(move.get("spreadTargetCount"), 2);
             return spreadTargetCount > 1 ? 0.75d : 1.0d;
         }
@@ -844,6 +845,10 @@ final class BattleDamageSupport {
 
     double terrainDamageModifier(Map<String, Object> state, Map<String, Object> attacker, Map<String, Object> defender,
             Map<String, Object> move, int moveTypeId) {
+        // 青草场地减半地震/震级/重踏（对所有宝可梦生效，不论是否接地）
+        if (fieldEffectSupport.grassyTerrainTurns(state) > 0 && isEarthquake(move)) {
+            return 0.5d;
+        }
         if (!isGrounded(attacker)) {
             return fieldEffectSupport.mistyTerrainTurns(state) > 0
                     && moveTypeId == DamageCalculatorUtil.TYPE_DRAGON
@@ -858,7 +863,6 @@ final class BattleDamageSupport {
             return isExpandingForce(move) ? 2.0d : 1.3d;
         }
         if (fieldEffectSupport.grassyTerrainTurns(state) > 0 && moveTypeId == DamageCalculatorUtil.TYPE_GRASS) {
-            if (isEarthquake(move)) return 0.5d;
             return 1.3d;
         }
         if (fieldEffectSupport.mistyTerrainTurns(state) > 0 && moveTypeId == DamageCalculatorUtil.TYPE_DRAGON
@@ -874,17 +878,21 @@ final class BattleDamageSupport {
         if (hasAbility(attacker, "infiltrator")) {
             return 1.0d;
         }
+        // 单打减半，双打 2/3
+        boolean isSingles = engine.activeSlotsCount(state) <= 1;
+        double screenMult = isSingles ? DamageCalculatorUtil.SCREEN_MULTIPLIER_SINGLE : DamageCalculatorUtil.SCREEN_MULTIPLIER_DOUBLE;
+
         boolean playerSide = isOnSide(state, defender, true);
         if (fieldEffectSupport.auroraVeilTurns(state, playerSide) > 0) {
-            return 2.0d / 3.0d;
+            return screenMult;
         }
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL
                 && fieldEffectSupport.reflectTurns(state, playerSide) > 0) {
-            return 2.0d / 3.0d;
+            return screenMult;
         }
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL
                 && fieldEffectSupport.lightScreenTurns(state, playerSide) > 0) {
-            return 2.0d / 3.0d;
+            return screenMult;
         }
         return 1.0d;
     }

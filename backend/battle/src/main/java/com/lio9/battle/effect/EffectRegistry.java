@@ -1998,11 +1998,14 @@ public final class EffectRegistry {
             }
         });
 
-        // 乘风：阻挡风类招式
+        // 乘风：阻挡风类招式 + 风系伤害免疫
         regAbility(new Ab() {
             public String id() { return "wind-rider"; }
             public boolean onTypeImmunity(ImmunityContext ctx) {
                 return hasMoveFlag(ctx.move, "wind");
+            }
+            public double onTargetModifyDamage(AttackContext ctx, double mod) {
+                return isWindMove(ctx.move) ? 0 : mod;
             }
         });
 
@@ -2014,11 +2017,14 @@ public final class EffectRegistry {
             }
         });
 
-        // 洁净之盐：鬼系伤害减半，阻挡变化招式
+        // 洁净之盐：鬼系伤害减半 + 变化招式免疫
         regAbility(new Ab() {
             public String id() { return "purifying-salt"; }
             public double onTargetModifyDamage(AttackContext ctx, double mod) {
                 return ctx.moveTypeIs(GHOST) ? mod * 0.5 : mod;
+            }
+            public boolean onTypeImmunity(ImmunityContext ctx) {
+                return ctx.moveTypeId == 0; // status move
             }
         });
 
@@ -2228,10 +2234,13 @@ public final class EffectRegistry {
             public boolean onStatusImmunity(StatusContext ctx) { return "burn".equals(ctx.condition); }
         });
 
-        // 水泡：灼伤免疫
+        // 氒泡：灼伤免疫 + 火系伤害减半
         regAbility(new Ab() {
             public String id() { return "water-bubble"; }
             public boolean onStatusImmunity(StatusContext ctx) { return "burn".equals(ctx.condition); }
+            public double onTargetModifyDamage(AttackContext ctx, double mod) {
+                return ctx.moveTypeIs(FIRE) ? mod * 0.5 : mod;
+            }
         });
 
         // 不眠：睡眠免疫
@@ -2657,14 +2666,13 @@ public final class EffectRegistry {
         });
     }
 
-    /** Filter / Solid Rock / Prism Armor 模式 */
+    /** Filter / Solid Rock / Prism Armor 模式：仅对效果绝佳（克制）伤害减少25% */
     private static void regFilterLike(String id) {
         regAbility(new Ab() {
             public String id() { return id; }
             public double onTargetModifyDamage(AttackContext ctx, double mod) {
-                // 由引擎计算克制关系，handler 只做乘法（实际克制判断由 calcTypeModifier 做）
-                // 这里简化：mod > 原始值表示克制
-                return mod * 0.75;
+                // 仅当克制（mod > 1.0）时减伤
+                return mod > 1.0 ? mod * 0.75 : mod;
             }
         });
     }
@@ -2689,12 +2697,58 @@ public final class EffectRegistry {
     //  工具方法
     // ========================================================================
 
+    /** 天气相关的 fieldEffects key */
+    private static final java.util.Set<String> WEATHER_KEYS = java.util.Set.of(
+        "rainTurns", "sunTurns", "sandTurns", "snowTurns"
+    );
+
+    /**
+     * 检查场地/天气效果是否激活。
+     * 对天气类 key，额外检查 Cloud Nine / Air Lock 天气抑制。
+     */
     static boolean fieldActive(Map<String, Object> state, String key) {
         if (state == null) return false;
         Object fe = state.get("fieldEffects");
         if (fe instanceof Map) {
             Object v = ((Map<?, ?>) fe).get(key);
-            return v instanceof Number n && n.intValue() > 0;
+            if (!(v instanceof Number n && n.intValue() > 0)) return false;
+            // 天气类 key 需要检查 Cloud Nine / Air Lock 抑制
+            if (WEATHER_KEYS.contains(key) && isWeatherSuppressed(state)) {
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /** 检查场上是否存在 Cloud Nine 或 Air Lock 特性（抑制天气效果） */
+    @SuppressWarnings("unchecked")
+    private static boolean isWeatherSuppressed(Map<String, Object> state) {
+        for (boolean side : new boolean[]{true, false}) {
+            Object teamObj = state.get(side ? "playerTeam" : "opponentTeam");
+            Object slotsObj = state.get(side ? "playerActiveSlots" : "opponentActiveSlots");
+            if (!(teamObj instanceof java.util.List)) continue;
+            if (!(slotsObj instanceof java.util.List)) continue;
+            java.util.List<Object> team = (java.util.List<Object>) teamObj;
+            java.util.List<Object> slots = (java.util.List<Object>) slotsObj;
+            for (Object slotObj : slots) {
+                if (!(slotObj instanceof Number slotNum)) continue;
+                int idx = slotNum.intValue();
+                if (idx < 0 || idx >= team.size()) continue;
+                Object monObj = team.get(idx);
+                if (!(monObj instanceof java.util.Map)) continue;
+                java.util.Map<String, Object> mon = (java.util.Map<String, Object>) monObj;
+                Object abObj = mon.get("ability");
+                String ab = null;
+                if (abObj instanceof java.util.Map) {
+                    java.util.Map<String, Object> abMap = (java.util.Map<String, Object>) abObj;
+                    ab = String.valueOf(abMap.getOrDefault("name_en", "")).toLowerCase();
+                }
+                if ("cloud-nine".equals(ab) || "cloud nine".equals(ab)
+                    || "air-lock".equals(ab) || "air lock".equals(ab)) {
+                    return true;
+                }
+            }
         }
         return false;
     }

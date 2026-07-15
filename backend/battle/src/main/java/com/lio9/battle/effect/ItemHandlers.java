@@ -75,7 +75,7 @@ public final class ItemHandlers {
         regItem(items, new ItemHandler() {
             public String id() { return "deep-sea-scale"; }
             public int onTargetModifyDefenseStat(AttackContext ctx, int stat) {
-                return ctx.damageClassId == SPECIAL && isSpecies(ctx.attacker, "clamperl")
+                return ctx.damageClassId == SPECIAL && isSpecies(ctx.defender, "clamperl")
                         ? (int) Math.floor(stat * 2.0) : stat;
             }
         });
@@ -86,7 +86,7 @@ public final class ItemHandlers {
                         ? (int) Math.floor(stat * 1.5) : stat;
             }
             public int onTargetModifyDefenseStat(AttackContext ctx, int stat) {
-                return ctx.damageClassId == SPECIAL && isSpecies(ctx.attacker, "latias", "latios")
+                return ctx.damageClassId == SPECIAL && isSpecies(ctx.defender, "latias", "latios")
                         ? (int) Math.floor(stat * 1.5) : stat;
             }
         });

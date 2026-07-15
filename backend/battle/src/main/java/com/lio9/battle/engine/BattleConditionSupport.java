@@ -879,6 +879,8 @@ final class BattleConditionSupport {
             return;
         }
         engine.setVolatile(target, "leechSeed", true);
+        // 记录种子来源，用于回合末回血
+        engine.setVolatile(target, "leechSeedSource", source);
         actionLog.put("result", "leech-seed");
         events.add(source.get("name") + " 在 " + target.get("name") + " 身上种下了寄生种子");
     }
@@ -894,8 +896,8 @@ final class BattleConditionSupport {
             return;
         }
         target.put("currentHp", currentHp - cost);
-        engine.setVolatile(target, "substitute", currentHp - cost);
-        actionLog.put("substituteHp", currentHp - cost);
+        engine.setVolatile(target, "substitute", cost); // 替身 HP = 消耗的 HP（最大HP的1/4）
+        actionLog.put("substituteHp", cost);
         actionLog.put("result", "substitute");
         events.add(target.get("name") + " 制造了一个替身");
     }
@@ -1610,8 +1612,8 @@ final class BattleConditionSupport {
         if ("natural-cure".equalsIgnoreCase(engine.abilityName(mon))
                 || "natural cure".equalsIgnoreCase(engine.abilityName(mon))) {
             String condition = String.valueOf(mon.get("condition"));
-            if (!"healthy".equals(condition) && !"fainted".equals(condition)) {
-                mon.put("condition", "healthy");
+            if (condition != null && !condition.isBlank() && !"fainted".equals(condition)) {
+                mon.put("condition", null);
                 mon.put("status", "");
                 events.add(mon.get("name") + " 通过自然回复治愈了状态");
             }
@@ -1621,11 +1623,11 @@ final class BattleConditionSupport {
             engine.endDynamax(mon, events);
         }
         // 切出时清理会在离场后失效的短期 volatile；这里保持旧字段与新 volatile 双向一致。
-        mon.put("confused", false);
-        mon.put("confusionTurns", 0);
+        engine.setVolatile(mon, "confused", false);
+        engine.setVolatile(mon, "confusionTurns", 0);
         engine.setVolatile(mon, "tauntTurns", 0);
         engine.setVolatile(mon, "healBlockTurns", 0);
-        mon.put("yawnTurns", 0);
+        engine.setVolatile(mon, "yawnTurns", 0);
         engine.setVolatile(mon, "tormentTurns", 0);
         engine.setVolatile(mon, "disableTurns", 0);
         engine.setVolatile(mon, "disableMove", null);
@@ -1721,21 +1723,6 @@ final class BattleConditionSupport {
             }
             Map<String, Object> source = enteringTeam.get(slot);
 
-            // Hospitality (热情款待): 上场时回复队友 1/4 最大 HP
-            if ("hospitality".equalsIgnoreCase(engine.abilityName(source))) {
-                for (Integer allySlot : currentSlots) {
-                    if (previousSlots.contains(allySlot) || allySlot == slot) continue;
-                    if (allySlot == null || allySlot >= engine.team(state, player).size()) continue;
-                    Map<String, Object> ally = engine.team(state, player).get(allySlot);
-                    if (engine.toInt(ally.get("currentHp"), 0) > 0) {
-                        int mh = engine.toInt(engine.castMap(ally.get("stats")).get("hp"), 1);
-                        int ch = engine.toInt(ally.get("currentHp"), 0);
-                        if (ch < mh) ally.put("currentHp", Math.min(mh, ch + Math.max(1, mh / 4)));
-                        events.add(source.get("name") + " 的热情款待特性发动，" + ally.get("name") + " 回复了 HP！");
-                    }
-                    break;
-                }
-            }
             // Slow Start: 刚上场时初始化 5 回合攻速减半
             if (engine.hasAbility(source, "slow-start", "slow start")) {
                 engine.setVolatile(source, "slowStartTurns", 5);
@@ -1750,6 +1737,9 @@ final class BattleConditionSupport {
 
             // Apply entry hazards FIRST (before abilities/items)
             applyEntryHazards(state, player, source, events);
+
+            // 入场钉可能导致宝可梦倒下，倒下后不触发出场特性/道具
+            if (engine.toInt(source.get("currentHp"), 0) <= 0) continue;
 
             // 场地种子：对应场地活跃时入场即消耗并提升能力
             String heldItem = engine.heldItem(source);
@@ -1924,9 +1914,12 @@ final class BattleConditionSupport {
                     Map<String, Object> ally = enteringTeam.get(otherSlot);
                     int maxHp = engine.toInt(engine.castMap(ally.get("stats")).get("hp"), 1);
                     int curHp = engine.toInt(ally.get("currentHp"), 0);
-                    int heal = Math.max(1, maxHp / 4);
-                    ally.put("currentHp", Math.min(maxHp, curHp + heal));
-                    events.add(source.get("name") + " 的热款待回复了 " + ally.get("name") + " " + heal + " 点 HP");
+                    if (curHp > 0 && curHp < maxHp) {
+                        int heal = Math.max(1, maxHp / 4);
+                        ally.put("currentHp", Math.min(maxHp, curHp + heal));
+                        events.add(source.get("name") + " 的热情款待回复了 " + ally.get("name") + " " + heal + " 点 HP");
+                        break; // 仅治疗一个队友
+                    }
                 }
                 continue;
             }
@@ -2024,11 +2017,16 @@ final class BattleConditionSupport {
             if (engine.toInt(target.get("currentHp"), 0) <= 0)
                 continue;
 
-            // Intimidate fails against Clear Body, White Smoke, Full Metal Body, Inner
-            // Focus, Oblivious, Own Tempo, Scrappy, and Guard Dog
+            // Intimidate fails against Clear Body, White Smoke, Full Metal Body, Inner Focus, Oblivious, Own Tempo
             if (engine.hasAbility(target, "clear-body", "white-smoke", "full-metal-body", "inner-focus", "oblivious",
-                    "own-tempo", "scrappy", "guard-dog", "guard dog")) {
+                    "own-tempo")) {
                 events.add(target.get("name") + " 的特性挡住了威吓");
+                continue;
+            }
+            // Guard Dog: 受到威吓时攻击提升 1 级
+            if (engine.hasAbility(target, "guard-dog", "guard dog")) {
+                applyAbilityStageChange(state, target, 2, 1, null, events, "看门犬");
+                events.add(target.get("name") + " 的看门犬特性发动，攻击提升！");
                 continue;
             }
             if ("clear-amulet".equals(engine.heldItem(target))) {

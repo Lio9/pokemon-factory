@@ -7,6 +7,7 @@ import com.lio9.battle.engine.BattleEngine;
 import com.lio9.battle.mapper.BattleMapper;
 import com.lio9.battle.mapper.BattleExchangeMapper;
 import com.lio9.battle.mapper.BattleRoundMapper;
+import com.lio9.battle.mapper.FactoryRunMapper;
 import com.lio9.battle.mapper.PlayerMapper;
 import com.lio9.battle.mapper.TeamMapper;
 import org.slf4j.Logger;
@@ -40,6 +41,7 @@ public class BattleService {
     private final BattleMapper battleMapper;
     private final BattleRoundMapper roundMapper;
     private final BattleExchangeMapper exchangeMapper;
+    private final FactoryRunMapper factoryRunMapper;
     private final OpponentPoolService poolService;
     private final BattleEngine battleEngine;
     private final AIService aiService;
@@ -51,7 +53,7 @@ public class BattleService {
      * 组装手动对战主链依赖。
      */
     public BattleService(PlayerMapper playerMapper, TeamMapper teamMapper, BattleMapper battleMapper,
-            BattleRoundMapper roundMapper, BattleExchangeMapper exchangeMapper,
+            BattleRoundMapper roundMapper, BattleExchangeMapper exchangeMapper, FactoryRunMapper factoryRunMapper,
             BattleEngine battleEngine, OpponentPoolService poolService, AIService aiService,
             @org.springframework.context.annotation.Lazy FactoryRunService factoryRunService, ObjectMapper objectMapper, BattleConfig config) {
         this.playerMapper = playerMapper;
@@ -59,6 +61,7 @@ public class BattleService {
         this.battleMapper = battleMapper;
         this.roundMapper = roundMapper;
         this.exchangeMapper = exchangeMapper;
+        this.factoryRunMapper = factoryRunMapper;
         this.battleEngine = battleEngine;
         this.poolService = poolService;
         this.aiService = aiService;
@@ -94,8 +97,16 @@ public class BattleService {
         String playerTeamJson = String.valueOf(playerTeam.get("teamJson"));
         Integer playerTeamId = playerTeam.get("teamId") == null ? null : ((Number) playerTeam.get("teamId")).intValue();
 
-        Map<String, Object> opponentTeam = resolveOpponentTeam(playerRank, seed + 97,
-                aiService.extractNames(playerTeamJson));
+        // 收集需要排除的宝可梦名称（玩家队伍 + ban 列表）
+        Set<String> excludedForOpponent = new java.util.HashSet<>(aiService.extractNames(playerTeamJson));
+        Object bannedObj = req.get("bannedPokemon");
+        if (bannedObj instanceof java.util.List<?> bannedList) {
+            for (Object item : bannedList) {
+                if (item != null) excludedForOpponent.add(String.valueOf(item).toLowerCase());
+            }
+        }
+
+        Map<String, Object> opponentTeam = resolveOpponentTeam(playerRank, seed + 97, excludedForOpponent);
         String opponentTeamJson = String.valueOf(opponentTeam.get("teamJson"));
         Integer opponentTeamId = opponentTeam.get("teamId") == null ? null
                 : ((Number) opponentTeam.get("teamId")).intValue();
@@ -434,6 +445,12 @@ public class BattleService {
             battleMapper.updateBattleTeamState(battleId.intValue(), updatedTeamJson, toJson(updatedState), String
                     .valueOf(updatedState.getOrDefault("phase", updatedState.getOrDefault("status", "completed"))));
 
+            // 同步更新 factory_run.team_json，确保下一轮战斗使用交换后的队伍
+            Object factoryRunIdObj = battle.get("factory_run_id");
+            if (factoryRunIdObj instanceof Number factoryRunIdNum && factoryRunIdNum.intValue() > 0) {
+                factoryRunMapper.updateTeamJson(factoryRunIdNum.intValue(), updatedTeamJson);
+            }
+
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("status", "ok");
             response.put("summary", updatedState);
@@ -495,16 +512,14 @@ public class BattleService {
         int totalLosses = toInt(playerProfile.get("losses"), 0);
         boolean won = "player".equals(state.get("winner"));
 
-        // 工厂挑战模式下，积分由 FactoryRunService 统一结算
+        // 工厂挑战模式下，积分和胜负统计由 FactoryRunService.finishRun() 统一结算
+        // 此处只记录段位快照，不做胜负累加，避免 finishRun() 重复统计
         Integer factoryRunId = factory.get("factoryRunId") instanceof Number n ? n.intValue() : null;
         if (factoryRunId != null) {
             factory.put("progressApplied", true);
             factory.put("playerTier", tier);
             factory.put("playerTierName", TierService.tierName(tier));
-            // 更新胜负统计
-            playerMapper.updateTierProgress(playerId, tier, tierPoints, totalPoints, highestTier,
-                    totalWins + (won ? 1 : 0), totalLosses + (won ? 0 : 1));
-            // 通知工厂挑战服务更新进度
+            // 通知工厂挑战服务更新进度（不传胜负，由 onBattleCompleted 内部计数）
             String updatedTeamJson = toJson(state.get("playerTeam"));
             factoryRunService.onBattleCompleted(factoryRunId, won, updatedTeamJson);
             return;
@@ -605,10 +620,14 @@ public class BattleService {
         if (poolCandidates != null && !poolCandidates.isEmpty()) {
             for (Map<String, Object> candidate : poolCandidates) {
                 String teamJson = String.valueOf(candidate.get("team_json"));
+                // 跳过空队伍
+                if (aiService.isBlankTeamJson(teamJson)) {
+                    continue;
+                }
                 Set<String> candidateNames = aiService.extractNames(teamJson);
 
                 // 检查是否有重复的宝可梦
-                if (!candidateNames.equals(excludedNames)) {
+                if (!candidateNames.isEmpty() && !candidateNames.equals(excludedNames)) {
                     return Map.of(
                             "teamId", candidate.get("team_id"),
                             "teamJson", teamJson,

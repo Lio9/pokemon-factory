@@ -48,10 +48,13 @@ public class OpponentPoolService {
                                                        com.lio9.battle.config.BattleConfig.TierRestrictionConfig config) {
         if (config.isStrictMode()) {
             // 严格模式下，绝不超出配置的最低/最高段位
-            int minRank = config.getMinTier() * 30; // 假设每段位约 30 分
-            int maxRank = config.getMaxTier() * 30;
+            int minRank = config.getMinTier() * TierService.POINTS_PER_TIER;
+            int maxRank = config.getMaxTier() * TierService.POINTS_PER_TIER;
             int low = Math.max(minRank, rank - window);
             int high = Math.min(maxRank, rank + window);
+            if (low > high) {
+                return java.util.List.of(); // 无可用对手
+            }
             return opponentPoolMapper.sample(low, high, limit, rank);
         }
         return sample(rank, window, limit);

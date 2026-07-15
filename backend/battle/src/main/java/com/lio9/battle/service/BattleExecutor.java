@@ -220,7 +220,12 @@ public class BattleExecutor {
         if (poolCandidates != null) {
             for (Map<String, Object> candidate : poolCandidates) {
                 String teamJson = String.valueOf(candidate.get("team_json"));
-                if (!aiService.extractNames(teamJson).equals(aiService.extractNames(playerTeamJson))) {
+                // 跳过空队伍
+                if (aiService.isBlankTeamJson(teamJson)) {
+                    continue;
+                }
+                if (!aiService.extractNames(teamJson).isEmpty()
+                        && !aiService.extractNames(teamJson).equals(aiService.extractNames(playerTeamJson))) {
                     return Map.of("teamId", candidate.get("team_id"), "teamJson", teamJson, "source", "pool");
                 }
             }

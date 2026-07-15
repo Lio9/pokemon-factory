@@ -95,7 +95,7 @@
           </button>
           <button
             class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            :disabled="sel === null || submitting"
+            :disabled="sel === null || !isValidSlot || submitting"
             @click="confirm"
           >
             {{ submitting ? tr('交换中...', 'Exchanging...') : tr('确认交换', 'Confirm exchange') }}
@@ -131,11 +131,16 @@ const props = defineProps({
 const emits = defineEmits(['close', 'confirm', 'update:replacedIndex'])
 
 let sel = ref(null)
-const localReplaced = ref((props.replacedIndex || 0) + 1)
+const localReplaced = ref((props.replacedIndex ?? 0) + 1)
 const maxSlot = props.maxSlot
 
 watch(() => props.replacedIndex, (value) => {
-  localReplaced.value = (value || 0) + 1
+  localReplaced.value = (value ?? 0) + 1
+})
+
+const isValidSlot = computed(() => {
+  const val = Number(localReplaced.value)
+  return Number.isFinite(val) && val >= 1 && val <= maxSlot
 })
 
 function select(index) {
@@ -143,8 +148,8 @@ function select(index) {
 }
 
 function confirm() {
-  if (sel.value === null) return
-  const newIndex = Math.max(0, Math.min(maxSlot - 1, (localReplaced.value || 1) - 1))
+  if (sel.value === null || !isValidSlot.value) return
+  const newIndex = Number(localReplaced.value) - 1
   emits('update:replacedIndex', newIndex)
   emits('confirm', sel.value)
 }

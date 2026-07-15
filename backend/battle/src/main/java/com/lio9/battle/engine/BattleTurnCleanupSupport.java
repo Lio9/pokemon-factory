@@ -90,8 +90,8 @@ final class BattleTurnCleanupSupport {
         applyEndTurnStatusEffects(engine.team(state, false), events);
         applyEndTurnHealing(engine.team(state, true), events);
         applyEndTurnHealing(engine.team(state, false), events);
-        applyEndTurnItemEffects(engine.team(state, true), events);
-        applyEndTurnItemEffects(engine.team(state, false), events);
+         applyEndTurnItemEffects(state, true, events);
+         applyEndTurnItemEffects(state, false, events);
         applyCudChew(engine.team(state, true), events);
         applyCudChew(engine.team(state, false), events);
         applyEndTurnAbilityEffects(state, true, events, random);
@@ -99,8 +99,8 @@ final class BattleTurnCleanupSupport {
         applyEndTurnFieldEffects(state, events);
         decrementDynamax(engine.team(state, true), events);
         decrementDynamax(engine.team(state, false), events);
-        applyVolatileEndTurnEffects(engine.team(state, true), events);
-        applyVolatileEndTurnEffects(engine.team(state, false), events);
+        applyVolatileEndTurnEffects(state, true, events);
+        applyVolatileEndTurnEffects(state, false, events);
         decrementTauntEffects(engine.team(state, true), events);
         decrementTauntEffects(engine.team(state, false), events);
         decrementHealBlockEffects(engine.team(state, true), events);
@@ -249,27 +249,39 @@ final class BattleTurnCleanupSupport {
     }
 
     private void applyGMaxPersistentDamage(Map<String, Object> state, boolean playerSide, List<String> events) {
-        String[] gmaxTypes = {"gmaxWildfireTurns", "gmaxCannonadeTurns", "gmaxVineLashTurns"};
-        String[] immuneTypes = {"fire", "water", "grass"};
-        String[] msg = {"烈火燎原", "水炮轰射", "藤蔓鞭打"};
-        for (int i = 0; i < 3; i++) {
-            int turns = engine.toInt(fieldEffectSupport.fieldEffects(state).get(gmaxTypes[i]), 0);
-            if (turns <= 0) continue;
-            fieldEffectSupport.fieldEffects(state).put(gmaxTypes[i], turns - 1);
-            for (Integer slot : engine.activeSlots(state, playerSide)) {
-                if (slot == null || slot < 0) continue;
-                Map<String, Object> mon = engine.team(state, playerSide).get(slot);
-                if (engine.toInt(mon.get("currentHp"), 0) <= 0) continue;
-                if (engine.targetHasType(mon, typeIdForName(immuneTypes[i]))) continue;
-                int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
-                int dmg = Math.max(1, maxHp / 6);
-                int cur = engine.toInt(mon.get("currentHp"), 0);
-                mon.put("currentHp", Math.max(0, cur - dmg));
-                events.add(mon.get("name") + " 受到 G-Max " + msg[i] + "影响，损失了 " + dmg + " 点 HP");
-                if (cur - dmg <= 0) {
-                    mon.put("status", "fainted");
-                    events.add(mon.get("name") + " 倒下了");
-                }
+        // 使用分 side 的 key 读取 G-Max 持续伤害回合数
+        int wildfireTurns = fieldEffectSupport.gmaxWildfireTurns(state, playerSide);
+        int cannonadeTurns = fieldEffectSupport.gmaxCannonadeTurns(state, playerSide);
+        int vineLashTurns = fieldEffectSupport.gmaxVineLashTurns(state, playerSide);
+
+        if (wildfireTurns > 0) {
+            fieldEffectSupport.fieldEffects(state).put(playerSide ? "playerGmaxWildfireTurns" : "opponentGmaxWildfireTurns", wildfireTurns - 1);
+            applyGmaxDamageToSide(state, playerSide, DamageCalculatorUtil.TYPE_FIRE, "烈火燎原", events);
+        }
+        if (cannonadeTurns > 0) {
+            fieldEffectSupport.fieldEffects(state).put(playerSide ? "playerGmaxCannonadeTurns" : "opponentGmaxCannonadeTurns", cannonadeTurns - 1);
+            applyGmaxDamageToSide(state, playerSide, DamageCalculatorUtil.TYPE_WATER, "水炮轰射", events);
+        }
+        if (vineLashTurns > 0) {
+            fieldEffectSupport.fieldEffects(state).put(playerSide ? "playerGmaxVineLashTurns" : "opponentGmaxVineLashTurns", vineLashTurns - 1);
+            applyGmaxDamageToSide(state, playerSide, DamageCalculatorUtil.TYPE_GRASS, "藤蔓鞭打", events);
+        }
+    }
+
+    private void applyGmaxDamageToSide(Map<String, Object> state, boolean playerSide, int immuneTypeId, String effectName, List<String> events) {
+        for (Integer slot : engine.activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0) continue;
+            Map<String, Object> mon = engine.team(state, playerSide).get(slot);
+            if (engine.toInt(mon.get("currentHp"), 0) <= 0) continue;
+            if (engine.targetHasType(mon, immuneTypeId)) continue;
+            int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+            int dmg = Math.max(1, maxHp / 6);
+            int cur = engine.toInt(mon.get("currentHp"), 0);
+            mon.put("currentHp", Math.max(0, cur - dmg));
+            events.add(mon.get("name") + " 受到 G-Max " + effectName + "影响，损失了 " + dmg + " 点 HP");
+            if (cur - dmg <= 0) {
+                mon.put("status", "fainted");
+                events.add(mon.get("name") + " 倒下了");
             }
         }
     }
@@ -414,10 +426,7 @@ final class BattleTurnCleanupSupport {
                 continue;
             }
             if (engine.isMagicGuard(mon)) {
-                if ("toxic".equals(condition)) {
-                    int toxicCounter = Math.max(1, engine.toInt(mon.get("toxicCounter"), 1));
-                    mon.put("toxicCounter", Math.min(15, toxicCounter + 1));
-                }
+                // Magic Guard 免疫状态伤害，但 toxicCounter 已在上方递增，此处无需再次递增
                 continue;
             }
             int currentHp = engine.toInt(mon.get("currentHp"), 0);
@@ -452,14 +461,15 @@ final class BattleTurnCleanupSupport {
         }
     }
 
-    private void applyVolatileEndTurnEffects(List<Map<String, Object>> team, List<String> events) {
+    private void applyVolatileEndTurnEffects(Map<String, Object> state, boolean playerSide, List<String> events) {
+        List<Map<String, Object>> team = engine.team(state, playerSide);
         for (Map<String, Object> mon : team) {
             if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
                 continue;
             }
             // 寄生种子：吸取 1/8 最大 HP，对手回复等量 HP
             if (Boolean.TRUE.equals(mon.get("leechSeed"))) {
-                applyLeechSeedDamage(mon, events);
+                applyLeechSeedDamage(state, playerSide, mon, events);
             }
             // 束缚招式（火焰旋涡/潮旋/绑紧等）：每回合伤害，且递减持续回合
             if (Boolean.TRUE.equals(mon.get("bound"))) {
@@ -479,7 +489,7 @@ final class BattleTurnCleanupSupport {
                 }
             }
             // 灭亡之歌：倒计时归零时直接倒下
-            int perishTurns = engine.toInt(mon.get("perishSongTurns"), 0);
+            int perishTurns = engine.toInt(engine.volatileValue(mon, "perishSongTurns", 0), 0);
             if (perishTurns > 0) {
                 int next = perishTurns - 1;
                 engine.setVolatile(mon, "perishSongTurns", next);
@@ -550,7 +560,7 @@ final class BattleTurnCleanupSupport {
         }
     }
 
-    private void applyLeechSeedDamage(Map<String, Object> mon, List<String> events) {
+    private void applyLeechSeedDamage(Map<String, Object> state, boolean playerSide, Map<String, Object> mon, List<String> events) {
         int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
         int damage = Math.max(1, maxHp / 8);
         int currentHp = engine.toInt(mon.get("currentHp"), 0);
@@ -563,6 +573,19 @@ final class BattleTurnCleanupSupport {
         if (currentHp - actualDamage <= 0) {
             mon.put("status", "fainted");
             events.add(mon.get("name") + " 倒下了");
+        }
+
+        // 寄生种子回血：找到种子来源并回复等量 HP
+        Object sourceObj = engine.volatileValue(mon, "leechSeedSource", null);
+        if (sourceObj instanceof Map<?, ?> sourceMap) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> source = (Map<String, Object>) sourceMap;
+            int sourceHp = engine.toInt(source.get("currentHp"), 0);
+            if (sourceHp > 0) {
+                int sourceMaxHp = engine.toInt(engine.castMap(source.get("stats")).get("hp"), 1);
+                source.put("currentHp", Math.min(sourceMaxHp, sourceHp + actualDamage));
+                events.add(source.get("name") + " 通过寄生种子回复了 " + actualDamage + " 点 HP");
+            }
         }
     }
 
@@ -610,8 +633,12 @@ final class BattleTurnCleanupSupport {
     /**
      * 回合末道具效果：火焰宝珠/剧毒宝珠/黑色污泥
      */
-    private void applyEndTurnItemEffects(List<Map<String, Object>> team, List<String> events) {
-        for (Map<String, Object> mon : team) {
+    private void applyEndTurnItemEffects(Map<String, Object> state, boolean playerSide, List<String> events) {
+        List<Map<String, Object>> team = engine.team(state, playerSide);
+        List<Integer> activeSlots = engine.activeSlots(state, playerSide);
+        for (Integer slotIdx : activeSlots) {
+            if (slotIdx == null || slotIdx < 0 || slotIdx >= team.size()) continue;
+            Map<String, Object> mon = team.get(slotIdx);
             if (engine.toInt(mon.get("currentHp"), 0) <= 0) continue;
             String item = engine.heldItem(mon);
             if (item.isBlank()) continue;
@@ -769,7 +796,7 @@ final class BattleTurnCleanupSupport {
                 if (shouldHarvest) {
                     // 检查 mon 是否消耗了树果
                     String consumedItem = String.valueOf(mon.getOrDefault("consumedItem", ""));
-                    if (!consumedItem.isBlank() && consumedItem.endsWith("-berry")) {
+                    if (!consumedItem.isBlank() && (consumedItem.endsWith("-berry") || consumedItem.endsWith(" berry"))) {
                         mon.put("heldItem", consumedItem);
                         mon.put("consumedItem", null);
                         events.add(mon.get("name") + " 的收获特性回收了 " + consumedItem);

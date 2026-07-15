@@ -57,7 +57,8 @@ export function formatPokemonTypes(types) {
 }
 
 export function moveNeedsOpponentTarget(move) {
-  const targetId = Number(move?.target_id || 10)
+  if (!move) return false
+  const targetId = Number(move.target_id || 10)
   return targetId === 10
 }
 

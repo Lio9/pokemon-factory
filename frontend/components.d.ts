@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    BanModal: typeof import('./src/components/BanModal.vue')['default']
     BattleActionPanel: typeof import('./src/components/BattleActionPanel.vue')['default']
     BattleArena: typeof import('./src/components/BattleArena.vue')['default']
     BattleDecisionPanel: typeof import('./src/components/BattleDecisionPanel.vue')['default']
@@ -34,7 +35,6 @@ declare module 'vue' {
     ElSelect: typeof import('element-plus/es')['ElSelect']
     ElSkeleton: typeof import('element-plus/es')['ElSkeleton']
     ElSkeletonItem: typeof import('element-plus/es')['ElSkeletonItem']
-    ElSwitch: typeof import('element-plus/es')['ElSwitch']
     EmptyState: typeof import('./src/components/EmptyState.vue')['default']
     ErrorHandler: typeof import('./src/components/ErrorHandler.vue')['default']
     EvolutionChainPanel: typeof import('./src/components/EvolutionChainPanel.vue')['default']

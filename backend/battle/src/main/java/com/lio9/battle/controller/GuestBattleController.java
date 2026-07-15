@@ -1,10 +1,7 @@
 package com.lio9.battle.controller;
 
 import com.lio9.battle.config.BattleApiResponseSupport;
-import com.lio9.battle.mapper.PlayerMapper;
-import com.lio9.battle.service.BattleExecutor;
 import com.lio9.battle.service.BattleService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,14 +22,9 @@ public class GuestBattleController {
     private static final String GUEST_PREFIX = "游客_";
 
     private final BattleService battleService;
-    private final BattleExecutor battleExecutor;
-    private final PlayerMapper playerMapper;
 
-    public GuestBattleController(BattleService battleService, BattleExecutor battleExecutor,
-                                  PlayerMapper playerMapper) {
+    public GuestBattleController(BattleService battleService) {
         this.battleService = battleService;
-        this.battleExecutor = battleExecutor;
-        this.playerMapper = playerMapper;
     }
 
     /** 生成唯一的游客用户名 */
@@ -42,28 +34,16 @@ public class GuestBattleController {
     }
 
     /**
-     * 以游客身份开始异步对战。
+     * 以游客身份开始同步对战（返回完整初始状态）。
      *
-     * <p>请求体与 {@code /api/battle/start-async} 一致，
-     * 但无需 JWT。返回 {@code {battleId, guestId}}，前端需保存 {@code guestId} 用于后续请求。</p>
+     * <p>请求体与 {@code /api/battle/start} 一致，
+     * 但无需 JWT。返回完整的 battleId + summary，前端可直接进入预览/战斗。</p>
      */
     @PostMapping("/start")
-    public ResponseEntity<?> startAsync(@RequestBody Map<String, Object> req) {
+    public ResponseEntity<?> startSync(@RequestBody Map<String, Object> req) {
         String guestId = generateGuestId();
-        playerMapper.insertIgnore(guestId);
-        Integer playerId = playerMapper.findIdByUsername(guestId);
-        if (playerId == null) {
-            return BattleApiResponseSupport.error(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "submit_failed", "无法创建游客账号");
-        }
-        String teamJson = req.get("teamJson") instanceof String ? req.get("teamJson").toString() : null;
-        String moveJson = toMoveJson(req.get("playerMoveMap"));
-        Integer battleId = battleExecutor.submitAsyncBattle(playerId, teamJson, moveJson);
-        if (battleId == null) {
-            return BattleApiResponseSupport.error(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "submit_failed", "异步对战提交失败");
-        }
-        return BattleApiResponseSupport.success(Map.of("battleId", battleId, "guestId", guestId));
+        req.put("username", guestId);
+        return BattleApiResponseSupport.fromPayload(battleService.startMatch(req));
     }
 
     /** 查询对战状态 */
@@ -106,13 +86,5 @@ public class GuestBattleController {
         if (moveMap != null) return battleService.parsePlayerMoveMap(moveMap);
         if (req.get("move") != null) return Map.of("__active", String.valueOf(req.get("move")));
         return Map.of();
-    }
-
-    private String toMoveJson(Object rawMoveMap) {
-        try {
-            return rawMoveMap == null ? null : new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(rawMoveMap);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("invalid_move_map", e);
-        }
     }
 }

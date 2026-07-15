@@ -16,6 +16,7 @@
     <!-- 纯文字显示区域 -->
     <div
       v-if="isTextMode"
+      ref="textLogContainer"
       class="rounded-[24px] border border-slate-200 bg-black p-6 shadow-lg font-mono text-sm leading-relaxed overflow-auto max-h-[80vh]"
     >
       <div
@@ -84,6 +85,7 @@
             @forfeit-battle="forfeitBattle"
             @next-factory="nextFactoryBattle"
             @open-leaderboard="openLeaderboard"
+            @open-ban="openBanModal"
             @prepare-next="prepareNextFactoryStage"
             @refresh-status="refreshStatus"
             @reset-battle="resetBattleState({ keepFactoryRun: false })"
@@ -200,6 +202,14 @@
         :loading="leaderboardLoading"
         @close="showLeaderboard = false"
       />
+
+      <BanModal
+        :show="showBanModal"
+        :player-points="playerPoints"
+        :pokemon-list="allPokemon"
+        @close="showBanModal = false"
+        @confirm="handleBanConfirm"
+      />
     </template>
   </div>
 </template>
@@ -212,9 +222,12 @@ import BattleHeaderPanel from '../components/BattleHeaderPanel.vue'
 import BattleLeaderboardModal from '../components/BattleLeaderboardModal.vue'
 import BattleSettlementModal from '../components/BattleSettlementModal.vue'
 import ExchangeModal from '../components/ExchangeModal.vue'
+import BanModal from '../components/BanModal.vue'
 import { useBattlePageState } from '../composables/useBattlePageState'
-import { ref, watch } from 'vue'
+import { normalizeFactoryRun } from '../services/contracts/battleContract'
+import { ref, watch, nextTick } from 'vue'
 import { useLocale } from '../composables/useLocale'
+import api from '../services/api'
 
 const { translate: tr } = useLocale()
 
@@ -264,6 +277,7 @@ const {
   onSettlementClose,
   openLeaderboard,
   opponentActiveOptions,
+  opponentRoster,
   pendingReplacementCount,
   playerActiveMons,
   playerBenchOptions,
@@ -324,6 +338,7 @@ const {
 // 纯文字模式逻辑
 const isTextMode = ref(false)
 const textLogs = ref([])
+const textLogContainer = ref(null)
 
 function toggleTextMode() {
   isTextMode.value = !isTextMode.value
@@ -373,7 +388,69 @@ watch(summary, (newSummary) => {
   }
 
   textLogs.value = newLogs
+
+  // 自动滚动到底部
+  nextTick(() => {
+    if (textLogContainer.value) {
+      textLogContainer.value.scrollTop = textLogContainer.value.scrollHeight
+    }
+  })
 }, { deep: true })
+
+// Ban 系统
+const showBanModal = ref(false)
+const playerPoints = ref(0)
+const allPokemon = ref([])
+
+async function openBanModal() {
+  try {
+    // 加载玩家积分
+    const profile = await api.battle.profile()
+    playerPoints.value = profile?.profile?.totalPoints || 0
+
+    // 加载宝可梦列表
+    if (allPokemon.value.length === 0) {
+      const res = await api.pokemon.getList({ current: 1, size: 200 })
+      allPokemon.value = res.data?.records || []
+    }
+
+    showBanModal.value = true
+  } catch (e) {
+    console.error('加载 Ban 数据失败:', e)
+  }
+}
+
+async function handleBanConfirm({ bannedPokemon, cost }) {
+  showBanModal.value = false
+
+  try {
+    // 调用带 ban 的工厂挑战开始接口
+    const res = await api.battle.factoryStartWithBan({ bannedPokemon })
+
+    if (res.error) {
+      alert(res.message || '开始挑战失败')
+      return
+    }
+
+    // 更新玩家积分
+    playerPoints.value = res.remainingPoints || playerPoints.value - cost
+
+    // 处理返回结果（与 startFactoryChallenge 保持一致的解析逻辑）
+    const nextRun = normalizeFactoryRun(res.run || res)
+    if (nextRun && nextRun.id) {
+      factoryRun.value = nextRun
+
+      if (res.battleId || res.battle?.id) {
+        currentBattleId.value = res.battleId || res.battle?.id
+        await refreshStatus(true)
+      }
+    }
+
+    resultText.value = JSON.stringify(res, null, 2)
+  } catch (e) {
+    alert('开始挑战失败: ' + (e.message || e))
+  }
+}
 </script>
 
 <style scoped>

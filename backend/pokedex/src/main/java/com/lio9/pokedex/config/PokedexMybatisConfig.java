@@ -2,6 +2,7 @@ package com.lio9.pokedex.config;
 
 
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -27,6 +28,12 @@ public class PokedexMybatisConfig {
         factoryBean.setMapperLocations(
                 new PathMatchingResourcePatternResolver().getResources("classpath*:mapper/*.xml")
         );
+
+        // 启用驼峰命名映射（form_id → formId, base_stat → baseStat 等）
+        MybatisConfiguration config = new MybatisConfiguration();
+        config.setMapUnderscoreToCamelCase(true);
+        factoryBean.setConfiguration(config);
+
         return factoryBean.getObject();
     }
 

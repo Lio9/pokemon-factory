@@ -31,6 +31,10 @@ public interface FactoryRunMapper {
     @Update("UPDATE factory_run SET status = #{status}, points_earned = #{pointsEarned}, ended_at = datetime('now') WHERE id = #{id}")
     void finishRun(@Param("id") Integer id, @Param("status") String status, @Param("pointsEarned") Integer pointsEarned);
 
+    /** 仅更新队伍 JSON（用于交换奖励后同步） */
+    @Update("UPDATE factory_run SET team_json = #{teamJson} WHERE id = #{id}")
+    void updateTeamJson(@Param("id") Integer id, @Param("teamJson") String teamJson);
+
     @Select("SELECT * FROM factory_run WHERE player_id = #{playerId} ORDER BY id DESC LIMIT #{limit}")
     List<Map<String, Object>> findRecentRuns(@Param("playerId") Integer playerId, @Param("limit") Integer limit);
 }

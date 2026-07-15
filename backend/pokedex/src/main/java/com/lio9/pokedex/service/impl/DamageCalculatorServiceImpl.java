@@ -68,17 +68,17 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
             Integer moveTypeId = move.getTypeId();
             
             // 3. 获取攻击方属性列表
-            List<PokemonFormType> attackerTypes = pokemonFormTypeMapper.selectList(
-                new QueryWrapper<PokemonFormType>().eq("form_id", request.getAttackerFormId())
-            );
+            QueryWrapper<PokemonFormType> atkTypeQuery = new QueryWrapper<>();
+            atkTypeQuery.eq("formId", request.getAttackerFormId());
+            List<PokemonFormType> attackerTypes = pokemonFormTypeMapper.selectList(atkTypeQuery);
             List<Integer> attackerTypeIds = attackerTypes.stream()
                 .map(PokemonFormType::getTypeId)
                 .collect(Collectors.toList());
             
             // 4. 获取防御方属性列表
-            List<PokemonFormType> defenderTypes = pokemonFormTypeMapper.selectList(
-                new QueryWrapper<PokemonFormType>().eq("form_id", request.getDefenderFormId())
-            );
+            QueryWrapper<PokemonFormType> defTypeQuery = new QueryWrapper<>();
+            defTypeQuery.eq("formId", request.getDefenderFormId());
+            List<PokemonFormType> defenderTypes = pokemonFormTypeMapper.selectList(defTypeQuery);
             List<Integer> defenderTypeIds = defenderTypes.stream()
                 .map(PokemonFormType::getTypeId)
                 .collect(Collectors.toList());
@@ -223,18 +223,33 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
             // 21. 计算命中率
             calculateAccuracy(move, request, result);
             
-            // 22. 计算击杀预估（自动从数据库获取防御方HP）
+            // 22. 计算击杀预估（自动从数据库获取防御方HP并计算实际值）
             Integer defenderHp = request.getDefenderHp();
             if (defenderHp == null || defenderHp <= 0) {
-                List<PokemonFormStat> stats = pokemonFormStatMapper.selectList(
-                    new QueryWrapper<PokemonFormStat>().eq("form_id", request.getDefenderFormId()).eq("stat_id", 1)
-                );
-                if (!stats.isEmpty()) {
-                    defenderHp = stats.get(0).getBaseStat();
+                // 从数据库获取 HP 种族值并计算实际 HP
+                // 用 null 条件查全表再在 Java 侧过滤，确保不依赖列名映射
+                List<PokemonFormStat> allStats = pokemonFormStatMapper.selectList(null);
+                Integer targetFormId = request.getDefenderFormId();
+                for (PokemonFormStat s : allStats) {
+                    // 直接比较 statId 和 formId
+                    if (s.getStatId() != null && s.getStatId() == 1
+                            && s.getFormId() != null && s.getFormId().equals(targetFormId)
+                            && s.getBaseStat() != null) {
+                        defenderHp = calcHp(s.getBaseStat(), request.getAttackerLevel(), DEFAULT_EV_HP);
+                        break;
+                    }
+                }
+                // 如果全表查询也找不到，用硬编码默认值兜底
+                if (defenderHp == null || defenderHp <= 0) {
+                    defenderHp = calcHp(80, request.getAttackerLevel(), DEFAULT_EV_HP);
                 }
             }
             if (defenderHp != null && defenderHp > 0) {
-                calculateKoEstimate(damageRange, defenderHp, result);
+                // 获取命中率
+                double accuracy = result.getFinalAccuracy() != null ? result.getFinalAccuracy() : 1.0;
+                // 获取连续攻击次数（使用之前已赋值的 hits 变量）
+                int hitCount = result.getHits() != null ? result.getHits() : 1;
+                calculateKoEstimate(damageRange, defenderHp, accuracy, hitCount, result);
             }
             
             // 23. 构建修正因子汇总
@@ -318,6 +333,7 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
     
     /**
      * 获取攻击方能力值
+     * 优先使用前端传入的自定义值，否则从种族值 + 默认 IV/EV 计算实际值
      */
     private int getAttackStat(Integer formId, Integer damageClassId, DamageCalculationRequest request) {
         if (request.getAttackerAttack() != null && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
@@ -327,17 +343,24 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
             return request.getAttackerSpAttack();
         }
         
-        // 从数据库获取
-        int statId = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL ? 2 : 4; // 2=攻击, 4=特攻
-        QueryWrapper<PokemonFormStat> wrapper = new QueryWrapper<>();
-        wrapper.eq("form_id", formId).eq("stat_id", statId);
-        PokemonFormStat formStat = pokemonFormStatMapper.selectOne(wrapper);
-        
-        return formStat != null ? formStat.getBaseStat() : 100;
+        // 从数据库获取种族值并计算实际能力值
+        int targetStatId = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL ? 2 : 4; // 2=攻击, 4=特攻
+        List<PokemonFormStat> atkStats = pokemonFormStatMapper.selectList(
+            new QueryWrapper<PokemonFormStat>().eq("formId", formId)
+        );
+        int baseStat = 100;
+        for (PokemonFormStat s : atkStats) {
+            if (s.getStatId() != null && s.getStatId() == targetStatId && s.getBaseStat() != null) {
+                baseStat = s.getBaseStat();
+                break;
+            }
+        }
+        return calcStat(baseStat, request.getAttackerLevel(), DEFAULT_EV_OTHER, 1.0);
     }
     
     /**
      * 获取防御方能力值
+     * 优先使用前端传入的自定义值，否则从种族值 + 默认 IV/EV 计算实际值
      */
     private int getDefenseStat(Integer formId, Integer damageClassId, DamageCalculationRequest request) {
         if (request.getDefenderDefense() != null && damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
@@ -347,13 +370,19 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
             return request.getDefenderSpDefense();
         }
         
-        // 从数据库获取
-        int statId = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL ? 3 : 5; // 3=防御, 5=特防
-        QueryWrapper<PokemonFormStat> wrapper = new QueryWrapper<>();
-        wrapper.eq("form_id", formId).eq("stat_id", statId);
-        PokemonFormStat formStat = pokemonFormStatMapper.selectOne(wrapper);
-        
-        return formStat != null ? formStat.getBaseStat() : 100;
+        // 从数据库获取种族值并计算实际能力值
+        int targetStatId = damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL ? 3 : 5; // 3=防御, 5=特防
+        List<PokemonFormStat> defStats = pokemonFormStatMapper.selectList(
+            new QueryWrapper<PokemonFormStat>().eq("formId", formId)
+        );
+        int baseStat = 100;
+        for (PokemonFormStat s : defStats) {
+            if (s.getStatId() != null && s.getStatId() == targetStatId && s.getBaseStat() != null) {
+                baseStat = s.getBaseStat();
+                break;
+            }
+        }
+        return calcStat(baseStat, request.getAttackerLevel(), DEFAULT_EV_OTHER, 1.0);
     }
     
     /**
@@ -765,55 +794,179 @@ public class DamageCalculatorServiceImpl implements DamageCalculatorService {
         result.setAccuracyDesc(String.format("%.1f%%", finalAccuracy * 100));
     }
     
+    // 默认 IV=31, EV=4（最小分配），用于从种族值计算实际能力值
+    private static final int DEFAULT_IV = 31;
+    private static final int DEFAULT_EV_HP = 4;
+    private static final int DEFAULT_EV_OTHER = 0;
+    // 默认暴击率（第6世代起为 1/24）
+    private static final double CRIT_RATE = 1.0 / 24.0;
+    private static final int MAX_HITS_TO_CALC = 6;
+
     /**
-     * 计算击杀预估 — 参考 Pokémon Showdown 风格
-     * 显示：伤害百分比(min%-max%) + OHKO概率（如适用）
+     * 从种族值计算实际 HP
+     * HP = floor((base*2 + IV + floor(EV/4)) * level / 100) + level + 10
      */
-    private void calculateKoEstimate(int[] damageRange, int defenderHp, DamageResultVO result) {
+    private int calcHp(int baseStat, int level, int ev) {
+        return (int) Math.floor((baseStat * 2 + DEFAULT_IV + Math.floor(ev / 4.0)) * level / 100.0) + level + 10;
+    }
+
+    /**
+     * 从种族值计算实际能力值（非HP）
+     * stat = floor((floor((base*2 + IV + floor(EV/4)) * level / 100) + 5) * nature)
+     */
+    private int calcStat(int baseStat, int level, int ev, double nature) {
+        int raw = (int) Math.floor((baseStat * 2 + DEFAULT_IV + Math.floor(ev / 4.0)) * level / 100.0) + 5;
+        return (int) Math.floor(raw * nature);
+    }
+
+    /**
+     * 枚举 16 个 random 值各自产生的伤害值。
+     * damage(r) = floor(baseAfterModifiers * r / 100), r ∈ {85..100}
+     *
+     * @return int[16]，索引 i 对应 random = 85+i 的伤害值
+     */
+    private int[] enumerateDamages(double baseAfterModifiers) {
+        int[] damages = new int[16];
+        for (int i = 0; i < 16; i++) {
+            damages[i] = (int) Math.floor(baseAfterModifiers * (85 + i) / 100.0);
+        }
+        return damages;
+    }
+
+    /**
+     * 精确计算 N 回合内击杀概率（枚举法，考虑命中率）。
+     * <p>
+     * 对每种 random roll（共 16 种），伤害值是确定的。
+     * N 回合累计伤害 = sum of N independent rolls。
+     * 使用动态规划计算概率分布。
+     * </p>
+     *
+     * @param damages   16 种 random roll 对应的伤害值
+     * @param defenderHp 防御方 HP
+     * @param accuracy  命中率（0~1），1.0 表示必中
+     * @param maxRounds 最大回合数
+     * @return double[maxRounds]，索引 i 表示 i+1 回合内击杀的概率
+     */
+    private double[] calcKoProbabilities(int[] damages, int defenderHp, double accuracy, int maxRounds) {
+        // prob[d] = 当前累计伤害恰好为 d 的概率
+        // 用 Map 稀疏存储，key=累计伤害, value=概率
+        Map<Integer, Double> prob = new HashMap<>();
+        prob.put(0, 1.0);
+
+        double[] koProbByRound = new double[maxRounds];
+        double cumulativeKo = 0.0;
+
+        for (int round = 0; round < maxRounds; round++) {
+            Map<Integer, Double> next = new HashMap<>();
+
+            // 命中分支：概率 = accuracy
+            for (Map.Entry<Integer, Double> entry : prob.entrySet()) {
+                int prevDmg = entry.getKey();
+                double prevProb = entry.getValue();
+                for (int d : damages) {
+                    int newDmg = prevDmg + d;
+                    double p = prevProb * accuracy / 16.0;
+                    next.merge(newDmg, p, Double::sum);
+                }
+            }
+
+            // 未命中分支：概率 = 1 - accuracy，伤害不变
+            if (accuracy < 1.0) {
+                for (Map.Entry<Integer, Double> entry : prob.entrySet()) {
+                    int prevDmg = entry.getKey();
+                    double missProb = entry.getValue() * (1.0 - accuracy);
+                    next.merge(prevDmg, missProb, Double::sum);
+                }
+            }
+
+            // 统计击杀概率（累计伤害 >= defenderHp 的部分）
+            double koThisRound = 0.0;
+            Iterator<Map.Entry<Integer, Double>> it = next.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry<Integer, Double> entry = it.next();
+                if (entry.getKey() >= defenderHp) {
+                    koThisRound += entry.getValue();
+                    it.remove();
+                }
+            }
+            cumulativeKo += koThisRound;
+            koProbByRound[round] = cumulativeKo;
+
+            prob = next;
+        }
+
+        return koProbByRound;
+    }
+
+    /**
+     * 计算击杀预估 — 精确枚举法（参考 Pokémon Showdown）
+     * <p>
+     * 核心逻辑：
+     * 1. 枚举 16 种 random roll 产生的伤害值
+     * 2. 用动态规划计算 N 回合累计伤害的概率分布
+     * 3. 考虑命中率：每回合有 accuracy 概率命中，(1-accuracy) 概率 miss
+     * 4. 输出 OHKO / 2HKO / 3HKO 等精确概率
+     * </p>
+     */
+    private void calculateKoEstimate(int[] damageRange, int defenderHp, double accuracy,
+                                      int hits, DamageResultVO result) {
         DamageResultVO.KOsEstimate koEstimate = new DamageResultVO.KOsEstimate();
         koEstimate.setDefenderHp(defenderHp);
-        
+
         int minDamage = damageRange[0];
         int maxDamage = damageRange[1];
-        
-        // 伤害占 HP 的百分比
+
+        // 伤害百分比范围
         double minPct = (double) minDamage / defenderHp * 100;
         double maxPct = (double) maxDamage / defenderHp * 100;
-        
-        // OHKO概率：如果最大伤害 ≥ HP，计算单次伤害即 KO 的概率
-        double ohko = 0;
-        if (maxDamage >= defenderHp) {
-            ohko = calculateKoChanceMonteCarlo(minDamage, maxDamage, defenderHp, 10000, 1);
-        }
-        
         koEstimate.setKoPercentRange(String.format("%.1f%% - %.1f%%", minPct, maxPct));
-        if (ohko > 0) {
-            koEstimate.setKoChance(ohko);
+
+        // 计算最少需要几回合击倒（基于最大伤害）
+        int minHitsToKo = (maxDamage > 0) ? (int) Math.ceil((double) defenderHp / maxDamage) : 99;
+        int maxHitsToKo = (minDamage > 0) ? (int) Math.ceil((double) defenderHp / minDamage) : 99;
+
+        koEstimate.setMinHits(Math.min(minHitsToKo, MAX_HITS_TO_CALC));
+        koEstimate.setMaxHits(Math.min(maxHitsToKo, MAX_HITS_TO_CALC));
+
+        // 枚举 16 种 random roll 的伤害值
+        // baseAfterModifiers = maxDamage（即 random=100 时的伤害）
+        double baseAfterModifiers = maxDamage; // maxDamage = floor(base * mods * 100/100)
+        int[] damages = enumerateDamages(baseAfterModifiers);
+
+        // 精确计算 KO 概率（最多计算到 MAX_HITS_TO_CALC 回合）
+        double[] koProbs = calcKoProbabilities(damages, defenderHp, accuracy, MAX_HITS_TO_CALC);
+
+        // OHKO 概率
+        double ohkoChance = koProbs[0];
+        koEstimate.setKoChance(ohkoChance);
+
+        // 设置平均击杀回合数（加权平均）
+        double prevCumulative = 0.0;
+        double weightedHits = 0.0;
+        for (int i = 0; i < koProbs.length; i++) {
+            double marginal = koProbs[i] - prevCumulative;
+            if (marginal > 0) {
+                weightedHits += marginal * (i + 1);
+            }
+            prevCumulative = koProbs[i];
         }
-        
+        if (prevCumulative > 0) {
+            koEstimate.setAvgHits(weightedHits / prevCumulative);
+        }
+
+        // 将各回合 KO 概率存入 debugInfo，前端可展示
+        Map<String, Object> debug = result.getDebugInfo();
+        if (debug == null) {
+            debug = new HashMap<>();
+            result.setDebugInfo(debug);
+        }
+        Map<String, Double> koChances = new LinkedHashMap<>();
+        for (int i = 0; i < koProbs.length; i++) {
+            koChances.put((i + 1) + "hko", Math.round(koProbs[i] * 10000) / 10000.0);
+        }
+        debug.put("koChances", koChances);
+
         result.setKoEstimate(koEstimate);
-    }
-    
-    /**
-     * 使用蒙特卡洛模拟计算击杀概率
-     */
-    private double calculateKoChanceMonteCarlo(int minDamage, int maxDamage, int defenderHp, 
-                                               int simulations, int maxHits) {
-        int koCount = 0;
-        
-        for (int i = 0; i < simulations; i++) {
-            int totalDamage = 0;
-            
-            for (int h = 0; h < maxHits; h++) {
-                totalDamage += minDamage + (int)(Math.random() * (maxDamage - minDamage + 1));
-            }
-            
-            if (totalDamage >= defenderHp) {
-                koCount++;
-            }
-        }
-        
-        return (double) koCount / simulations;
     }
     
     /**

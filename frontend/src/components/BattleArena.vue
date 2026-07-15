@@ -273,7 +273,7 @@
                     </span>
                   </div>
                   <div class="mt-1 text-xs text-slate-500 sm:hidden">
-                    HP {{ pokemon.currentHp }}/{{ pokemon.maxHp }} · {{ pokemon.hpPercent }}%
+                    HP {{ pokemon.currentHp }}{{ pokemon.maxHp ? '/' + pokemon.maxHp : '' }} · {{ pokemon.hpPercent }}%
                   </div>
                 </div>
                 <div class="text-right text-xs text-slate-500">
@@ -360,7 +360,7 @@
                     </span>
                   </div>
                   <div class="text-xs text-slate-500">
-                    HP {{ pokemon.currentHp }}/{{ pokemon.maxHp }} · {{ pokemon.statusText }}
+                    HP {{ pokemon.currentHp }}{{ pokemon.maxHp ? '/' + pokemon.maxHp : '' }} · {{ pokemon.statusText }}
                   </div>
                 </div>
                 <div class="text-right text-xs text-slate-500">
@@ -510,8 +510,12 @@ function buildCards(team = [], activeSlots = []) {
     active: (activeSlots || []).includes(index),
     name: pokemon.name || pokemon.name_en || tr(`宝可梦 ${index + 1}`, `Pokemon ${index + 1}`),
     currentHp: pokemon.currentHp || 0,
-    maxHp: pokemon?.stats?.hp || pokemon.currentHp || 1,
-    hpPercent: Math.max(0, Math.min(100, Math.round(((pokemon.currentHp || 0) / (pokemon?.stats?.hp || pokemon.currentHp || 1)) * 100))),
+    maxHp: pokemon?.stats?.hp || null,
+    hpPercent: (() => {
+      const max = pokemon?.stats?.hp
+      if (!max || max <= 0) return pokemon.currentHp > 0 ? 100 : 0 // 无 maxHp 信息时按存活/倒下显示
+      return Math.max(0, Math.min(100, Math.round(((pokemon.currentHp || 0) / max) * 100)))
+    })(),
     statusText: pokemon.currentHp > 0 ? tr('可战斗', 'Ready') : tr('已倒下', 'Fainted'),
     conditionLabels: conditionLabels(pokemon)
   }))

@@ -202,7 +202,7 @@ final class BattleSetupSupport {
             if (index != null && index >= 0 && index < stateSupport.team(state, true).size()) {
                 Map<String, Object> switchedIn = stateSupport.team(state, true).get(index);
                 switchedIn.put("entryRound", toInt(state.get("currentRound"), 0) + 1);
-                switchedIn.put("flinched", false);
+                switchedIn.put("flinch", false); // 与 BattleFlowSupport 保持一致
             }
         }
 

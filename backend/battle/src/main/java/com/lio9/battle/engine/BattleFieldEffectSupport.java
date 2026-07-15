@@ -224,7 +224,7 @@ final class BattleFieldEffectSupport {
     }
 
     void activateTailwind(Map<String, Object> state, boolean playerSide, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
-        fieldEffects(state).put(playerSide ? "playerTailwindTurns" : "opponentTailwindTurns", 4);
+        fieldEffects(state).put(playerSide ? "playerTailwindTurns" : "opponentTailwindTurns", 3); // 正作持续3回合
         actionLog.put("result", "tailwind");
         events.add(actor.get("name") + " 刮起了顺风");
     }
@@ -380,13 +380,23 @@ final class BattleFieldEffectSupport {
     }
 
     void setGMaxWildfire(Map<String, Object> state, boolean playerSide) {
-        fieldEffects(state).put("gmaxWildfireTurns", 4);
+        fieldEffects(state).put(playerSide ? "playerGmaxWildfireTurns" : "opponentGmaxWildfireTurns", 4);
     }
     void setGMaxCannonade(Map<String, Object> state, boolean playerSide) {
-        fieldEffects(state).put("gmaxCannonadeTurns", 4);
+        fieldEffects(state).put(playerSide ? "playerGmaxCannonadeTurns" : "opponentGmaxCannonadeTurns", 4);
     }
     void setGMaxVineLash(Map<String, Object> state, boolean playerSide) {
-        fieldEffects(state).put("gmaxVineLashTurns", 4);
+        fieldEffects(state).put(playerSide ? "playerGmaxVineLashTurns" : "opponentGmaxVineLashTurns", 4);
+    }
+
+    int gmaxWildfireTurns(Map<String, Object> state, boolean playerSide) {
+        return toInt(fieldEffects(state).get(playerSide ? "playerGmaxWildfireTurns" : "opponentGmaxWildfireTurns"), 0);
+    }
+    int gmaxCannonadeTurns(Map<String, Object> state, boolean playerSide) {
+        return toInt(fieldEffects(state).get(playerSide ? "playerGmaxCannonadeTurns" : "opponentGmaxCannonadeTurns"), 0);
+    }
+    int gmaxVineLashTurns(Map<String, Object> state, boolean playerSide) {
+        return toInt(fieldEffects(state).get(playerSide ? "playerGmaxVineLashTurns" : "opponentGmaxVineLashTurns"), 0);
     }
 
     int gravityTurns(Map<String, Object> state) {

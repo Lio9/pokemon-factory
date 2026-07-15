@@ -255,9 +255,10 @@ final class BattleTargetSupport {
             return -1;
         }
         int targetId = engine.toInt(move.get("target_id"), 10);
-        // Only redirect single-target moves (target_id 10, 8, 11, etc.), not spread
-        // moves (target_id 9) or field-wide moves (target_id 12, 14)
-        if (targetId == 9 || targetId == 12 || targetId == 14) {
+        // Only redirect single-target moves, not spread moves
+        // target_id: 9=all other active, 11=all opponents, 12=all active, 14=all active(field-wide) are spread
+        // target_id: 10=single opponent, 8=random opponent are single-target
+        if (targetId == 9 || targetId == 11 || targetId == 12 || targetId == 14) {
             return -1;
         }
         int moveTypeId = engine.toInt(move.get("type_id"), 0);

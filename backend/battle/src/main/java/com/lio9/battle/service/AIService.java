@@ -254,7 +254,7 @@ public class AIService {
 
         // 2. 检查招式多样性（避免全是同一种属性的招式）
         long distinctTypes = moves.stream()
-                .map(m -> String.valueOf(m.get("type_name_en")))
+                .map(m -> String.valueOf(m.get("type_id")))
                 .distinct()
                 .count();
         if (moves.size() >= 4 && distinctTypes < 2) {
@@ -615,7 +615,9 @@ public class AIService {
                 continue;
             }
             int damageClassId = toInt(move.get("damage_class_id"), 0);
-            if (("physical".equals(build) && damageClassId == 1) || ("special".equals(build) && damageClassId == 2)) {
+            // 本数据库 damage_class_id: 1=物理, 2=特殊, 3=变化/状态
+            if (("physical".equals(build) && damageClassId == 1) || ("special".equals(build) && damageClassId == 2)
+                    || ("mixed".equals(build) && damageClassId <= 2)) {
                 attacks.add(normalizeMove(move));
             }
         }

@@ -53,9 +53,12 @@ export const battleApi = {
   move: (battleId, body) => requestData(`${BATTLE_API_BASE}/battle/${battleId}/move`, { method: 'POST', body: JSON.stringify(body) }),
   forfeit: (battleId) => requestData(`${API_ROOT}/battle/${battleId}/forfeit`, { method: 'POST' }),
   factoryStart: () => requestData(`${API_ROOT}/battle/factory/start`, { method: 'POST' }),
+  factoryStartWithBan: (body) => requestData(`${API_ROOT}/battle/factory/start-with-ban`, { method: 'POST', body: JSON.stringify(body) }),
   factoryNext: (runId) => requestData(`${API_ROOT}/battle/factory/${runId}/next`, { method: 'POST' }),
   factoryAbandon: () => requestData(`${API_ROOT}/battle/factory/abandon`, { method: 'POST' }),
   factoryStatus: () => requestData(`${API_ROOT}/battle/factory/status`),
   profile: () => requestData(`${API_ROOT}/battle/profile`),
-  leaderboard: (limit = 50) => requestData(`${API_ROOT}/battle/leaderboard?limit=${limit}`)
+  leaderboard: (limit = 50) => requestData(`${API_ROOT}/battle/leaderboard?limit=${limit}`),
+  banInfo: () => requestData(`${API_ROOT}/battle/ban/info`),
+  banCosts: () => requestData(`${API_ROOT}/battle/ban/costs`)
 }

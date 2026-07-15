@@ -126,7 +126,7 @@
     </button>
   </section>
 
-  <section class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+  <section v-if="!isPreviewPhase" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
     <div class="mb-3 text-sm font-semibold text-slate-800">
       {{ isReplacementPhase ? tr('当前回合已暂停，等待补位', 'The turn is paused until replacements are chosen') : tr('当前可选招式', 'Available actions this turn') }}
     </div>

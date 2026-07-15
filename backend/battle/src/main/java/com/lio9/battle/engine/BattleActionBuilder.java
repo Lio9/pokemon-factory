@@ -123,7 +123,8 @@ final class BattleActionBuilder {
             return fieldSlot;
         }
         int target = engine.toInt(playerMoveMap.get("target-slot-" + fieldSlot), fieldSlot);
-        return Math.max(0, Math.min(1, target));
+        // 不硬编码上限，交给下游 targetIndex 做实际校验
+        return Math.max(0, target);
     }
 
     private String selectedSpecialSystem(Map<String, String> playerMoveMap, int fieldSlot) {

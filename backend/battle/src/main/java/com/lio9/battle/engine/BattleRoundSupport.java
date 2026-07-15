@@ -128,7 +128,25 @@ final class BattleRoundSupport {
             return;
         }
         if ("sleep".equals(actor.get("condition"))) {
-            if (engine.isSleepingThisTurn(actor, round)) {
+            Map<String, Object> currentMove = action.move();
+            boolean isSleepUsableMove = currentMove != null
+                && (engine.isSleepTalk(currentMove) || engine.isSnore(currentMove));
+
+            if (isSleepUsableMove) {
+                // Sleep Talk/Snore 在睡眠中可用，但仍需递减睡眠回合数
+                int remaining = Math.max(0, engine.toInt(actor.get("sleepTurns"), 0) - 1);
+                actor.put("sleepTurns", remaining);
+                if (remaining <= 0) {
+                    // 睡眠结束，醒来（下一回合才能行动）
+                    actor.put("condition", null);
+                    actor.put("sleepAppliedRound", 0);
+                    engine.setVolatile(actor, "nightmare", false);
+                    events.add(actor.get("name") + " 在睡梦中使用了招式后醒来了！");
+                } else {
+                    events.add(actor.get("name") + " 在睡梦中使用了招式！");
+                }
+            } else if (engine.isSleepingThisTurn(actor, round)) {
+                // 仍在睡眠中，不能行动
                 Map<String, Object> sleepLog = new LinkedHashMap<>();
                 sleepLog.put("side", action.side());
                 sleepLog.put("actor", actor.get("name"));
@@ -137,12 +155,8 @@ final class BattleRoundSupport {
                 actionLogs.add(sleepLog);
                 events.add(actor.get("name") + " 正在睡觉，无法行动");
                 return;
-            }
-            // Sleep Talk / Snore: 允许在睡眠中使用且不唤醒（move 变量此时未定义，用 action.move()）
-            Map<String, Object> currentMove = action.move();
-            if (currentMove != null && (engine.isSleepTalk(currentMove) || engine.isSnore(currentMove))) {
-                events.add(actor.get("name") + " 在睡梦中使用了招式！");
             } else {
+                // 睡眠结束，醒来
                 actor.put("condition", null);
                 actor.put("sleepTurns", 0);
                 actor.put("sleepAppliedRound", 0);
@@ -569,11 +583,27 @@ final class BattleRoundSupport {
             }
 
             for (int hitIndex = 0; hitIndex < hitCount && remainingHp > 0; hitIndex++) {
+                // 逐次命中招式：每段独立判定命中（Population Bomb/Triple Axel/Triple Kick）
+                if (isPerHitAccuracyMove(move)) {
+                    int hitAcc = calculateAccuracyWithStages(state, actor, target, move);
+                    if (random.nextInt(100) + 1 > hitAcc) {
+                        events.add(move.get("name") + " 在第 " + (hitIndex + 1) + " 段落空了");
+                        break; // miss 终止后续段数
+                    }
+                }
+
                 int hpBeforeDamage = engine.toInt(target.get("currentHp"), 0);
                 // 暴击在执行层预先解析，再传给伤害层消费，避免重复判定导致日志与数值不一致。
                 boolean criticalHit = resolveCriticalHit(actor, move, random);
                 Map<String, Object> resolvedMove = new LinkedHashMap<>(baseDamageMove);
                 resolvedMove.put("criticalHit", criticalHit);
+
+                // 逐段威力递增招式（Triple Axel: 20/40/60, Triple Kick: 10/20/30）
+                if (isIncrementalPowerMove(move)) {
+                    int basePow = engine.toInt(baseDamageMove.get("power"), 0);
+                    resolvedMove.put("power", basePow * (hitIndex + 1));
+                }
+
                 if (criticalHit) {
                     criticalHits += 1;
                 }
@@ -647,7 +677,7 @@ final class BattleRoundSupport {
                         && random.nextInt(100) < 10) {
                     remainingHp = 1;
                     target.put("currentHp", 1);
-                    target.remove("status");
+                    // 气势头带只阻止濒死，不清除状态异常
                     targetLog.put("damage", Math.min(actualDamage, engine.toInt(engine.castMap(target.get("stats")).get("hp"), 1) - 1));
                     events.add(target.get("name") + " 靠气势头带撑住了攻击");
                 }
@@ -705,6 +735,8 @@ final class BattleRoundSupport {
                         engine.consumeItem(target);
                         targetLog.put("bugBite", targetItem);
                         events.add(actor.get("name") + " 的虫灾吃掉了 " + target.get("name") + " 的" + targetItem + "！");
+                        // 触发树果效果（对攻击者生效）
+                        applyBerryEffect(actor, targetItem, events);
                     }
                 }
                 // 形态变化检查（zen-mode/schooling/shields-down）
@@ -746,7 +778,17 @@ final class BattleRoundSupport {
                         actor.put("currentHp", Math.max(0, atkHp - recoil));
                         events.add(target.get("name") + " 的嘉宝果反击了 " + actor.get("name") + "，" + recoil + " 点 HP 损伤");
                     }
-                    // 龙尾/巴投：伤害后强制目标换人（仅攻击招式，目标存活且对方有后备时触发）
+                    // Rowap Berry: 受特殊招式伤害时反伤攻击者 1/8 最大 HP
+                    if ("rowap-berry".equalsIgnoreCase(targetItem) && dmgClass == 3) {
+                        engine.consumeItem(target);
+                        int atkMaxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
+                        int recoil = Math.max(1, atkMaxHp / 8);
+                        int atkHp = engine.toInt(actor.get("currentHp"), 0);
+                        actor.put("currentHp", Math.max(0, atkHp - recoil));
+                        events.add(target.get("name") + " 的罗子果反击了 " + actor.get("name") + "，" + recoil + " 点 HP 损伤");
+                    }
+                }
+                // 龙尾/巴投：伤害后强制目标换人（仅攻击招式，目标存活且对方有后备时触发）
                 if (actualDamage > 0 && engine.isForcedSwitchMove(move) && !engine.isStatusMove(move)
                         && engine.toInt(target.get("currentHp"), 0) > 0) {
                     boolean tgtPS = targetRef.playerSide();
@@ -767,17 +809,6 @@ final class BattleRoundSupport {
                         targetLog.put("switchTo", switchedIn.get("name"));
                         events.add(target.get("name") + " 被 " + move.get("name") + " 击退了，" + switchedIn.get("name") + " 上场！");
                         conditionSupport.applyEntryAbilities(state, tgtPS, tgtSlots, events);
-                    }
-                }
-
-                // Rowap Berry: 受特殊招式伤害时反伤攻击者 1/8 最大 HP
-                    if ("rowap-berry".equalsIgnoreCase(targetItem) && dmgClass == 3) {
-                        engine.consumeItem(target);
-                        int atkMaxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
-                        int recoil = Math.max(1, atkMaxHp / 8);
-                        int atkHp = engine.toInt(actor.get("currentHp"), 0);
-                        actor.put("currentHp", Math.max(0, atkHp - recoil));
-                        events.add(target.get("name") + " 的罗子果反击了 " + actor.get("name") + "，" + recoil + " 点 HP 损伤");
                     }
                 }
                 // Enigma Berry: 受效果绝佳攻击时回复 1/4 最大 HP（非克制或已消耗跳过）
@@ -978,7 +1009,7 @@ final class BattleRoundSupport {
             events.add(actor.get("name") + " 使用了 Sucker Punch，但失败了");
             return;
         }
-        if (selfStatChangeTriggered && engine.toInt(actor.get("currentHp"), 0) > 0) {
+        if (selfStatChangeTriggered && anyHit && engine.toInt(actor.get("currentHp"), 0) > 0) {
             conditionSupport.applyDamagingSelfStatChanges(actor, move, actionLog, events, random);
         }
         if (anyHit) {
@@ -1075,6 +1106,12 @@ final class BattleRoundSupport {
         if (engine.toInt(move.get("max_hits"), 0) <= 0) {
             maxHits = minHits;
         }
+        // Population Bomb 数据补偿：meta 为 null 时 min_hits/max_hits 为 0
+        String moveNameEn = String.valueOf(move.getOrDefault("name_en", "")).toLowerCase();
+        if ("population-bomb".equals(moveNameEn) && maxHits <= 1) {
+            minHits = 1;
+            maxHits = 10;
+        }
         if (maxHits <= 1) {
             return 1;
         }
@@ -1101,6 +1138,49 @@ final class BattleRoundSupport {
             return 5;
         }
         return minHits + random.nextInt(maxHits - minHits + 1);
+    }
+
+    /** 逐次命中招式：每段独立判定命中 */
+    private boolean isPerHitAccuracyMove(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.getOrDefault("name_en", "")).toLowerCase();
+        return "population-bomb".equals(nameEn)
+            || "triple-axel".equals(nameEn)
+            || "triple-kick".equals(nameEn);
+    }
+
+    /** 逐段威力递增招式 */
+    private boolean isIncrementalPowerMove(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.getOrDefault("name_en", "")).toLowerCase();
+        return "triple-axel".equals(nameEn) || "triple-kick".equals(nameEn);
+    }
+
+    /** 虫灾吞食树果后触发效果 */
+    private void applyBerryEffect(Map<String, Object> mon, String berryName, List<String> events) {
+        if (berryName == null || berryName.isBlank()) return;
+        String name = berryName.toLowerCase();
+
+        // 回复类树果
+        if (name.contains("sitrus") || name.contains("文柚")) {
+            int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+            int curHp = engine.toInt(mon.get("currentHp"), 0);
+            int heal = Math.max(1, maxHp / 4);
+            mon.put("currentHp", Math.min(maxHp, curHp + heal));
+            events.add(mon.get("name") + " 通过树果回复了 " + heal + " 点 HP");
+        } else if (name.contains("lum") || name.contains("木子")) {
+            // 木子果：治愈所有状态异常
+            if (mon.get("condition") != null && !"fainted".equals(mon.get("condition"))) {
+                mon.put("condition", null);
+                mon.put("status", "");
+                events.add(mon.get("name") + " 的状态异常被治愈了");
+            }
+        } else if (name.contains("oran") || name.contains("橙")) {
+            // 橙橙果：回复 10 HP
+            int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+            int curHp = engine.toInt(mon.get("currentHp"), 0);
+            mon.put("currentHp", Math.min(maxHp, curHp + 10));
+            events.add(mon.get("name") + " 通过树果回复了 10 点 HP");
+        }
+        // 能力提升类树果可在此扩展
     }
 
     private Map<String, Object> chargingMove(Map<String, Object> actor) {
@@ -1206,7 +1286,7 @@ final class BattleRoundSupport {
             if (engine.toInt(opp.get("currentHp"), 0) <= 0) continue;
             String ab = engine.abilityName(opp);
             if ("shadow-tag".equalsIgnoreCase(ab) || "shadow tag".equalsIgnoreCase(ab)) {
-                return true; // Shadow Tag traps everything except Ghost
+                if (!isGhost) return true; // 幽灵属性不受 Shadow Tag 影响
             }
             if (("arena-trap".equalsIgnoreCase(ab) || "arena trap".equalsIgnoreCase(ab)) && !isFlying) {
                 return true;
@@ -1303,13 +1383,13 @@ final class BattleRoundSupport {
                 anyBoosted = true;
             }
         }
-        // Grim Neigh / 漆黑嘶鸣：击倒后攻击 +1
+        // Grim Neigh / 漆黑嘶鸣：击倒后特攻 +1
         if ("grim-neigh".equalsIgnoreCase(ability) || "grim neigh".equalsIgnoreCase(ability)) {
-            int prev = engine.toInt(stages.get("attack"), 0);
+            int prev = engine.toInt(stages.get("specialAttack"), 0);
             if (prev < 6) {
-                stages.put("attack", prev + 1);
+                stages.put("specialAttack", prev + 1);
                 actionLog.put("grimNeigh", true);
-                events.add(actor.get("name") + " 的漆黑嘶鸣触发了，攻击提升！");
+                events.add(actor.get("name") + " 的漆黑嘶鸣触发了，特攻提升！");
                 anyBoosted = true;
             }
         }
@@ -1409,74 +1489,74 @@ final class BattleRoundSupport {
                                       Map<Map<String, Object>, Boolean> helpingHandBoosts,
                                       List<Map<String, Object>> actionLogs, List<String> events,
                                       Map<String, Object> actionLog, boolean playerSide) {
-        if (MoveRegistry.isProtectionMove(move)) {
-            return handleProtectionMove(actor, move, round, random, protectedTargets, wideGuardSides, quickGuardSides,
-                    action.side(), action.actorIndex(), actionLog, actionLogs, events);
-        }
+          if (MoveRegistry.isProtectionMove(move)) {
+            return handleProtectionMove(state, actor, move, round, random, protectedTargets, wideGuardSides, quickGuardSides,
+                      action.side(), action.actorIndex(), actionLog, actionLogs, events);
+          }
         if (engine.isTailwind(move)) {
             engine.activateTailwind(state, playerSide, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isTrickRoom(move)) {
             engine.toggleTrickRoom(state, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
 
         // 魔法空间（Magic Room）：5 回合内所有道具效果失效
         if (engine.isMagicRoom(move)) {
             engine.toggleMagicRoom(state, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
 
         // 奇妙空间（Wonder Room）：5 回合物防/特防互换
         if (engine.isWonderRoom(move)) {
             engine.toggleWonderRoom(state, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
 
         if (MoveRegistry.isGravity(move)) {
             engine.activateGravity(state, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isRainDance(move)) {
             engine.activateWeather(state, "rain", actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isSunnyDay(move)) {
             engine.activateWeather(state, "sun", actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isSandstorm(move)) {
             engine.activateWeather(state, "sand", actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isSnowWeather(move)) {
             engine.activateWeather(state, "snow", actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isElectricTerrain(move)) {
             engine.activateTerrain(state, "electric", actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isPsychicTerrain(move)) {
             engine.activateTerrain(state, "psychic", actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isGrassyTerrain(move)) {
             engine.activateTerrain(state, "grassy", actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isMistyTerrain(move)) {
             engine.activateTerrain(state, "misty", actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isReflect(move)) {
             engine.activateScreen(state, "reflect", playerSide, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isLightScreen(move)) {
             engine.activateScreen(state, "light-screen", playerSide, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isAuroraVeil(move)) {
             if (engine.snowTurns(state) <= 0) {
@@ -1486,23 +1566,23 @@ final class BattleRoundSupport {
                 return true;
             }
             engine.activateScreen(state, "aurora-veil", playerSide, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isSafeguard(move)) {
             engine.activateScreen(state, "safeguard", playerSide, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isRedirectionMove(move)) {
             targetSupport.activateRedirection(redirectionTargets, action.side(), action.actorIndex(), move, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isHelpingHand(move)) {
             targetSupport.applyHelpingHand(state, action, actor, move, actionLog, events, helpingHandBoosts);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (engine.isAllySwitch(move)) {
             targetSupport.applyAllySwitch(state, action, actor, actionLog, events);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         if (MoveRegistry.isBatonPass(move)) {
             return handleBatonPass(state, action, actor, move, actionLog, actionLogs, events, playerSide);
@@ -1511,7 +1591,7 @@ final class BattleRoundSupport {
         if (MoveRegistry.isEndure(move)) {
             engine.setVolatile(actor, "endured", true);
             events.add(actor.get("name") + " 使用了忍耐！");
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         // 黑雾：清除双方所有能力变化
         if (MoveRegistry.isHaze(move)) {
@@ -1524,19 +1604,20 @@ final class BattleRoundSupport {
                 }
             }
             events.add(actor.get("name") + " 使用了黑雾，所有能力变化恢复了！");
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         // 封印（Imprison）：只要使用者在场，目标不能使用与使用者相同的招式
         if (MoveRegistry.isImprison(move)) {
             engine.setVolatile(actor, "imprisonActive", true);
             actionLog.put("result", "imprison");
             events.add(actor.get("name") + " 使用了封印！双方无法使用相同的招式！");
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         // 同命：如果本回合使用者被击倒，攻击者也一同倒下
         if (MoveRegistry.isDestinyBond(move)) {
             engine.setVolatile(actor, "destinyBond", true);
             events.add(actor.get("name") + " 使用了同命！");
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         // 换场（Court Change）：交换双方场地/钉子/墙壁等效果
         if (engine.isCourtChange(move)) {
@@ -1563,7 +1644,7 @@ final class BattleRoundSupport {
                 }
             }
             events.add(actor.get("name") + " 使用了换场！双方场地效果交换了！");
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
 
         // 分担痛楚：使用者和目标 HP 相加平均分配
@@ -1600,7 +1681,7 @@ final class BattleRoundSupport {
                 actionLog.put("result", "lunar-dance");
                 events.add(actor.get("name") + " 使用了新月舞！下只上场的宝可梦将全回复！");
             }
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
 
         // 复活祈愿（Revival Blessing）：复活己方一名倒下的队友，回复一半 HP
@@ -1618,7 +1699,7 @@ final class BattleRoundSupport {
             }
             if (reviveTarget < 0) {
                 events.add(actor.get("name") + " 的复活祈愿失败了——没有倒下的队友");
-                return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+                return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
             }
             Map<String, Object> revived = team.get(reviveTarget);
             int maxHp = engine.toInt(engine.castMap(revived.get("stats")).get("hp"), 1);
@@ -1628,7 +1709,7 @@ final class BattleRoundSupport {
             actionLog.put("result", "revival-blessing");
             actionLog.put("revived", revived.get("name"));
             events.add(actor.get("name") + " 使用了复活祈愿，" + revived.get("name") + " 复活了！");
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
 
         // 蜕尾（Shed Tail）：消耗 50% HP 制造替身后换入后备
@@ -1639,7 +1720,7 @@ final class BattleRoundSupport {
             int curHp = engine.toInt(actor.get("currentHp"), 0);
             if (curHp <= cost) {
                 events.add(actor.get("name") + " 的蜕尾失败了——HP 不足");
-                return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+                return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
             }
             actor.put("currentHp", curHp - cost);
             // 制造替身（1/4 最大 HP，上限 1/2 当前 HP）
@@ -1663,7 +1744,7 @@ final class BattleRoundSupport {
                 conditionSupport.applyEntryAbilities(state, pSide, shedSlots, events);
             }
             actionLog.put("result", "shed-tail");
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
 
         if (MoveRegistry.isPainSplit(move)) {
@@ -1675,13 +1756,13 @@ final class BattleRoundSupport {
             if (stockpileCount >= 3) {
                 actionLog.put("result", "failed");
                 events.add(actor.get("name") + " 的蓄力已到最大次数");
-                return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+                return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
             }
             conditionSupport.applyMultiStatBoost(state, actor, Map.of("defense", 1, "specialDefense", 1), "蓄力", events);
             engine.setVolatile(actor, "stockpileCount", stockpileCount + 1);
             actionLog.put("result", "stockpile");
             events.add(actor.get("name") + " 开始蓄力！当前蓄力层数：" + (stockpileCount + 1));
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
 
         // 吞下（Swallow）：根据蓄力量回复 HP，然后解除蓄力
@@ -1690,7 +1771,7 @@ final class BattleRoundSupport {
             if (stockpileCount <= 0) {
                 actionLog.put("result", "failed");
                 events.add(actor.get("name") + " 没有蓄力，吞下失败了");
-                return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+                return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
             }
             int maxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
             int currentHp = engine.toInt(actor.get("currentHp"), 0);
@@ -1706,11 +1787,11 @@ final class BattleRoundSupport {
             engine.setVolatile(actor, "stockpileCount", 0);
             actionLog.put("result", "swallow");
             actionLog.put("heal", actualHeal);
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
 
         if (conditionSupport.applyMoveHealing(actor, move, actionLog, events)) {
-            return finishNonDamagingMove(actor, move, actionLog, actionLogs);
+            return finishNonDamagingMove(state, actor, move, actionLog, actionLogs);
         }
         return false;
     }
@@ -2192,7 +2273,15 @@ final class BattleRoundSupport {
         if (engine.isBellyDrum(move)) {
             int maxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
             int cost = Math.max(1, maxHp / 2);
-            actor.put("currentHp", Math.max(0, engine.toInt(actor.get("currentHp"), 0) - cost));
+            int currentHp = engine.toInt(actor.get("currentHp"), 0);
+            // HP 不足时腹鼓失败
+            if (currentHp <= cost) {
+                targetLog.put("result", "failed");
+                events.add(actor.get("name") + " HP不足，无法使用腹鼓！");
+                actionLogs.add(targetLog);
+                return true;
+            }
+            actor.put("currentHp", Math.max(0, currentHp - cost));
             engine.castMap(actor.get("statStages")).put("attack", 6);
             events.add(actor.get("name") + " 使用了腹鼓，消耗了 " + cost + " HP，攻击力提升到了极致！");
             targetLog.put("result", "belly-drum");
@@ -2352,16 +2441,16 @@ final class BattleRoundSupport {
         return false;
     }
 
-    private boolean finishNonDamagingMove(Map<String, Object> actor, Map<String, Object> move,
+    private boolean finishNonDamagingMove(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> move,
                                           Map<String, Object> actionLog, List<Map<String, Object>> actionLogs) {
         actionLogs.add(actionLog);
         engine.rememberLastMove(actor, move);
         engine.rememberChoiceMove(actor, move);
-        engine.applyCooldown(actor, move);
+        engine.applyCooldown(actor, move, state);
         return true;
     }
 
-    private boolean handleProtectionMove(Map<String, Object> actor, Map<String, Object> move, int round, Random random,
+    private boolean handleProtectionMove(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> move, int round, Random random,
                                          Map<String, Boolean> protectedTargets,
                                          Map<String, Boolean> wideGuardSides,
                                          Map<String, Boolean> quickGuardSides,
@@ -2397,7 +2486,7 @@ final class BattleRoundSupport {
         actionLogs.add(actionLog);
         engine.rememberLastMove(actor, move);
         engine.rememberChoiceMove(actor, move);
-        engine.applyCooldown(actor, move);
+        engine.applyCooldown(actor, move, state);
         return true;
     }
 
@@ -2581,8 +2670,16 @@ final class BattleRoundSupport {
             takenDamage = Math.max(
                     physicalDmg != null ? physicalDmg : 0,
                     specialDmg != null ? specialDmg : 0);
-            multiplier = 1;
-            counterType = "全部";
+            // Metal Burst 返还 1.5 倍伤害，单独处理
+            if (takenDamage <= 0) return false;
+            int returnDamage = (int) Math.floor(takenDamage * 1.5);
+            int targetHp = engine.toInt(target.get("currentHp"), 0);
+            int actualReturnDamage = Math.min(returnDamage, targetHp);
+            target.put("currentHp", Math.max(0, targetHp - actualReturnDamage));
+            targetLog.put("damage", actualReturnDamage);
+            targetLog.put("result", "metal-burst");
+            events.add(actor.get("name") + " 使用了金属爆炸！返还了 " + actualReturnDamage + " 伤害");
+            return true;
         }
 
         if (takenDamage <= 0) {

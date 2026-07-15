@@ -73,17 +73,17 @@ public class TierService {
         boolean promoted = false;
         boolean demoted = false;
 
-        // 晋级判定
-        if (newTier < TIER_MASTER_BALL && newTierPoints >= POINTS_PER_TIER) {
+        // 晋级判定（保留溢出积分，支持跨段位）
+        while (newTier < TIER_MASTER_BALL && newTierPoints >= POINTS_PER_TIER) {
             newTier++;
-            newTierPoints = 0;
+            newTierPoints -= POINTS_PER_TIER;
             promoted = true;
         }
 
-        // 降级判定
-        if (newTierPoints < 0 && newTier > TIER_POKE_BALL) {
+        // 降级判定（支持跨段位）
+        while (newTierPoints < 0 && newTier > TIER_POKE_BALL) {
             newTier--;
-            newTierPoints = POINTS_PER_TIER - 1;
+            newTierPoints += POINTS_PER_TIER;
             demoted = true;
         }
 
