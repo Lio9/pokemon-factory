@@ -1,7 +1,7 @@
 <template>
   <div class="item-list">
     <!-- 搜索栏 -->
-    <div class="glass-card mb-6 p-4">
+    <div class="rounded-2xl border-3 border-slate-200/80 p-5 shadow-poke-card bg-white mb-6">
       <div class="flex flex-col sm:flex-row gap-4">
         <div class="flex-1">
           <el-input
@@ -16,7 +16,7 @@
           >
             <template #append>
               <el-button
-                class="!bg-gradient-to-r !from-indigo-500 !to-purple-600 !text-white !border-none hover:!from-indigo-600 hover:!to-purple-700"
+                class="!bg-[#E0C068] !text-white !border-none hover:!bg-[#c4a848] !font-bold"
                 @click="handleSearch"
               >
                 <el-icon><Search /></el-icon>
@@ -29,54 +29,54 @@
 
     <!-- 统计卡片 -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div class="glass-card p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+      <div class="rounded-2xl border-3 border-slate-200/80 p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group bg-white shadow-poke-card">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold shadow-poke border-2 border-indigo-400 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
           📦
         </div>
         <div>
-          <div class="text-3xl font-bold text-slate-800">
+          <div class="text-3xl font-extrabold text-slate-800">
             {{ total }}
           </div>
-          <div class="text-xs text-slate-500 font-medium">
+          <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">
             {{ tr('总数', 'Total') }}
           </div>
         </div>
       </div>
-      <div class="glass-card p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xl font-bold shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+      <div class="rounded-2xl border-3 border-slate-200/80 p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group bg-white shadow-poke-card">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xl font-bold shadow-poke border-2 border-emerald-400 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
           📥
         </div>
         <div>
-          <div class="text-3xl font-bold text-slate-800">
+          <div class="text-3xl font-extrabold text-slate-800">
             {{ loadedCount }}
           </div>
-          <div class="text-xs text-slate-500 font-medium">
+          <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">
             {{ tr('已加载', 'Loaded') }}
           </div>
         </div>
       </div>
-      <div class="glass-card p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center text-white text-xl font-bold shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+      <div class="rounded-2xl border-3 border-slate-200/80 p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group bg-white shadow-poke-card">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center text-white text-xl font-bold shadow-poke border-2 border-sky-400 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
           🗂️
         </div>
         <div>
-          <div class="text-3xl font-bold text-slate-800">
+          <div class="text-3xl font-extrabold text-slate-800">
             {{ categories }}
           </div>
-          <div class="text-xs text-slate-500 font-medium">
+          <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">
             {{ tr('分类', 'Categories') }}
           </div>
         </div>
       </div>
-      <div class="glass-card p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xl font-bold shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+      <div class="rounded-2xl border-3 border-slate-200/80 p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group bg-white shadow-poke-card">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xl font-bold shadow-poke border-2 border-amber-400 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
           📄
         </div>
         <div>
-          <div class="text-3xl font-bold text-slate-800">
+          <div class="text-3xl font-extrabold text-slate-800">
             {{ pageSize }}
           </div>
-          <div class="text-xs text-slate-500 font-medium">
+          <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">
             {{ tr('每页', 'Per page') }}
           </div>
         </div>

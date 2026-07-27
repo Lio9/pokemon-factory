@@ -3,8 +3,8 @@
 <template>
   <div class="mx-auto max-w-5xl px-1 py-4 sm:px-4 sm:py-8">
     <div class="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,420px)] lg:gap-6">
-      <section class="overflow-hidden rounded-[28px] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(99,102,241,0.12),rgba(255,255,255,0.95))] p-5 shadow-[0_20px_70px_-50px_rgba(15,23,42,0.45)] sm:p-7">
-        <div class="inline-flex rounded-full border border-white/70 bg-white/75 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 shadow-sm">
+      <section class="overflow-hidden rounded-3xl border-3 border-slate-200/80 bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 p-5 shadow-poke-card sm:p-7">
+        <div class="inline-flex rounded-xl border-2 border-poke-red/20 bg-poke-red/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-poke-red">
           Trainer Access
         </div>
         <h1 class="mt-4 text-[clamp(1.8rem,5vw,3rem)] font-black tracking-tight text-slate-950">
@@ -14,34 +14,34 @@
           {{ tr('登录后可恢复会话、进入工厂挑战、查看排行榜和保留你的挑战进度。移动端和桌面端都会复用同一套会话状态。', 'Sign in to restore your session, enter factory challenges, view the leaderboard, and preserve your run progress. Mobile and desktop share the same session state.') }}
         </p>
         <div class="mt-6 grid gap-3 sm:grid-cols-3">
-          <div class="rounded-2xl bg-white/85 px-4 py-4 shadow-sm backdrop-blur">
-            <div class="text-xs uppercase tracking-[0.16em] text-slate-400">
+          <div class="rounded-2xl bg-white/90 px-4 py-4 shadow-poke border-2 border-white/80">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">
               {{ tr('工厂挑战', 'Factory challenge') }}
             </div>
-            <div class="mt-2 text-sm font-semibold text-slate-900">
+            <div class="mt-2 text-sm font-bold text-slate-800">
               {{ tr('9 连战流程', '9-battle flow') }}
             </div>
           </div>
-          <div class="rounded-2xl bg-white/85 px-4 py-4 shadow-sm backdrop-blur">
-            <div class="text-xs uppercase tracking-[0.16em] text-slate-400">
+          <div class="rounded-2xl bg-white/90 px-4 py-4 shadow-poke border-2 border-white/80">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">
               {{ tr('会话恢复', 'Session restore') }}
             </div>
-            <div class="mt-2 text-sm font-semibold text-slate-900">
+            <div class="mt-2 text-sm font-bold text-slate-800">
               {{ tr('刷新后自动恢复', 'Auto-restore after refresh') }}
             </div>
           </div>
-          <div class="rounded-2xl bg-white/85 px-4 py-4 shadow-sm backdrop-blur">
-            <div class="text-xs uppercase tracking-[0.16em] text-slate-400">
+          <div class="rounded-2xl bg-white/90 px-4 py-4 shadow-poke border-2 border-white/80">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">
               {{ tr('对战模式', 'Battle modes') }}
             </div>
-            <div class="mt-2 text-sm font-semibold text-slate-900">
+            <div class="mt-2 text-sm font-bold text-slate-800">
               {{ tr('手动与异步模拟', 'Manual and async simulation') }}
             </div>
           </div>
         </div>
       </section>
 
-      <section class="rounded-[28px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_20px_70px_-50px_rgba(15,23,42,0.45)] backdrop-blur sm:p-6">
+      <section class="rounded-3xl border-3 border-slate-200/80 bg-white/95 p-5 shadow-poke-card backdrop-blur sm:p-6">
         <h2 class="text-xl font-black tracking-tight text-slate-950">
           {{ tr('账号登录', 'Account access') }}
         </h2>

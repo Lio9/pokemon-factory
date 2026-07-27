@@ -193,7 +193,7 @@ router.beforeEach(async (to) => {
     await auth.restoreSession()
   }
 
-  if (to.meta?.requiresAuth && !auth.isAuthenticated.value) {
+  if (to.meta?.requiresAuth && !auth.isAuthenticated.value && to.query?.mode !== 'guest') {
     return {
       name: 'Login',
       query: {

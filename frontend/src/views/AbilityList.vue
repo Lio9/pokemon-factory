@@ -1,7 +1,7 @@
 <template>
   <div class="ability-list">
     <!-- 搜索和筛选 -->
-    <div class="glass-card mb-6 p-4">
+    <div class="rounded-2xl border-3 border-slate-200/80 p-5 shadow-poke-card bg-white mb-6">
       <div class="flex flex-col gap-4">
         <div class="flex flex-wrap gap-3">
           <div class="flex-1 min-w-[200px]">
@@ -16,7 +16,7 @@
             >
               <template #append>
                 <el-button
-                  class="!bg-gradient-to-r !from-violet-500 !to-purple-600 !text-white !border-none hover:!from-violet-600 hover:!to-purple-700"
+                  class="!bg-[#705898] !text-white !border-none hover:!bg-[#5a4680] !font-bold"
                   @click="handleSearch"
                 >
                   <el-icon><Search /></el-icon>
@@ -27,29 +27,25 @@
           <div class="flex gap-2">
             <el-button
               size="large"
-              :class="viewMode === 'grid' ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white border-none' : 'bg-white text-slate-600 border-slate-300'"
+              class="!rounded-xl !font-bold !border-2 !shadow-poke"
+              :class="viewMode === 'grid' ? '!bg-[#705898] !text-white !border-[#5a4680]' : '!bg-white !text-slate-600 !border-slate-200'"
               @click="toggleViewMode"
             >
-              <component
-                :is="viewMode === 'grid' ? 'List' : 'Grid'"
-                class="w-4 h-4"
-              />
+              <component :is="viewMode === 'grid' ? 'List' : 'Grid'" class="w-4 h-4" />
               <span class="ml-1">{{ viewMode === 'grid' ? tr('列表', 'List') : tr('网格', 'Grid') }}</span>
             </el-button>
             <el-button
               size="large"
-              :class="isShowFavorites ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-none' : 'bg-white text-slate-600 border-slate-300'"
+              class="!rounded-xl !font-bold !border-2 !shadow-poke"
+              :class="isShowFavorites ? '!bg-amber-500 !text-white !border-amber-400' : '!bg-white !text-slate-600 !border-slate-200'"
               @click="toggleFavorites"
             >
-              <component
-                :is="isShowFavorites ? 'StarFilled' : 'Star'"
-                class="w-4 h-4"
-              />
+              <component :is="isShowFavorites ? 'StarFilled' : 'Star'" class="w-4 h-4" />
               <span class="ml-1">{{ isShowFavorites ? tr('全部', 'All') : `${tr('收藏', 'Fav')} (${favorites.length})` }}</span>
             </el-button>
             <el-button
               size="large"
-              class="bg-white text-slate-600 border-slate-300"
+              class="!rounded-xl !font-bold !border-2 !bg-white !text-slate-600 !border-slate-200 !shadow-poke"
               @click="showFilters = !showFilters"
             >
               <svg

@@ -8,7 +8,10 @@
     class="detail-dialog"
     @update:model-value="$emit('update:visible', $event)"
   >
-    <div v-if="move" class="space-y-6">
+    <div
+      v-if="move"
+      class="space-y-6"
+    >
       <!-- 头部：编号 + 属性 + 分类 -->
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
@@ -35,44 +38,82 @@
       <!-- 基础数值 -->
       <div class="grid grid-cols-4 gap-3">
         <div class="rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-3 text-center">
-          <div class="text-xs text-slate-400 mb-1 font-medium">威力</div>
-          <div class="text-2xl font-bold" :class="powerColor">{{ move.power ?? '-' }}</div>
+          <div class="text-xs text-slate-400 mb-1 font-medium">
+            威力
+          </div>
+          <div
+            class="text-2xl font-bold"
+            :class="powerColor"
+          >
+            {{ move.power ?? '-' }}
+          </div>
         </div>
         <div class="rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-3 text-center">
-          <div class="text-xs text-slate-400 mb-1 font-medium">命中</div>
-          <div class="text-2xl font-bold text-slate-800">{{ move.accuracy != null ? move.accuracy + '%' : '-' }}</div>
+          <div class="text-xs text-slate-400 mb-1 font-medium">
+            命中
+          </div>
+          <div class="text-2xl font-bold text-slate-800">
+            {{ move.accuracy != null ? move.accuracy + '%' : '-' }}
+          </div>
         </div>
         <div class="rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-3 text-center">
-          <div class="text-xs text-slate-400 mb-1 font-medium">PP</div>
-          <div class="text-2xl font-bold text-slate-800">{{ move.pp ?? '-' }}</div>
+          <div class="text-xs text-slate-400 mb-1 font-medium">
+            PP
+          </div>
+          <div class="text-2xl font-bold text-slate-800">
+            {{ move.pp ?? '-' }}
+          </div>
         </div>
         <div class="rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-3 text-center">
-          <div class="text-xs text-slate-400 mb-1 font-medium">优先度</div>
-          <div class="text-2xl font-bold" :class="priorityColor">{{ move.priority ?? 0 }}</div>
+          <div class="text-xs text-slate-400 mb-1 font-medium">
+            优先度
+          </div>
+          <div
+            class="text-2xl font-bold"
+            :class="priorityColor"
+          >
+            {{ move.priority ?? 0 }}
+          </div>
         </div>
       </div>
 
       <!-- 效果描述 -->
-      <div v-if="move.description || move.effect" class="space-y-3">
+      <div
+        v-if="move.description || move.effect"
+        class="space-y-3"
+      >
         <div
           v-if="move.description"
           class="rounded-xl bg-slate-50 border border-slate-100 p-4"
         >
-          <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">技能介绍</div>
-          <p class="text-sm text-slate-700 leading-relaxed">{{ move.description }}</p>
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+            技能介绍
+          </div>
+          <p class="text-sm text-slate-700 leading-relaxed">
+            {{ move.description }}
+          </p>
         </div>
         <div
           v-if="move.effect"
           class="rounded-xl bg-indigo-50 border border-indigo-100 p-4"
         >
-          <div class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-2">追加效果</div>
-          <p class="text-sm text-indigo-700 leading-relaxed">{{ move.effect }}</p>
+          <div class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-2">
+            追加效果
+          </div>
+          <p class="text-sm text-indigo-700 leading-relaxed">
+            {{ move.effect }}
+          </p>
         </div>
       </div>
 
       <!-- 属性相克 -->
-      <div v-if="typeEffectiveness.length" class="rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-4">
-        <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">属性相克</div>
+      <div
+        v-if="typeEffectiveness.length"
+        class="rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-4"
+      >
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+          属性相克
+        </div>
         <div class="flex flex-wrap gap-1.5">
           <div
             v-for="t in typeEffectiveness"
@@ -80,7 +121,10 @@
             class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium"
             :style="{ backgroundColor: t.color + '20', color: t.color }"
           >
-            <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: t.color }" />
+            <span
+              class="w-2 h-2 rounded-full"
+              :style="{ backgroundColor: t.color }"
+            />
             <span>{{ t.name }}</span>
             <span class="font-bold ml-0.5">×{{ t.multiplier }}</span>
           </div>
@@ -88,7 +132,10 @@
       </div>
 
       <!-- 可学习宝可梦 -->
-      <div v-if="learners.length" class="rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-4">
+      <div
+        v-if="learners.length"
+        class="rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-4"
+      >
         <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
           可学习宝可梦
           <span class="font-normal ml-1">({{ learners.length }})</span>
@@ -100,10 +147,17 @@
             :to="`/pokemon/${p.id}`"
             class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-colors"
           >
-            <img :src="p.sprite" class="w-5 h-5 object-contain" loading="lazy">
+            <img
+              :src="p.sprite"
+              class="w-5 h-5 object-contain"
+              loading="lazy"
+            >
             <span>{{ p.name }}</span>
           </router-link>
-          <span v-if="learners.length > 50" class="text-xs text-slate-400 self-center ml-1">
+          <span
+            v-if="learners.length > 50"
+            class="text-xs text-slate-400 self-center ml-1"
+          >
             +{{ learners.length - 50 }} 更多
           </span>
         </div>

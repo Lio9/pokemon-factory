@@ -5,8 +5,8 @@
     <!-- 纯文字模式开关 -->
     <div class="flex justify-end">
       <button 
-        class="px-3 py-1 text-xs font-semibold rounded-full border transition-colors" 
-        :class="isTextMode ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'"
+        class="px-4 py-1.5 text-xs font-bold rounded-xl border-2 transition-all shadow-poke" 
+        :class="isTextMode ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
         @click="toggleTextMode"
       >
         {{ isTextMode ? tr('切换回图形模式', 'Switch to Graphic Mode') : tr('开启纯文字摸鱼模式', 'Enable Text-only Mode') }}
@@ -17,7 +17,7 @@
     <div
       v-if="isTextMode"
       ref="textLogContainer"
-      class="rounded-[24px] border border-slate-200 bg-black p-6 shadow-lg font-mono text-sm leading-relaxed overflow-auto max-h-[80vh]"
+      class="rounded-3xl border-3 border-slate-200 bg-black p-6 shadow-poke-card font-mono text-sm leading-relaxed overflow-auto max-h-[80vh]"
     >
       <div
         v-for="(log, index) in textLogs"
@@ -63,7 +63,7 @@
           :status-tone="statusTone"
         />
 
-        <div class="space-y-4 rounded-[24px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_20px_70px_-50px_rgba(15,23,42,0.45)] backdrop-blur sm:rounded-3xl sm:p-6">
+        <div class="space-y-4 rounded-3xl border-3 border-slate-200/80 bg-white/95 p-4 shadow-poke-card backdrop-blur sm:p-6">
           <BattleActionPanel
             :action-headline="actionHeadline"
             :action-description="actionDescription"

@@ -8,7 +8,10 @@
     class="detail-dialog"
     @update:model-value="$emit('update:visible', $event)"
   >
-    <div v-if="item" class="space-y-6">
+    <div
+      v-if="item"
+      class="space-y-6"
+    >
       <div class="flex items-center gap-5">
         <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center shadow-inner border border-indigo-100">
           <img
@@ -26,19 +29,31 @@
               class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded"
             >{{ item.categoryName }}</span>
           </div>
-          <h3 class="text-lg font-bold text-slate-800">{{ item.name }}</h3>
-          <p class="text-sm text-slate-400">{{ item.nameEn }}</p>
+          <h3 class="text-lg font-bold text-slate-800">
+            {{ item.name }}
+          </h3>
+          <p class="text-sm text-slate-400">
+            {{ item.nameEn }}
+          </p>
         </div>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
         <div class="rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-4 text-center">
-          <div class="text-xs text-slate-400 mb-1 font-medium">价格</div>
-          <div class="text-xl font-bold text-slate-800">{{ item.cost != null ? '¥' + item.cost : '-' }}</div>
+          <div class="text-xs text-slate-400 mb-1 font-medium">
+            价格
+          </div>
+          <div class="text-xl font-bold text-slate-800">
+            {{ item.cost != null ? '¥' + item.cost : '-' }}
+          </div>
         </div>
         <div class="rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-4 text-center">
-          <div class="text-xs text-slate-400 mb-1 font-medium">分类</div>
-          <div class="text-xl font-bold text-slate-800">{{ item.categoryName || '-' }}</div>
+          <div class="text-xs text-slate-400 mb-1 font-medium">
+            分类
+          </div>
+          <div class="text-xl font-bold text-slate-800">
+            {{ item.categoryName || '-' }}
+          </div>
         </div>
       </div>
 
@@ -46,8 +61,12 @@
         v-if="item.description"
         class="rounded-xl bg-slate-50 border border-slate-100 p-4"
       >
-        <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">物品描述</div>
-        <p class="text-sm text-slate-700 leading-relaxed">{{ item.description }}</p>
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+          物品描述
+        </div>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          {{ item.description }}
+        </p>
       </div>
     </div>
   </el-dialog>

@@ -1,52 +1,42 @@
 <template>
   <router-link
     :to="`/pokemon/${pokemon.id}`"
-    class="pokemon-card bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 cursor-pointer overflow-hidden group border-2 border-transparent hover:border-blue-200 relative"
+    class="pokemon-card relative overflow-hidden cursor-pointer group"
+    :class="[
+      'rounded-2xl border-3 bg-white shadow-poke-card transition-all duration-500',
+      'hover:shadow-xl',
+      isFav ? 'border-red-300' : 'border-slate-200/80'
+    ]"
+    :style="cardStyle"
     @click="onClick"
   >
+    <!-- 顶部属性色条 -->
+    <div
+      class="absolute top-0 left-0 right-0 h-1.5 z-10"
+      :style="{ background: typeGradient }"
+    />
+
     <!-- 收藏按钮 -->
     <button
-      class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
-      :class="isFav ? 'bg-red-500 text-white shadow-lg fav-bounce' : 'bg-white/90 text-gray-400 hover:text-red-500'"
+      class="absolute top-3.5 right-3 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 border-2"
+      :class="isFav ? 'bg-red-500 text-white shadow-lg border-red-400 fav-bounce' : 'bg-white/90 text-gray-400 hover:text-red-500 border-white/80 shadow-poke'"
       @click.prevent="onToggleFavorite"
     >
-      <span
-        class="w-4 h-4 text-sm"
-        :class="isFav ? 'text-red-500' : 'text-gray-400'"
-      >❤️</span>
+      <span class="text-sm">{{ isFav ? '❤️' : '🤍' }}</span>
     </button>
 
-    <!-- 图片区域 -->
-    <div class="relative bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50 p-4">
-      <div class="aspect-square flex items-center justify-center">
+    <!-- 图片区域 - Pokeball 纹理背景 -->
+    <div
+      class="relative p-4 pokeball-bg"
+      :style="{ background: typeBgGradient }"
+    >
+      <div class="aspect-square flex items-center justify-center relative z-10">
         <!-- 懒加载占位 -->
         <div
           v-if="!pokemon._imageLoaded"
           class="w-full h-full flex items-center justify-center skeleton rounded-xl"
         >
-          <div class="text-center">
-            <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-2">
-              <svg
-                class="w-8 h-8 text-blue-300 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                />
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-            </div>
-          </div>
+          <div class="pokeball-spinner" />
         </div>
         <img
           v-show="pokemon._imageLoaded"
@@ -59,43 +49,45 @@
         >
       </div>
     </div>
-    <!-- 图鉴编号 -->
-    <div class="absolute top-3 left-3 bg-gradient-to-r from-gray-900 to-gray-700 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-      #{{ String(pokemon.id).padStart(4, '0') }}
+
+    <!-- 图鉴编号 - 游戏风格 -->
+    <div class="absolute top-3.5 left-3 z-20 bg-slate-800 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-poke tracking-wider">
+      Nº {{ String(pokemon.id).padStart(4, '0') }}
     </div>
+
     <!-- 特殊标记 -->
     <div
       v-if="pokemon.isLegendary"
-      class="absolute top-3 right-12"
+      class="absolute top-3.5 left-16 z-20"
     >
-      <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
-        <span class="text-white text-sm font-bold">★</span>
+      <div class="w-7 h-7 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-lg flex items-center justify-center shadow-poke border border-yellow-300">
+        <span class="text-white text-xs font-extrabold">★</span>
       </div>
     </div>
     <div
       v-else-if="pokemon.isMythical"
-      class="absolute top-3 right-12"
+      class="absolute top-3.5 left-16 z-20"
     >
-      <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
-        <span class="text-white text-sm font-bold">◆</span>
+      <div class="w-7 h-7 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg flex items-center justify-center shadow-poke border border-purple-300">
+        <span class="text-white text-xs font-extrabold">◆</span>
       </div>
     </div>
 
     <!-- 信息区域 -->
-    <div class="p-4">
-      <h3 class="font-bold text-gray-900 truncate text-lg group-hover:text-blue-600 transition-colors">
+    <div class="p-4 pt-3">
+      <h3 class="font-extrabold text-gray-900 truncate text-base group-hover:text-red-600 transition-colors">
         {{ pokemon.name }}
       </h3>
-      <p class="text-gray-500 text-sm truncate">
+      <p class="text-gray-400 text-xs truncate font-medium mt-0.5">
         {{ pokemon.genus }}
       </p>
 
-      <!-- 属性标签 -->
-      <div class="flex flex-wrap gap-2 mt-3">
+      <!-- 属性标签 - 正作风格 -->
+      <div class="flex flex-wrap gap-1.5 mt-2.5">
         <span
           v-for="type in pokemon.types"
           :key="type.id"
-          class="px-3 py-1 rounded-full text-xs font-bold text-white shadow-md"
+          class="type-badge type-badge-sm"
           :style="{ backgroundColor: type.color }"
         >
           {{ type.name }}
@@ -113,6 +105,59 @@ export default {
     isFav: { type: Boolean, default: false }
   },
   emits: ['toggleFavorite', 'image-load', 'image-error', 'click'],
+  computed: {
+    primaryType() {
+      return this.pokemon.types?.[0]?.nameEn?.toLowerCase() || 'normal'
+    },
+    typeGradient() {
+      const colors = {
+        normal: '#A8A878', fire: '#F08030', water: '#6890F0', electric: '#F8D030',
+        grass: '#78C850', ice: '#98D8D8', fighting: '#C03028', poison: '#A040A0',
+        ground: '#E0C068', flying: '#A890F0', psychic: '#F85888', bug: '#A8B820',
+        rock: '#B8A038', ghost: '#705898', dragon: '#7038F8', dark: '#705848',
+        steel: '#B8B8D0', fairy: '#EE99AC'
+      }
+      const c = colors[this.primaryType] || '#A8A878'
+      return `linear-gradient(90deg, ${c}, ${c}cc)`
+    },
+    typeBgGradient() {
+      const gradients = {
+        normal: 'linear-gradient(135deg, #f5f5eb, #ececea)',
+        fire: 'linear-gradient(135deg, #fef0e6, #fde0c8)',
+        water: 'linear-gradient(135deg, #e8f0fe, #d0e4fd)',
+        electric: 'linear-gradient(135deg, #fef8e0, #fdf0b8)',
+        grass: 'linear-gradient(135deg, #eaf6e2, #d8eece)',
+        ice: 'linear-gradient(135deg, #eaf6f6, #d4eded)',
+        fighting: 'linear-gradient(135deg, #fde8e7, #fbd0ce)',
+        poison: 'linear-gradient(135deg, #f4e8f4, #e8d0e8)',
+        ground: 'linear-gradient(135deg, #faf3e2, #f5e8c4)',
+        flying: 'linear-gradient(135deg, #f0ecfe, #e0d8fc)',
+        psychic: 'linear-gradient(135deg, #feeaef, #fdd4de)',
+        bug: 'linear-gradient(135deg, #f2f4dc, #e6eab8)',
+        rock: 'linear-gradient(135deg, #f5f0dc, #ede4b8)',
+        ghost: 'linear-gradient(135deg, #ede8f4, #dcd0e8)',
+        dragon: 'linear-gradient(135deg, #ece6fe, #dcd0fc)',
+        dark: 'linear-gradient(135deg, #ede8e5, #dcd0ca)',
+        steel: 'linear-gradient(135deg, #f0f0f6, #e0e0ec)',
+        fairy: 'linear-gradient(135deg, #fdf0f3, #fce0e8)'
+      }
+      return gradients[this.primaryType] || gradients.normal
+    },
+    cardStyle() {
+      const colors = {
+        normal: '#A8A878', fire: '#F08030', water: '#6890F0', electric: '#F8D030',
+        grass: '#78C850', ice: '#98D8D8', fighting: '#C03028', poison: '#A040A0',
+        ground: '#E0C068', flying: '#A890F0', psychic: '#F85888', bug: '#A8B820',
+        rock: '#B8A038', ghost: '#705898', dragon: '#7038F8', dark: '#705848',
+        steel: '#B8B8D0', fairy: '#EE99AC'
+      }
+      const c = colors[this.primaryType] || '#A8A878'
+      return {
+        '--card-accent': `linear-gradient(90deg, ${c}, ${c}cc)`,
+        '--card-accent-color': c + '60'
+      }
+    }
+  },
   methods: {
     onToggleFavorite() {
       this.$emit('toggleFavorite', this.pokemon)
@@ -132,27 +177,50 @@ export default {
 
 <style scoped>
 .pokemon-card {
-  animation: fadeInUp 0.45s ease-out;
+  animation: fadeInUp 0.45s ease-out both;
   will-change: transform;
-  transition: transform 0.45s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.35s ease;
-  border-radius: 1rem;
-  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.8));
+  transition: transform 0.45s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.35s ease, border-color 0.35s ease;
 }
 
 .pokemon-card:hover {
-  transform: translateY(-10px) scale(1.02);
-  box-shadow: 0 18px 40px rgba(59,130,246,0.12), 0 6px 20px rgba(99,102,241,0.06);
-  border-color: rgba(59,130,246,0.12);
+  transform: translateY(-6px) scale(1.01);
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Pokeball 纹理 */
+.pokeball-bg::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120px;
+  height: 120px;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='96' fill='none' stroke='%23000' stroke-width='8'/%3E%3Cline x1='4' y1='100' x2='196' y2='100' stroke='%23000' stroke-width='8'/%3E%3Ccircle cx='100' cy='100' r='24' fill='none' stroke='%23000' stroke-width='8'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%23fff'/%3E%3C/svg%3E");
+  background-size: contain;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 </style>

@@ -5,25 +5,21 @@
       v-if="loading && pokemons.length === 0"
       class="text-center py-12"
     >
-      <div :class="viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5' : 'space-y-4'">
+      <div :class="viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4' : 'space-y-4'">
         <div
           v-for="i in 12"
           :key="i"
-          :class="viewMode === 'grid' ? 'bg-white rounded-2xl shadow-lg p-4 overflow-hidden' : 'bg-white rounded-2xl shadow-lg p-4 flex items-center gap-4'"
+          :class="viewMode === 'grid'
+            ? 'bg-white rounded-2xl shadow-poke-card overflow-hidden border-3 border-slate-200/80'
+            : 'bg-white rounded-2xl shadow-poke-card p-4 flex items-center gap-4 border-3 border-slate-200/80'"
         >
-          <div :class="viewMode === 'grid' ? 'aspect-square mb-4 rounded-xl skeleton' : 'w-20 h-20 rounded-xl skeleton flex-shrink-0'" />
-          <div :class="viewMode === 'grid' ? '' : 'flex-1'">
-            <div
-              class="h-6 mb-2 rounded skeleton"
-              :class="viewMode === 'list' ? 'w-32' : ''"
-            />
-            <div class="h-4 w-3/4 rounded skeleton" />
-            <div
-              v-if="viewMode === 'grid'"
-              class="flex gap-2 mt-3"
-            >
-              <div class="h-6 w-16 rounded-full skeleton" />
-              <div class="h-6 w-16 rounded-full skeleton" />
+          <div :class="viewMode === 'grid' ? 'aspect-square skeleton-pulse' : 'w-20 h-20 rounded-xl skeleton-pulse flex-shrink-0'" />
+          <div :class="viewMode === 'list' ? 'flex-1' : 'p-4'">
+            <div class="h-5 mb-2 rounded-lg skeleton-pulse" :class="viewMode === 'list' ? 'w-32' : ''" />
+            <div class="h-3 w-3/4 rounded-lg skeleton-pulse" />
+            <div v-if="viewMode === 'grid'" class="flex gap-2 mt-3">
+              <div class="h-5 w-14 rounded-full skeleton-pulse" />
+              <div class="h-5 w-14 rounded-full skeleton-pulse" />
             </div>
           </div>
         </div>
@@ -40,7 +36,7 @@
       <!-- 网格视图 -->
       <div
         v-if="viewMode === 'grid'"
-        class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 md:grid-cols-4 lg:grid-cols-6"
+        class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6"
       >
         <PokemonStatsCard
           v-for="pokemon in pokemons"
@@ -56,32 +52,34 @@
       <!-- 列表视图 -->
       <div
         v-else
-        class="space-y-3 sm:space-y-4"
+        class="space-y-3"
       >
         <router-link
           v-for="pokemon in pokemons"
           :key="pokemon.id"
           :to="`/pokemon/${pokemon.id}`"
-          class="pokemon-card-list relative flex flex-col gap-4 overflow-hidden rounded-2xl border-2 border-transparent bg-white p-4 shadow-lg transition-all duration-300 hover:border-blue-200 hover:shadow-2xl sm:flex-row sm:items-center"
+          class="pokemon-card-list relative flex flex-col gap-4 overflow-hidden rounded-2xl border-3 border-slate-200/80 bg-white p-4 shadow-poke-card transition-all duration-300 hover:border-red-200 hover:shadow-xl sm:flex-row sm:items-center"
         >
           <!-- 收藏按钮 -->
           <button
-            class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
-            :class="isFavorite(pokemon.id) ? 'bg-red-500 text-white shadow-lg fav-bounce' : 'bg-white/90 text-gray-400 hover:text-red-500'"
+            class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 border-2"
+            :class="isFavorite(pokemon.id)
+              ? 'bg-red-500 text-white shadow-lg border-red-400 fav-bounce'
+              : 'bg-white/90 text-gray-400 hover:text-red-500 border-white/80'"
             @click.prevent="onToggleFavorite(pokemon)"
           >
-            <span
-              class="w-4 h-4 text-sm"
-              :class="isFavorite(pokemon.id) ? 'text-red-500' : 'text-gray-400'"
-            >❤️</span>
+            <span class="text-sm">{{ isFavorite(pokemon.id) ? '❤️' : '🤍' }}</span>
           </button>
 
           <!-- 图片 -->
-          <div class="relative bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50 rounded-xl p-3 flex-shrink-0">
-            <div class="w-20 h-20 flex items-center justify-center">
+          <div
+            class="relative rounded-xl p-3 flex-shrink-0 pokeball-bg"
+            :style="{ background: getListTypeBg(pokemon) }"
+          >
+            <div class="w-20 h-20 flex items-center justify-center relative z-10">
               <div
                 v-if="!pokemon._imageLoaded"
-                class="w-full h-full flex items-center justify-center skeleton rounded-lg"
+                class="w-full h-full flex items-center justify-center skeleton-pulse rounded-lg"
               />
               <img
                 v-show="pokemon._imageLoaded"
@@ -94,32 +92,26 @@
               >
             </div>
             <!-- 图鉴编号 -->
-            <div class="absolute -top-2 -left-2 bg-gradient-to-r from-gray-900 to-gray-700 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-lg">
-              #{{ String(pokemon.id).padStart(4, '0') }}
+            <div class="absolute -top-2 -left-2 bg-slate-800 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-poke tracking-wider z-10">
+              Nº {{ String(pokemon.id).padStart(4, '0') }}
             </div>
           </div>
 
           <!-- 信息 -->
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 mb-1">
-              <h3 class="font-bold text-gray-900 text-lg truncate group-hover:text-blue-600 transition-colors">
+              <h3 class="font-extrabold text-gray-900 text-lg truncate group-hover:text-red-600 transition-colors">
                 {{ pokemon.name }}
               </h3>
-              <span
-                v-if="pokemon.isLegendary"
-                class="text-yellow-500"
-              >★</span>
-              <span
-                v-if="pokemon.isMythical"
-                class="text-purple-500"
-              >◆</span>
+              <span v-if="pokemon.isLegendary" class="text-yellow-500">★</span>
+              <span v-if="pokemon.isMythical" class="text-purple-500">◆</span>
             </div>
-            <p class="text-gray-500 text-sm truncate">
+            <p class="text-gray-400 text-sm truncate font-medium">
               {{ pokemon.genus }}
             </p>
 
             <!-- 属性标签 -->
-            <div class="flex flex-wrap gap-2 mt-2">
+            <div class="flex flex-wrap gap-1.5 mt-2">
               <span
                 v-for="type in pokemon.types"
                 :key="type.id"
@@ -134,23 +126,15 @@
           <!-- 种族值预览 -->
           <div
             v-if="pokemon.formStats"
-            class="hidden sm:flex gap-2 flex-shrink-0"
+            class="hidden sm:flex gap-3 flex-shrink-0"
           >
             <div class="text-center">
-              <div class="text-xs text-gray-500">
-                攻击
-              </div>
-              <div class="text-sm font-bold text-gray-900">
-                {{ pokemon.formStats.attack }}
-              </div>
+              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">攻击</div>
+              <div class="text-sm font-extrabold text-slate-700">{{ pokemon.formStats.attack }}</div>
             </div>
             <div class="text-center">
-              <div class="text-xs text-gray-500">
-                速度
-              </div>
-              <div class="text-sm font-bold text-gray-900">
-                {{ pokemon.formStats.speed }}
-              </div>
+              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">速度</div>
+              <div class="text-sm font-extrabold text-slate-700">{{ pokemon.formStats.speed }}</div>
             </div>
           </div>
         </router-link>
@@ -170,7 +154,7 @@
             <span />
             <span />
           </div>
-          <p class="text-gray-500 text-sm font-medium">
+          <p class="text-slate-400 text-sm font-bold">
             加载更多宝可梦中...
           </p>
         </div>
@@ -178,22 +162,24 @@
           v-else-if="!hasMore"
           class="text-center py-4"
         >
-          <div class="flex items-center justify-center gap-2 text-gray-400">
-            <el-icon class="text-xl">
-              <CircleCheck />
-            </el-icon>
-            <span class="text-sm font-medium">已加载全部 {{ total }} 只宝可梦</span>
+          <div class="flex items-center justify-center gap-2 text-slate-300">
+            <svg viewBox="0 0 100 100" class="w-6 h-6 opacity-40">
+              <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="3"/>
+              <line x1="4" y1="50" x2="96" y2="50" stroke="currentColor" stroke-width="3"/>
+              <circle cx="50" cy="50" r="10" fill="none" stroke="currentColor" stroke-width="3"/>
+            </svg>
+            <span class="text-sm font-bold">已加载全部 {{ total }} 只宝可梦</span>
           </div>
         </div>
         <div
           v-else
           class="text-center py-4"
         >
-          <div class="flex items-center justify-center gap-2 text-gray-400">
+          <div class="flex items-center justify-center gap-2 text-slate-300">
             <el-icon class="text-xl animate-bounce">
               <ArrowDown />
             </el-icon>
-            <span class="text-sm">继续下拉加载更多...</span>
+            <span class="text-sm font-medium">继续下拉加载更多...</span>
           </div>
         </div>
       </div>
@@ -202,7 +188,7 @@
       <transition name="fade">
         <button
           v-show="showBackTop"
-          class="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full shadow-xl hover:shadow-2xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 z-20 flex items-center justify-center group transform hover:scale-110"
+          class="fixed bottom-8 right-8 w-14 h-14 bg-poke-red text-white rounded-full shadow-xl hover:shadow-2xl hover:bg-red-700 transition-all duration-300 z-20 flex items-center justify-center group transform hover:scale-110 border-3 border-red-400"
           @click="onScrollToTop"
         >
           <el-icon class="text-2xl group-hover:-translate-y-1 transition-transform">
@@ -215,31 +201,24 @@
     <!-- 空状态 -->
     <div
       v-else-if="!loading"
-      class="text-center py-12"
+      class="text-center py-16"
     >
-      <div class="text-gray-300 mb-4">
-        <svg
-          class="w-20 h-20 mx-auto"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.334M15 10a3 3 0 11-6 0 3 3 0 016 0z"
-          />
+      <div class="mb-6">
+        <svg viewBox="0 0 200 200" class="w-24 h-24 mx-auto opacity-20">
+          <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" stroke-width="6"/>
+          <line x1="10" y1="100" x2="190" y2="100" stroke="currentColor" stroke-width="6"/>
+          <circle cx="100" cy="100" r="22" fill="none" stroke="currentColor" stroke-width="6"/>
+          <circle cx="100" cy="100" r="10" fill="currentColor" opacity="0.3"/>
         </svg>
       </div>
-      <p class="text-gray-500 text-lg">
+      <p class="text-slate-400 text-lg font-bold mb-2">
         没有找到宝可梦
       </p>
-      <p class="text-gray-400 text-sm mt-2">
+      <p class="text-slate-300 text-sm mb-6">
         试试其他搜索条件
       </p>
       <button
-        class="mt-4 px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-indigo-700 transition-all"
+        class="btn-poke !rounded-xl"
         @click="onResetFilters"
       >
         重置筛选
@@ -279,6 +258,30 @@ export default {
     return { loadMoreTrigger }
   },
   methods: {
+    getListTypeBg(pokemon) {
+      const typeGradients = {
+        normal: 'linear-gradient(135deg, #f5f5eb, #ececea)',
+        fire: 'linear-gradient(135deg, #fef0e6, #fde0c8)',
+        water: 'linear-gradient(135deg, #e8f0fe, #d0e4fd)',
+        electric: 'linear-gradient(135deg, #fef8e0, #fdf0b8)',
+        grass: 'linear-gradient(135deg, #eaf6e2, #d8eece)',
+        ice: 'linear-gradient(135deg, #eaf6f6, #d4eded)',
+        fighting: 'linear-gradient(135deg, #fde8e7, #fbd0ce)',
+        poison: 'linear-gradient(135deg, #f4e8f4, #e8d0e8)',
+        ground: 'linear-gradient(135deg, #faf3e2, #f5e8c4)',
+        flying: 'linear-gradient(135deg, #f0ecfe, #e0d8fc)',
+        psychic: 'linear-gradient(135deg, #feeaef, #fdd4de)',
+        bug: 'linear-gradient(135deg, #f2f4dc, #e6eab8)',
+        rock: 'linear-gradient(135deg, #f5f0dc, #ede4b8)',
+        ghost: 'linear-gradient(135deg, #ede8f4, #dcd0e8)',
+        dragon: 'linear-gradient(135deg, #ece6fe, #dcd0fc)',
+        dark: 'linear-gradient(135deg, #ede8e5, #dcd0ca)',
+        steel: 'linear-gradient(135deg, #f0f0f6, #e0e0ec)',
+        fairy: 'linear-gradient(135deg, #fdf0f3, #fce0e8)'
+      }
+      const primaryType = pokemon.types?.[0]?.nameEn?.toLowerCase() || 'normal'
+      return typeGradients[primaryType] || typeGradients.normal
+    },
     onToggleFavorite(pokemon) {
       this.$emit('toggle-favorite', pokemon)
     },
@@ -299,20 +302,38 @@ export default {
 </script>
 
 <style scoped>
+/* Pokeball 纹理 */
+.pokeball-bg::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='96' fill='none' stroke='%23000' stroke-width='8'/%3E%3Cline x1='4' y1='100' x2='196' y2='100' stroke='%23000' stroke-width='8'/%3E%3Ccircle cx='100' cy='100' r='24' fill='none' stroke='%23000' stroke-width='8'/%3E%3Ccircle cx='100' cy='100' r='12' fill='%23fff'/%3E%3C/svg%3E");
+  background-size: contain;
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* 加载指示器动画 */
 .loading-dots {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
   align-items: center;
 }
 
 .loading-dots span {
-  width: 8px;
-  height: 8px;
-  background: #3b82f6;
+  width: 10px;
+  height: 10px;
+  background: #DC2626;
   border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out both;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #DC2626;
+  animation: pokebounce 1.4s infinite ease-in-out both;
 }
 
 .loading-dots span:nth-child(1) {
@@ -321,30 +342,16 @@ export default {
 
 .loading-dots span:nth-child(2) {
   animation-delay: -0.16s;
+  background: #1a1a1a;
+  box-shadow: 0 0 0 2px #1a1a1a;
 }
 
-@keyframes bounce {
+@keyframes pokebounce {
   0%, 80%, 100% {
-    transform: scale(0);
+    transform: scale(0.6);
   }
   40% {
-    transform: scale(1);
-  }
-}
-
-/* 骨架屏动画 */
-.skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
+    transform: scale(1.2);
   }
 }
 

@@ -78,20 +78,22 @@
     <!-- 形态 -->
     <div
       v-if="pokemon.forms?.length > 1"
-      class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100"
+      class="bg-white rounded-3xl shadow-poke-card p-8 mb-6 border-3 border-slate-200/80"
     >
-      <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-        <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center">
-          <Layers class="w-5 h-5 text-white" />
+      <h2 class="text-xl font-extrabold text-slate-800 mb-6 flex items-center gap-3">
+        <div class="w-9 h-9 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-poke border-2 border-amber-400">
+          <Layers class="w-4.5 h-4.5 text-white" />
         </div>
         形态
       </h2>
       <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        <div 
-          v-for="form in pokemon.forms" 
+        <div
+          v-for="form in pokemon.forms"
           :key="form.id"
-          class="rounded-2xl p-4 text-center cursor-pointer transition-all duration-300 group"
-          :class="selectedFormId === form.id ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl scale-105' : 'bg-gradient-to-br from-gray-50 to-slate-50 border-2 border-gray-200 hover:border-blue-300 hover:shadow-lg'"
+          class="rounded-2xl p-4 text-center cursor-pointer transition-all duration-300 group border-3"
+          :class="selectedFormId === form.id
+            ? 'bg-gradient-to-br from-poke-red to-red-600 text-white shadow-poke-lg border-red-400 scale-105'
+            : 'bg-slate-50 border-slate-200 hover:border-red-300 hover:shadow-poke-card'"
           @click="selectedFormId = form.id"
         >
           <div class="relative">
@@ -165,13 +167,10 @@
     </div>
 
     <!-- 主卡片骨架 -->
-    <div class="bg-white rounded-3xl shadow-xl overflow-hidden mb-6 border border-gray-100">
+    <div class="bg-white rounded-3xl shadow-poke-card overflow-hidden mb-6 border-3 border-slate-200/80">
       <div class="md:flex">
-        <div class="md:w-1/3 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-8 flex items-center justify-center">
-          <el-skeleton-item
-            variant="circle"
-            style="width: 220px; height: 220px"
-          />
+        <div class="md:w-1/3 bg-gradient-to-br from-slate-50 via-red-50 to-orange-50 p-8 flex items-center justify-center">
+          <div class="pokeball-spinner" />
         </div>
         <div class="md:w-2/3 p-8">
           <el-skeleton
@@ -182,14 +181,14 @@
       </div>
     </div>
 
-    <div class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100">
+    <div class="bg-white rounded-3xl shadow-poke-card p-8 mb-6 border-3 border-slate-200/80">
       <el-skeleton
         :rows="10"
         animated
       />
     </div>
 
-    <div class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100">
+    <div class="bg-white rounded-3xl shadow-poke-card p-8 mb-6 border-3 border-slate-200/80">
       <el-skeleton
         :rows="6"
         animated
