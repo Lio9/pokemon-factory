@@ -1454,7 +1454,17 @@ public class BattleEngine {
         mon.put("lastMoveUsed", currentMove);
         // 记录已使用的招式（用于最终手段等需要追踪所有已用招式的效果）
         @SuppressWarnings("unchecked")
-        Set<String> usedMoves = (Set<String>) mon.computeIfAbsent("usedMoves", k -> new java.util.LinkedHashSet<>());
+        Object rawUsedMoves = mon.computeIfAbsent("usedMoves", k -> new java.util.LinkedHashSet<>());
+        Set<String> usedMoves;
+        if (rawUsedMoves instanceof Set<?>) {
+            usedMoves = (Set<String>) rawUsedMoves;
+        } else if (rawUsedMoves instanceof List<?>) {
+            usedMoves = new java.util.LinkedHashSet<>((List<String>) rawUsedMoves);
+            mon.put("usedMoves", usedMoves);
+        } else {
+            usedMoves = new java.util.LinkedHashSet<>();
+            mon.put("usedMoves", usedMoves);
+        }
         String moveName = String.valueOf(move.get("name_en")).toLowerCase();
         if (!moveName.isBlank()) {
             usedMoves.add(moveName);
@@ -2381,3 +2391,4 @@ public class BattleEngine {
     record TargetRef(String side, boolean playerSide, int teamIndex, int fieldSlot) {
     }
 }
+

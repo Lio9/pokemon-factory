@@ -1,8 +1,9 @@
 package com.lio9.pokedex.config;
 
-
-
+import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -19,9 +20,19 @@ import javax.sql.DataSource;
 @Configuration
 public class PokedexMybatisConfig {
 
+    /**
+     * 分页拦截器，确保 MyBatis-Plus 的 page() 方法能正确返回 total 和 pages。
+     */
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.SQLITE));
+        return interceptor;
+    }
+
     @Bean
     @Primary
-    public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
+    public SqlSessionFactory sqlSessionFactory(DataSource dataSource, MybatisPlusInterceptor mybatisPlusInterceptor) throws Exception {
         MybatisSqlSessionFactoryBean factoryBean = new MybatisSqlSessionFactoryBean();
         factoryBean.setDataSource(dataSource);
         factoryBean.setTypeAliasesPackage("com.lio9.pokedex.model");
@@ -33,6 +44,9 @@ public class PokedexMybatisConfig {
         MybatisConfiguration config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         factoryBean.setConfiguration(config);
+
+        // 添加分页拦截器
+        factoryBean.setPlugins(mybatisPlusInterceptor);
 
         return factoryBean.getObject();
     }
