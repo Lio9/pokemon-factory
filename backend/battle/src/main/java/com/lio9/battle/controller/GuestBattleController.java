@@ -3,7 +3,12 @@ package com.lio9.battle.controller;
 import com.lio9.battle.config.BattleApiResponseSupport;
 import com.lio9.battle.service.BattleService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.security.SecureRandom;
 import java.util.Map;

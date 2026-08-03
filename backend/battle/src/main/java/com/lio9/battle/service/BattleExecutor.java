@@ -1,19 +1,17 @@
 package com.lio9.battle.service;
 
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lio9.battle.engine.BattleEngine;
 import com.lio9.battle.mapper.BattleMapper;
 import com.lio9.battle.mapper.BattleRoundMapper;
 import com.lio9.battle.mapper.JobMapper;
 import com.lio9.battle.mapper.TeamMapper;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

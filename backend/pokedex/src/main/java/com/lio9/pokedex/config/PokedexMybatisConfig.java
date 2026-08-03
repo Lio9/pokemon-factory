@@ -10,19 +10,15 @@ import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import javax.sql.DataSource;
+import java.io.IOException;
 
-/**
- * pokeDex 显式装配 MyBatis 会话工厂，避免在 Spring Boot 4 + 手动裁剪 MyBatis-Plus 自动配置时丢失 mapper 基础设施。
- */
 @Configuration
 public class PokedexMybatisConfig {
 
-    /**
-     * 分页拦截器，确保 MyBatis-Plus 的 page() 方法能正确返回 total 和 pages。
-     */
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
@@ -39,21 +35,37 @@ public class PokedexMybatisConfig {
         factoryBean.setMapperLocations(
                 new PathMatchingResourcePatternResolver().getResources("classpath*:mapper/*.xml")
         );
-
-        // 启用驼峰命名映射（form_id → formId, base_stat → baseStat 等）
         MybatisConfiguration config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         factoryBean.setConfiguration(config);
-
-        // 添加分页拦截器
         factoryBean.setPlugins(mybatisPlusInterceptor);
-
-        return factoryBean.getObject();
+        SqlSessionFactory sqlSessionFactory = factoryBean.getObject();
+        registerMappers(sqlSessionFactory.getConfiguration());
+        return sqlSessionFactory;
     }
 
     @Bean
     @Primary
     public SqlSessionTemplate sqlSessionTemplate(SqlSessionFactory sqlSessionFactory) {
         return new SqlSessionTemplate(sqlSessionFactory);
+    }
+
+    @Bean
+    public static MapperBeanRegistrar mapperBeanRegistrar() {
+        return new MapperBeanRegistrar("com.lio9.pokedex.mapper");
+    }
+
+    private void registerMappers(org.apache.ibatis.session.Configuration configuration) throws IOException, ClassNotFoundException {
+        String pattern = "classpath*:com/lio9/pokedex/mapper/*.class";
+        Resource[] resources = new PathMatchingResourcePatternResolver().getResources(pattern);
+        for (Resource resource : resources) {
+            String fileName = resource.getFilename();
+            if (fileName == null || !fileName.endsWith(".class")) continue;
+            String simpleName = fileName.substring(0, fileName.length() - ".class".length());
+            Class<?> mapperClass = Class.forName("com.lio9.pokedex.mapper." + simpleName);
+            if (mapperClass.isInterface()) {
+                configuration.addMapper(mapperClass);
+            }
+        }
     }
 }

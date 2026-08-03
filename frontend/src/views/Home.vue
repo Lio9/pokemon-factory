@@ -6,11 +6,44 @@
       <div class="absolute inset-0 bg-gradient-to-br from-red-600 via-red-500 to-orange-400" />
       <div class="absolute inset-0 opacity-10">
         <div class="absolute top-0 right-0 w-96 h-96 -translate-y-1/2 translate-x-1/3">
-          <svg viewBox="0 0 400 400" class="w-full h-full">
-            <circle cx="200" cy="200" r="180" fill="none" stroke="#fff" stroke-width="8" opacity="0.3"/>
-            <line x1="20" y1="200" x2="380" y2="200" stroke="#fff" stroke-width="8" opacity="0.3"/>
-            <circle cx="200" cy="200" r="40" fill="none" stroke="#fff" stroke-width="8" opacity="0.3"/>
-            <circle cx="200" cy="200" r="20" fill="#fff" opacity="0.2"/>
+          <svg
+            viewBox="0 0 400 400"
+            class="w-full h-full"
+          >
+            <circle
+              cx="200"
+              cy="200"
+              r="180"
+              fill="none"
+              stroke="#fff"
+              stroke-width="8"
+              opacity="0.3"
+            />
+            <line
+              x1="20"
+              y1="200"
+              x2="380"
+              y2="200"
+              stroke="#fff"
+              stroke-width="8"
+              opacity="0.3"
+            />
+            <circle
+              cx="200"
+              cy="200"
+              r="40"
+              fill="none"
+              stroke="#fff"
+              stroke-width="8"
+              opacity="0.3"
+            />
+            <circle
+              cx="200"
+              cy="200"
+              r="20"
+              fill="#fff"
+              opacity="0.2"
+            />
           </svg>
         </div>
       </div>
@@ -35,10 +68,33 @@
                 to="/pokemon"
                 class="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 font-extrabold text-red-600 shadow-lg transition-all hover:scale-105 hover:shadow-xl border-2 border-white/50"
               >
-                <svg viewBox="0 0 100 100" class="w-5 h-5">
-                  <circle cx="50" cy="50" r="46" fill="#DC2626" stroke="#1a1a1a" stroke-width="4"/>
-                  <rect x="4" y="48" width="92" height="4" fill="#1a1a1a"/>
-                  <circle cx="50" cy="50" r="12" fill="#fff" stroke="#1a1a1a" stroke-width="4"/>
+                <svg
+                  viewBox="0 0 100 100"
+                  class="w-5 h-5"
+                >
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="46"
+                    fill="#DC2626"
+                    stroke="#1a1a1a"
+                    stroke-width="4"
+                  />
+                  <rect
+                    x="4"
+                    y="48"
+                    width="92"
+                    height="4"
+                    fill="#1a1a1a"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="12"
+                    fill="#fff"
+                    stroke="#1a1a1a"
+                    stroke-width="4"
+                  />
                 </svg>
                 {{ tr('浏览图鉴', 'Browse Dex') }}
               </router-link>
@@ -55,14 +111,58 @@
           <!-- 右侧装饰宝可梦精灵球 -->
           <div class="hidden lg:flex items-center justify-center">
             <div class="relative w-48 h-48 float-animation">
-              <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-2xl">
-                <circle cx="100" cy="100" r="90" fill="#DC2626" stroke="#1a1a1a" stroke-width="6"/>
-                <rect x="10" y="97" width="180" height="6" fill="#1a1a1a"/>
-                <circle cx="100" cy="100" r="90" fill="none" stroke="#1a1a1a" stroke-width="6"/>
-                <circle cx="100" cy="100" r="22" fill="#fff" stroke="#1a1a1a" stroke-width="6"/>
-                <circle cx="100" cy="100" r="10" fill="#fff" stroke="#1a1a1a" stroke-width="3"/>
+              <svg
+                viewBox="0 0 200 200"
+                class="w-full h-full drop-shadow-2xl"
+              >
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="90"
+                  fill="#DC2626"
+                  stroke="#1a1a1a"
+                  stroke-width="6"
+                />
+                <rect
+                  x="10"
+                  y="97"
+                  width="180"
+                  height="6"
+                  fill="#1a1a1a"
+                />
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="90"
+                  fill="none"
+                  stroke="#1a1a1a"
+                  stroke-width="6"
+                />
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="22"
+                  fill="#fff"
+                  stroke="#1a1a1a"
+                  stroke-width="6"
+                />
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="10"
+                  fill="#fff"
+                  stroke="#1a1a1a"
+                  stroke-width="3"
+                />
                 <!-- 高光 -->
-                <ellipse cx="70" cy="50" rx="25" ry="15" fill="rgba(255,255,255,0.2)" transform="rotate(-30 70 50)"/>
+                <ellipse
+                  cx="70"
+                  cy="50"
+                  rx="25"
+                  ry="15"
+                  fill="rgba(255,255,255,0.2)"
+                  transform="rotate(-30 70 50)"
+                />
               </svg>
             </div>
           </div>
@@ -87,10 +187,34 @@
 
         <!-- Pokeball 纹理 -->
         <div class="absolute -right-8 -bottom-8 w-32 h-32 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity">
-          <svg viewBox="0 0 100 100" class="w-full h-full">
-            <circle cx="50" cy="50" r="46" fill="none" :stroke="card.color" stroke-width="4"/>
-            <line x1="4" y1="50" x2="96" y2="50" :stroke="card.color" stroke-width="4"/>
-            <circle cx="50" cy="50" r="12" fill="none" :stroke="card.color" stroke-width="4"/>
+          <svg
+            viewBox="0 0 100 100"
+            class="w-full h-full"
+          >
+            <circle
+              cx="50"
+              cy="50"
+              r="46"
+              fill="none"
+              :stroke="card.color"
+              stroke-width="4"
+            />
+            <line
+              x1="4"
+              y1="50"
+              x2="96"
+              y2="50"
+              :stroke="card.color"
+              stroke-width="4"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r="12"
+              fill="none"
+              :stroke="card.color"
+              stroke-width="4"
+            />
           </svg>
         </div>
 
@@ -113,8 +237,18 @@
               :style="{ color: card.color }"
             >
               <span>{{ tr('查看详情', 'View Details') }}</span>
-              <svg class="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+              <svg
+                class="h-4 w-4 transition-transform group-hover:translate-x-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             </div>
           </div>

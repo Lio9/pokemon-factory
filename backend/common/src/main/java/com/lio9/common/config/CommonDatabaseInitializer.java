@@ -7,8 +7,8 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
-import java.sql.Statement;
 import java.sql.Connection;
+import java.sql.Statement;
 
 /** Database migration executor 数据库迁移执行器
  * <p>

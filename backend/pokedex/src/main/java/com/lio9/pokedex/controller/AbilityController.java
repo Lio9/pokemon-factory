@@ -1,22 +1,24 @@
 package com.lio9.pokedex.controller;
 
 
-
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lio9.common.response.ResultResponse;
 import com.lio9.pokedex.model.Ability;
 import com.lio9.pokedex.service.AbilityService;
-import com.lio9.common.response.ResultResponse;
 import com.lio9.pokedex.vo.AbilityQueryVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
 /**
  * 特性控制器
  * 提供特性数据的REST API接口，支持分页查询和条件搜索
- * 
+ *
  * @author Lio9
  * @version 1.0
  * @since 2024-01-01
@@ -24,18 +26,18 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/abilities")
 public class AbilityController {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(AbilityController.class);
     private final AbilityService abilityService;
 
     public AbilityController(AbilityService abilityService) {
         this.abilityService = abilityService;
     }
-    
+
     /**
      * 分页获取特性列表
      * 支持按名称模糊搜索和分页显示
-     * 
+     *
      * @param queryVO 查询条件对象，包含分页参数和搜索条件
      * @return 分页结果，包含特性列表和分页信息
      */
@@ -43,20 +45,20 @@ public class AbilityController {
     public Map<String, Object> getAbilityList(AbilityQueryVO queryVO) {
         long startTime = System.currentTimeMillis();
         logger.info("获取特性列表 - 参数: current={}, size={}", queryVO.getCurrent(), queryVO.getSize());
-        
+
         Page<Ability> page = new Page<>(queryVO.getCurrent(), queryVO.getSize());
         Page<Ability> abilityPage = abilityService.page(page);
-        
+
         long endTime = System.currentTimeMillis();
         logger.info("获取特性列表成功 - 耗时: {}ms, 总数: {}", (endTime - startTime), abilityPage.getTotal());
-        
+
         return ResultResponse.buildPageSuccess(abilityPage);
     }
-    
+
     /**
      * 获取特性详情
      * 根据特性ID获取特性的详细信息
-     * 
+     *
      * @param id 特性ID
      * @return 特性详情信息
      */
@@ -64,9 +66,9 @@ public class AbilityController {
     public Map<String, Object> getAbilityDetail(@PathVariable Long id) {
         long startTime = System.currentTimeMillis();
         logger.info("获取特性详情 - ID: {}", id);
-        
+
         Ability ability = abilityService.getById(id);
-        
+
         long endTime = System.currentTimeMillis();
         if (ability != null) {
             logger.info("获取特性详情成功 - 耗时: {}ms", (endTime - startTime));

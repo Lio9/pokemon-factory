@@ -1,7 +1,6 @@
 package com.lio9.battle.effect;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /** 受到伤害后触发上下文（用于 applyReactiveDamageAbilities 迁移） */

@@ -21,7 +21,10 @@
             :title="label"
             @click="imageMode = type"
           >
-            <component :is="getImageIcon(type)" class="w-4 h-4" />
+            <component
+              :is="getImageIcon(type)"
+              class="w-4 h-4"
+            />
           </button>
         </div>
 

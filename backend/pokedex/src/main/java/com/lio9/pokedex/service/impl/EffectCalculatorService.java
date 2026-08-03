@@ -1,14 +1,18 @@
 package com.lio9.pokedex.service.impl;
 
 
-
 import com.lio9.pokedex.util.AbilityEffects;
 import com.lio9.pokedex.util.AbilityEffects.AbilityEffect;
 import com.lio9.pokedex.util.ItemEffects;
 import com.lio9.pokedex.util.ItemEffects.ItemEffect;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 效果计算服务
@@ -16,7 +20,7 @@ import java.util.*;
  */
 @Service
 public class EffectCalculatorService {
-    
+
     /**
      * 战斗上下文
      * 包含计算效果所需的所有信息
@@ -42,7 +46,7 @@ public class EffectCalculatorService {
         public boolean opponentSwitchedIn = false;
         public boolean movesLast = false;
         public int consecutiveUseCount = 0;
-        
+
         // 防御方信息
         public Integer defenderAbilityId;
         public Integer defenderItemId;
@@ -54,7 +58,7 @@ public class EffectCalculatorService {
         public int defenderSpDefenseBoost = 0;
         public boolean defenderHasStatus = false;
         public boolean defenderIsFullyEvolved = true;
-        
+
         // 技能信息
         public Integer moveId;
         public Integer moveTypeId;
@@ -68,7 +72,7 @@ public class EffectCalculatorService {
         public boolean isSlicingMove = false;
         public boolean isBulletMove = false;
         public boolean hasSecondaryEffect = false;
-        
+
         // 战斗状态
         public String weather; // "sunny", "rain", "sandstorm", "hail", ""
         public String terrain; // "electric", "grassy", "psychic", "misty", ""
@@ -78,15 +82,15 @@ public class EffectCalculatorService {
         public boolean lightScreenActive = false;
         public boolean auroraVeilActive = false;
         public boolean allyHasFriendGuard = false;
-        
+
         // 性别
         public String attackerGender;
         public String defenderGender;
-        
+
         // 计算结果缓存
         public double typeEffectiveness = 1.0;
     }
-    
+
     /**
      * 效果计算结果
      */
@@ -99,38 +103,38 @@ public class EffectCalculatorService {
         public double damageMultiplier = 1.0;
         public double stabMultiplier = 1.5;
         public double criticalMultiplier = 1.0;
-        
+
         public boolean preventCritical = false;
         public boolean ignoreScreens = false;
         public boolean ignoreDefenseBoost = false;
         public boolean ignoreAttackDrop = false;
         public boolean typeImmunity = false;
         public boolean groundImmunity = false;
-        
+
         public List<String> attackerEffects = new ArrayList<>();
         public List<String> defenderEffects = new ArrayList<>();
         public List<String> itemEffects = new ArrayList<>();
-        
+
         public Map<String, Double> allMultipliers = new LinkedHashMap<>();
     }
-    
+
     /**
      * 计算所有效果
      */
     public EffectResult calculateAllEffects(BattleContext ctx) {
         EffectResult result = new EffectResult();
-        
+
         // 1. 计算特性效果
         calculateAbilityEffects(ctx, result);
-        
+
         // 2. 计算道具效果
         calculateItemEffects(ctx, result);
-        
+
         // 3. 计算暴击
         if (ctx.isCritical && !result.preventCritical) {
             result.criticalMultiplier = 1.5;
         }
-        
+
         // 4. 汇总所有修正因子
         result.allMultipliers.put("本系加成", result.stabMultiplier);
         result.allMultipliers.put("特性攻击", result.attackMultiplier * result.spAttackMultiplier);
@@ -138,10 +142,10 @@ public class EffectCalculatorService {
         result.allMultipliers.put("特性防御", result.defenseMultiplier * result.spDefenseMultiplier);
         result.allMultipliers.put("道具", result.damageMultiplier);
         result.allMultipliers.put("暴击", result.criticalMultiplier);
-        
+
         return result;
     }
-    
+
     /**
      * 计算特性效果
      */
@@ -155,7 +159,7 @@ public class EffectCalculatorService {
                 }
             }
         }
-        
+
         // 防御方特性
         if (ctx.defenderAbilityId != null) {
             List<AbilityEffect> effects = AbilityEffects.getEffects(ctx.defenderAbilityId);
@@ -166,7 +170,7 @@ public class EffectCalculatorService {
             }
         }
     }
-    
+
     /**
      * 计算道具效果
      */
@@ -180,7 +184,7 @@ public class EffectCalculatorService {
                 }
             }
         }
-        
+
         // 防御方道具
         if (ctx.defenderItemId != null) {
             List<ItemEffect> effects = ItemEffects.getEffects(ctx.defenderItemId);
@@ -191,7 +195,7 @@ public class EffectCalculatorService {
             }
         }
     }
-    
+
     /**
      * 检查特性条件
      */
@@ -203,7 +207,7 @@ public class EffectCalculatorService {
             }
             return true;
         }
-        
+
         switch (effect.condition) {
             case "hp_le_33":
                 return ctx.attackerHpPercent <= 33;
@@ -212,7 +216,7 @@ public class EffectCalculatorService {
             case "full_hp":
                 return ctx.defenderHpPercent >= 100;
             case "has_status":
-                return ctx.attackerBurned || ctx.attackerPoisoned || ctx.attackerParalyzed 
+                return ctx.attackerBurned || ctx.attackerPoisoned || ctx.attackerParalyzed
                     || ctx.attackerAsleep || ctx.attackerFrozen;
             case "burned":
                 return ctx.attackerBurned;
@@ -270,7 +274,7 @@ public class EffectCalculatorService {
                 return true;
         }
     }
-    
+
     /**
      * 检查道具条件
      */
@@ -281,7 +285,7 @@ public class EffectCalculatorService {
             }
             return true;
         }
-        
+
         switch (effect.condition) {
             case "first_use":
                 return ctx.consecutiveUseCount == 0;
@@ -322,7 +326,7 @@ public class EffectCalculatorService {
                 return true;
         }
     }
-    
+
     /**
      * 应用特性效果
      */
@@ -393,7 +397,7 @@ public class EffectCalculatorService {
                 break;
         }
     }
-    
+
     /**
      * 应用道具效果
      */
@@ -441,30 +445,30 @@ public class EffectCalculatorService {
                 break;
         }
     }
-    
+
     /**
      * 计算属性相性
      */
-    public double calculateTypeEffectiveness(Integer moveTypeId, Set<Integer> defenderTypeIds, 
+    public double calculateTypeEffectiveness(Integer moveTypeId, Set<Integer> defenderTypeIds,
             Map<Integer, Map<Integer, Integer>> efficacyMatrix) {
         if (moveTypeId == null || defenderTypeIds == null || defenderTypeIds.isEmpty()) {
             return 1.0;
         }
-        
+
         double effectiveness = 1.0;
         Map<Integer, Integer> moveEfficacy = efficacyMatrix.get(moveTypeId);
-        
+
         if (moveEfficacy == null) {
             return effectiveness;
         }
-        
+
         for (Integer targetTypeId : defenderTypeIds) {
             Integer factor = moveEfficacy.get(targetTypeId);
             if (factor != null) {
                 effectiveness *= factor / 100.0;
             }
         }
-        
+
         return effectiveness;
     }
 }

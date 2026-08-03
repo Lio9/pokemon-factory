@@ -31,7 +31,10 @@
               :class="viewMode === 'grid' ? '!bg-[#705898] !text-white !border-[#5a4680]' : '!bg-white !text-slate-600 !border-slate-200'"
               @click="toggleViewMode"
             >
-              <component :is="viewMode === 'grid' ? 'List' : 'Grid'" class="w-4 h-4" />
+              <component
+                :is="viewMode === 'grid' ? 'List' : 'Grid'"
+                class="w-4 h-4"
+              />
               <span class="ml-1">{{ viewMode === 'grid' ? tr('列表', 'List') : tr('网格', 'Grid') }}</span>
             </el-button>
             <el-button
@@ -40,7 +43,10 @@
               :class="isShowFavorites ? '!bg-amber-500 !text-white !border-amber-400' : '!bg-white !text-slate-600 !border-slate-200'"
               @click="toggleFavorites"
             >
-              <component :is="isShowFavorites ? 'StarFilled' : 'Star'" class="w-4 h-4" />
+              <component
+                :is="isShowFavorites ? 'StarFilled' : 'Star'"
+                class="w-4 h-4"
+              />
               <span class="ml-1">{{ isShowFavorites ? tr('全部', 'All') : `${tr('收藏', 'Fav')} (${favorites.length})` }}</span>
             </el-button>
             <el-button

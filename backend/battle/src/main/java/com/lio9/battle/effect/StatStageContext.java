@@ -1,6 +1,5 @@
 package com.lio9.battle.effect;
 
-import java.util.List;
 import java.util.Map;
 
 /** 能力阶级变化上下文 */

@@ -1,6 +1,5 @@
 package com.lio9.battle.effect;
 
-import java.util.List;
 import java.util.Map;
 
 /** 上场触发上下文 */

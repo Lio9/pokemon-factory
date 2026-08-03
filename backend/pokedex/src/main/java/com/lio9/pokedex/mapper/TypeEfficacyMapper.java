@@ -2,7 +2,6 @@ package com.lio9.pokedex.mapper;
 
 
 
-import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
@@ -12,7 +11,6 @@ import java.util.Map;
 /**
  * 属性相性Mapper接口
  */
-@Mapper
 public interface TypeEfficacyMapper {
     
     /**

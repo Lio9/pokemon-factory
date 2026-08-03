@@ -12,7 +12,6 @@ import com.lio9.pokedex.model.PokemonForm;
 import com.lio9.pokedex.model.PokemonFormAbility;
 import com.lio9.pokedex.model.PokemonFormType;
 import com.lio9.pokedex.model.PokemonMove;
-import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -20,7 +19,6 @@ import java.util.List;
 /**
  * 宝可梦Mapper接口
  */
-@Mapper
 public interface PokemonMapper extends BaseMapper<Pokemon> {
     
     /**

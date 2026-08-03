@@ -4,8 +4,8 @@ import com.lio9.battle.mapper.SkillMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
 import javax.sql.DataSource;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

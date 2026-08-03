@@ -1,16 +1,15 @@
 package com.lio9.battle.service;
 
 
-
 import com.lio9.battle.mapper.FactoryRunMapper;
 import com.lio9.battle.mapper.PlayerMapper;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
 
 /**
  * 工厂挑战服务：管理 9 轮连续对战的完整流程。

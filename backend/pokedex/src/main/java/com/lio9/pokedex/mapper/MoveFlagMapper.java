@@ -2,7 +2,6 @@ package com.lio9.pokedex.mapper;
 
 
 
-import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
@@ -13,7 +12,6 @@ import java.util.Map;
  * 技能标记Mapper接口
  * 用于查询技能的特殊标记（接触、拳击、咬、声音等）
  */
-@Mapper
 public interface MoveFlagMapper {
     
     int FLAG_CONTACT = 1;

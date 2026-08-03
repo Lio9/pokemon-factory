@@ -1,6 +1,11 @@
 package com.lio9.user.service;
 
-import com.lio9.user.dto.*;
+import com.lio9.user.dto.AuthRequest;
+import com.lio9.user.dto.AuthResponse;
+import com.lio9.user.dto.RefreshTokenRequest;
+import com.lio9.user.dto.UpdatePasswordRequest;
+import com.lio9.user.dto.UpdateProfileRequest;
+import com.lio9.user.dto.UserProfile;
 import com.lio9.user.mapper.UserMapper;
 import com.lio9.user.model.UserAccount;
 import io.jsonwebtoken.JwtException;
@@ -28,7 +33,10 @@ import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
-import static org.springframework.http.HttpStatus.*;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.TOO_MANY_REQUESTS;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 /**
  * 用户认证核心业务服务。
@@ -254,7 +262,7 @@ public class UserService {
         if (email == null || email.isBlank()) {
             throw new ResponseStatusException(BAD_REQUEST, "邮箱地址不能为空");
         }
-        
+
         // 简单的邮箱格式验证
         if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
             throw new ResponseStatusException(BAD_REQUEST, "邮箱格式不正确");
@@ -267,13 +275,13 @@ public class UserService {
 
         // 生成验证令牌
         String verificationToken = generateVerificationToken();
-        
+
         // 保存到数据库
         userMapper.updateEmailAndVerificationToken(account.getId(), email, verificationToken);
 
         // TODO: 实际项目中这里应该调用邮件服务发送验证链接
         // emailService.sendVerificationEmail(email, verificationToken);
-        
+
         // 开发环境：返回令牌以便测试
         return verificationToken;
     }

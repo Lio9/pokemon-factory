@@ -15,14 +15,64 @@
         >
           <!-- Pokeball 图标 -->
           <div class="relative h-9 w-9 sm:h-10 sm:w-10">
-            <svg viewBox="0 0 100 100" class="h-full w-full drop-shadow-sm transition-transform duration-300 group-hover:scale-110">
-              <circle cx="50" cy="50" r="46" fill="#DC2626" stroke="#1a1a1a" stroke-width="4"/>
-              <rect x="4" y="48" width="92" height="4" fill="#1a1a1a"/>
-              <circle cx="50" cy="50" r="46" fill="none" stroke="#1a1a1a" stroke-width="4"/>
-              <circle cx="50" cy="50" r="12" fill="#fff" stroke="#1a1a1a" stroke-width="4"/>
-              <circle cx="50" cy="50" r="6" fill="#fff" stroke="#1a1a1a" stroke-width="2"/>
-              <circle cx="50" cy="50" r="48" fill="none" stroke="#fff" stroke-width="1" opacity="0.3"/>
-              <path d="M4,50 A46,46 0 0,1 50,4" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+            <svg
+              viewBox="0 0 100 100"
+              class="h-full w-full drop-shadow-sm transition-transform duration-300 group-hover:scale-110"
+            >
+              <circle
+                cx="50"
+                cy="50"
+                r="46"
+                fill="#DC2626"
+                stroke="#1a1a1a"
+                stroke-width="4"
+              />
+              <rect
+                x="4"
+                y="48"
+                width="92"
+                height="4"
+                fill="#1a1a1a"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="46"
+                fill="none"
+                stroke="#1a1a1a"
+                stroke-width="4"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="12"
+                fill="#fff"
+                stroke="#1a1a1a"
+                stroke-width="4"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="6"
+                fill="#fff"
+                stroke="#1a1a1a"
+                stroke-width="2"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="48"
+                fill="none"
+                stroke="#fff"
+                stroke-width="1"
+                opacity="0.3"
+              />
+              <path
+                d="M4,50 A46,46 0 0,1 50,4"
+                fill="none"
+                stroke="rgba(255,255,255,0.2)"
+                stroke-width="2"
+              />
             </svg>
           </div>
           <div>
@@ -95,8 +145,18 @@
             class="md:hidden"
           >
             <button class="flex items-center justify-center rounded-xl border-2 border-slate-200 p-2 text-slate-600 transition-colors hover:bg-slate-50 shadow-poke">
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             </button>
             <template #dropdown>
@@ -139,10 +199,34 @@
     <footer class="px-4 py-6 text-center text-xs text-slate-400 border-t border-slate-100">
       <div class="mx-auto max-w-7xl flex flex-col items-center gap-2">
         <!-- Pokeball 装饰 -->
-        <svg viewBox="0 0 100 100" class="w-6 h-6 opacity-30">
-          <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="3"/>
-          <line x1="4" y1="50" x2="96" y2="50" stroke="currentColor" stroke-width="3"/>
-          <circle cx="50" cy="50" r="10" fill="none" stroke="currentColor" stroke-width="3"/>
+        <svg
+          viewBox="0 0 100 100"
+          class="w-6 h-6 opacity-30"
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="46"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+          />
+          <line
+            x1="4"
+            y1="50"
+            x2="96"
+            y2="50"
+            stroke="currentColor"
+            stroke-width="3"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r="10"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+          />
         </svg>
         <p>
           &copy; 2024-{{ new Date().getFullYear() }} Pokemon Factory

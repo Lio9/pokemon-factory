@@ -1,6 +1,7 @@
 package com.lio9.pokedex.vo;
 
 import lombok.Data;
+
 import java.util.List;
 
 /**

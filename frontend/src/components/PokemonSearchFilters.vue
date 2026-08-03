@@ -80,10 +80,22 @@
           class="w-full"
           @change="onSortChange"
         >
-          <el-option label="图鉴编号" value="id" />
-          <el-option label="名称" value="name" />
-          <el-option label="攻击" value="attack" />
-          <el-option label="速度" value="speed" />
+          <el-option
+            label="图鉴编号"
+            value="id"
+          />
+          <el-option
+            label="名称"
+            value="name"
+          />
+          <el-option
+            label="攻击"
+            value="attack"
+          />
+          <el-option
+            label="速度"
+            value="speed"
+          />
         </el-select>
       </div>
 
@@ -95,7 +107,10 @@
           :class="viewMode === 'grid' ? '!bg-poke-red !text-white !border-red-400' : '!bg-white !text-slate-600 !border-slate-200'"
           @click="toggleViewMode"
         >
-          <component :is="viewMode === 'grid' ? 'List' : 'Grid'" class="w-4 h-4" />
+          <component
+            :is="viewMode === 'grid' ? 'List' : 'Grid'"
+            class="w-4 h-4"
+          />
           <span class="ml-1">{{ viewMode === 'grid' ? tr('列表', 'List') : tr('网格', 'Grid') }}</span>
         </el-button>
         <el-button
@@ -104,7 +119,10 @@
           :class="isShowFavorites ? '!bg-amber-500 !text-white !border-amber-400' : '!bg-white !text-slate-600 !border-slate-200'"
           @click="toggleFavorites"
         >
-          <component :is="isShowFavorites ? 'StarFilled' : 'Star'" class="w-4 h-4" />
+          <component
+            :is="isShowFavorites ? 'StarFilled' : 'Star'"
+            class="w-4 h-4"
+          />
           <span class="ml-1">{{ isShowFavorites ? tr('全部', 'All') : `${tr('收藏', 'Fav')} (${favorites.length})` }}</span>
         </el-button>
         <el-button
@@ -112,7 +130,7 @@
           class="!rounded-xl !font-bold !border-2 !bg-white !text-slate-600 !border-slate-200 !shadow-poke"
           @click="$emit('reset-filters')"
         >
-          <RefreshCw class="w-4 h-4" />
+          <Refresh class="w-4 h-4" />
           <span class="ml-1 hidden sm:inline">{{ tr('重置', 'Reset') }}</span>
         </el-button>
       </div>
@@ -137,11 +155,11 @@
 </template>
 
 <script>
-import { Search, List, Grid, Star, StarFilled, RefreshCw } from '@element-plus/icons-vue'
+import { Search, List, Grid, Star, StarFilled, Refresh } from '@element-plus/icons-vue'
 
 export default {
   name: 'PokemonSearchFilters',
-  components: { Search, List, Grid, Star, StarFilled, RefreshCw },
+  components: { Search, List, Grid, Star, StarFilled, Refresh },
   props: {
     searchKeyword: { type: String, default: '' },
     selectedType: { type: [Number, String], default: null },

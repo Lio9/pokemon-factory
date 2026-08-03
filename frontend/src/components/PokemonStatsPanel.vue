@@ -35,7 +35,10 @@
             <!-- 高光 -->
             <div class="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
             <!-- 条纹 -->
-            <div class="absolute inset-0 opacity-20" style="background-image: repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 8px);" />
+            <div
+              class="absolute inset-0 opacity-20"
+              style="background-image: repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 8px);"
+            />
           </div>
           <!-- 数字 -->
           <div class="absolute inset-0 flex items-center justify-end pr-2">

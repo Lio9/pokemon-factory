@@ -1,7 +1,5 @@
 package com.lio9.battle.effect;
 
-import java.util.Map;
-
 /**
  * 道具处理器接口。
  * 和 AbilityHandler 共享 AttackContext 等上下文。

@@ -1,8 +1,12 @@
 package com.lio9.battle.engine;
 
 
-
-import com.lio9.battle.engine.event.*;
+import com.lio9.battle.engine.event.BattleEvent;
+import com.lio9.battle.engine.event.BattleEventType;
+import com.lio9.battle.engine.event.DamageEvent;
+import com.lio9.battle.engine.event.EventResult;
+import com.lio9.battle.engine.event.ModifyPowerEvent;
+import com.lio9.battle.engine.event.TryHitEvent;
 import com.lio9.pokedex.util.DamageCalculatorUtil;
 
 import java.util.ArrayList;
@@ -2049,7 +2053,7 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
-        
+
         // Self-boosting moves
         if (engine.isSwordsDance(move)) {
             boolean succeeded = conditionSupport.applySelfStatBoost(state, actor, "attack", 2, "剑舞", events);
@@ -2064,7 +2068,7 @@ final class BattleRoundSupport {
             return true;
         }
         if (engine.isDragonDance(move)) {
-            boolean succeeded = conditionSupport.applyMultiStatBoost(state, actor, 
+            boolean succeeded = conditionSupport.applyMultiStatBoost(state, actor,
                 Map.of("attack", 1, "speed", 1), "龙舞", events);
             targetLog.put("result", succeeded ? "dragon-dance" : "failed");
             actionLogs.add(targetLog);
@@ -2135,7 +2139,7 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
-        
+
         // 背水一战：全能力 +1（除命中/闪避），自身束缚
         if (MoveRegistry.isNoRetreat(move)) {
             boolean succeeded = conditionSupport.applyMultiStatBoost(state, actor,
@@ -2310,7 +2314,7 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
-        
+
         // Weather moves
         if (engine.isRainDance(move)) {
             engine.activateWeather(state, "rain", actor, targetLog, events);
@@ -2332,7 +2336,7 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
-        
+
         // Recovery moves
         if (engine.isRecover(move)) {
             boolean succeeded = conditionSupport.applyRecoveryMove(actor, move, "自我再生", events);
@@ -2437,7 +2441,7 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
-        
+
         return false;
     }
 
@@ -2765,7 +2769,7 @@ final class BattleRoundSupport {
         String nameEn = String.valueOf(move.get("name_en"));
         return "fake-out".equalsIgnoreCase(nameEn) || "fake out".equalsIgnoreCase(nameEn);
     }
-    
+
     /**
      * 按照接近 Pokemon Showdown 的顺序计算最终命中率。
      * <p>
@@ -2781,34 +2785,34 @@ final class BattleRoundSupport {
         if (matches(attackerAbility, "no-guard", "no guard") || matches(defenderAbility, "no-guard", "no guard")) {
             return 100;
         }
-        if (nameEn.contains("aerial ace") || nameEn.contains("swift") || 
+        if (nameEn.contains("aerial ace") || nameEn.contains("swift") ||
             nameEn.contains("shock wave") || nameEn.contains("magnet bomb") ||
             nameEn.contains("aura sphere") || nameEn.contains("fissure") ||
             nameEn.contains("horn drill") || nameEn.contains("guillotine") ||
             nameEn.contains("sheer cold")) {
             return 100;
         }
-        
+
         // 读取招式基础命中率；accuracy=0 在这套数据里视为“必定命中”。
         int baseAccuracy = engine.toInt(move.get("accuracy"), 0);
         if (baseAccuracy == 0) {
             // Accuracy 0 means it never misses (like Swift)
             return 100;
         }
-        
+
         // 读取命中/闪避阶段。当前实现仍从 statStages 取值，但输出会统一折算为 PS 风格倍率。
         int accuracyStage = getStatStage(attacker, "accuracy");
         int evasionStage = getStatStage(defender, "evasion");
-        
+
         // 阶段必须被限制在 [-6, +6]，否则脏数据会把倍率放大到不合理区间。
         accuracyStage = Math.max(-6, Math.min(6, accuracyStage));
         evasionStage = Math.max(-6, Math.min(6, evasionStage));
-        
+
         // Calculate stage multiplier using Pokemon Showdown formula
         // Stage: -6=-3/9, -5=-3/8, -4=-3/7, -3=-3/6, -2=-3/5, -1=-3/4, 0=3/3, +1=4/3, +2=5/3, +3=6/3, +4=7/3, +5=8/3, +6=9/3
         double accuracyMultiplier = getStageMultiplier(accuracyStage);
         double evasionMultiplier = getStageMultiplier(evasionStage);
-        
+
         // Final accuracy = base * accuracy_mult / evasion_mult
         double finalAccuracy = baseAccuracy * accuracyMultiplier / evasionMultiplier;
         // 按 PS 风格在阶段修正后继续叠加特性、道具、天气等额外命中修正。
@@ -2931,7 +2935,7 @@ final class BattleRoundSupport {
         }
         return " 获得了行动顺序加成";
     }
-    
+
     /**
      * Get stat stage multiplier for accuracy/evasion
      * Pokemon Showdown uses: multiplier = (3 + stage) / 3 for stage >= 0
@@ -2944,7 +2948,7 @@ final class BattleRoundSupport {
             return 3.0 / (3.0 - stage);
         }
     }
-    
+
     /**
      * Get stat stage value from mon's statStages map
      */

@@ -1,17 +1,21 @@
 package com.lio9.pokedex.controller;
 
 
-
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.lio9.common.response.ResponseCode;
+import com.lio9.common.response.ResultResponse;
 import com.lio9.pokedex.model.Move;
 import com.lio9.pokedex.service.MoveService;
 import com.lio9.pokedex.vo.MoveQueryVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.Map;
-import com.lio9.common.response.ResultResponse;
-import com.lio9.common.response.ResponseCode;
 
 /**
  * 招式控制器
@@ -41,7 +45,7 @@ public class MoveController {
 
         long endTime = System.currentTimeMillis();
         logger.info("获取招式列表成功 - 耗时: {}ms, 总数: {}", (endTime - startTime), movePage.getTotal());
-        
+
         return ResultResponse.buildSuccessResponse(ResponseCode.SUCCESS, "success", movePage);
     }
 
@@ -81,7 +85,7 @@ public class MoveController {
 
         long endTime = System.currentTimeMillis();
         logger.info("搜索招式成功 - 耗时: {}ms, 总数: {}", (endTime - startTime), movePage.getTotal());
-        
+
         return ResultResponse.buildSuccessResponse(ResponseCode.SUCCESS, "success", movePage);
     }
 }

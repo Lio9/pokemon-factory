@@ -1,6 +1,7 @@
 package com.lio9.battle.effect.handler;
 
-import com.lio9.battle.effect.*;
+import com.lio9.battle.effect.AbilityHandler;
+import com.lio9.battle.effect.StatStageContext;
 
 /**
  * 唱反调（Contrary）：能力阶级变化反转。

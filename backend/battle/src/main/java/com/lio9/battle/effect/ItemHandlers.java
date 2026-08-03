@@ -1,9 +1,19 @@
 package com.lio9.battle.effect;
 
-import static com.lio9.battle.effect.MoveUtils.*;
-import static com.lio9.battle.effect.PokemonType.*;
-
 import java.util.Map;
+
+import static com.lio9.battle.effect.MoveUtils.intVal;
+import static com.lio9.battle.effect.MoveUtils.isSpecies;
+import static com.lio9.battle.effect.MoveUtils.moveCategory;
+import static com.lio9.battle.effect.PokemonType.DRAGON;
+import static com.lio9.battle.effect.PokemonType.ELECTRIC;
+import static com.lio9.battle.effect.PokemonType.GHOST;
+import static com.lio9.battle.effect.PokemonType.ICE;
+import static com.lio9.battle.effect.PokemonType.NORMAL;
+import static com.lio9.battle.effect.PokemonType.PHYSICAL;
+import static com.lio9.battle.effect.PokemonType.SPECIAL;
+import static com.lio9.battle.effect.PokemonType.STEEL;
+import static com.lio9.battle.effect.PokemonType.WATER;
 
 /**
  * 道具效果 handler 注册中心。

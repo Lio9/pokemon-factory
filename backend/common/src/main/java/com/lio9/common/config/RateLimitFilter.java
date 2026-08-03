@@ -7,9 +7,9 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpStatus;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.method.HandlerMethod;
@@ -33,19 +33,19 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class RateLimitFilter extends OncePerRequestFilter {
-    
+
     private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
-    
+
     private final Map<String, long[]> rateLimitStore = new ConcurrentHashMap<>();
     private final RequestMappingHandlerMapping handlerMapping;
-    
+
     public RateLimitFilter(@Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping) {
         this.handlerMapping = handlerMapping;
     }
-    
+
     @Override
-    protected void doFilterInternal(HttpServletRequest request, 
-                                    HttpServletResponse response, 
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         // 包装请求，缓存 body 使 getHandler() 不会消耗 InputStream
         CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest(request);
@@ -56,7 +56,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 return;
             }
             Object handler = executionChain.getHandler();
-            
+
             if (handler instanceof HandlerMethod) {
                 HandlerMethod handlerMethod = (HandlerMethod) handler;
                 RateLimit rateLimit = handlerMethod.getMethodAnnotation(RateLimit.class);
@@ -66,7 +66,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 if (rateLimit != null) {
                     String limitKey = buildLimitKey(request, rateLimit);
                     if (!checkRateLimit(limitKey, rateLimit)) {
-                        log.warn("Rate limit exceeded for key: {}, endpoint: {}", 
+                        log.warn("Rate limit exceeded for key: {}, endpoint: {}",
                                 limitKey, request.getRequestURI());
                         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                         response.setContentType("application/json;charset=UTF-8");
@@ -83,7 +83,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             filterChain.doFilter(wrappedRequest, response);
         }
     }
-    
+
     /**
      * 缓存请求 body 的包装类，解决 InputStream 只能读一次的问题。
      * getHandler() 和 @RequestBody 都能正常读取 body。
@@ -123,7 +123,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return new BufferedReader(new InputStreamReader(getInputStream(), StandardCharsets.UTF_8));
         }
     }
-    
+
     private String buildLimitKey(HttpServletRequest request, RateLimit rateLimit) {
         StringBuilder keyBuilder = new StringBuilder("rate_limit:");
         switch (rateLimit.keyType()) {
@@ -145,7 +145,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         keyBuilder.append(":").append(windowStart);
         return keyBuilder.toString();
     }
-    
+
     private boolean checkRateLimit(String limitKey, RateLimit rateLimit) {
         long now = System.currentTimeMillis();
         long windowMillis = rateLimit.timeWindow() * 1000L;
@@ -161,12 +161,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         cleanupOldEntries(windowStart);
         return counter[1] <= rateLimit.maxRequests();
     }
-    
+
     private void cleanupOldEntries(long windowStart) {
         if (rateLimitStore.size() < 1000) return;
         rateLimitStore.entrySet().removeIf(entry -> entry.getValue()[0] < windowStart);
     }
-    
+
     private String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {

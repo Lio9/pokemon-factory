@@ -1,10 +1,9 @@
 package com.lio9.battle.mapper;
 
 
-
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Mapper;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

@@ -13,7 +13,7 @@ import java.util.Map;
  * 注意：当前引擎主路径仍通过 {@link com.lio9.battle.effect.EffectRegistry} 派发，
  * 事件总线仅作为辅助/渐进迁移路径。</p>
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class AbilityEventConfig {
 
     @Bean

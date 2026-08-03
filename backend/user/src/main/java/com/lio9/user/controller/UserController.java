@@ -2,14 +2,23 @@ package com.lio9.user.controller;
 
 import com.lio9.common.config.RateLimit;
 import com.lio9.common.config.RateLimitKey;
-import com.lio9.common.response.ResponseCode;
 import com.lio9.common.response.ResultResponse;
-import com.lio9.user.dto.*;
+import com.lio9.user.dto.AuthRequest;
+import com.lio9.user.dto.EmailVerificationRequest;
+import com.lio9.user.dto.RefreshTokenRequest;
+import com.lio9.user.dto.UpdatePasswordRequest;
+import com.lio9.user.dto.UpdateProfileRequest;
+import com.lio9.user.dto.VerifyEmailRequest;
 import com.lio9.user.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
@@ -97,7 +106,7 @@ public class UserController {
     /** 请求邮箱验证（发送验证邮件） */
     @PostMapping("/me/email/request-verification")
     @RateLimit(timeWindow = 300, maxRequests = 3, keyType = RateLimitKey.USER, message = "验证邮件发送过于频繁，请5分钟后再试")
-    public ResponseEntity<?> requestEmailVerification(Authentication authentication, 
+    public ResponseEntity<?> requestEmailVerification(Authentication authentication,
                                                        @RequestBody EmailVerificationRequest request) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)

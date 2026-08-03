@@ -1,20 +1,9 @@
 package com.lio9.pokedex.service.impl;
 
 
-
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.lio9.pokedex.model.Ability;
-import com.lio9.pokedex.model.EvolutionChain;
-import com.lio9.pokedex.model.GrowthRate;
-import com.lio9.pokedex.model.Move;
-import com.lio9.pokedex.model.Pokemon;
-import com.lio9.pokedex.model.PokemonEggGroup;
-import com.lio9.pokedex.model.PokemonForm;
-import com.lio9.pokedex.model.PokemonFormAbility;
-import com.lio9.pokedex.model.PokemonFormStat;
-import com.lio9.pokedex.model.PokemonMove;
 import com.lio9.pokedex.mapper.AbilityMapper;
 import com.lio9.pokedex.mapper.EggGroupMapper;
 import com.lio9.pokedex.mapper.EvolutionChainMapper;
@@ -27,6 +16,16 @@ import com.lio9.pokedex.mapper.PokemonFormStatMapper;
 import com.lio9.pokedex.mapper.PokemonFormTypeMapper;
 import com.lio9.pokedex.mapper.PokemonMapper;
 import com.lio9.pokedex.mapper.PokemonMoveMapper;
+import com.lio9.pokedex.model.Ability;
+import com.lio9.pokedex.model.EvolutionChain;
+import com.lio9.pokedex.model.GrowthRate;
+import com.lio9.pokedex.model.Move;
+import com.lio9.pokedex.model.Pokemon;
+import com.lio9.pokedex.model.PokemonEggGroup;
+import com.lio9.pokedex.model.PokemonForm;
+import com.lio9.pokedex.model.PokemonFormAbility;
+import com.lio9.pokedex.model.PokemonFormStat;
+import com.lio9.pokedex.model.PokemonMove;
 import com.lio9.pokedex.service.PokemonService;
 import com.lio9.pokedex.vo.AbilityVO;
 import com.lio9.pokedex.vo.EvolutionNodeVO;
@@ -104,7 +103,7 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         if (pokemon == null) {
             return null;
         }
-        
+
         PokemonDetailVO detailVO = new PokemonDetailVO();
         detailVO.setId(pokemon.getId());
         detailVO.setName(pokemon.getName());
@@ -120,14 +119,14 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         detailVO.setBaseHappiness(pokemon.getBaseHappiness());
         detailVO.setGenderRate(pokemon.getGenderRate());
         detailVO.setHatchCounter(pokemon.getHatchCounter());
-        
+
         if (pokemon.getGrowthRateId() != null) {
             GrowthRate growthRate = growthRateMapper.selectById(pokemon.getGrowthRateId());
             if (growthRate != null) {
                 detailVO.setGrowthRate(growthRate.getName());
             }
         }
-        
+
         QueryWrapper<PokemonEggGroup> eggGroupWrapper = new QueryWrapper<>();
         eggGroupWrapper.eq("pokemon_id", id);
         List<PokemonEggGroup> pokemonEggGroups = pokemonEggGroupMapper.selectList(eggGroupWrapper);
@@ -142,14 +141,14 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
                     .map(com.lio9.pokedex.model.EggGroup::getName)
                     .collect(Collectors.toList()));
         }
-        
+
         List<PokemonForm> forms = pokemonFormMapper.selectBySpeciesId(id.intValue());
         if (!forms.isEmpty()) {
             List<PokemonFormDetailVO> formVOs = new ArrayList<>();
             List<Integer> formIds = forms.stream()
                     .map(PokemonForm::getId)
                     .collect(Collectors.toList());
-            
+
             Map<Integer, List<TypeVO>> formTypesMap = new HashMap<>();
             if (!formIds.isEmpty()) {
                 List<Map<String, Object>> typesData = pokemonFormTypeMapper.selectTypesByFormIds(formIds);
@@ -160,28 +159,28 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
                     typeVO.setName((String) typeData.get("name"));
                     typeVO.setNameEn((String) typeData.get("name_en"));
                     typeVO.setColor((String) typeData.get("color"));
-                    
+
                     formTypesMap.computeIfAbsent(formId, key -> new ArrayList<>()).add(typeVO);
                 }
             }
-            
+
             Map<Integer, List<AbilityVO>> formAbilitiesMap = new HashMap<>();
             if (!formIds.isEmpty()) {
                 QueryWrapper<PokemonFormAbility> abilityWrapper = new QueryWrapper<>();
                 abilityWrapper.in("form_id", formIds);
                 List<PokemonFormAbility> formAbilities = pokemonFormAbilityMapper.selectList(abilityWrapper);
-                
+
                 Set<Integer> abilityIds = formAbilities.stream()
                         .map(PokemonFormAbility::getAbilityId)
                         .collect(Collectors.toSet());
-                
+
                 Map<Integer, Ability> abilityMap = new HashMap<>();
                 if (!abilityIds.isEmpty()) {
                     List<Ability> abilities = abilityMapper.selectByIds(abilityIds);
                     abilityMap = abilities.stream()
                             .collect(Collectors.toMap(Ability::getId, ability -> ability));
                 }
-                
+
                 for (PokemonFormAbility formAbility : formAbilities) {
                     Integer formId = formAbility.getFormId();
                     Ability ability = abilityMap.get(formAbility.getAbilityId());
@@ -193,25 +192,25 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
                         abilityVO.setDescription(ability.getDescription());
                         abilityVO.setIsHidden(formAbility.getIsHidden());
                         abilityVO.setSlot(formAbility.getSlot());
-                        
+
                         formAbilitiesMap.computeIfAbsent(formId, key -> new ArrayList<>()).add(abilityVO);
                     }
                 }
             }
-            
+
             Map<Integer, StatVO> formStatsMap = new HashMap<>();
             if (!formIds.isEmpty()) {
                 QueryWrapper<PokemonFormStat> statWrapper = new QueryWrapper<>();
                 statWrapper.in("form_id", formIds);
                 List<PokemonFormStat> formStats = pokemonFormStatMapper.selectList(statWrapper);
-                
+
                 Map<Integer, List<PokemonFormStat>> statsByForm = formStats.stream()
                         .collect(Collectors.groupingBy(PokemonFormStat::getFormId));
-                
+
                 for (Map.Entry<Integer, List<PokemonFormStat>> entry : statsByForm.entrySet()) {
                     Integer formId = entry.getKey();
                     List<PokemonFormStat> stats = entry.getValue();
-                    
+
                     StatVO statVO = new StatVO();
                     int total = 0;
                     for (PokemonFormStat stat : stats) {
@@ -231,7 +230,7 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
                     formStatsMap.put(formId, statVO);
                 }
             }
-            
+
             for (PokemonForm form : forms) {
                 PokemonFormDetailVO formVO = new PokemonFormDetailVO();
                 formVO.setId(form.getId());
@@ -251,7 +250,7 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
                 formVO.setStats(formStatsMap.get(form.getId()));
                 formVOs.add(formVO);
             }
-            
+
             // 进化链（树形结构，支持分支进化）
             if (pokemon.getEvolutionChainId() != null) {
                 detailVO.setEvolutionChain(getEvolutionChainTree(pokemon.getId().longValue()));
@@ -259,18 +258,18 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
 
             detailVO.setForms(formVOs);
         }
-        
+
         return detailVO;
     }
 
     @Override
     public Page<Pokemon> searchPokemon(String keyword, Page<Pokemon> page) {
         QueryWrapper<Pokemon> wrapper = new QueryWrapper<>();
-        
+
         if (keyword != null && !keyword.isEmpty()) {
             wrapper.and(query -> query.like("name", keyword).or().like("name_en", keyword));
         }
-        
+
         wrapper.orderByAsc("id");
         return page(page, wrapper);
     }
@@ -404,24 +403,24 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         QueryWrapper<PokemonMove> wrapper = new QueryWrapper<>();
         wrapper.eq("pokemon_id", pokemonId);
         List<PokemonMove> pokemonMoves = pokemonMoveMapper.selectList(wrapper);
-        
+
         if (pokemonMoves.isEmpty()) {
             return new ArrayList<>();
         }
-        
+
         List<Long> moveIds = pokemonMoves.stream()
                 .map(PokemonMove::getMoveId)
                 .distinct()
                 .collect(Collectors.toList());
-        
+
         if (moveIds.isEmpty()) {
             return new ArrayList<>();
         }
-        
+
         QueryWrapper<Move> moveWrapper = new QueryWrapper<>();
         moveWrapper.in("id", moveIds);
         moveWrapper.orderByAsc("id");
-        
+
         return moveMapper.selectList(moveWrapper);
     }
 }

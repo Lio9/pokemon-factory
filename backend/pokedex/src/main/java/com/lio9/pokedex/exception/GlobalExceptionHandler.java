@@ -1,7 +1,7 @@
 package com.lio9.pokedex.exception;
 
-import com.lio9.common.response.ResultResponse;
 import com.lio9.common.response.ResponseCode;
+import com.lio9.common.response.ResultResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;

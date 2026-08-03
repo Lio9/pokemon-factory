@@ -10,11 +10,24 @@
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Damage Calculator
           </div>
-          <h1 class="mt-2 text-xl sm:text-2xl font-black text-white tracking-tight">伤害计算器</h1>
+          <h1 class="mt-2 text-xl sm:text-2xl font-black text-white tracking-tight">
+            伤害计算器
+          </h1>
         </div>
         <div class="flex items-center gap-2">
-          <button @click="resetCalculator" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 text-xs font-semibold transition">重置</button>
-          <button @click="swapSides" :disabled="!form.attackerPokemonId || !form.defenderPokemonId" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white/80 text-xs font-semibold transition">⇄ 交换</button>
+          <button
+            class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 text-xs font-semibold transition"
+            @click="resetCalculator"
+          >
+            重置
+          </button>
+          <button
+            :disabled="!form.attackerPokemonId || !form.defenderPokemonId"
+            class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white/80 text-xs font-semibold transition"
+            @click="swapSides"
+          >
+            ⇄ 交换
+          </button>
         </div>
       </div>
     </div>
@@ -25,16 +38,39 @@
       <div class="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-2.5 flex items-center gap-2">
           <span class="text-white text-sm font-bold">⚔️ 攻击方</span>
-          <span v-if="attackerPokemon" class="ml-auto text-white/80 text-xs font-medium">#{{ attackerPokemon.id }} {{ attackerPokemon.name }}</span>
+          <span
+            v-if="attackerPokemon"
+            class="ml-auto text-white/80 text-xs font-medium"
+          >#{{ attackerPokemon.id }} {{ attackerPokemon.name }}</span>
         </div>
         <div class="p-4 space-y-3">
           <!-- 选择宝可梦 -->
-          <el-select v-model="form.attackerPokemonId" filterable remote reserve-keyword default-first-option
-            placeholder="搜索宝可梦..." class="w-full" :loading="pokemonLoading" :remote-method="searchPokemonOptions"
-            @change="handleAttackerChange" size="large">
-            <el-option v-for="p in pokemonOptions" :key="'a-'+p.id" :label="pokemonOptionLabel(p)" :value="p.id">
+          <el-select
+            v-model="form.attackerPokemonId"
+            filterable
+            remote
+            reserve-keyword
+            default-first-option
+            placeholder="搜索宝可梦..."
+            class="w-full"
+            :loading="pokemonLoading"
+            :remote-method="searchPokemonOptions"
+            size="large"
+            @change="handleAttackerChange"
+          >
+            <el-option
+              v-for="p in pokemonOptions"
+              :key="'a-'+p.id"
+              :label="pokemonOptionLabel(p)"
+              :value="p.id"
+            >
               <div class="flex items-center gap-2">
-                <img v-if="p.spriteUrl" :src="p.spriteUrl" class="w-8 h-8 object-contain" @error="$event.target.style.display='none'" />
+                <img
+                  v-if="p.spriteUrl"
+                  :src="p.spriteUrl"
+                  class="w-8 h-8 object-contain"
+                  @error="$event.target.style.display='none'"
+                >
                 <span class="font-medium">{{ p.name || p.nameEn }}</span>
                 <span class="ml-auto text-xs text-slate-400">#{{ p.id }}</span>
               </div>
@@ -42,25 +78,55 @@
           </el-select>
 
           <!-- 属性标签 -->
-          <div v-if="attackerTypes.length" class="flex gap-1.5">
-            <span v-for="t in attackerTypes" :key="t.type_id" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm" :style="{ background: typeColor(t.type_id) }">{{ t.name }}</span>
+          <div
+            v-if="attackerTypes.length"
+            class="flex gap-1.5"
+          >
+            <span
+              v-for="t in attackerTypes"
+              :key="t.type_id"
+              class="px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm"
+              :style="{ background: typeColor(t.type_id) }"
+            >{{ t.name }}</span>
           </div>
 
           <!-- 招式选择 -->
           <div>
             <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">招式</label>
-            <el-select v-model="form.moveId" filterable placeholder="先选攻击方" class="w-full" :loading="moveLoading" :disabled="!attackerFormId" size="large">
-              <el-option v-for="m in attackerMoves" :key="m.id" :label="moveOptionLabel(m)" :value="m.id">
+            <el-select
+              v-model="form.moveId"
+              filterable
+              placeholder="先选攻击方"
+              class="w-full"
+              :loading="moveLoading"
+              :disabled="!attackerFormId"
+              size="large"
+            >
+              <el-option
+                v-for="m in attackerMoves"
+                :key="m.id"
+                :label="moveOptionLabel(m)"
+                :value="m.id"
+              >
                 <div class="flex items-center gap-2">
-                  <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white" :style="{ background: typeColor(m.typeId) }">{{ (m.typeName || '?')[0] }}</span>
+                  <span
+                    class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                    :style="{ background: typeColor(m.typeId) }"
+                  >{{ (m.typeName || '?')[0] }}</span>
                   <span class="font-medium">{{ m.name || m.nameEn }}</span>
                   <span class="ml-auto text-xs text-slate-400">威力 {{ m.power ?? '—' }}</span>
                 </div>
               </el-option>
             </el-select>
             <!-- 招式信息 -->
-            <div v-if="selectedMove" class="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-              <span class="px-2 py-0.5 rounded-full font-bold text-white" :style="{ background: typeColor(selectedMove.typeId) }">{{ selectedMove.typeName }}</span>
+            <div
+              v-if="selectedMove"
+              class="mt-2 flex flex-wrap gap-1.5 text-[11px]"
+            >
+              <span
+                class="px-2 py-0.5 rounded-full font-bold text-white"
+                :style="{ background: typeColor(selectedMove.typeId) }"
+              >{{ selectedMove.typeName }}</span>
               <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">{{ selectedMove.damageClassName || '物理' }}</span>
               <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">威力 {{ selectedMove.power ?? '—' }}</span>
               <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">命中 {{ selectedMove.accuracy ?? '—' }}</span>
@@ -71,14 +137,41 @@
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block text-[11px] font-bold text-slate-400 mb-1">特性</label>
-              <el-select v-model="form.attackerAbilityId" filterable placeholder="可选" clearable class="w-full" size="default">
-                <el-option v-for="a in filteredAttackerAbilities" :key="a.id" :label="a.name" :value="a.id" />
+              <el-select
+                v-model="form.attackerAbilityId"
+                filterable
+                placeholder="可选"
+                clearable
+                class="w-full"
+                size="default"
+              >
+                <el-option
+                  v-for="a in filteredAttackerAbilities"
+                  :key="a.id"
+                  :label="a.name"
+                  :value="a.id"
+                />
               </el-select>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-slate-400 mb-1">道具</label>
-              <el-select v-model="form.attackerItemId" filterable remote :remote-method="searchItems" placeholder="可选" clearable class="w-full" :loading="itemLoading" size="default">
-                <el-option v-for="i in itemOptions" :key="i.id" :label="i.name" :value="i.id" />
+              <el-select
+                v-model="form.attackerItemId"
+                filterable
+                remote
+                :remote-method="searchItems"
+                placeholder="可选"
+                clearable
+                class="w-full"
+                :loading="itemLoading"
+                size="default"
+              >
+                <el-option
+                  v-for="i in itemOptions"
+                  :key="i.id"
+                  :label="i.name"
+                  :value="i.id"
+                />
               </el-select>
             </div>
           </div>
@@ -87,21 +180,40 @@
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block text-[11px] font-bold text-slate-400 mb-1">{{ selectedMove?.damageClassId === 2 ? '特攻' : '攻击' }}阶级</label>
-              <el-select v-model="form.attackerAttackBoost" class="w-full" size="default">
-                <el-option v-for="i in boostOptions" :key="i" :label="boostLabel(i)" :value="i" />
+              <el-select
+                v-model="form.attackerAttackBoost"
+                class="w-full"
+                size="default"
+              >
+                <el-option
+                  v-for="i in boostOptions"
+                  :key="i"
+                  :label="boostLabel(i)"
+                  :value="i"
+                />
               </el-select>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-slate-400 mb-1">HP%</label>
-              <el-input-number v-model="form.attackerHpPercent" :min="1" :max="100" class="w-full" size="default" />
+              <el-input-number
+                v-model="form.attackerHpPercent"
+                :min="1"
+                :max="100"
+                class="w-full"
+                size="default"
+              />
             </div>
           </div>
 
           <!-- 状态 -->
           <div class="flex flex-wrap gap-1.5">
-            <button v-for="s in attackerStatuses" :key="s.key" @click="form[s.key] = !form[s.key]"
+            <button
+              v-for="s in attackerStatuses"
+              :key="s.key"
               class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all"
-              :class="form[s.key] ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'">
+              :class="form[s.key] ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+              @click="form[s.key] = !form[s.key]"
+            >
               {{ s.label }}
             </button>
           </div>
@@ -112,16 +224,39 @@
       <div class="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2.5 flex items-center gap-2">
           <span class="text-white text-sm font-bold">🛡️ 防御方</span>
-          <span v-if="defenderPokemon" class="ml-auto text-white/80 text-xs font-medium">#{{ defenderPokemon.id }} {{ defenderPokemon.name }}</span>
+          <span
+            v-if="defenderPokemon"
+            class="ml-auto text-white/80 text-xs font-medium"
+          >#{{ defenderPokemon.id }} {{ defenderPokemon.name }}</span>
         </div>
         <div class="p-4 space-y-3">
           <!-- 选择宝可梦 -->
-          <el-select v-model="form.defenderPokemonId" filterable remote reserve-keyword default-first-option
-            placeholder="搜索宝可梦..." class="w-full" :loading="pokemonLoading" :remote-method="searchPokemonOptions"
-            @change="handleDefenderChange" size="large">
-            <el-option v-for="p in pokemonOptions" :key="'d-'+p.id" :label="pokemonOptionLabel(p)" :value="p.id">
+          <el-select
+            v-model="form.defenderPokemonId"
+            filterable
+            remote
+            reserve-keyword
+            default-first-option
+            placeholder="搜索宝可梦..."
+            class="w-full"
+            :loading="pokemonLoading"
+            :remote-method="searchPokemonOptions"
+            size="large"
+            @change="handleDefenderChange"
+          >
+            <el-option
+              v-for="p in pokemonOptions"
+              :key="'d-'+p.id"
+              :label="pokemonOptionLabel(p)"
+              :value="p.id"
+            >
               <div class="flex items-center gap-2">
-                <img v-if="p.spriteUrl" :src="p.spriteUrl" class="w-8 h-8 object-contain" @error="$event.target.style.display='none'" />
+                <img
+                  v-if="p.spriteUrl"
+                  :src="p.spriteUrl"
+                  class="w-8 h-8 object-contain"
+                  @error="$event.target.style.display='none'"
+                >
                 <span class="font-medium">{{ p.name || p.nameEn }}</span>
                 <span class="ml-auto text-xs text-slate-400">#{{ p.id }}</span>
               </div>
@@ -129,22 +264,57 @@
           </el-select>
 
           <!-- 属性标签 -->
-          <div v-if="defenderTypes.length" class="flex gap-1.5">
-            <span v-for="t in defenderTypes" :key="t.type_id" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm" :style="{ background: typeColor(t.type_id) }">{{ t.name }}</span>
+          <div
+            v-if="defenderTypes.length"
+            class="flex gap-1.5"
+          >
+            <span
+              v-for="t in defenderTypes"
+              :key="t.type_id"
+              class="px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm"
+              :style="{ background: typeColor(t.type_id) }"
+            >{{ t.name }}</span>
           </div>
 
           <!-- 特性 & 道具 -->
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block text-[11px] font-bold text-slate-400 mb-1">特性</label>
-              <el-select v-model="form.defenderAbilityId" filterable placeholder="可选" clearable class="w-full" size="default">
-                <el-option v-for="a in filteredDefenderAbilities" :key="a.id" :label="a.name" :value="a.id" />
+              <el-select
+                v-model="form.defenderAbilityId"
+                filterable
+                placeholder="可选"
+                clearable
+                class="w-full"
+                size="default"
+              >
+                <el-option
+                  v-for="a in filteredDefenderAbilities"
+                  :key="a.id"
+                  :label="a.name"
+                  :value="a.id"
+                />
               </el-select>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-slate-400 mb-1">道具</label>
-              <el-select v-model="form.defenderItemId" filterable remote :remote-method="searchItems" placeholder="可选" clearable class="w-full" :loading="itemLoading" size="default">
-                <el-option v-for="i in itemOptions" :key="i.id" :label="i.name" :value="i.id" />
+              <el-select
+                v-model="form.defenderItemId"
+                filterable
+                remote
+                :remote-method="searchItems"
+                placeholder="可选"
+                clearable
+                class="w-full"
+                :loading="itemLoading"
+                size="default"
+              >
+                <el-option
+                  v-for="i in itemOptions"
+                  :key="i.id"
+                  :label="i.name"
+                  :value="i.id"
+                />
               </el-select>
             </div>
           </div>
@@ -153,27 +323,55 @@
           <div class="grid grid-cols-3 gap-2">
             <div>
               <label class="block text-[11px] font-bold text-slate-400 mb-1">防御阶级</label>
-              <el-select v-model="form.defenderDefenseBoost" class="w-full" size="default">
-                <el-option v-for="i in boostOptions" :key="i" :label="boostLabel(i)" :value="i" />
+              <el-select
+                v-model="form.defenderDefenseBoost"
+                class="w-full"
+                size="default"
+              >
+                <el-option
+                  v-for="i in boostOptions"
+                  :key="i"
+                  :label="boostLabel(i)"
+                  :value="i"
+                />
               </el-select>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-slate-400 mb-1">特防阶级</label>
-              <el-select v-model="form.defenderSpDefenseBoost" class="w-full" size="default">
-                <el-option v-for="i in boostOptions" :key="i" :label="boostLabel(i)" :value="i" />
+              <el-select
+                v-model="form.defenderSpDefenseBoost"
+                class="w-full"
+                size="default"
+              >
+                <el-option
+                  v-for="i in boostOptions"
+                  :key="i"
+                  :label="boostLabel(i)"
+                  :value="i"
+                />
               </el-select>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-slate-400 mb-1">HP%</label>
-              <el-input-number v-model="form.defenderHpPercent" :min="1" :max="100" class="w-full" size="default" />
+              <el-input-number
+                v-model="form.defenderHpPercent"
+                :min="1"
+                :max="100"
+                class="w-full"
+                size="default"
+              />
             </div>
           </div>
 
           <!-- 状态 -->
           <div class="flex flex-wrap gap-1.5">
-            <button v-for="s in defenderStatuses" :key="s.key" @click="form[s.key] = !form[s.key]"
+            <button
+              v-for="s in defenderStatuses"
+              :key="s.key"
               class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all"
-              :class="form[s.key] ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'">
+              :class="form[s.key] ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+              @click="form[s.key] = !form[s.key]"
+            >
               {{ s.label }}
             </button>
           </div>
@@ -190,52 +388,90 @@
       <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
         <div>
           <label class="block text-[10px] font-bold text-slate-400 mb-1">天气</label>
-          <el-select v-model="form.weather" placeholder="无" clearable size="small" class="w-full">
-            <el-option v-for="w in weathers" :key="w.v" :label="w.l" :value="w.v" />
+          <el-select
+            v-model="form.weather"
+            placeholder="无"
+            clearable
+            size="small"
+            class="w-full"
+          >
+            <el-option
+              v-for="w in weathers"
+              :key="w.v"
+              :label="w.l"
+              :value="w.v"
+            />
           </el-select>
         </div>
         <div>
           <label class="block text-[10px] font-bold text-slate-400 mb-1">场地</label>
-          <el-select v-model="form.terrain" placeholder="无" clearable size="small" class="w-full">
-            <el-option v-for="t in terrains" :key="t.v" :label="t.l" :value="t.v" />
+          <el-select
+            v-model="form.terrain"
+            placeholder="无"
+            clearable
+            size="small"
+            class="w-full"
+          >
+            <el-option
+              v-for="t in terrains"
+              :key="t.v"
+              :label="t.l"
+              :value="t.v"
+            />
           </el-select>
         </div>
         <div>
           <label class="block text-[10px] font-bold text-slate-400 mb-1">等级</label>
-          <el-input-number v-model="form.attackerLevel" :min="1" :max="100" size="small" class="w-full" />
+          <el-input-number
+            v-model="form.attackerLevel"
+            :min="1"
+            :max="100"
+            size="small"
+            class="w-full"
+          />
         </div>
         <div class="flex items-end">
-          <button @click="form.isCritical = !form.isCritical"
+          <button
             class="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-            :class="form.isCritical ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'">
+            :class="form.isCritical ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+            @click="form.isCritical = !form.isCritical"
+          >
             🎯 暴击
           </button>
         </div>
         <div class="flex items-end">
-          <button @click="form.isDoubleBattle = !form.isDoubleBattle"
+          <button
             class="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-            :class="form.isDoubleBattle ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'">
+            :class="form.isDoubleBattle ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+            @click="form.isDoubleBattle = !form.isDoubleBattle"
+          >
             👥 双打
           </button>
         </div>
         <div class="flex items-end">
-          <button @click="form.reflectActive = !form.reflectActive"
+          <button
             class="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-            :class="form.reflectActive ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'">
+            :class="form.reflectActive ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+            @click="form.reflectActive = !form.reflectActive"
+          >
             反射壁
           </button>
         </div>
         <div class="flex items-end">
-          <button @click="form.lightScreenActive = !form.lightScreenActive"
+          <button
             class="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-            :class="form.lightScreenActive ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'">
+            :class="form.lightScreenActive ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+            @click="form.lightScreenActive = !form.lightScreenActive"
+          >
             光墙
           </button>
         </div>
         <div class="flex items-end">
-          <button @click="form.auroraVeilActive = !form.auroraVeilActive"
+          <button
             class="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-            :class="form.auroraVeilActive ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'">
+            :class="form.auroraVeilActive ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+            @click="form.auroraVeilActive = !form.auroraVeilActive"
+          >
             极光幕
           </button>
         </div>
@@ -251,20 +487,44 @@
       </summary>
       <div class="px-4 pb-4 pt-1 grid gap-4 lg:grid-cols-2">
         <div class="rounded-xl bg-blue-50/50 border border-blue-100 p-3">
-          <div class="text-[11px] font-bold text-blue-500 mb-2">攻击方</div>
+          <div class="text-[11px] font-bold text-blue-500 mb-2">
+            攻击方
+          </div>
           <div class="grid grid-cols-3 gap-2">
-            <div v-for="s in [{k:'attackerAtkOv',l:'攻击'},{k:'attackerSpAOv',l:'特攻'},{k:'attackerSpeOv',l:'速度'}]" :key="s.k">
+            <div
+              v-for="s in [{k:'attackerAtkOv',l:'攻击'},{k:'attackerSpAOv',l:'特攻'},{k:'attackerSpeOv',l:'速度'}]"
+              :key="s.k"
+            >
               <label class="block text-[10px] text-slate-400 mb-0.5">{{ s.l }}</label>
-              <el-input-number v-model="form[s.k]" :min="0" :max="999" size="small" class="w-full" controls-position="right" />
+              <el-input-number
+                v-model="form[s.k]"
+                :min="0"
+                :max="999"
+                size="small"
+                class="w-full"
+                controls-position="right"
+              />
             </div>
           </div>
         </div>
         <div class="rounded-xl bg-rose-50/50 border border-rose-100 p-3">
-          <div class="text-[11px] font-bold text-rose-500 mb-2">防御方</div>
+          <div class="text-[11px] font-bold text-rose-500 mb-2">
+            防御方
+          </div>
           <div class="grid grid-cols-3 gap-2">
-            <div v-for="s in [{k:'defenderHpOv',l:'HP'},{k:'defenderDefOv',l:'防御'},{k:'defenderSpDOv',l:'特防'}]" :key="s.k">
+            <div
+              v-for="s in [{k:'defenderHpOv',l:'HP'},{k:'defenderDefOv',l:'防御'},{k:'defenderSpDOv',l:'特防'}]"
+              :key="s.k"
+            >
               <label class="block text-[10px] text-slate-400 mb-0.5">{{ s.l }}</label>
-              <el-input-number v-model="form[s.k]" :min="0" :max="999" size="small" class="w-full" controls-position="right" />
+              <el-input-number
+                v-model="form[s.k]"
+                :min="0"
+                :max="999"
+                size="small"
+                class="w-full"
+                controls-position="right"
+              />
             </div>
           </div>
         </div>
@@ -273,40 +533,82 @@
 
     <!-- 计算按钮 -->
     <div class="flex items-center justify-center gap-3">
-      <button @click="calculateDamage" :disabled="!canCalculate || calculating"
-        class="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-slate-300 disabled:to-slate-300 text-white font-bold text-sm shadow-lg shadow-blue-500/25 disabled:shadow-none transition-all flex items-center gap-2">
-        <span v-if="calculating" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+      <button
+        :disabled="!canCalculate || calculating"
+        class="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-slate-300 disabled:to-slate-300 text-white font-bold text-sm shadow-lg shadow-blue-500/25 disabled:shadow-none transition-all flex items-center gap-2"
+        @click="calculateDamage"
+      >
+        <span
+          v-if="calculating"
+          class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+        />
         {{ calculating ? '计算中...' : '计算伤害' }}
       </button>
     </div>
 
     <!-- 结果展示 -->
-    <div v-if="result" class="space-y-4">
+    <div
+      v-if="result"
+      class="space-y-4"
+    >
       <!-- 核心结果卡片 -->
       <div class="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
         <!-- 属性相性指示条 -->
-        <div class="h-1.5" :style="{ background: effectivenessGradient }" />
+        <div
+          class="h-1.5"
+          :style="{ background: effectivenessGradient }"
+        />
 
         <div class="p-5">
           <!-- 伤害数字 -->
           <div class="grid gap-4 sm:grid-cols-3">
             <!-- 最小伤害 -->
             <div class="text-center p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">最小伤害</div>
-              <div class="mt-1 text-3xl font-black text-slate-800 tabular-nums">{{ result.minDamage }}</div>
-              <div class="text-xs text-slate-400 mt-0.5">{{ minDamagePercent }}%</div>
+              <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
+                最小伤害
+              </div>
+              <div class="mt-1 text-3xl font-black text-slate-800 tabular-nums">
+                {{ result.minDamage }}
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5">
+                {{ minDamagePercent }}%
+              </div>
             </div>
             <!-- 平均伤害 -->
-            <div class="text-center p-4 rounded-xl border-2" :class="effectivenessBorderClass">
-              <div class="text-[10px] uppercase tracking-widest font-bold" :class="effectivenessTextClass">平均伤害</div>
-              <div class="mt-1 text-4xl font-black tabular-nums" :class="effectivenessTextClass">{{ formatNumber(result.avgDamage) }}</div>
-              <div class="text-xs mt-0.5 font-semibold" :class="effectivenessTextClass">{{ avgDamagePercent }}%</div>
+            <div
+              class="text-center p-4 rounded-xl border-2"
+              :class="effectivenessBorderClass"
+            >
+              <div
+                class="text-[10px] uppercase tracking-widest font-bold"
+                :class="effectivenessTextClass"
+              >
+                平均伤害
+              </div>
+              <div
+                class="mt-1 text-4xl font-black tabular-nums"
+                :class="effectivenessTextClass"
+              >
+                {{ formatNumber(result.avgDamage) }}
+              </div>
+              <div
+                class="text-xs mt-0.5 font-semibold"
+                :class="effectivenessTextClass"
+              >
+                {{ avgDamagePercent }}%
+              </div>
             </div>
             <!-- 最大伤害 -->
             <div class="text-center p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">最大伤害</div>
-              <div class="mt-1 text-3xl font-black text-slate-800 tabular-nums">{{ result.maxDamage }}</div>
-              <div class="text-xs text-slate-400 mt-0.5">{{ maxDamagePercent }}%</div>
+              <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
+                最大伤害
+              </div>
+              <div class="mt-1 text-3xl font-black text-slate-800 tabular-nums">
+                {{ result.maxDamage }}
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5">
+                {{ maxDamagePercent }}%
+              </div>
             </div>
           </div>
 
@@ -318,9 +620,15 @@
             </div>
             <div class="h-6 bg-slate-100 rounded-full overflow-hidden relative">
               <!-- 最大伤害区域 -->
-              <div class="absolute inset-y-0 left-0 bg-red-200/60 rounded-full transition-all" :style="{ width: maxDamagePercent + '%' }" />
+              <div
+                class="absolute inset-y-0 left-0 bg-red-200/60 rounded-full transition-all"
+                :style="{ width: maxDamagePercent + '%' }"
+              />
               <!-- 最小伤害区域 -->
-              <div class="absolute inset-y-0 left-0 bg-red-400 rounded-full transition-all" :style="{ width: minDamagePercent + '%' }" />
+              <div
+                class="absolute inset-y-0 left-0 bg-red-400 rounded-full transition-all"
+                :style="{ width: minDamagePercent + '%' }"
+              />
               <!-- 文字 -->
               <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-700">
                 {{ minDamagePercent }}% ~ {{ maxDamagePercent }}%
@@ -329,32 +637,58 @@
           </div>
 
           <!-- KO 判定 -->
-          <div v-if="result.koEstimate" class="mt-4">
+          <div
+            v-if="result.koEstimate"
+            class="mt-4"
+          >
             <!-- OHKO 概率大字 -->
             <div class="text-center mb-3">
-              <span v-if="ohkoChance >= 0.9999" class="inline-block px-5 py-2 rounded-xl bg-red-500 text-white text-base font-black shadow-lg shadow-red-500/30">
+              <span
+                v-if="ohkoChance >= 0.9999"
+                class="inline-block px-5 py-2 rounded-xl bg-red-500 text-white text-base font-black shadow-lg shadow-red-500/30"
+              >
                 💀 确定 OHKO
               </span>
-              <span v-else-if="ohkoChance > 0" class="inline-block px-5 py-2 rounded-xl text-base font-black shadow-lg"
-                :class="ohkoChance >= 0.5 ? 'bg-red-100 text-red-700 shadow-red-500/10' : 'bg-amber-100 text-amber-700 shadow-amber-500/10'">
+              <span
+                v-else-if="ohkoChance > 0"
+                class="inline-block px-5 py-2 rounded-xl text-base font-black shadow-lg"
+                :class="ohkoChance >= 0.5 ? 'bg-red-100 text-red-700 shadow-red-500/10' : 'bg-amber-100 text-amber-700 shadow-amber-500/10'"
+              >
                 OHKO {{ formatPercent(ohkoChance) }}
               </span>
-              <span v-else-if="isGuaranteed2HKO" class="inline-block px-5 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-base font-black shadow-lg shadow-emerald-500/10">
+              <span
+                v-else-if="isGuaranteed2HKO"
+                class="inline-block px-5 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-base font-black shadow-lg shadow-emerald-500/10"
+              >
                 ✅ 确定 2HKO
               </span>
             </div>
 
             <!-- 各回合 KO 概率条 -->
-            <div v-if="koChances.length > 0" class="space-y-1.5">
-              <div v-for="kc in koChances" :key="kc.label"
-                class="flex items-center gap-2 text-xs">
-                <span class="w-14 text-right font-bold" :class="kc.prob > 0 ? 'text-slate-700' : 'text-slate-300'">{{ kc.label }}</span>
+            <div
+              v-if="koChances.length > 0"
+              class="space-y-1.5"
+            >
+              <div
+                v-for="kc in koChances"
+                :key="kc.label"
+                class="flex items-center gap-2 text-xs"
+              >
+                <span
+                  class="w-14 text-right font-bold"
+                  :class="kc.prob > 0 ? 'text-slate-700' : 'text-slate-300'"
+                >{{ kc.label }}</span>
                 <div class="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-500"
+                  <div
+                    class="h-full rounded-full transition-all duration-500"
                     :class="kc.prob >= 0.999 ? 'bg-emerald-500' : kc.prob >= 0.5 ? 'bg-blue-500' : kc.prob > 0 ? 'bg-amber-400' : 'bg-transparent'"
-                    :style="{ width: (kc.prob * 100) + '%' }" />
+                    :style="{ width: (kc.prob * 100) + '%' }"
+                  />
                 </div>
-                <span class="w-12 text-right font-mono font-bold tabular-nums" :class="kc.prob > 0 ? 'text-slate-600' : 'text-slate-300'">
+                <span
+                  class="w-12 text-right font-mono font-bold tabular-nums"
+                  :class="kc.prob > 0 ? 'text-slate-600' : 'text-slate-300'"
+                >
                   {{ formatPercent(kc.prob) }}
                 </span>
               </div>
@@ -367,51 +701,88 @@
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <!-- 属性相性 -->
         <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm p-4">
-          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">属性相性</div>
+          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">
+            属性相性
+          </div>
           <div class="flex items-center gap-2">
-            <span class="text-2xl" :class="effectivenessEmoji">{{ effectivenessIcon }}</span>
+            <span
+              class="text-2xl"
+              :class="effectivenessEmoji"
+            >{{ effectivenessIcon }}</span>
             <div>
-              <div class="text-lg font-black" :class="effectivenessTextClass">{{ result.effectivenessDesc || '—' }}</div>
-              <div class="text-[11px] text-slate-400">倍率 {{ formatNumber(result.typeEffectiveness) }}x</div>
+              <div
+                class="text-lg font-black"
+                :class="effectivenessTextClass"
+              >
+                {{ result.effectivenessDesc || '—' }}
+              </div>
+              <div class="text-[11px] text-slate-400">
+                倍率 {{ formatNumber(result.typeEffectiveness) }}x
+              </div>
             </div>
           </div>
         </div>
 
         <!-- STAB -->
         <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm p-4">
-          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">本系加成</div>
-          <div class="text-lg font-black" :class="result.isStab ? 'text-emerald-600' : 'text-slate-400'">
+          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">
+            本系加成
+          </div>
+          <div
+            class="text-lg font-black"
+            :class="result.isStab ? 'text-emerald-600' : 'text-slate-400'"
+          >
             {{ result.isStab ? '✓ STAB' : '✗ 无' }}
           </div>
-          <div class="text-[11px] text-slate-400">{{ formatNumber(result.stabMultiplier) }}x</div>
+          <div class="text-[11px] text-slate-400">
+            {{ formatNumber(result.stabMultiplier) }}x
+          </div>
         </div>
 
         <!-- 使用能力 -->
         <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm p-4">
-          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">能力对比</div>
+          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">
+            能力对比
+          </div>
           <div class="text-sm font-bold text-slate-700">
             {{ result.usedAttackStat ?? '—' }} vs {{ result.usedDefenseStat ?? '—' }}
           </div>
-          <div class="text-[11px] text-slate-400">{{ result.usedAttackType === 'attack' ? '物攻 vs 物防' : '特攻 vs 特防' }}</div>
+          <div class="text-[11px] text-slate-400">
+            {{ result.usedAttackType === 'attack' ? '物攻 vs 物防' : '特攻 vs 特防' }}
+          </div>
         </div>
 
         <!-- 命中率 -->
         <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm p-4">
-          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">命中率</div>
-          <div class="text-lg font-black text-slate-700">{{ formatPercent(result.finalAccuracy) }}</div>
-          <div class="text-[11px] text-slate-400">基础 {{ result.baseAccuracy ?? '—' }}</div>
+          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">
+            命中率
+          </div>
+          <div class="text-lg font-black text-slate-700">
+            {{ formatPercent(result.finalAccuracy) }}
+          </div>
+          <div class="text-[11px] text-slate-400">
+            基础 {{ result.baseAccuracy ?? '—' }}
+          </div>
         </div>
       </div>
 
       <!-- 修正倍率详情 -->
       <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm p-4">
-        <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-3">修正倍率明细</div>
+        <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-3">
+          修正倍率明细
+        </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-          <div v-for="(v, k) in result.allMultipliers" :key="k"
+          <div
+            v-for="(v, k) in result.allMultipliers"
+            :key="k"
             class="flex flex-col items-center p-2.5 rounded-lg border transition-all"
-            :class="v !== 1 ? (v > 1 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200') : 'bg-slate-50 border-slate-100'">
+            :class="v !== 1 ? (v > 1 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200') : 'bg-slate-50 border-slate-100'"
+          >
             <span class="text-[10px] font-bold text-slate-400 uppercase">{{ k }}</span>
-            <span class="text-sm font-black tabular-nums mt-0.5" :class="v !== 1 ? (v > 1 ? 'text-emerald-700' : 'text-red-700') : 'text-slate-500'">
+            <span
+              class="text-sm font-black tabular-nums mt-0.5"
+              :class="v !== 1 ? (v > 1 ? 'text-emerald-700' : 'text-red-700') : 'text-slate-500'"
+            >
               {{ formatNumber(v) }}x
             </span>
           </div>
@@ -419,46 +790,80 @@
       </div>
 
       <!-- 特性/道具效果说明 -->
-      <div v-if="hasEffects" class="space-y-1.5">
-        <div v-if="result.attackerAbilityEffect" class="rounded-lg bg-blue-50 border border-blue-100 px-4 py-2.5 text-xs text-blue-700 flex items-start gap-2">
+      <div
+        v-if="hasEffects"
+        class="space-y-1.5"
+      >
+        <div
+          v-if="result.attackerAbilityEffect"
+          class="rounded-lg bg-blue-50 border border-blue-100 px-4 py-2.5 text-xs text-blue-700 flex items-start gap-2"
+        >
           <span class="font-bold shrink-0">攻击方特性：</span>{{ result.attackerAbilityEffect }}
         </div>
-        <div v-if="result.defenderAbilityEffect" class="rounded-lg bg-rose-50 border border-rose-100 px-4 py-2.5 text-xs text-rose-700 flex items-start gap-2">
+        <div
+          v-if="result.defenderAbilityEffect"
+          class="rounded-lg bg-rose-50 border border-rose-100 px-4 py-2.5 text-xs text-rose-700 flex items-start gap-2"
+        >
           <span class="font-bold shrink-0">防御方特性：</span>{{ result.defenderAbilityEffect }}
         </div>
-        <div v-if="result.attackerItemEffect" class="rounded-lg bg-amber-50 border border-amber-100 px-4 py-2.5 text-xs text-amber-700 flex items-start gap-2">
+        <div
+          v-if="result.attackerItemEffect"
+          class="rounded-lg bg-amber-50 border border-amber-100 px-4 py-2.5 text-xs text-amber-700 flex items-start gap-2"
+        >
           <span class="font-bold shrink-0">攻击方道具：</span>{{ result.attackerItemEffect }}
         </div>
-        <div v-if="result.defenderItemEffect" class="rounded-lg bg-teal-50 border border-teal-100 px-4 py-2.5 text-xs text-teal-700 flex items-start gap-2">
+        <div
+          v-if="result.defenderItemEffect"
+          class="rounded-lg bg-teal-50 border border-teal-100 px-4 py-2.5 text-xs text-teal-700 flex items-start gap-2"
+        >
           <span class="font-bold shrink-0">防御方道具：</span>{{ result.defenderItemEffect }}
         </div>
       </div>
 
       <!-- 计算步骤 -->
-      <details v-if="result.calculationSteps?.length" class="rounded-xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
+      <details
+        v-if="result.calculationSteps?.length"
+        class="rounded-xl bg-white border border-slate-200/80 shadow-sm overflow-hidden"
+      >
         <summary class="px-4 py-3 cursor-pointer flex items-center gap-2 hover:bg-slate-50 transition">
           <span class="text-xs">📝</span>
           <span class="text-xs font-bold text-slate-600">计算步骤</span>
           <span class="ml-auto text-xs text-slate-400">▼</span>
         </summary>
         <div class="px-4 pb-4 space-y-1 max-h-64 overflow-y-auto">
-          <div v-for="(step, i) in result.calculationSteps" :key="i"
-            class="flex items-start gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs">
+          <div
+            v-for="(step, i) in result.calculationSteps"
+            :key="i"
+            class="flex items-start gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs"
+          >
             <span class="text-slate-300 font-mono shrink-0">{{ i + 1 }}</span>
             <div class="flex-1">
               <span class="font-bold text-slate-700">{{ step.name }}</span>
-              <span v-if="step.description" class="text-slate-400 ml-2">{{ step.description }}</span>
+              <span
+                v-if="step.description"
+                class="text-slate-400 ml-2"
+              >{{ step.description }}</span>
             </div>
-            <span v-if="step.value" class="font-mono font-bold text-slate-600 shrink-0">{{ formatNumber(step.value) }}</span>
+            <span
+              v-if="step.value"
+              class="font-mono font-bold text-slate-600 shrink-0"
+            >{{ formatNumber(step.value) }}</span>
           </div>
         </div>
       </details>
     </div>
 
     <!-- 空状态 -->
-    <div v-else class="rounded-2xl bg-white border border-slate-200/80 shadow-sm p-12 text-center">
-      <div class="text-4xl mb-3">⚔️</div>
-      <p class="text-sm text-slate-400">选择攻击方、招式和防御方后<br>点击「计算伤害」查看结果</p>
+    <div
+      v-else
+      class="rounded-2xl bg-white border border-slate-200/80 shadow-sm p-12 text-center"
+    >
+      <div class="text-4xl mb-3">
+        ⚔️
+      </div>
+      <p class="text-sm text-slate-400">
+        选择攻击方、招式和防御方后<br>点击「计算伤害」查看结果
+      </p>
     </div>
   </div>
 </template>

@@ -1,13 +1,12 @@
 package com.lio9.battle.engine;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lio9.battle.service.SkillService;
-import com.lio9.pokedex.mapper.TypeEfficacyMapper;
-import com.lio9.battle.effect.EffectRegistry;
 import com.lio9.battle.engine.event.BattleEvent;
 import com.lio9.battle.engine.event.BattleEventBus;
 import com.lio9.battle.engine.event.BattleEventType;
 import com.lio9.battle.engine.event.EventRegistryBridge;
+import com.lio9.battle.service.SkillService;
+import com.lio9.pokedex.mapper.TypeEfficacyMapper;
 import com.lio9.pokedex.util.DamageCalculatorUtil;
 import org.springframework.stereotype.Component;
 
@@ -17,8 +16,8 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * 对战引擎。

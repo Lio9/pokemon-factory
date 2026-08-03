@@ -15,9 +15,15 @@
         >
           <div :class="viewMode === 'grid' ? 'aspect-square skeleton-pulse' : 'w-20 h-20 rounded-xl skeleton-pulse flex-shrink-0'" />
           <div :class="viewMode === 'list' ? 'flex-1' : 'p-4'">
-            <div class="h-5 mb-2 rounded-lg skeleton-pulse" :class="viewMode === 'list' ? 'w-32' : ''" />
+            <div
+              class="h-5 mb-2 rounded-lg skeleton-pulse"
+              :class="viewMode === 'list' ? 'w-32' : ''"
+            />
             <div class="h-3 w-3/4 rounded-lg skeleton-pulse" />
-            <div v-if="viewMode === 'grid'" class="flex gap-2 mt-3">
+            <div
+              v-if="viewMode === 'grid'"
+              class="flex gap-2 mt-3"
+            >
               <div class="h-5 w-14 rounded-full skeleton-pulse" />
               <div class="h-5 w-14 rounded-full skeleton-pulse" />
             </div>
@@ -103,8 +109,14 @@
               <h3 class="font-extrabold text-gray-900 text-lg truncate group-hover:text-red-600 transition-colors">
                 {{ pokemon.name }}
               </h3>
-              <span v-if="pokemon.isLegendary" class="text-yellow-500">★</span>
-              <span v-if="pokemon.isMythical" class="text-purple-500">◆</span>
+              <span
+                v-if="pokemon.isLegendary"
+                class="text-yellow-500"
+              >★</span>
+              <span
+                v-if="pokemon.isMythical"
+                class="text-purple-500"
+              >◆</span>
             </div>
             <p class="text-gray-400 text-sm truncate font-medium">
               {{ pokemon.genus }}
@@ -129,12 +141,20 @@
             class="hidden sm:flex gap-3 flex-shrink-0"
           >
             <div class="text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">攻击</div>
-              <div class="text-sm font-extrabold text-slate-700">{{ pokemon.formStats.attack }}</div>
+              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                攻击
+              </div>
+              <div class="text-sm font-extrabold text-slate-700">
+                {{ pokemon.formStats.attack }}
+              </div>
             </div>
             <div class="text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">速度</div>
-              <div class="text-sm font-extrabold text-slate-700">{{ pokemon.formStats.speed }}</div>
+              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                速度
+              </div>
+              <div class="text-sm font-extrabold text-slate-700">
+                {{ pokemon.formStats.speed }}
+              </div>
             </div>
           </div>
         </router-link>
@@ -163,10 +183,34 @@
           class="text-center py-4"
         >
           <div class="flex items-center justify-center gap-2 text-slate-300">
-            <svg viewBox="0 0 100 100" class="w-6 h-6 opacity-40">
-              <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="3"/>
-              <line x1="4" y1="50" x2="96" y2="50" stroke="currentColor" stroke-width="3"/>
-              <circle cx="50" cy="50" r="10" fill="none" stroke="currentColor" stroke-width="3"/>
+            <svg
+              viewBox="0 0 100 100"
+              class="w-6 h-6 opacity-40"
+            >
+              <circle
+                cx="50"
+                cy="50"
+                r="46"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+              />
+              <line
+                x1="4"
+                y1="50"
+                x2="96"
+                y2="50"
+                stroke="currentColor"
+                stroke-width="3"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="10"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+              />
             </svg>
             <span class="text-sm font-bold">已加载全部 {{ total }} 只宝可梦</span>
           </div>
@@ -204,11 +248,41 @@
       class="text-center py-16"
     >
       <div class="mb-6">
-        <svg viewBox="0 0 200 200" class="w-24 h-24 mx-auto opacity-20">
-          <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" stroke-width="6"/>
-          <line x1="10" y1="100" x2="190" y2="100" stroke="currentColor" stroke-width="6"/>
-          <circle cx="100" cy="100" r="22" fill="none" stroke="currentColor" stroke-width="6"/>
-          <circle cx="100" cy="100" r="10" fill="currentColor" opacity="0.3"/>
+        <svg
+          viewBox="0 0 200 200"
+          class="w-24 h-24 mx-auto opacity-20"
+        >
+          <circle
+            cx="100"
+            cy="100"
+            r="90"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="6"
+          />
+          <line
+            x1="10"
+            y1="100"
+            x2="190"
+            y2="100"
+            stroke="currentColor"
+            stroke-width="6"
+          />
+          <circle
+            cx="100"
+            cy="100"
+            r="22"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="6"
+          />
+          <circle
+            cx="100"
+            cy="100"
+            r="10"
+            fill="currentColor"
+            opacity="0.3"
+          />
         </svg>
       </div>
       <p class="text-slate-400 text-lg font-bold mb-2">

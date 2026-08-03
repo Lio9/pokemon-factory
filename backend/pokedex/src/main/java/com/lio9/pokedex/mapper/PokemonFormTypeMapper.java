@@ -4,7 +4,6 @@ package com.lio9.pokedex.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lio9.pokedex.model.PokemonFormType;
-import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
@@ -14,7 +13,6 @@ import java.util.Map;
 /**
  * 形态-属性关联Mapper
  */
-@Mapper
 public interface PokemonFormTypeMapper extends BaseMapper<PokemonFormType> {
     
     /**

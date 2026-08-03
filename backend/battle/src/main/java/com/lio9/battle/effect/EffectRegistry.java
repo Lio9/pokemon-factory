@@ -1,7 +1,20 @@
 package com.lio9.battle.effect;
 
-import static com.lio9.battle.effect.MoveUtils.*;
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import static com.lio9.battle.effect.MoveUtils.hasEffectChance;
+import static com.lio9.battle.effect.MoveUtils.hasMoveFlag;
+import static com.lio9.battle.effect.MoveUtils.hasStatus;
+import static com.lio9.battle.effect.MoveUtils.intVal;
+import static com.lio9.battle.effect.MoveUtils.isRecoilMove;
+import static com.lio9.battle.effect.MoveUtils.isSlicingMove;
+import static com.lio9.battle.effect.MoveUtils.isSoundMove;
+import static com.lio9.battle.effect.MoveUtils.isWindMove;
+import static com.lio9.battle.effect.MoveUtils.moveCategory;
+import static com.lio9.battle.effect.MoveUtils.moveName;
+import static com.lio9.battle.effect.MoveUtils.strVal;
 
 /**
  * 特性/道具效果注册中心 + 引擎 dispatch 入口。
@@ -2270,8 +2283,8 @@ public final class EffectRegistry {
         // 免疫：中毒免疫
         regAbility(new Ab() {
             public String id() { return "immunity"; }
-            public boolean onStatusImmunity(StatusContext ctx) { 
-                return "poison".equals(ctx.condition) || "toxic".equals(ctx.condition); 
+            public boolean onStatusImmunity(StatusContext ctx) {
+                return "poison".equals(ctx.condition) || "toxic".equals(ctx.condition);
             }
         });
 

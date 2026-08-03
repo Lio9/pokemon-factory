@@ -1,12 +1,11 @@
 package com.lio9.pokedex.service.impl;
 
 
-
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.lio9.pokedex.model.Move;
 import com.lio9.pokedex.mapper.MoveMapper;
+import com.lio9.pokedex.model.Move;
 import com.lio9.pokedex.service.MoveService;
 import com.lio9.pokedex.vo.MoveQueryVO;
 import com.lio9.pokedex.vo.MoveVO;
@@ -26,13 +25,13 @@ public class MoveServiceImpl extends ServiceImpl<MoveMapper, Move> implements Mo
     @Override
     public Page<Move> getMovePage(Page<Move> page, MoveQueryVO queryVO) {
         QueryWrapper<Move> wrapper = new QueryWrapper<>();
-        
+
         if (queryVO != null) {
             if (queryVO.getName() != null && !queryVO.getName().isEmpty()) {
                 wrapper.and(w -> w.like("name", queryVO.getName()).or().like("name_en", queryVO.getName()));
             }
         }
-        
+
         wrapper.orderByAsc("id");
         return page(page, wrapper);
     }
@@ -40,22 +39,22 @@ public class MoveServiceImpl extends ServiceImpl<MoveMapper, Move> implements Mo
     @Override
     public List<Move> searchMoves(String keyword, Page<Move> page) {
         QueryWrapper<Move> wrapper = new QueryWrapper<>();
-        
+
         if (keyword != null && !keyword.isEmpty()) {
             wrapper.and(w -> w.like("name", keyword).or().like("name_en", keyword));
         }
-        
+
         wrapper.orderByAsc("id");
         return list(wrapper);
     }
-    
+
     @Override
     public MoveVO getMoveDetail(Integer moveId) {
         Map<String, Object> moveDetail = baseMapper.selectMoveDetailById(moveId);
         if (moveDetail == null) {
             return null;
         }
-        
+
         MoveVO vo = new MoveVO();
         vo.setId((Integer) moveDetail.get("id"));
         vo.setName((String) moveDetail.get("name"));
@@ -68,24 +67,24 @@ public class MoveServiceImpl extends ServiceImpl<MoveMapper, Move> implements Mo
         vo.setPp((Integer) moveDetail.get("pp"));
         vo.setPriority((Integer) moveDetail.get("priority"));
         vo.setDescription((String) moveDetail.get("description"));
-        
+
         determineMoveProperties(vo, moveId);
-        
+
         return vo;
     }
-    
+
     @Override
     public List<MoveVO> getMoveDetailsByIds(List<Integer> moveIds) {
         if (moveIds == null || moveIds.isEmpty()) {
             return new ArrayList<>();
         }
-        
+
         return moveIds.stream()
             .map(this::getMoveDetail)
             .filter(detail -> detail != null)
             .collect(Collectors.toList());
     }
-    
+
     /**
      * 判断技能的属性（是否接触、连续攻击等）
      */
@@ -95,7 +94,7 @@ public class MoveServiceImpl extends ServiceImpl<MoveMapper, Move> implements Mo
             31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
             57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100
         ));
-        
+
         java.util.Map<Integer, Integer> multiHitMoves = new java.util.HashMap<>();
         multiHitMoves.put(540, 5);
         multiHitMoves.put(179, 5);
@@ -118,7 +117,7 @@ public class MoveServiceImpl extends ServiceImpl<MoveMapper, Move> implements Mo
         multiHitMoves.put(554, 5);
         multiHitMoves.put(555, -2);
         multiHitMoves.put(556, -3);
-        
+
         java.util.Map<Integer, Integer> recoilMoves = new java.util.HashMap<>();
         recoilMoves.put(1, 33);
         recoilMoves.put(7, 33);
@@ -130,9 +129,9 @@ public class MoveServiceImpl extends ServiceImpl<MoveMapper, Move> implements Mo
         recoilMoves.put(16, -1);
         recoilMoves.put(17, -1);
         recoilMoves.put(18, -1);
-        
+
         vo.setIsContact(contactMoves.contains(moveId));
-        
+
         if (multiHitMoves.containsKey(moveId)) {
             Integer hits = multiHitMoves.get(moveId);
             if (hits != null && hits > 0) {
@@ -141,7 +140,7 @@ public class MoveServiceImpl extends ServiceImpl<MoveMapper, Move> implements Mo
                 vo.setHits(5);
             }
         }
-        
+
         if (recoilMoves.containsKey(moveId)) {
             Integer recoil = recoilMoves.get(moveId);
             if (recoil != null && recoil > 0) {
@@ -150,7 +149,7 @@ public class MoveServiceImpl extends ServiceImpl<MoveMapper, Move> implements Mo
                 vo.setRecoil(50);
             }
         }
-        
+
         if (vo.getHits() != null && vo.getHits() > 1) {
             vo.setMoveCategory("连续攻击");
         } else if (vo.getRecoil() != null && vo.getRecoil() > 0) {
