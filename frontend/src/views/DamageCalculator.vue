@@ -1,29 +1,67 @@
 <template>
   <div class="max-w-7xl mx-auto space-y-5 pb-8">
     <!-- 顶部标题栏 -->
-    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 sm:p-6 shadow-xl">
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(99,102,241,0.15),transparent_50%)]" />
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(236,72,153,0.1),transparent_50%)]" />
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-poke-red via-red-600 to-orange-500 p-5 sm:p-7 shadow-[0_20px_60px_-30px_rgba(220,38,38,0.55)]">
+      <div class="absolute inset-0 opacity-10">
+        <svg
+          viewBox="0 0 400 400"
+          class="absolute -right-20 -top-24 h-96 w-96"
+        >
+          <circle
+            cx="200"
+            cy="200"
+            r="180"
+            fill="none"
+            stroke="#fff"
+            stroke-width="8"
+          />
+          <line
+            x1="20"
+            y1="200"
+            x2="380"
+            y2="200"
+            stroke="#fff"
+            stroke-width="8"
+          />
+          <circle
+            cx="200"
+            cy="200"
+            r="40"
+            fill="none"
+            stroke="#fff"
+            stroke-width="8"
+          />
+          <circle
+            cx="200"
+            cy="200"
+            r="20"
+            fill="#fff"
+          />
+        </svg>
+      </div>
       <div class="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <div class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white/60">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <div class="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
             Damage Calculator
           </div>
-          <h1 class="mt-2 text-xl sm:text-2xl font-black text-white tracking-tight">
+          <h1 class="mt-2 text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow">
             伤害计算器
           </h1>
+          <p class="mt-1 text-xs text-white/80 sm:text-sm">
+            模拟招式伤害，包含属性克制、天气、场地、能力阶级与 KO 概率估算
+          </p>
         </div>
         <div class="flex items-center gap-2">
           <button
-            class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 text-xs font-semibold transition"
+            class="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition backdrop-blur-sm"
             @click="resetCalculator"
           >
             重置
           </button>
           <button
             :disabled="!form.attackerPokemonId || !form.defenderPokemonId"
-            class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white/80 text-xs font-semibold transition"
+            class="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 disabled:opacity-40 text-white text-xs font-semibold transition backdrop-blur-sm"
             @click="swapSides"
           >
             ⇄ 交换
@@ -535,7 +573,7 @@
     <div class="flex items-center justify-center gap-3">
       <button
         :disabled="!canCalculate || calculating"
-        class="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-slate-300 disabled:to-slate-300 text-white font-bold text-sm shadow-lg shadow-blue-500/25 disabled:shadow-none transition-all flex items-center gap-2"
+        class="btn-poke !px-10 !py-3.5 !text-base disabled:!opacity-50 !rounded-2xl !border-2 !border-red-700"
         @click="calculateDamage"
       >
         <span
@@ -869,7 +907,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, onMounted } from 'vue'
+import { computed, reactive, ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../services/api'
 
@@ -923,6 +961,31 @@ const DEFAULT_FORM = () => ({
 })
 
 const form = reactive(DEFAULT_FORM())
+
+// 表单状态持久化：刷新页面后恢复上次的配置
+const CALC_STORAGE_KEY = 'pokemon-factory-calc-form'
+function restoreForm() {
+  try {
+    const saved = localStorage.getItem(CALC_STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      Object.assign(form, DEFAULT_FORM(), parsed)
+    }
+  } catch { /* ignore */ }
+}
+restoreForm()
+function persistForm() {
+  try {
+    localStorage.setItem(CALC_STORAGE_KEY, JSON.stringify(form))
+  } catch { /* ignore */ }
+}
+// 防抖持久化
+let persistTimer = null
+watch(form, () => {
+  if (persistTimer) clearTimeout(persistTimer)
+  persistTimer = setTimeout(persistForm, 500)
+}, { deep: true })
+
 const pokemonOptions = ref([])
 const attackerMoves = ref([])
 const abilityOptions = ref([])
@@ -1156,18 +1219,24 @@ function resetCalculator() {
 
 onMounted(async () => {
   await searchPokemonOptions()
-  if (pokemonOptions.value[0]) {
+  // 若已恢复持久化选择，则按选择加载详情；否则使用默认前两只
+  if (form.attackerPokemonId && pokemonOptions.value.some(p => p.id === form.attackerPokemonId)) {
+    await fetchPokemonDetail(form.attackerPokemonId, true)
+    await loadAttackerMoves()
+  } else if (pokemonOptions.value[0]) {
     form.attackerPokemonId = pokemonOptions.value[0].id
     await fetchPokemonDetail(pokemonOptions.value[0].id, true)
+    await loadAttackerMoves()
   }
-  if (pokemonOptions.value[1]) {
+  if (form.defenderPokemonId && pokemonOptions.value.some(p => p.id === form.defenderPokemonId)) {
+    fetchPokemonDetail(form.defenderPokemonId, false)
+  } else if (pokemonOptions.value[1]) {
     form.defenderPokemonId = pokemonOptions.value[1].id
     fetchPokemonDetail(pokemonOptions.value[1].id, false)
   } else if (pokemonOptions.value[0]) {
     form.defenderPokemonId = pokemonOptions.value[0].id
     fetchPokemonDetail(pokemonOptions.value[0].id, false)
   }
-  await loadAttackerMoves()
   searchAbilities()
   searchItems()
 })

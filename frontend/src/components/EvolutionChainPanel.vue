@@ -1,10 +1,10 @@
 <template>
   <div
     v-if="evolutionChain && evolutionChain.length"
-    class="bg-white rounded-3xl shadow-xl p-8 mb-6 border border-gray-100"
+    class="bg-white rounded-3xl shadow-poke-card p-8 mb-6 border-3 border-slate-200/80"
   >
-    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-      <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
+    <h2 class="text-xl font-extrabold text-slate-800 mb-6 flex items-center gap-3">
+      <div class="w-9 h-9 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-poke border-2 border-purple-400">
         <GitBranch class="w-5 h-5 text-white" />
       </div>
       进化链

@@ -1,5 +1,27 @@
 <template>
   <div class="ability-list">
+    <!-- 页面头部 -->
+    <CatalogPageHeader
+      icon="✨"
+      :title="tr('特性图鉴', 'Ability Catalog')"
+      :subtitle="tr('浏览全部宝可梦特性，按代数与类型筛选，查看特性效果详情。', 'Browse every Pokemon ability, filter by generation, and inspect effect details.')"
+      :badge="tr('特性列表', 'Abilities')"
+      color="#705898"
+      color-light="#A78BFA"
+      class="mb-6"
+    >
+      <template #actions>
+        <div class="rounded-2xl bg-white/15 px-4 py-2 text-center backdrop-blur-sm">
+          <div class="text-xl font-black text-white">
+            {{ total }}
+          </div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-white/70">
+            {{ tr('特性总数', 'Total abilities') }}
+          </div>
+        </div>
+      </template>
+    </CatalogPageHeader>
+
     <!-- 搜索和筛选 -->
     <div class="rounded-2xl border-3 border-slate-200/80 p-5 shadow-poke-card bg-white mb-6">
       <div class="flex flex-col gap-4">
@@ -328,6 +350,7 @@ import { abilityApi } from '../services/api.js'
 import { useLocale } from '../composables/useLocale'
 import { useCatalogList } from '../composables/useCatalogList'
 import CatalogSkeleton from '../components/CatalogSkeleton.vue'
+import CatalogPageHeader from '../components/CatalogPageHeader.vue'
 import LoadMoreTrigger from '../components/LoadMoreTrigger.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FavoriteButton from '../components/FavoriteButton.vue'

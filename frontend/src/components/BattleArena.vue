@@ -300,6 +300,7 @@
           v-for="(round, roundIndex) in summary.rounds"
           :key="`${round.round}-${roundIndex}`"
           class="rounded-2xl bg-white p-4 shadow-sm"
+          :class="roundIndex === summary.rounds.length - 1 && summary.status !== 'completed' ? 'round-current border-2' : ''"
         >
           <div class="flex items-center justify-between gap-3">
             <div class="font-semibold text-slate-900">
@@ -309,6 +310,59 @@
               {{ tr('{count} 条事件', '{count} events', { count: (round.events || []).length }) }}
             </span>
           </div>
+
+          <!-- 行动摘要（Showdown 风格：出手顺序 + 伤害） -->
+          <div
+            v-if="round.actions?.length"
+            class="mt-3 space-y-1"
+          >
+            <div
+              v-for="(action, ai) in round.actions"
+              :key="`action-${ai}`"
+              class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs"
+              :class="action.side === 'player' ? 'bg-blue-50/60' : 'bg-rose-50/60'"
+            >
+              <span
+                class="h-1.5 w-1.5 shrink-0 rounded-full"
+                :class="action.side === 'player' ? 'bg-blue-500' : 'bg-rose-500'"
+              />
+              <span
+                class="shrink-0 font-bold"
+                :class="action.side === 'player' ? 'text-blue-700' : 'text-rose-700'"
+              >{{ action.side === 'player' ? tr('我方', 'You') : tr('对手', 'Foe') }}</span>
+              <span class="font-semibold text-slate-800">{{ action.actor }}</span>
+              <template v-if="action.actionType === 'switch'">
+                <span class="text-slate-400">→</span>
+                <span class="font-semibold text-slate-700">{{ action.switchTo }}</span>
+              </template>
+              <template v-else-if="action.move">
+                <span class="text-slate-400">{{ tr('使用', 'used') }}</span>
+                <span class="font-semibold text-slate-800">{{ action.move }}</span>
+                <template v-if="action.target && action.targetFieldSlot != null">
+                  <span class="text-slate-400">→</span>
+                  <span class="text-slate-600">{{ action.target }}</span>
+                </template>
+                <span
+                  v-if="action.damage > 0"
+                  class="ml-auto font-bold tabular-nums"
+                  :class="action.critical ? 'text-amber-600' : 'text-rose-600'"
+                >-{{ action.damage }}{{ action.critical ? ' 💥' : '' }}</span>
+                <span
+                  v-else-if="action.result === 'failed' || action.result === 'miss'"
+                  class="ml-auto font-semibold text-slate-400"
+                >{{ action.result === 'miss' ? tr('落空', 'Miss') : tr('失败', 'Failed') }}</span>
+                <span
+                  v-else-if="action.damage === 0 && action.result === 'hit'"
+                  class="ml-auto font-semibold text-slate-400"
+                >0</span>
+              </template>
+              <span
+                v-if="action.hitCount > 1"
+                class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500"
+              >×{{ action.hitCount }}</span>
+            </div>
+          </div>
+
           <div class="mt-2 space-y-2">
             <div
               v-for="event in round.events || []"
@@ -561,6 +615,33 @@ const fieldEffectChips = computed(() => {
 
 .sprite-wrap img {
   image-rendering: pixelated;
+}
+
+/* 精灵图入场动画 */
+.sprite-wrap img {
+  animation: sprite-enter 0.4s ease-out;
+}
+
+@keyframes sprite-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* HP 数字变化闪烁 */
+.showdown-hp-num {
+  transition: color 0.3s;
+}
+
+/* 当前回合高亮 */
+.round-current {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 8px 24px -8px rgba(99, 102, 241, 0.35);
 }
 
 /* HP 条（Showdown 风格：白底、色块、分段） */

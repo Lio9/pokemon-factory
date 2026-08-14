@@ -1,5 +1,27 @@
 <template>
   <div class="move-list">
+    <!-- 页面头部 -->
+    <CatalogPageHeader
+      icon="🔥"
+      :title="tr('技能图鉴', 'Move Catalog')"
+      :subtitle="tr('按属性、分类、威力、命中与 PP 检索全部招式数据。', 'Search every move by type, category, power, accuracy, and PP.')"
+      :badge="tr('招式列表', 'Moves')"
+      color="#F08030"
+      color-light="#FDBA74"
+      class="mb-6"
+    >
+      <template #actions>
+        <div class="rounded-2xl bg-white/15 px-4 py-2 text-center backdrop-blur-sm">
+          <div class="text-xl font-black text-white">
+            {{ total }}
+          </div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-white/70">
+            {{ tr('招式总数', 'Total moves') }}
+          </div>
+        </div>
+      </template>
+    </CatalogPageHeader>
+
     <!-- 搜索和筛选 -->
     <div class="rounded-2xl border-3 border-slate-200/80 p-5 shadow-poke-card bg-white mb-6">
       <div class="flex flex-col gap-4">
@@ -422,6 +444,7 @@ import { dataCache } from '../services/cache.js'
 import { useLocale } from '../composables/useLocale'
 import { useCatalogList } from '../composables/useCatalogList'
 import CatalogSkeleton from '../components/CatalogSkeleton.vue'
+import CatalogPageHeader from '../components/CatalogPageHeader.vue'
 import LoadMoreTrigger from '../components/LoadMoreTrigger.vue'
 import EmptyState from '../components/EmptyState.vue'
 import FavoriteButton from '../components/FavoriteButton.vue'

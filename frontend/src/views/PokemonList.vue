@@ -3,6 +3,28 @@
     ref="listContainer"
     class="pokemon-list"
   >
+    <!-- 页面头部 -->
+    <CatalogPageHeader
+      icon="📖"
+      :title="tr('宝可梦图鉴', 'Pokemon Dex')"
+      :subtitle="tr('浏览全部宝可梦，按属性、世代与传说分类检索，收藏心仪的宝可梦。', 'Browse every Pokemon, filter by type, generation, and rarity, and favorite your picks.')"
+      :badge="tr('全国图鉴', 'National Dex')"
+      color="#DC2626"
+      color-light="#F87171"
+      class="mb-6"
+    >
+      <template #actions>
+        <div class="rounded-2xl bg-white/15 px-4 py-2 text-center backdrop-blur-sm">
+          <div class="text-xl font-black text-white">
+            {{ allRecords.length }}
+          </div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-white/70">
+            {{ tr('宝可梦总数', 'Total Pokemon') }}
+          </div>
+        </div>
+      </template>
+    </CatalogPageHeader>
+
     <PokemonSearchFilters
       :search-keyword="searchKeyword"
       :selected-type="selectedType"
@@ -51,6 +73,7 @@ import { registerShortcuts } from '../services/keyboard'
 import { perfMonitor } from '../services/performance'
 import PokemonSearchFilters from '../components/PokemonSearchFilters.vue'
 import PokemonCardGrid from '../components/PokemonCardGrid.vue'
+import CatalogPageHeader from '../components/CatalogPageHeader.vue'
 
 const listContainer = ref(null)
 const cardGridRef = ref(null)

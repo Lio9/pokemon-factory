@@ -1,5 +1,27 @@
 <template>
   <div class="item-list">
+    <!-- 页面头部 -->
+    <CatalogPageHeader
+      icon="🎒"
+      :title="tr('道具图鉴', 'Item Catalog')"
+      :subtitle="tr('浏览全部对战道具，按分类筛选，查看效果描述与持有物信息。', 'Browse every battle item, filter by category, and inspect effects and held-item info.')"
+      :badge="tr('物品列表', 'Items')"
+      color="#E0C068"
+      color-light="#FDE68A"
+      class="mb-6"
+    >
+      <template #actions>
+        <div class="rounded-2xl bg-white/15 px-4 py-2 text-center backdrop-blur-sm">
+          <div class="text-xl font-black text-white">
+            {{ total }}
+          </div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-white/70">
+            {{ tr('道具总数', 'Total items') }}
+          </div>
+        </div>
+      </template>
+    </CatalogPageHeader>
+
     <!-- 搜索栏 -->
     <div class="rounded-2xl border-3 border-slate-200/80 p-5 shadow-poke-card bg-white mb-6">
       <div class="flex flex-col sm:flex-row gap-4">
@@ -170,6 +192,7 @@ import { itemApi, sprites } from '../services/api.js'
 import { useLocale } from '../composables/useLocale'
 import { useCatalogList } from '../composables/useCatalogList'
 import CatalogSkeleton from '../components/CatalogSkeleton.vue'
+import CatalogPageHeader from '../components/CatalogPageHeader.vue'
 import LoadMoreTrigger from '../components/LoadMoreTrigger.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ItemDetailDialog from '../components/ItemDetailDialog.vue'

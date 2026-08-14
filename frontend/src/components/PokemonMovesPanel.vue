@@ -1,11 +1,11 @@
 <template>
-  <div class="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-      <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl flex items-center justify-center">
+  <div class="bg-white rounded-3xl shadow-poke-card p-8 mb-6 border-3 border-slate-200/80">
+    <h2 class="text-xl font-extrabold text-slate-800 mb-6 flex items-center gap-3">
+      <div class="w-9 h-9 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-poke border-2 border-red-400">
         <Zap class="w-5 h-5 text-white" />
       </div>
       可学技能
-      <span class="text-lg font-normal text-gray-500 ml-2">({{ moves.length }} 个)</span>
+      <span class="text-lg font-normal text-slate-400 ml-2">({{ moves.length }} 个)</span>
     </h2>
 
     <!-- 筛选器 -->

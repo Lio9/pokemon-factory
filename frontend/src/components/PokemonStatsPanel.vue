@@ -5,7 +5,7 @@
   >
     <h2 class="text-xl font-extrabold text-slate-800 mb-6 flex items-center gap-3">
       <div class="w-9 h-9 bg-gradient-to-br from-poke-red to-red-600 rounded-xl flex items-center justify-center shadow-poke border-2 border-red-400">
-        <BarChart3 class="w-4.5 h-4.5 text-white" />
+        <BarChart3 class="w-5 h-5 text-white" />
       </div>
       种族值
       <button

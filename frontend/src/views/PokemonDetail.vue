@@ -23,28 +23,28 @@
     </nav>
 
     <!-- 快捷操作栏 -->
-    <div class="fixed top-4 right-4 z-50 flex gap-2">
+    <div class="fixed bottom-6 right-4 z-50 flex flex-col gap-2 sm:bottom-auto sm:top-24 sm:right-6 sm:flex-row sm:gap-2">
       <button 
-        class="w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110"
-        :class="isFavorite ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white' : 'bg-white text-gray-600 hover:text-pink-500'"
-        title="收藏"
+        class="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110 border-2"
+        :class="isFavorite ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-300' : 'bg-white text-gray-600 hover:text-pink-500 border-slate-200'"
+        :title="'收藏 / Favorite'"
         @click="toggleFavorite"
       >
-        <Heart :class="['w-6 h-6 transition-all duration-300', isFavorite ? 'fill-current scale-110' : '']" />
+        <Heart :class="['w-5 h-5 sm:w-6 sm:h-6 transition-all duration-300', isFavorite ? 'fill-current scale-110' : '']" />
       </button>
       <button 
-        class="w-12 h-12 rounded-full bg-white text-gray-600 hover:text-blue-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
-        title="比较"
+        class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-gray-600 hover:text-blue-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center border-2 border-slate-200"
+        :title="'比较 / Compare'"
         @click="showCompareModal = true"
       >
-        <Scale class="w-6 h-6" />
+        <Scale class="w-5 h-5 sm:w-6 sm:h-6" />
       </button>
       <button 
-        class="w-12 h-12 rounded-full bg-white text-gray-600 hover:text-green-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center"
-        title="分享"
+        class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-gray-600 hover:text-green-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center border-2 border-slate-200"
+        :title="'分享 / Share'"
         @click="sharePokemon"
       >
-        <Share2 class="w-6 h-6" />
+        <Share2 class="w-5 h-5 sm:w-6 sm:h-6" />
       </button>
     </div>
 
@@ -82,7 +82,7 @@
     >
       <h2 class="text-xl font-extrabold text-slate-800 mb-6 flex items-center gap-3">
         <div class="w-9 h-9 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-poke border-2 border-amber-400">
-          <Layers class="w-4.5 h-4.5 text-white" />
+          <Layers class="w-5 h-5 text-white" />
         </div>
         形态
       </h2>
@@ -476,13 +476,7 @@ export default {
 /* 响应式优化 */
 @media (max-width: 768px) {
   .pokemon-detail {
-    padding-bottom: 1rem;
-  }
-
-  .fixed.top-4.right-4 {
-    top: auto;
-    bottom: 4rem;
-    right: 1rem;
+    padding-bottom: 6rem;
   }
 
   .bg-white.rounded-3xl.shadow-xl {
