@@ -42,6 +42,7 @@ declare module 'vue' {
     LoadMoreTrigger: typeof import('./src/components/LoadMoreTrigger.vue')['default']
     MoveButton: typeof import('./src/components/MoveButton.vue')['default']
     MoveDetailDialog: typeof import('./src/components/MoveDetailDialog.vue')['default']
+    PokeHoverCard: typeof import('./src/components/PokeHoverCard.vue')['default']
     PokemonAbilitiesPanel: typeof import('./src/components/PokemonAbilitiesPanel.vue')['default']
     PokemonCalcPanel: typeof import('./src/components/PokemonCalcPanel.vue')['default']
     PokemonCardGrid: typeof import('./src/components/PokemonCardGrid.vue')['default']

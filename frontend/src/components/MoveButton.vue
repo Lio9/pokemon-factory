@@ -1,75 +1,81 @@
 <template>
-  <button
-    type="button"
-    class="move-button group relative overflow-hidden rounded-xl border-2 px-3 py-2.5 text-left transition-all duration-150"
-    :class="[
-      selected ? 'border-indigo-500 bg-indigo-50 shadow-md ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm',
-      disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-    ]"
-    :disabled="disabled"
-    @click="$emit('select')"
+  <PokeHoverCard
+    :move="move"
+    wrap-class="w-full"
   >
-    <!-- 属性色带 -->
-    <div
-      class="absolute inset-y-0 left-0 w-1.5 rounded-l-xl transition-colors"
-      :style="{ backgroundColor: typeColor }"
-    />
-
-    <div class="flex items-start justify-between gap-2 pl-1">
-      <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-2">
-          <!-- Showdown 风格编号 -->
-          <span
-            v-if="moveIndex != null"
-            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[11px] font-black"
-            :class="selected ? 'border-indigo-300 bg-indigo-500 text-white' : 'border-slate-300 bg-slate-100 text-slate-500'"
-          >{{ moveIndex + 1 }}</span>
-          <span class="text-sm font-bold text-slate-900 truncate">{{ name }}</span>
-          <span
-            class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold text-white"
-            :style="{ backgroundColor: typeColor }"
-          >
-            {{ typeName }}
-          </span>
-        </div>
-        <div class="mt-0.5 flex items-center gap-3 text-[11px] text-slate-500">
-          <span v-if="move.power">{{ tr('威力', 'Pwr') }} {{ move.power }}</span>
-          <span v-if="move.accuracy != null">{{ tr('命中', 'Acc') }} {{ move.accuracy }}%</span>
-          <span
-            v-if="move.priority > 0"
-            class="font-bold text-blue-600"
-          >+{{ move.priority }}</span>
-          <span
-            v-else-if="move.priority < 0"
-            class="font-bold text-red-500"
-          >{{ move.priority }}</span>
-          <span
-            v-if="ppLabel"
-            class="font-semibold"
-            :class="ppClass"
-          >PP {{ ppLabel }}</span>
-        </div>
-      </div>
+    <button
+      type="button"
+      class="move-button group relative overflow-hidden rounded-xl border-2 px-3 py-2.5 text-left transition-all duration-150"
+      :class="[
+        selected ? 'border-indigo-500 bg-indigo-50 shadow-md ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm',
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+      ]"
+      :disabled="disabled"
+      @click="$emit('select')"
+    >
+      <!-- 属性色带 -->
       <div
-        class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
-        :class="damageClassClass"
-      >
-        {{ damageClassLabel }}
-      </div>
-    </div>
+        class="absolute inset-y-0 left-0 w-1.5 rounded-l-xl transition-colors"
+        :style="{ backgroundColor: typeColor }"
+      />
 
-    <!-- 选中指示 -->
-    <div
-      v-if="selected"
-      class="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-indigo-500 ring-2 ring-white"
-    />
-  </button>
+      <div class="flex items-start justify-between gap-2 pl-1">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <!-- Showdown 风格编号 -->
+            <span
+              v-if="moveIndex != null"
+              class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[11px] font-black"
+              :class="selected ? 'border-indigo-300 bg-indigo-500 text-white' : 'border-slate-300 bg-slate-100 text-slate-500'"
+            >{{ moveIndex + 1 }}</span>
+            <span class="text-sm font-bold text-slate-900 truncate">{{ name }}</span>
+            <span
+              class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold text-white"
+              :style="{ backgroundColor: typeColor }"
+            >
+              {{ typeName }}
+            </span>
+          </div>
+          <div class="mt-0.5 flex items-center gap-3 text-[11px] text-slate-500">
+            <span v-if="move.power">{{ tr('威力', 'Pwr') }} {{ move.power }}</span>
+            <span v-if="move.accuracy != null">{{ tr('命中', 'Acc') }} {{ move.accuracy }}%</span>
+            <span
+              v-if="move.priority > 0"
+              class="font-bold text-blue-600"
+            >+{{ move.priority }}</span>
+            <span
+              v-else-if="move.priority < 0"
+              class="font-bold text-red-500"
+            >{{ move.priority }}</span>
+            <span
+              v-if="ppLabel"
+              class="font-semibold"
+              :class="ppClass"
+            >PP {{ ppLabel }}</span>
+          </div>
+        </div>
+        <div
+          class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+          :class="damageClassClass"
+        >
+          {{ damageClassLabel }}
+        </div>
+      </div>
+
+      <!-- 选中指示 -->
+      <div
+        v-if="selected"
+        class="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-indigo-500 ring-2 ring-white"
+      />
+    </button>
+  </PokeHoverCard>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import { typeColor as typeColorById, typeNameZh, typeNameEn } from '../services/typeChart'
+import PokeHoverCard from './PokeHoverCard.vue'
 
 const { translate: tr } = useLocale()
 

@@ -638,12 +638,12 @@ export function useBattlePageState() {
 
   function previewCardClass(index) {
     if (isLead(index)) {
-      return 'w-full rounded-xl border border-indigo-500 bg-indigo-50 p-3 text-left'
+      return 'w-full rounded-2xl border-2 border-indigo-500 bg-gradient-to-b from-indigo-50 to-indigo-100/60 p-3 text-left shadow-md shadow-indigo-100 ring-2 ring-indigo-200/70'
     }
     if (isPicked(index)) {
-      return 'w-full rounded-xl border border-blue-500 bg-blue-50 p-3 text-left'
+      return 'w-full rounded-2xl border-2 border-blue-400 bg-gradient-to-b from-blue-50 to-blue-100/50 p-3 text-left shadow-sm shadow-blue-100 ring-2 ring-blue-100/70'
     }
-    return 'w-full rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-slate-300'
+    return 'w-full rounded-2xl border-2 border-slate-200 bg-white p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md'
   }
 
   function factoryRoundClass(index) {

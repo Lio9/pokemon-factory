@@ -14,15 +14,16 @@
           {{ tr('你的队伍（点击选择/取消）', 'Your roster (click to toggle)') }}
         </div>
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <div
+          <PokeHoverCard
             v-for="(pokemon, index) in playerRoster"
             :key="`player-roster-${index}`"
-            class="group relative"
+            :pokemon="pokemon"
+            wrap-class="group relative"
           >
             <button
               type="button"
               :class="previewCardClass(index)"
-              class="!flex !flex-col !items-center !p-3 !text-center"
+              class="!flex !flex-col !items-center !p-3 !text-center !h-full !w-full"
               @click="toggleRoster(index)"
             >
               <div class="relative">
@@ -33,11 +34,20 @@
                   :class="isPicked(index) ? '' : 'opacity-40 grayscale'"
                   @error="onPreviewSpriteError($event, pokemon)"
                 >
+                <!-- 等级徽章 -->
+                <span
+                  class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-slate-800/90 px-1.5 py-px text-[9px] font-bold text-white shadow-sm"
+                >Lv.{{ pokemon.level || 50 }}</span>
                 <!-- 首发标记 -->
                 <span
                   v-if="isLead(index)"
                   class="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-white shadow-lg ring-2 ring-white"
                 >首</span>
+                <!-- 已选勾选 -->
+                <span
+                  v-if="isPicked(index) && !isLead(index)"
+                  class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-black text-white shadow ring-2 ring-white"
+                >✓</span>
               </div>
               <div class="mt-1.5 w-full">
                 <div
@@ -81,7 +91,7 @@
                 y2="16.65"
               /></svg>
             </button>
-          </div>
+          </PokeHoverCard>
         </div>
       </div>
 
@@ -90,10 +100,11 @@
           {{ tr('对手公开队伍', 'Opponent preview') }}
         </div>
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <div
+          <PokeHoverCard
             v-for="(pokemon, index) in opponentRoster"
             :key="`opponent-roster-${index}`"
-            class="group relative rounded-xl border border-slate-200 bg-white p-2.5 text-center"
+            :pokemon="pokemon"
+            wrap-class="group relative rounded-xl border border-slate-200 bg-white p-2.5 text-center"
           >
             <img
               :src="previewSprite(pokemon)"
@@ -138,7 +149,7 @@
                 y2="16.65"
               /></svg>
             </button>
-          </div>
+          </PokeHoverCard>
         </div>
       </div>
     </div>
@@ -178,40 +189,45 @@
       {{ tr('倒下补位：请选择 {count} 只后备宝可梦上场', 'Replacement: choose {count} bench Pokemon to send in', { count: pendingReplacementCount }) }}
     </div>
     <div class="space-y-2">
-      <button
+      <PokeHoverCard
         v-for="option in replacementBenchOptions"
         :key="`replacement-${option.value}`"
-        type="button"
-        class="w-full rounded-xl border-2 p-3 text-left transition-all"
-        :class="selectedReplacementIndexes.includes(option.value) ? 'border-rose-500 bg-white shadow-md ring-2 ring-rose-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
-        @click="toggleReplacement(option.value)"
+        :pokemon="option.pokemon || option"
+        wrap-class="w-full"
       >
-        <div class="flex items-center gap-3">
-          <img
-            :src="previewSprite(option.pokemon || option)"
-            :alt="option.label"
-            class="h-11 w-11 object-contain"
-            @error="onPreviewSpriteError($event, option.pokemon || option)"
-          >
-          <div class="min-w-0 flex-1">
-            <div class="truncate font-semibold text-slate-900">
-              {{ option.label }}
+        <button
+          type="button"
+          class="w-full rounded-xl border-2 p-3 text-left transition-all"
+          :class="selectedReplacementIndexes.includes(option.value) ? 'border-rose-500 bg-white shadow-md ring-2 ring-rose-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
+          @click="toggleReplacement(option.value)"
+        >
+          <div class="flex items-center gap-3">
+            <img
+              :src="previewSprite(option.pokemon || option)"
+              :alt="option.label"
+              class="h-11 w-11 object-contain"
+              @error="onPreviewSpriteError($event, option.pokemon || option)"
+            >
+            <div class="min-w-0 flex-1">
+              <div class="truncate font-semibold text-slate-900">
+                {{ option.label }}
+              </div>
+              <div class="text-xs text-slate-500">
+                {{ option.types }}
+              </div>
+              <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  class="h-full rounded-full transition-all"
+                  :style="{ width: option.maxHp > 0 ? Math.max(2, (option.hp / option.maxHp) * 100) + '%' : '100%', backgroundColor: option.maxHp > 0 && option.hp / option.maxHp <= 0.25 ? '#ef4444' : option.maxHp > 0 && option.hp / option.maxHp <= 0.5 ? '#f59e0b' : '#22c55e' }"
+                />
+              </div>
             </div>
-            <div class="text-xs text-slate-500">
-              {{ option.types }}
-            </div>
-            <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-              <div
-                class="h-full rounded-full transition-all"
-                :style="{ width: option.maxHp > 0 ? Math.max(2, (option.hp / option.maxHp) * 100) + '%' : '100%', backgroundColor: option.maxHp > 0 && option.hp / option.maxHp <= 0.25 ? '#ef4444' : option.maxHp > 0 && option.hp / option.maxHp <= 0.5 ? '#f59e0b' : '#22c55e' }"
-              />
+            <div class="shrink-0 text-xs text-slate-500">
+              HP {{ option.hp }}/{{ option.maxHp || '?' }}
             </div>
           </div>
-          <div class="shrink-0 text-xs text-slate-500">
-            HP {{ option.hp }}/{{ option.maxHp || '?' }}
-          </div>
-        </div>
-      </button>
+        </button>
+      </PokeHoverCard>
     </div>
     <button
       class="mt-4 w-full rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300"
@@ -241,7 +257,10 @@
       >
         <!-- 宝可梦信息头 -->
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <div class="flex items-center gap-2.5">
+          <PokeHoverCard
+            :pokemon="mon"
+            wrap-class="flex items-center gap-2.5 cursor-help"
+          >
             <img
               :src="previewSprite(mon)"
               :alt="mon.name"
@@ -256,7 +275,7 @@
                 {{ tr('槽位 {slot} · HP {current}/{max}', 'Slot {slot} · HP {current}/{max}', { slot: mon.fieldSlot + 1, current: mon.currentHp, max: mon.maxHp }) }}
               </div>
             </div>
-          </div>
+          </PokeHoverCard>
           <div class="text-xs text-slate-500">
             {{ formatTypes(mon.types) }}
           </div>
@@ -286,38 +305,43 @@
         <!-- 换人面板（Showdown 风格：精灵 + HP 条） -->
         <template v-if="selectedActions[`action-slot-${mon.fieldSlot}`] === 'switch'">
           <div class="mt-3 grid grid-cols-2 gap-2">
-            <button
+            <PokeHoverCard
               v-for="target in playerBenchOptions"
               :key="`switch-${mon.fieldSlot}-${target.value}`"
-              type="button"
-              class="rounded-xl border-2 px-3 py-2.5 text-left transition-all"
-              :class="selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`] === target.value ? 'border-indigo-500 bg-indigo-50 shadow-sm ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
-              @click="setSelectedSwitchTarget(mon.fieldSlot, target.value)"
+              :pokemon="target.pokemon || target"
+              wrap-class="w-full"
             >
-              <div class="flex items-center gap-2">
-                <img
-                  :src="previewSprite(target.pokemon || target)"
-                  :alt="target.label"
-                  class="h-10 w-10 object-contain"
-                  @error="onPreviewSpriteError($event, target.pokemon || target)"
-                >
-                <div class="min-w-0 flex-1">
-                  <div class="truncate text-sm font-semibold text-slate-900">
-                    {{ target.label }}
-                  </div>
-                  <!-- HP 条 -->
-                  <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      class="h-full rounded-full transition-all"
-                      :style="{ width: target.maxHp > 0 ? Math.max(2, (target.hp / target.maxHp) * 100) + '%' : '100%', backgroundColor: target.maxHp > 0 && target.hp / target.maxHp <= 0.25 ? '#ef4444' : target.maxHp > 0 && target.hp / target.maxHp <= 0.5 ? '#f59e0b' : '#22c55e' }"
-                    />
-                  </div>
-                  <div class="mt-0.5 text-[11px] text-slate-500">
-                    {{ tr('HP', 'HP') }} {{ target.hp }}/{{ target.maxHp || '?' }}
+              <button
+                type="button"
+                class="w-full rounded-xl border-2 px-3 py-2.5 text-left transition-all"
+                :class="selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`] === target.value ? 'border-indigo-500 bg-indigo-50 shadow-sm ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
+                @click="setSelectedSwitchTarget(mon.fieldSlot, target.value)"
+              >
+                <div class="flex items-center gap-2">
+                  <img
+                    :src="previewSprite(target.pokemon || target)"
+                    :alt="target.label"
+                    class="h-10 w-10 object-contain"
+                    @error="onPreviewSpriteError($event, target.pokemon || target)"
+                  >
+                  <div class="min-w-0 flex-1">
+                    <div class="truncate text-sm font-semibold text-slate-900">
+                      {{ target.label }}
+                    </div>
+                    <!-- HP 条 -->
+                    <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        class="h-full rounded-full transition-all"
+                        :style="{ width: target.maxHp > 0 ? Math.max(2, (target.hp / target.maxHp) * 100) + '%' : '100%', backgroundColor: target.maxHp > 0 && target.hp / target.maxHp <= 0.25 ? '#ef4444' : target.maxHp > 0 && target.hp / target.maxHp <= 0.5 ? '#f59e0b' : '#22c55e' }"
+                      />
+                    </div>
+                    <div class="mt-0.5 text-[11px] text-slate-500">
+                      {{ tr('HP', 'HP') }} {{ target.hp }}/{{ target.maxHp || '?' }}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            </PokeHoverCard>
           </div>
           <div class="mt-1.5 text-[10px] text-slate-400">
             {{ tr('提示：S 键快速切换 招式/换人', 'Tip: press S to toggle move/switch') }}
@@ -393,31 +417,36 @@
               {{ tr('选择目标', 'Select target') }} · {{ tr('点击场上宝可梦', 'Click an active Pokemon') }}
             </div>
             <div class="flex gap-2">
-              <button
+              <PokeHoverCard
                 v-for="target in opponentActiveMons"
                 :key="`target-${mon.fieldSlot}-${target.fieldSlot}`"
-                type="button"
-                class="flex-1 rounded-xl border-2 px-3 py-2 text-left transition-all"
-                :class="selectedTargets[`target-slot-${mon.fieldSlot}`] === target.fieldSlot ? 'border-rose-500 bg-rose-50 shadow-sm ring-2 ring-rose-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
-                @click="setSelectedTarget(mon.fieldSlot, target.fieldSlot)"
+                :pokemon="target"
+                wrap-class="flex-1"
               >
-                <div class="flex items-center gap-2">
-                  <img
-                    :src="targetSprite(target)"
-                    :alt="target.name"
-                    class="h-9 w-9 object-contain"
-                    @error="onTargetSpriteError($event, target)"
-                  >
-                  <div class="min-w-0">
-                    <div class="truncate text-sm font-semibold text-slate-900">
-                      {{ target.name || target.name_en }}
-                    </div>
-                    <div class="text-[11px] text-slate-500">
-                      {{ tr('槽位 {slot}', 'Slot {slot}', { slot: target.fieldSlot + 1 }) }} · HP {{ target.currentHp }}/{{ target.maxHp || target.stats?.hp || '?' }}
+                <button
+                  type="button"
+                  class="w-full rounded-xl border-2 px-3 py-2 text-left transition-all"
+                  :class="selectedTargets[`target-slot-${mon.fieldSlot}`] === target.fieldSlot ? 'border-rose-500 bg-rose-50 shadow-sm ring-2 ring-rose-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
+                  @click="setSelectedTarget(mon.fieldSlot, target.fieldSlot)"
+                >
+                  <div class="flex items-center gap-2">
+                    <img
+                      :src="targetSprite(target)"
+                      :alt="target.name"
+                      class="h-9 w-9 object-contain"
+                      @error="onTargetSpriteError($event, target)"
+                    >
+                    <div class="min-w-0">
+                      <div class="truncate text-sm font-semibold text-slate-900">
+                        {{ target.name || target.name_en }}
+                      </div>
+                      <div class="text-[11px] text-slate-500">
+                        {{ tr('槽位 {slot}', 'Slot {slot}', { slot: target.fieldSlot + 1 }) }} · HP {{ target.currentHp }}/{{ target.maxHp || target.stats?.hp || '?' }}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              </PokeHoverCard>
             </div>
           </div>
 
@@ -535,6 +564,7 @@ import { ref } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import MoveButton from './MoveButton.vue'
 import PokemonDetailPopover from './PokemonDetailPopover.vue'
+import PokeHoverCard from './PokeHoverCard.vue'
 import { sprites } from '../services/sprites'
 import { typeColor } from '../services/typeChart'
 
