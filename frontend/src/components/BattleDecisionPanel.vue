@@ -1,19 +1,77 @@
 
 <template>
-  <!-- 队伍预览阶段 -->
+  <!-- 队伍预览阶段（Showdown 风格） -->
   <section
     v-if="isPreviewPhase"
-    class="glass-card border border-amber-200/60 p-4"
+    class="overflow-hidden rounded-2xl border-2 border-slate-800 bg-[linear-gradient(180deg,#1e293b_0%,#0f172a_100%)] shadow-xl"
   >
-    <div class="mb-3 text-sm font-semibold text-slate-800">
-      {{ tr(`队伍预览：从 6 只里选择 ${rosterLimit} 只，并指定 ${leadLimit} 只首发`, `Team preview: pick ${rosterLimit} of 6 Pokemon and choose ${leadLimit} lead(s)`) }}
-    </div>
-    <div class="grid gap-4 lg:grid-cols-2">
-      <div>
-        <div class="mb-2 text-xs font-semibold text-slate-500">
-          {{ tr('你的队伍（点击选择/取消）', 'Your roster (click to toggle)') }}
+    <!-- 顶部横幅 -->
+    <div class="flex items-center justify-between gap-3 border-b border-slate-700/60 bg-slate-900/60 px-4 py-3">
+      <div class="flex items-center gap-2.5">
+        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-lg">⚔️</span>
+        <div>
+          <div class="text-sm font-extrabold tracking-wide text-white">
+            {{ tr('队伍预览', 'Team Preview') }}
+          </div>
+          <div class="text-[11px] text-slate-400">
+            {{ tr(`选择 ${rosterLimit} 只出战，并指定 ${leadLimit} 只首发`, `Pick ${rosterLimit} Pokemon and choose ${leadLimit} lead(s)`) }}
+          </div>
         </div>
-        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      </div>
+      <!-- 选择进度 -->
+      <div class="flex items-center gap-1.5 rounded-full bg-slate-800/80 px-3 py-1.5">
+        <span class="text-[11px] font-bold text-slate-400">{{ tr('已选', 'Picked') }}</span>
+        <span class="text-sm font-black text-white">{{ selectedRosterIndexes.length }}</span>
+        <span class="text-[11px] text-slate-500">/</span>
+        <span class="text-sm font-black text-slate-300">{{ rosterLimit }}</span>
+        <span class="mx-1 text-slate-700">|</span>
+        <span class="text-[11px] font-bold text-slate-400">{{ tr('首发', 'Leads') }}</span>
+        <span class="text-sm font-black text-amber-400">{{ leadRosterIndexes.length }}</span>
+        <span class="text-[11px] text-slate-500">/</span>
+        <span class="text-sm font-black text-slate-300">{{ leadLimit }}</span>
+      </div>
+    </div>
+
+    <div class="space-y-4 p-4">
+      <!-- 对手队伍（不可选，hover 查看） -->
+      <div v-if="opponentRoster.length">
+        <div class="mb-1.5 flex items-center gap-2">
+          <span class="h-1.5 w-1.5 rounded-full bg-rose-400" />
+          <span class="text-[11px] font-bold uppercase tracking-widest text-rose-300/90">
+            {{ tr('对手队伍', 'Opponent team') }}
+          </span>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <PokeHoverCard
+            v-for="(pokemon, index) in opponentRoster"
+            :key="`opponent-roster-${index}`"
+            :pokemon="pokemon"
+            wrap-class="cursor-help"
+          >
+            <div class="group relative w-[76px] rounded-xl border border-slate-700/70 bg-slate-800/50 p-2 text-center transition-colors hover:border-slate-500 hover:bg-slate-800">
+              <img
+                :src="previewSprite(pokemon)"
+                :alt="pokemon.name"
+                class="mx-auto h-12 w-12 object-contain transition-transform group-hover:scale-110"
+                @error="onPreviewSpriteError($event, pokemon)"
+              >
+              <div class="mt-1 truncate text-[10px] font-semibold text-slate-300">
+                {{ pokemon.name || pokemon.name_en }}
+              </div>
+            </div>
+          </PokeHoverCard>
+        </div>
+      </div>
+
+      <!-- 我的队伍（点击选择） -->
+      <div>
+        <div class="mb-1.5 flex items-center gap-2">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <span class="text-[11px] font-bold uppercase tracking-widest text-emerald-300/90">
+            {{ tr('我的队伍 · 点击选择', 'Your team · click to pick') }}
+          </span>
+        </div>
+        <div class="flex flex-wrap gap-2">
           <PokeHoverCard
             v-for="(pokemon, index) in playerRoster"
             :key="`player-roster-${index}`"
@@ -23,159 +81,81 @@
             <button
               type="button"
               :class="previewCardClass(index)"
-              class="!flex !flex-col !items-center !p-3 !text-center !h-full !w-full"
+              class="flex w-[76px] flex-col items-center rounded-xl border-2 p-2 text-center transition-all duration-150"
               @click="toggleRoster(index)"
             >
+              <!-- 精灵图：未选中变暗 -->
               <div class="relative">
                 <img
                   :src="previewSprite(pokemon)"
                   :alt="pokemon.name"
-                  class="h-16 w-16 object-contain transition-transform group-hover:scale-110"
-                  :class="isPicked(index) ? '' : 'opacity-40 grayscale'"
+                  class="h-12 w-12 object-contain transition-all duration-150 group-hover:scale-110"
+                  :class="isPicked(index) ? '' : 'opacity-35 grayscale'"
                   @error="onPreviewSpriteError($event, pokemon)"
                 >
-                <!-- 等级徽章 -->
-                <span
-                  class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-slate-800/90 px-1.5 py-px text-[9px] font-bold text-white shadow-sm"
-                >Lv.{{ pokemon.level || 50 }}</span>
-                <!-- 首发标记 -->
+                <!-- 首发角标 -->
                 <span
                   v-if="isLead(index)"
-                  class="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-white shadow-lg ring-2 ring-white"
+                  class="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-amber-950 shadow ring-2 ring-slate-900"
                 >首</span>
-                <!-- 已选勾选 -->
-                <span
-                  v-if="isPicked(index) && !isLead(index)"
-                  class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-black text-white shadow ring-2 ring-white"
-                >✓</span>
               </div>
-              <div class="mt-1.5 w-full">
-                <div
-                  class="truncate text-xs font-bold"
-                  :class="isPicked(index) ? 'text-slate-900' : 'text-slate-400'"
-                >{{ pokemon.name || pokemon.name_en }}</div>
-                <div class="mt-1 flex flex-wrap justify-center gap-1">
-                  <span
-                    v-for="type in pokemon.types || []"
-                    :key="type.id || type.type_id"
-                    class="type-badge type-badge-sm"
-                    :style="{ backgroundColor: type.color || typeColor(type.type_id) }"
-                  >{{ type.name }}</span>
-                </div>
-              </div>
-            </button>
-            <!-- 查看详情按钮 -->
-            <button
-              type="button"
-              class="absolute top-1 right-1 z-10 h-6 w-6 rounded-full bg-white/90 border border-slate-200 text-slate-400 shadow-sm hover:bg-indigo-50 hover:text-indigo-600 transition-all opacity-70 group-hover:opacity-100 flex items-center justify-center"
-              :title="tr('查看配置', 'View details')"
-              @click.stop="openDetail(pokemon)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-3 w-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><circle
-                cx="11"
-                cy="11"
-                r="8"
-              /><line
-                x1="21"
-                y1="21"
-                x2="16.65"
-                y2="16.65"
-              /></svg>
+              <!-- 名字 + 等级 -->
+              <div
+                class="mt-1 w-full truncate text-[10px] font-bold"
+                :class="isPicked(index) ? 'text-white' : 'text-slate-400'"
+              >{{ pokemon.name || pokemon.name_en }}</div>
+              <div
+                class="mt-0.5 rounded-full px-1.5 py-px text-[9px] font-bold"
+                :class="isPicked(index) ? 'bg-slate-700/80 text-slate-300' : 'bg-slate-800 text-slate-500'"
+              >Lv.{{ pokemon.level || 50 }}</div>
             </button>
           </PokeHoverCard>
         </div>
       </div>
 
-      <div>
-        <div class="mb-2 text-xs font-semibold text-slate-500">
-          {{ tr('对手公开队伍', 'Opponent preview') }}
+      <!-- 首发选择条（Showdown 风格） -->
+      <div
+        v-if="selectedRosterIndexes.length"
+        class="rounded-xl border border-slate-700/60 bg-slate-800/40 p-2.5"
+      >
+        <div class="mb-1.5 flex items-center gap-2">
+          <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            {{ tr('首发阵容', 'Lead picks') }}
+          </span>
+          <span class="text-[10px] text-slate-500">
+            {{ tr('点击已选精灵设为首发', 'Click a picked Pokemon to make it lead') }}
+          </span>
         </div>
-        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <PokeHoverCard
-            v-for="(pokemon, index) in opponentRoster"
-            :key="`opponent-roster-${index}`"
-            :pokemon="pokemon"
-            wrap-class="group relative rounded-xl border border-slate-200 bg-white p-2.5 text-center"
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button
+            v-for="index in selectedRosterIndexes"
+            :key="`lead-${index}`"
+            type="button"
+            class="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-semibold transition-all"
+            :class="isLead(index)
+              ? 'border-amber-400/70 bg-amber-400/15 text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.15)]'
+              : 'border-slate-600/70 bg-slate-800/60 text-slate-300 hover:border-slate-400 hover:text-white'"
+            @click="toggleLead(index)"
           >
             <img
-              :src="previewSprite(pokemon)"
-              :alt="pokemon.name"
-              class="mx-auto h-14 w-14 object-contain transition-transform group-hover:scale-110"
-              @error="onPreviewSpriteError($event, pokemon)"
+              :src="previewSprite(playerRoster[index])"
+              :alt="playerRoster[index]?.name"
+              class="h-5 w-5 object-contain"
+              @error="onPreviewSpriteError($event, playerRoster[index])"
             >
-            <div class="mt-1 truncate text-xs font-bold text-slate-800">
-              {{ pokemon.name || pokemon.name_en }}
-            </div>
-            <div class="mt-1 flex flex-wrap justify-center gap-1">
-              <span
-                v-for="type in pokemon.types || []"
-                :key="type.id || type.type_id"
-                class="type-badge type-badge-sm"
-                :style="{ backgroundColor: type.color || typeColor(type.type_id) }"
-              >{{ type.name }}</span>
-            </div>
-            <button
-              type="button"
-              class="absolute top-1 right-1 z-10 h-6 w-6 rounded-full bg-white/90 border border-slate-200 text-slate-400 shadow-sm hover:bg-indigo-50 hover:text-indigo-600 transition-all opacity-70 group-hover:opacity-100 flex items-center justify-center"
-              :title="tr('查看配置', 'View details')"
-              @click.stop="openDetail(pokemon)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-3 w-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><circle
-                cx="11"
-                cy="11"
-                r="8"
-              /><line
-                x1="21"
-                y1="21"
-                x2="16.65"
-                y2="16.65"
-              /></svg>
-            </button>
-          </PokeHoverCard>
+            <span class="max-w-[80px] truncate">{{ playerRoster[index]?.name || playerRoster[index]?.name_en }}</span>
+            <span v-if="isLead(index)" class="text-amber-400">★</span>
+          </button>
         </div>
       </div>
-    </div>
 
-    <div class="mt-4 rounded-xl bg-white p-4">
-      <div class="text-sm text-slate-700">
-        {{ tr(`已选择 {selected}/${rosterLimit} 只；首发 {lead}/${leadLimit} 只`, `{selected}/${rosterLimit} selected; {lead}/${leadLimit} leads`, { selected: selectedRosterIndexes.length, lead: leadRosterIndexes.length }) }}
-      </div>
-      <div class="mt-2 flex flex-wrap gap-2">
-        <button
-          v-for="index in selectedRosterIndexes"
-          :key="`lead-${index}`"
-          type="button"
-          class="rounded-full px-3 py-1 text-xs font-semibold"
-          :class="isLead(index) ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'"
-          @click="toggleLead(index)"
-        >
-          {{ playerRoster[index]?.name || playerRoster[index]?.name_en || tr(`宝可梦 ${index + 1}`, `Pokemon ${index + 1}`) }}{{ isLead(index) ? tr(' · 首发', ' · Lead') : '' }}
-        </button>
-      </div>
+      <!-- 确认按钮 -->
       <button
-        class="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+        class="w-full rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 disabled:shadow-none"
         :disabled="!canConfirmPreview || isBusy"
         @click="confirmPreview"
       >
-        {{ busyAction === 'confirm-preview' ? tr('正在确认阵容...', 'Confirming team...') : tr(`确认 6 选 ${rosterLimit} 与首发`, `Confirm 6v${rosterLimit} and leads`) }}
+        {{ busyAction === 'confirm-preview' ? tr('正在确认阵容...', 'Confirming team...') : tr(`确认出战 · 6 选 ${rosterLimit}`, `Confirm · pick ${rosterLimit}`) }}
       </button>
     </div>
   </section>

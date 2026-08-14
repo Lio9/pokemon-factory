@@ -638,12 +638,12 @@ export function useBattlePageState() {
 
   function previewCardClass(index) {
     if (isLead(index)) {
-      return 'w-full rounded-2xl border-2 border-indigo-500 bg-gradient-to-b from-indigo-50 to-indigo-100/60 p-3 text-left shadow-md shadow-indigo-100 ring-2 ring-indigo-200/70'
+      return 'border-amber-400/80 bg-gradient-to-b from-amber-400/25 to-amber-400/10 shadow-[0_0_16px_rgba(251,191,36,0.2)]'
     }
     if (isPicked(index)) {
-      return 'w-full rounded-2xl border-2 border-blue-400 bg-gradient-to-b from-blue-50 to-blue-100/50 p-3 text-left shadow-sm shadow-blue-100 ring-2 ring-blue-100/70'
+      return 'border-emerald-400/70 bg-gradient-to-b from-emerald-400/20 to-emerald-400/5 shadow-[0_0_14px_rgba(52,211,153,0.15)]'
     }
-    return 'w-full rounded-2xl border-2 border-slate-200 bg-white p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md'
+    return 'border-slate-700/70 bg-slate-800/50 hover:border-slate-500 hover:bg-slate-800/80 hover:shadow-md'
   }
 
   function factoryRoundClass(index) {
@@ -910,6 +910,7 @@ export function useBattlePageState() {
     prepareNextFactoryStage,
     opponentActiveMons,
     opponentActiveOptions,
+    opponentRoster,
     pendingReplacementCount,
     playerActiveMons,
     playerBenchOptions,
