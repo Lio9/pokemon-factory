@@ -73,61 +73,24 @@
     <!-- 主体：攻击方 / 防御方 并排 -->
     <div class="grid gap-4 lg:grid-cols-2">
       <!-- 攻击方卡片 -->
-      <div class="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
-        <div class="bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-2.5 flex items-center gap-2">
-          <span class="text-white text-sm font-bold">⚔️ 攻击方</span>
-          <span
-            v-if="attackerPokemon"
-            class="ml-auto text-white/80 text-xs font-medium"
-          >#{{ attackerPokemon.id }} {{ attackerPokemon.name }}</span>
-        </div>
-        <div class="p-4 space-y-3">
-          <!-- 选择宝可梦 -->
-          <el-select
-            v-model="form.attackerPokemonId"
-            filterable
-            remote
-            reserve-keyword
-            default-first-option
-            placeholder="搜索宝可梦..."
-            class="w-full"
-            :loading="pokemonLoading"
-            :remote-method="searchPokemonOptions"
-            size="large"
-            @change="handleAttackerChange"
-          >
-            <el-option
-              v-for="p in pokemonOptions"
-              :key="'a-'+p.id"
-              :label="pokemonOptionLabel(p)"
-              :value="p.id"
-            >
-              <div class="flex items-center gap-2">
-                <img
-                  v-if="p.spriteUrl"
-                  :src="p.spriteUrl"
-                  class="w-8 h-8 object-contain"
-                  @error="$event.target.style.display='none'"
-                >
-                <span class="font-medium">{{ p.name || p.nameEn }}</span>
-                <span class="ml-auto text-xs text-slate-400">#{{ p.id }}</span>
-              </div>
-            </el-option>
-          </el-select>
-
-          <!-- 属性标签 -->
-          <div
-            v-if="attackerTypes.length"
-            class="flex gap-1.5"
-          >
-            <span
-              v-for="t in attackerTypes"
-              :key="t.type_id"
-              class="px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm"
-              :style="{ background: typeColor(t.type_id) }"
-            >{{ t.name }}</span>
-          </div>
-
+      <PokemonCalcPanel
+        side="attacker"
+        :form="form"
+        :pokemon="attackerPokemon"
+        :pokemon-options="pokemonOptions"
+        :pokemon-loading="pokemonLoading"
+        :types="attackerTypes"
+        :abilities="abilityOptions"
+        :ability-ids="attackerAbilityIds"
+        :item-options="itemOptions"
+        :item-loading="itemLoading"
+        :statuses="attackerStatuses"
+        :boost-fields="[{ key: 'attackerAttackBoost', label: computedAttackBoostLabel }]"
+        :search-pokemon="searchPokemonOptions"
+        :search-items="searchItems"
+        :on-pokemon-change="handleAttackerChange"
+      >
+        <template #moves>
           <!-- 招式选择 -->
           <div>
             <label class="block text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-wider">招式</label>
@@ -148,7 +111,7 @@
               >
                 <div class="flex items-center gap-2">
                   <span
-                    class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                    class="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
                     :style="{ background: typeColor(m.typeId) }"
                   >{{ (m.typeName || '?')[0] }}</span>
                   <span class="font-medium">{{ m.name || m.nameEn }}</span>
@@ -170,267 +133,44 @@
               <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">命中 {{ selectedMove.accuracy ?? '—' }}</span>
             </div>
           </div>
-
-          <!-- 特性 & 道具 -->
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">特性</label>
-              <el-select
-                v-model="form.attackerAbilityId"
-                filterable
-                placeholder="可选"
-                clearable
-                class="w-full"
-                size="default"
-              >
-                <el-option
-                  v-for="a in filteredAttackerAbilities"
-                  :key="a.id"
-                  :label="a.name"
-                  :value="a.id"
-                />
-              </el-select>
-            </div>
-            <div>
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">道具</label>
-              <el-select
-                v-model="form.attackerItemId"
-                filterable
-                remote
-                :remote-method="searchItems"
-                placeholder="可选"
-                clearable
-                class="w-full"
-                :loading="itemLoading"
-                size="default"
-              >
-                <el-option
-                  v-for="i in itemOptions"
-                  :key="i.id"
-                  :label="i.name"
-                  :value="i.id"
-                />
-              </el-select>
-            </div>
-          </div>
-
-          <!-- 能力等级 -->
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">{{ selectedMove?.damageClassId === 2 ? '特攻' : '攻击' }}阶级</label>
-              <el-select
-                v-model="form.attackerAttackBoost"
-                class="w-full"
-                size="default"
-              >
-                <el-option
-                  v-for="i in boostOptions"
-                  :key="i"
-                  :label="boostLabel(i)"
-                  :value="i"
-                />
-              </el-select>
-            </div>
-            <div>
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">HP%</label>
-              <el-input-number
-                v-model="form.attackerHpPercent"
-                :min="1"
-                :max="100"
-                class="w-full"
-                size="default"
-              />
-            </div>
-          </div>
-
-          <!-- 状态 -->
-          <div class="flex flex-wrap gap-1.5">
-            <button
-              v-for="s in attackerStatuses"
-              :key="s.key"
-              class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all"
-              :class="form[s.key] ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
-              @click="form[s.key] = !form[s.key]"
-            >
-              {{ s.label }}
-            </button>
-          </div>
-        </div>
-      </div>
+        </template>
+      </PokemonCalcPanel>
 
       <!-- 防御方卡片 -->
-      <div class="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
-        <div class="bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2.5 flex items-center gap-2">
-          <span class="text-white text-sm font-bold">🛡️ 防御方</span>
-          <span
-            v-if="defenderPokemon"
-            class="ml-auto text-white/80 text-xs font-medium"
-          >#{{ defenderPokemon.id }} {{ defenderPokemon.name }}</span>
-        </div>
-        <div class="p-4 space-y-3">
-          <!-- 选择宝可梦 -->
-          <el-select
-            v-model="form.defenderPokemonId"
-            filterable
-            remote
-            reserve-keyword
-            default-first-option
-            placeholder="搜索宝可梦..."
-            class="w-full"
-            :loading="pokemonLoading"
-            :remote-method="searchPokemonOptions"
-            size="large"
-            @change="handleDefenderChange"
-          >
-            <el-option
-              v-for="p in pokemonOptions"
-              :key="'d-'+p.id"
-              :label="pokemonOptionLabel(p)"
-              :value="p.id"
-            >
-              <div class="flex items-center gap-2">
-                <img
-                  v-if="p.spriteUrl"
-                  :src="p.spriteUrl"
-                  class="w-8 h-8 object-contain"
-                  @error="$event.target.style.display='none'"
-                >
-                <span class="font-medium">{{ p.name || p.nameEn }}</span>
-                <span class="ml-auto text-xs text-slate-400">#{{ p.id }}</span>
-              </div>
-            </el-option>
-          </el-select>
-
-          <!-- 属性标签 -->
-          <div
-            v-if="defenderTypes.length"
-            class="flex gap-1.5"
-          >
-            <span
-              v-for="t in defenderTypes"
-              :key="t.type_id"
-              class="px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm"
-              :style="{ background: typeColor(t.type_id) }"
-            >{{ t.name }}</span>
-          </div>
-
-          <!-- 特性 & 道具 -->
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">特性</label>
-              <el-select
-                v-model="form.defenderAbilityId"
-                filterable
-                placeholder="可选"
-                clearable
-                class="w-full"
-                size="default"
-              >
-                <el-option
-                  v-for="a in filteredDefenderAbilities"
-                  :key="a.id"
-                  :label="a.name"
-                  :value="a.id"
-                />
-              </el-select>
-            </div>
-            <div>
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">道具</label>
-              <el-select
-                v-model="form.defenderItemId"
-                filterable
-                remote
-                :remote-method="searchItems"
-                placeholder="可选"
-                clearable
-                class="w-full"
-                :loading="itemLoading"
-                size="default"
-              >
-                <el-option
-                  v-for="i in itemOptions"
-                  :key="i.id"
-                  :label="i.name"
-                  :value="i.id"
-                />
-              </el-select>
-            </div>
-          </div>
-
-          <!-- 能力等级 -->
-          <div class="grid grid-cols-3 gap-2">
-            <div>
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">防御阶级</label>
-              <el-select
-                v-model="form.defenderDefenseBoost"
-                class="w-full"
-                size="default"
-              >
-                <el-option
-                  v-for="i in boostOptions"
-                  :key="i"
-                  :label="boostLabel(i)"
-                  :value="i"
-                />
-              </el-select>
-            </div>
-            <div>
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">特防阶级</label>
-              <el-select
-                v-model="form.defenderSpDefenseBoost"
-                class="w-full"
-                size="default"
-              >
-                <el-option
-                  v-for="i in boostOptions"
-                  :key="i"
-                  :label="boostLabel(i)"
-                  :value="i"
-                />
-              </el-select>
-            </div>
-            <div>
-              <label class="block text-[11px] font-bold text-slate-400 mb-1">HP%</label>
-              <el-input-number
-                v-model="form.defenderHpPercent"
-                :min="1"
-                :max="100"
-                class="w-full"
-                size="default"
-              />
-            </div>
-          </div>
-
-          <!-- 状态 -->
-          <div class="flex flex-wrap gap-1.5">
-            <button
-              v-for="s in defenderStatuses"
-              :key="s.key"
-              class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all"
-              :class="form[s.key] ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
-              @click="form[s.key] = !form[s.key]"
-            >
-              {{ s.label }}
-            </button>
-          </div>
-        </div>
-      </div>
+      <PokemonCalcPanel
+        side="defender"
+        :form="form"
+        :pokemon="defenderPokemon"
+        :pokemon-options="pokemonOptions"
+        :pokemon-loading="pokemonLoading"
+        :types="defenderTypes"
+        :abilities="abilityOptions"
+        :ability-ids="defenderAbilityIds"
+        :item-options="itemOptions"
+        :item-loading="itemLoading"
+        :statuses="defenderStatuses"
+        :boost-fields="defenderBoostFields"
+        :search-pokemon="searchPokemonOptions"
+        :search-items="searchItems"
+        :on-pokemon-change="handleDefenderChange"
+      />
     </div>
 
     <!-- 环境条件 -->
-    <div class="rounded-2xl bg-white border border-slate-200/80 shadow-sm p-4">
-      <div class="flex items-center gap-2 mb-3">
-        <span class="text-sm">🌍</span>
+    <div class="rounded-2xl bg-white border border-slate-200/80 shadow-sm p-4 sm:p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-100 text-sm">🌍</span>
         <span class="text-sm font-bold text-slate-700">环境条件</span>
+        <span class="ml-auto text-[11px] text-slate-400">天气 / 场地 / 等级 / 屏障</span>
       </div>
-      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
-          <label class="block text-[10px] font-bold text-slate-400 mb-1">天气</label>
+          <label class="mb-1 block text-[11px] font-bold text-slate-500">天气</label>
           <el-select
             v-model="form.weather"
             placeholder="无"
             clearable
-            size="small"
+            size="default"
             class="w-full"
           >
             <el-option
@@ -442,12 +182,12 @@
           </el-select>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-400 mb-1">场地</label>
+          <label class="mb-1 block text-[11px] font-bold text-slate-500">场地</label>
           <el-select
             v-model="form.terrain"
             placeholder="无"
             clearable
-            size="small"
+            size="default"
             class="w-full"
           >
             <el-option
@@ -459,60 +199,64 @@
           </el-select>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-slate-400 mb-1">等级</label>
+          <label class="mb-1 block text-[11px] font-bold text-slate-500">等级</label>
           <el-input-number
             v-model="form.attackerLevel"
             :min="1"
             :max="100"
-            size="small"
+            size="default"
             class="w-full"
           />
         </div>
         <div class="flex items-end">
           <button
-            class="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-            :class="form.isCritical ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+            type="button"
+            class="w-full rounded-lg border-2 px-2 py-1.5 text-[11px] font-bold transition-all"
+            :class="form.isCritical ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+            :aria-pressed="String(form.isCritical)"
             @click="form.isCritical = !form.isCritical"
           >
             🎯 暴击
           </button>
         </div>
-        <div class="flex items-end">
-          <button
-            class="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-            :class="form.isDoubleBattle ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
-            @click="form.isDoubleBattle = !form.isDoubleBattle"
-          >
-            👥 双打
-          </button>
-        </div>
-        <div class="flex items-end">
-          <button
-            class="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-            :class="form.reflectActive ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
-            @click="form.reflectActive = !form.reflectActive"
-          >
-            反射壁
-          </button>
-        </div>
-        <div class="flex items-end">
-          <button
-            class="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-            :class="form.lightScreenActive ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
-            @click="form.lightScreenActive = !form.lightScreenActive"
-          >
-            光墙
-          </button>
-        </div>
-        <div class="flex items-end">
-          <button
-            class="w-full px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all"
-            :class="form.auroraVeilActive ? 'bg-purple-50 border-purple-300 text-purple-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
-            @click="form.auroraVeilActive = !form.auroraVeilActive"
-          >
-            极光幕
-          </button>
-        </div>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="rounded-lg border-2 px-3 py-1.5 text-[11px] font-bold transition-all"
+          :class="form.isDoubleBattle ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+          :aria-pressed="String(form.isDoubleBattle)"
+          @click="form.isDoubleBattle = !form.isDoubleBattle"
+        >
+          👥 双打
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border-2 px-3 py-1.5 text-[11px] font-bold transition-all"
+          :class="form.reflectActive ? 'bg-purple-50 border-purple-300 text-purple-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+          :aria-pressed="String(form.reflectActive)"
+          @click="form.reflectActive = !form.reflectActive"
+        >
+          反射壁
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border-2 px-3 py-1.5 text-[11px] font-bold transition-all"
+          :class="form.lightScreenActive ? 'bg-purple-50 border-purple-300 text-purple-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+          :aria-pressed="String(form.lightScreenActive)"
+          @click="form.lightScreenActive = !form.lightScreenActive"
+        >
+          光墙
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border-2 px-3 py-1.5 text-[11px] font-bold transition-all"
+          :class="form.auroraVeilActive ? 'bg-purple-50 border-purple-300 text-purple-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+          :aria-pressed="String(form.auroraVeilActive)"
+          @click="form.auroraVeilActive = !form.auroraVeilActive"
+        >
+          极光幕
+        </button>
       </div>
     </div>
 
@@ -533,7 +277,7 @@
               v-for="s in [{k:'attackerAtkOv',l:'攻击'},{k:'attackerSpAOv',l:'特攻'},{k:'attackerSpeOv',l:'速度'}]"
               :key="s.k"
             >
-              <label class="block text-[10px] text-slate-400 mb-0.5">{{ s.l }}</label>
+              <label class="block text-[11px] text-slate-400 mb-0.5">{{ s.l }}</label>
               <el-input-number
                 v-model="form[s.k]"
                 :min="0"
@@ -554,7 +298,7 @@
               v-for="s in [{k:'defenderHpOv',l:'HP'},{k:'defenderDefOv',l:'防御'},{k:'defenderSpDOv',l:'特防'}]"
               :key="s.k"
             >
-              <label class="block text-[10px] text-slate-400 mb-0.5">{{ s.l }}</label>
+              <label class="block text-[11px] text-slate-400 mb-0.5">{{ s.l }}</label>
               <el-input-number
                 v-model="form[s.k]"
                 :min="0"
@@ -602,7 +346,7 @@
           <div class="grid gap-4 sm:grid-cols-3">
             <!-- 最小伤害 -->
             <div class="text-center p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
+              <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">
                 最小伤害
               </div>
               <div class="mt-1 text-3xl font-black text-slate-800 tabular-nums">
@@ -618,7 +362,7 @@
               :class="effectivenessBorderClass"
             >
               <div
-                class="text-[10px] uppercase tracking-widest font-bold"
+                class="text-[11px] uppercase tracking-widest font-bold"
                 :class="effectivenessTextClass"
               >
                 平均伤害
@@ -638,7 +382,7 @@
             </div>
             <!-- 最大伤害 -->
             <div class="text-center p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
+              <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold">
                 最大伤害
               </div>
               <div class="mt-1 text-3xl font-black text-slate-800 tabular-nums">
@@ -739,7 +483,7 @@
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <!-- 属性相性 -->
         <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm p-4">
-          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">
+          <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold mb-2">
             属性相性
           </div>
           <div class="flex items-center gap-2">
@@ -763,7 +507,7 @@
 
         <!-- STAB -->
         <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm p-4">
-          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">
+          <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold mb-2">
             本系加成
           </div>
           <div
@@ -779,7 +523,7 @@
 
         <!-- 使用能力 -->
         <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm p-4">
-          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">
+          <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold mb-2">
             能力对比
           </div>
           <div class="text-sm font-bold text-slate-700">
@@ -792,7 +536,7 @@
 
         <!-- 命中率 -->
         <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm p-4">
-          <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-2">
+          <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold mb-2">
             命中率
           </div>
           <div class="text-lg font-black text-slate-700">
@@ -806,7 +550,7 @@
 
       <!-- 修正倍率详情 -->
       <div class="rounded-xl bg-white border border-slate-200/80 shadow-sm p-4">
-        <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-3">
+        <div class="text-[11px] uppercase tracking-widest text-slate-400 font-bold mb-3">
           修正倍率明细
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
@@ -816,7 +560,7 @@
             class="flex flex-col items-center p-2.5 rounded-lg border transition-all"
             :class="v !== 1 ? (v > 1 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200') : 'bg-slate-50 border-slate-100'"
           >
-            <span class="text-[10px] font-bold text-slate-400 uppercase">{{ k }}</span>
+            <span class="text-[11px] font-bold text-slate-400 uppercase">{{ k }}</span>
             <span
               class="text-sm font-black tabular-nums mt-0.5"
               :class="v !== 1 ? (v > 1 ? 'text-emerald-700' : 'text-red-700') : 'text-slate-500'"
@@ -910,15 +654,12 @@
 import { computed, reactive, ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../services/api'
+import { TYPE_COLORS as typeColors } from '../services/typeChart'
+import PokemonCalcPanel from '../components/PokemonCalcPanel.vue'
 
 // ── 常量 ──
-// PokeAPI / 后端 type 表属性编号（1=normal, 2=fighting, 3=flying ...）
-const TYPE_COLORS = {
-  1: '#A8A77A', 2: '#C03028', 3: '#A890F0', 4: '#A040A0', 5: '#E0C068',
-  6: '#B8A038', 7: '#A8B820', 8: '#705898', 9: '#B8B8D0', 10: '#F08030',
-  11: '#6890F0', 12: '#78C850', 13: '#F8D030', 14: '#F85888', 15: '#98D8D8',
-  16: '#7038F8', 17: '#705848', 18: '#EE99AC'
-}
+// 类型色/名统一从 typeChart 单一数据源读取（PokeAPI 编号）
+const TYPE_COLORS = typeColors
 
 const weathers = [
   { v: 'sun', l: '☀ 晴天' }, { v: 'rain', l: '🌧 下雨' },
@@ -929,6 +670,17 @@ const terrains = [
   { v: 'grassy', l: '🌿 青草' }, { v: 'misty', l: '🌫 薄雾' }
 ]
 const boostOptions = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+
+// 防御方阶级字段（防御/特防）
+const defenderBoostFields = [
+  { key: 'defenderDefenseBoost', label: '防御阶级' },
+  { key: 'defenderSpDefenseBoost', label: '特防阶级' }
+]
+
+// 攻击方阶级标签随招式伤害类型变化（物攻/特攻）
+const computedAttackBoostLabel = computed(() =>
+  selectedMove.value?.damageClassId === 2 ? '特攻阶级' : '攻击阶级'
+)
 
 const attackerStatuses = [
   { key: 'attackerBurned', label: '🔥 烧伤' },
@@ -1002,12 +754,6 @@ const defenderTypes = ref([])
 let latestPokemonSearchToken = 0
 
 // ── 计算属性 ──
-const filteredAttackerAbilities = computed(() =>
-  abilityOptions.value.filter(a => attackerAbilityIds.value.length === 0 || attackerAbilityIds.value.includes(a.id))
-)
-const filteredDefenderAbilities = computed(() =>
-  abilityOptions.value.filter(a => defenderAbilityIds.value.length === 0 || defenderAbilityIds.value.includes(a.id))
-)
 const attackerPokemon = computed(() => pokemonOptions.value.find(p => p.id === form.attackerPokemonId) || null)
 const defenderPokemon = computed(() => pokemonOptions.value.find(p => p.id === form.defenderPokemonId) || null)
 const selectedMove = computed(() => attackerMoves.value.find(m => m.id === form.moveId) || null)
@@ -1083,8 +829,6 @@ const hasEffects = computed(() =>
 
 // ── 方法 ──
 function typeColor(typeId) { return TYPE_COLORS[typeId] || '#777' }
-function boostLabel(i) { return i > 0 ? `+${i}` : `${i}` }
-function pokemonOptionLabel(p) { return `${p.name || p.nameEn || '#' + p.id}` }
 function moveOptionLabel(m) { return `${m.name || m.nameEn || '#' + m.id} · ${m.typeName || '?'} · 威力${m.power ?? '—'}` }
 function formatNumber(v) { return (v === null || v === undefined || Number.isNaN(Number(v))) ? '-' : Number(v).toFixed(Number(v) % 1 === 0 ? 0 : 2) }
 function formatPercent(v) { return v === null || v === undefined ? '-' : (v * 100).toFixed(1) + '%' }

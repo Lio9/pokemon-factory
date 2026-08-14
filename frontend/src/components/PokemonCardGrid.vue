@@ -71,7 +71,7 @@
             class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 border-2"
             :class="isFavorite(pokemon.id)
               ? 'bg-red-500 text-white shadow-lg border-red-400 fav-bounce'
-              : 'bg-white/90 text-gray-400 hover:text-red-500 border-white/80'"
+              : 'bg-white/90 text-slate-400 hover:text-red-500 border-white/80'"
             @click.prevent="onToggleFavorite(pokemon)"
           >
             <span class="text-sm">{{ isFavorite(pokemon.id) ? '❤️' : '🤍' }}</span>
@@ -98,7 +98,7 @@
               >
             </div>
             <!-- 图鉴编号 -->
-            <div class="absolute -top-2 -left-2 bg-slate-800 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-poke tracking-wider z-10">
+            <div class="absolute -top-2 -left-2 bg-slate-800 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-lg shadow-poke tracking-wider z-10">
               Nº {{ String(pokemon.id).padStart(4, '0') }}
             </div>
           </div>
@@ -106,7 +106,7 @@
           <!-- 信息 -->
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 mb-1">
-              <h3 class="font-extrabold text-gray-900 text-lg truncate group-hover:text-red-600 transition-colors">
+              <h3 class="font-extrabold text-slate-900 text-lg truncate group-hover:text-red-600 transition-colors">
                 {{ pokemon.name }}
               </h3>
               <span
@@ -118,7 +118,7 @@
                 class="text-purple-500"
               >◆</span>
             </div>
-            <p class="text-gray-400 text-sm truncate font-medium">
+            <p class="text-slate-400 text-sm truncate font-medium">
               {{ pokemon.genus }}
             </p>
 
@@ -141,7 +141,7 @@
             class="hidden sm:flex gap-3 flex-shrink-0"
           >
             <div class="text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
                 攻击
               </div>
               <div class="text-sm font-extrabold text-slate-700">
@@ -149,7 +149,7 @@
               </div>
             </div>
             <div class="text-center">
-              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
                 速度
               </div>
               <div class="text-sm font-extrabold text-slate-700">

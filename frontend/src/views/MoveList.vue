@@ -15,7 +15,7 @@
           <div class="text-xl font-black text-white">
             {{ total }}
           </div>
-          <div class="text-[10px] font-bold uppercase tracking-wider text-white/70">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-white/70">
             {{ tr('招式总数', 'Total moves') }}
           </div>
         </div>
@@ -329,7 +329,7 @@
                 :style="{ backgroundColor: move.typeColor || '#888' }"
               >{{ move.typeName }}</span>
               <span
-                class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold shadow-sm"
+                class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold shadow-sm"
                 :class="{
                   'bg-rose-100 text-rose-700': move.damageClass === 'physical',
                   'bg-blue-100 text-blue-700': move.damageClass === 'special',
@@ -379,7 +379,7 @@
               :style="{ backgroundColor: move.typeColor || '#888' }"
             >{{ move.typeName }}</span>
             <span
-              class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+              class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold"
               :class="{
                 'bg-rose-100 text-rose-700': move.damageClass === 'physical',
                 'bg-blue-100 text-blue-700': move.damageClass === 'special',

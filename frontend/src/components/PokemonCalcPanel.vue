@@ -15,7 +15,7 @@
     <div class="space-y-3 p-4">
       <!-- 选择宝可梦 -->
       <el-select
-        :model-value="modelValue.pokemonId"
+        :model-value="form[pokemonIdField]"
         filterable
         remote
         reserve-keyword
@@ -55,11 +55,11 @@
           v-for="t in types"
           :key="t.type_id"
           class="rounded-full px-2.5 py-0.5 text-[11px] font-bold text-white shadow-sm"
-          :style="{ background: typeColor(t.type_id) }"
+          :style="{ background: typeColorById(t.type_id) }"
         >{{ t.name }}</span>
       </div>
 
-      <!-- 招式选择（仅攻击方） -->
+      <!-- 招式选择（仅攻击方通过 slot 注入） -->
       <slot name="moves" />
 
       <!-- 特性 & 道具 -->
@@ -67,13 +67,13 @@
         <div>
           <label class="mb-1 block text-[11px] font-bold text-slate-400">{{ tr('特性', 'Ability') }}</label>
           <el-select
-            :model-value="modelValue.abilityId"
+            :model-value="form[abilityIdField]"
             filterable
             :placeholder="tr('可选', 'Optional')"
             clearable
             class="w-full"
             size="default"
-            @change="emitUpdate('abilityId', $event)"
+            @change="setForm(abilityIdField, $event)"
           >
             <el-option
               v-for="a in filteredAbilities"
@@ -86,7 +86,7 @@
         <div>
           <label class="mb-1 block text-[11px] font-bold text-slate-400">{{ tr('道具', 'Item') }}</label>
           <el-select
-            :model-value="modelValue.itemId"
+            :model-value="form[itemIdField]"
             filterable
             remote
             :remote-method="searchItems"
@@ -95,7 +95,7 @@
             class="w-full"
             :loading="itemLoading"
             size="default"
-            @change="emitUpdate('itemId', $event)"
+            @change="setForm(itemIdField, $event)"
           >
             <el-option
               v-for="i in itemOptions"
@@ -107,15 +107,18 @@
         </div>
       </div>
 
-      <!-- 能力阶级 -->
-      <div class="grid grid-cols-3 gap-2">
+      <!-- 能力阶级 / HP% -->
+      <div
+        class="grid gap-2"
+        :class="boostFields.length === 1 ? 'grid-cols-2' : 'grid-cols-3'"
+      >
         <div v-for="boost in boostFields">
-          <label class="mb-1 block text-[10px] font-bold text-slate-400">{{ boost.label }}</label>
+          <label class="mb-1 block text-[11px] font-bold text-slate-400">{{ boost.label }}</label>
           <el-select
-            :model-value="modelValue[boost.key]"
+            :model-value="form[boost.key]"
             class="w-full"
             size="default"
-            @change="emitUpdate(boost.key, $event)"
+            @change="setForm(boost.key, $event)"
           >
             <el-option
               v-for="i in boostOptions"
@@ -124,6 +127,17 @@
               :value="i"
             />
           </el-select>
+        </div>
+        <div>
+          <label class="mb-1 block text-[11px] font-bold text-slate-400">HP%</label>
+          <el-input-number
+            :model-value="form[hpPercentField]"
+            :min="1"
+            :max="100"
+            class="w-full"
+            size="default"
+            @update:model-value="setForm(hpPercentField, $event)"
+          />
         </div>
       </div>
 
@@ -137,9 +151,9 @@
           :key="s.key"
           type="button"
           class="rounded-lg border px-2.5 py-1 text-[11px] font-bold transition-all"
-          :class="modelValue[s.key] ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
-          :aria-pressed="String(Boolean(modelValue[s.key]))"
-          @click="emitUpdate(s.key, !modelValue[s.key])"
+          :class="form[s.key] ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'"
+          :aria-pressed="String(Boolean(form[s.key]))"
+          @click="setForm(s.key, !form[s.key])"
         >
           {{ s.label }}
         </button>
@@ -150,13 +164,14 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useLocale } from '../../composables/useLocale'
+import { useLocale } from '../composables/useLocale'
+import { typeColor as typeColorById } from '../services/typeChart'
 
 const { translate: tr } = useLocale()
 
 const props = defineProps({
   side: { type: String, required: true }, // 'attacker' | 'defender'
-  modelValue: { type: Object, required: true },
+  form: { type: Object, required: true },
   pokemon: { type: Object, default: null },
   pokemonOptions: { type: Array, default: () => [] },
   pokemonLoading: { type: Boolean, default: false },
@@ -172,8 +187,6 @@ const props = defineProps({
   onPokemonChange: { type: Function, required: true }
 })
 
-const emit = defineEmits(['update:modelValue'])
-
 const isAttacker = computed(() => props.side === 'attacker')
 const sideLabel = computed(() => tr(isAttacker.value ? '攻击方' : '防御方', isAttacker.value ? 'Attacker' : 'Defender'))
 const headerIcon = computed(() => isAttacker.value ? '⚔️' : '🛡️')
@@ -181,12 +194,10 @@ const headerGradient = computed(() => isAttacker.value
   ? 'linear-gradient(90deg, #3b82f6, #6366f1)'
   : 'linear-gradient(90deg, #f43f5e, #ec4899)')
 
-const TYPE_COLORS = {
-  1: '#A8A77A', 2: '#C03028', 3: '#A890F0', 4: '#A040A0', 5: '#E0C068',
-  6: '#B8A038', 7: '#A8B820', 8: '#705898', 9: '#B8B8D0', 10: '#F08030',
-  11: '#6890F0', 12: '#78C850', 13: '#F8D030', 14: '#F85888', 15: '#98D8D8',
-  16: '#7038F8', 17: '#705848', 18: '#EE99AC'
-}
+const pokemonIdField = computed(() => `${props.side}PokemonId`)
+const abilityIdField = computed(() => `${props.side}AbilityId`)
+const itemIdField = computed(() => `${props.side}ItemId`)
+const hpPercentField = computed(() => `${props.side}HpPercent`)
 
 const boostOptions = [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
 
@@ -194,16 +205,15 @@ const filteredAbilities = computed(() =>
   props.abilityIds.length === 0 ? props.abilities : props.abilities.filter(a => props.abilityIds.includes(a.id))
 )
 
-function typeColor(typeId) { return TYPE_COLORS[typeId] || '#777' }
 function boostLabel(i) { return i > 0 ? `+${i}` : `${i}` }
 function pokemonOptionLabel(p) { return `${p.name || p.nameEn || '#' + p.id}` }
 
-function emitUpdate(key, value) {
-  emit('update:modelValue', { ...props.modelValue, [key]: value })
+function setForm(key, value) {
+  props.form[key] = value
 }
 
 function handlePokemonChange(id) {
-  emitUpdate('pokemonId', id)
+  props.form[pokemonIdField.value] = id
   props.onPokemonChange(id)
 }
 </script>

@@ -17,7 +17,7 @@
             class="w-9 h-9 rounded-xl flex items-center justify-center transition-all border-2"
             :class="imageMode === type
               ? 'bg-poke-red text-white shadow-poke border-red-400'
-              : 'bg-white/80 text-gray-500 hover:bg-white border-white/60 shadow-sm'"
+              : 'bg-white/80 text-slate-500 hover:bg-white border-white/60 shadow-sm'"
             :title="label"
             @click="imageMode = type"
           >
@@ -53,13 +53,13 @@
           <div class="absolute -top-2 -right-2 flex gap-1 z-10">
             <span
               v-if="currentForm?.isMega"
-              class="px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-extrabold rounded-lg shadow-poke border border-amber-400"
+              class="px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[11px] font-extrabold rounded-lg shadow-poke border border-amber-400"
             >
               MEGA
             </span>
             <span
               v-if="currentForm?.isGigantamax"
-              class="px-2.5 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-extrabold rounded-lg shadow-poke border border-purple-400"
+              class="px-2.5 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[11px] font-extrabold rounded-lg shadow-poke border border-purple-400"
             >
               G-MAX
             </span>
@@ -67,7 +67,7 @@
         </div>
 
         <!-- 图片类型说明 -->
-        <p class="mt-3 text-xs text-gray-500 font-bold uppercase tracking-wider relative z-10">
+        <p class="mt-3 text-xs text-slate-500 font-bold uppercase tracking-wider relative z-10">
           {{ imageTypes[imageMode] }}
         </p>
       </div>
@@ -129,7 +129,7 @@
         <!-- 基本信息 - Pokedex 表格风格 -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
           <div class="bg-slate-50 rounded-xl p-3.5 text-center border border-slate-200/80 shadow-poke-inset">
-            <div class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div class="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
               身高
             </div>
             <div class="text-lg font-extrabold text-slate-800">
@@ -137,7 +137,7 @@
             </div>
           </div>
           <div class="bg-slate-50 rounded-xl p-3.5 text-center border border-slate-200/80 shadow-poke-inset">
-            <div class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div class="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
               体重
             </div>
             <div class="text-lg font-extrabold text-slate-800">
@@ -145,7 +145,7 @@
             </div>
           </div>
           <div class="bg-slate-50 rounded-xl p-3.5 text-center border border-slate-200/80 shadow-poke-inset">
-            <div class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div class="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
               捕获率
             </div>
             <div class="text-lg font-extrabold text-slate-800">
@@ -153,7 +153,7 @@
             </div>
           </div>
           <div class="bg-slate-50 rounded-xl p-3.5 text-center border border-slate-200/80 shadow-poke-inset">
-            <div class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div class="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
               亲密度
             </div>
             <div class="text-lg font-extrabold text-slate-800">
@@ -165,7 +165,7 @@
         <!-- 补充信息 -->
         <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
           <div class="bg-red-50 rounded-xl p-3 border border-red-100">
-            <div class="text-poke-red text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div class="text-poke-red text-[11px] font-bold uppercase tracking-wider mb-1">
               性别比例
             </div>
             <div class="text-sm font-bold text-slate-800">
@@ -173,7 +173,7 @@
             </div>
           </div>
           <div class="bg-purple-50 rounded-xl p-3 border border-purple-100">
-            <div class="text-purple-600 text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div class="text-purple-600 text-[11px] font-bold uppercase tracking-wider mb-1">
               蛋群
             </div>
             <div class="text-sm font-bold text-slate-800">
@@ -181,7 +181,7 @@
             </div>
           </div>
           <div class="bg-green-50 rounded-xl p-3 border border-green-100">
-            <div class="text-green-600 text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div class="text-green-600 text-[11px] font-bold uppercase tracking-wider mb-1">
               孵化步数
             </div>
             <div class="text-sm font-bold text-slate-800">
@@ -189,7 +189,7 @@
             </div>
           </div>
           <div class="bg-amber-50 rounded-xl p-3 border border-amber-100">
-            <div class="text-amber-600 text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div class="text-amber-600 text-[11px] font-bold uppercase tracking-wider mb-1">
               成长类型
             </div>
             <div class="text-sm font-bold text-slate-800">
@@ -197,7 +197,7 @@
             </div>
           </div>
           <div class="bg-rose-50 rounded-xl p-3 border border-rose-100">
-            <div class="text-rose-600 text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div class="text-rose-600 text-[11px] font-bold uppercase tracking-wider mb-1">
               基础经验
             </div>
             <div class="text-sm font-bold text-slate-800">
@@ -205,7 +205,7 @@
             </div>
           </div>
           <div class="bg-blue-50 rounded-xl p-3 border border-blue-100">
-            <div class="text-blue-600 text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div class="text-blue-600 text-[11px] font-bold uppercase tracking-wider mb-1">
               世代
             </div>
             <div class="text-sm font-bold text-slate-800">

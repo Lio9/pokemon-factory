@@ -21,12 +21,12 @@
           <!-- Showdown 风格编号 -->
           <span
             v-if="moveIndex != null"
-            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] font-black"
+            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[11px] font-black"
             :class="selected ? 'border-indigo-300 bg-indigo-500 text-white' : 'border-slate-300 bg-slate-100 text-slate-500'"
           >{{ moveIndex + 1 }}</span>
           <span class="text-sm font-bold text-slate-900 truncate">{{ name }}</span>
           <span
-            class="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
+            class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold text-white"
             :style="{ backgroundColor: typeColor }"
           >
             {{ typeName }}
@@ -51,7 +51,7 @@
         </div>
       </div>
       <div
-        class="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+        class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
         :class="damageClassClass"
       >
         {{ damageClassLabel }}
@@ -69,6 +69,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useLocale } from '../composables/useLocale'
+import { typeColor as typeColorById, typeNameZh, typeNameEn } from '../services/typeChart'
 
 const { translate: tr } = useLocale()
 
@@ -102,31 +103,9 @@ const ppClass = computed(() => {
   return 'text-emerald-600'
 })
 
-// PokeAPI / 后端 type 表属性编号（1=normal, 2=fighting, 3=flying ...）
-const TYPE_COLORS = {
-  1: '#A8A77A', 2: '#C03028', 3: '#A890F0', 4: '#A040A0', 5: '#E0C068',
-  6: '#B8A038', 7: '#A8B820', 8: '#705898', 9: '#B8B8D0', 10: '#F08030',
-  11: '#6890F0', 12: '#78C850', 13: '#F8D030', 14: '#F85888', 15: '#98D8D8',
-  16: '#7038F8', 17: '#705848', 18: '#EE99AC'
-}
-
-const TYPE_NAMES = {
-  1: '一般', 2: '格斗', 3: '飞行', 4: '毒', 5: '地面',
-  6: '岩石', 7: '虫', 8: '幽灵', 9: '钢', 10: '火',
-  11: '水', 12: '草', 13: '电', 14: '超能力', 15: '冰',
-  16: '龙', 17: '恶', 18: '妖精'
-}
-
-const TYPE_NAMES_EN = {
-  1: 'Normal', 2: 'Fighting', 3: 'Flying', 4: 'Poison', 5: 'Ground',
-  6: 'Rock', 7: 'Bug', 8: 'Ghost', 9: 'Steel', 10: 'Fire',
-  11: 'Water', 12: 'Grass', 13: 'Electric', 14: 'Psychic', 15: 'Ice',
-  16: 'Dragon', 17: 'Dark', 18: 'Fairy'
-}
-
 const name = computed(() => props.move.name || props.move.name_en || '?')
-const typeName = computed(() => TYPE_NAMES[props.move.type_id] || TYPE_NAMES_EN[props.move.type_id] || '?')
-const typeColor = computed(() => TYPE_COLORS[props.move.type_id] || '#777')
+const typeName = computed(() => tr(typeNameZh(props.move.type_id), typeNameEn(props.move.type_id)))
+const typeColor = computed(() => typeColorById(props.move.type_id))
 
 const damageClassLabel = computed(() => {
   const id = props.move.damage_class_id

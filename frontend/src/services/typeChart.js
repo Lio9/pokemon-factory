@@ -4,10 +4,52 @@
  * 优先从后端 API 获取权威数据，启动时先使用内嵌的静态表作为初始值，
  * 异步请求完成后自动替换为服务器数据。
  *
+ * 同时提供类型色/类型名的单一数据源，避免各组件重复拷贝。
+ *
  * @module services/typeChart
  */
 
 import { dataCache } from './cache'
+
+// ===== 类型元数据（单一数据源：PokeAPI/后端 type 表编号）=====
+// 1=normal, 2=fighting, 3=flying, 4=poison, 5=ground, 6=rock,
+// 7=bug, 8=ghost, 9=steel, 10=fire, 11=water, 12=grass,
+// 13=electric, 14=psychic, 15=ice, 16=dragon, 17=dark, 18=fairy
+export const TYPE_COLORS = {
+  1: '#A8A77A', 2: '#C03028', 3: '#A890F0', 4: '#A040A0', 5: '#E0C068',
+  6: '#B8A038', 7: '#A8B820', 8: '#705898', 9: '#B8B8D0', 10: '#F08030',
+  11: '#6890F0', 12: '#78C850', 13: '#F8D030', 14: '#F85888', 15: '#98D8D8',
+  16: '#7038F8', 17: '#705848', 18: '#EE99AC'
+}
+
+export const TYPE_NAMES_ZH = {
+  1: '一般', 2: '格斗', 3: '飞行', 4: '毒', 5: '地面',
+  6: '岩石', 7: '虫', 8: '幽灵', 9: '钢', 10: '火',
+  11: '水', 12: '草', 13: '电', 14: '超能力', 15: '冰',
+  16: '龙', 17: '恶', 18: '妖精'
+}
+
+export const TYPE_NAMES_EN = {
+  1: 'Normal', 2: 'Fighting', 3: 'Flying', 4: 'Poison', 5: 'Ground',
+  6: 'Rock', 7: 'Bug', 8: 'Ghost', 9: 'Steel', 10: 'Fire',
+  11: 'Water', 12: 'Grass', 13: 'Electric', 14: 'Psychic', 15: 'Ice',
+  16: 'Dragon', 17: 'Dark', 18: 'Fairy'
+}
+
+/** 类型色（按 PokeAPI 编号） */
+export function typeColor(typeId) {
+  return TYPE_COLORS[Number(typeId)] || '#777'
+}
+
+/** 类型中文名（按 PokeAPI 编号） */
+export function typeNameZh(typeId) {
+  return TYPE_NAMES_ZH[Number(typeId)] || '?'
+}
+
+/** 类型英文名（按 PokeAPI 编号） */
+export function typeNameEn(typeId) {
+  return TYPE_NAMES_EN[Number(typeId)] || '?'
+}
 
 // 第1-9世代 静态属性相克表（初始 fallback）
 const STATIC_TYPE_EFFECTIVENESS = {

@@ -19,7 +19,7 @@
     <!-- 收藏按钮 -->
     <button
       class="absolute top-3.5 right-3 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 border-2"
-      :class="isFav ? 'bg-red-500 text-white shadow-lg border-red-400 fav-bounce' : 'bg-white/90 text-gray-400 hover:text-red-500 border-white/80 shadow-poke'"
+      :class="isFav ? 'bg-red-500 text-white shadow-lg border-red-400 fav-bounce' : 'bg-white/90 text-slate-400 hover:text-red-500 border-white/80 shadow-poke'"
       @click.prevent="onToggleFavorite"
     >
       <span class="text-sm">{{ isFav ? '❤️' : '🤍' }}</span>
@@ -51,7 +51,7 @@
     </div>
 
     <!-- 图鉴编号 - 游戏风格 -->
-    <div class="absolute top-3.5 left-3 z-20 bg-slate-800 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-poke tracking-wider">
+    <div class="absolute top-3.5 left-3 z-20 bg-slate-800 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-lg shadow-poke tracking-wider">
       Nº {{ String(pokemon.id).padStart(4, '0') }}
     </div>
 
@@ -75,10 +75,10 @@
 
     <!-- 信息区域 -->
     <div class="p-4 pt-3">
-      <h3 class="font-extrabold text-gray-900 truncate text-base group-hover:text-red-600 transition-colors">
+      <h3 class="font-extrabold text-slate-900 truncate text-base group-hover:text-red-600 transition-colors">
         {{ pokemon.name }}
       </h3>
-      <p class="text-gray-400 text-xs truncate font-medium mt-0.5">
+      <p class="text-slate-400 text-xs truncate font-medium mt-0.5">
         {{ pokemon.genus }}
       </p>
 

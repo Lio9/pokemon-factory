@@ -70,19 +70,19 @@
             <div class="text-lg mb-1">
               {{ slot.banned ? '🚫' : '➕' }}
             </div>
-            <div class="text-[10px] font-bold text-center">
+            <div class="text-[11px] font-bold text-center">
               {{ slot.banned ? slot.pokemonName : `第${slot.index +1}只` }}
             </div>
             <div
               v-if="slot.cost > 0"
-              class="mt-1 text-[10px] px-1.5 py-0.5 rounded-full"
+              class="mt-1 text-[11px] px-1.5 py-0.5 rounded-full"
               :class="slot.affordable ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'"
             >
               {{ slot.cost }}分
             </div>
             <div
               v-else
-              class="mt-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700"
+              class="mt-1 text-[11px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700"
             >
               免费
             </div>
@@ -141,7 +141,7 @@
               <div class="font-medium text-slate-800 truncate">
                 {{ pokemon.name || pokemon.name_en }}
               </div>
-              <div class="text-[10px] text-slate-400">
+              <div class="text-[11px] text-slate-400">
                 #{{ pokemon.id }}
               </div>
             </div>

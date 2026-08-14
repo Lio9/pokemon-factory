@@ -40,33 +40,6 @@ if (import.meta.env.PROD) {
   document.addEventListener('keydown', requestPermissionOnInteraction, { once: true })
 }
 
-// 无限滚动指令
-app.directive('infinite-scroll', {
-  mounted(el, binding) {
-    const callback = binding.value
-    let isLoading = false
-    
-    const onScroll = async () => {
-      const { scrollTop, scrollHeight, clientHeight } = el
-      if (scrollTop + clientHeight >= scrollHeight - 10 && !isLoading) {
-        isLoading = true
-        try {
-          await callback()
-        } finally {
-          isLoading = false
-        }
-      }
-    }
-    
-    el.addEventListener('scroll', onScroll)
-    el._onScroll = onScroll
-  },
-  
-  unmounted(el) {
-    if (el._onScroll) {
-      el.removeEventListener('scroll', el._onScroll)
-    }
-  }
-})
+// 无限滚动指令（未使用，已移除）
 
 app.mount('#app')

@@ -16,7 +16,7 @@
         class="px-4 py-2 rounded-xl font-medium transition-all duration-300"
         :class="selectedFilter === filter.key
           ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg scale-105'
-          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
         @click="selectedFilter = filter.key"
       >
         {{ filter.label }}
@@ -41,38 +41,38 @@
     >
       <table class="w-full">
         <thead>
-          <tr class="border-b-2 border-gray-100">
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+          <tr class="border-b-2 border-slate-100">
+            <th class="py-4 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
               技能
             </th>
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <th class="py-4 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
               属性
             </th>
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <th class="py-4 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
               分类
             </th>
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <th class="py-4 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
               威力
             </th>
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <th class="py-4 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
               命中
             </th>
-            <th class="py-4 px-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <th class="py-4 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
               PP
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
+        <tbody class="divide-y divide-slate-100">
           <tr
             v-for="move in filteredMoves"
             :key="move.id"
-            class="hover:bg-gradient-to-r from-gray-50 to-blue-50 transition-colors"
+            class="hover:bg-gradient-to-r from-slate-50 to-blue-50 transition-colors"
           >
             <td class="py-4 px-4">
-              <div class="font-bold text-gray-900">
+              <div class="font-bold text-slate-900">
                 {{ move.name }}
               </div>
-              <div class="text-xs text-gray-500 mt-1">
+              <div class="text-xs text-slate-500 mt-1">
                 <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">{{ move.learnMethod }}</span>
                 <span
                   v-if="move.level"
@@ -99,15 +99,15 @@
             <td class="py-4 px-4">
               <span
                 class="text-base font-bold"
-                :class="move.power >= 80 ? 'text-red-600' : move.power >= 40 ? 'text-orange-600' : 'text-gray-700'"
+                :class="move.power >= 80 ? 'text-red-600' : move.power >= 40 ? 'text-orange-600' : 'text-slate-700'"
               >
                 {{ move.power || '-' }}
               </span>
             </td>
-            <td class="py-4 px-4 text-base font-medium text-gray-700">
+            <td class="py-4 px-4 text-base font-medium text-slate-700">
               {{ move.accuracy || '-' }}
             </td>
-            <td class="py-4 px-4 text-base font-medium text-gray-700">
+            <td class="py-4 px-4 text-base font-medium text-slate-700">
               {{ move.pp || '-' }}
             </td>
           </tr>
@@ -117,7 +117,7 @@
 
     <div
       v-else
-      class="text-center py-12 text-gray-500 bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl border-2 border-dashed border-gray-200"
+      class="text-center py-12 text-slate-500 bg-gradient-to-r from-slate-50 to-slate-50 rounded-2xl border-2 border-dashed border-slate-200"
     >
       暂无技能数据
     </div>
@@ -166,7 +166,7 @@ export default {
         '特殊': 'bg-blue-100 text-blue-700',
         '变化': 'bg-green-100 text-green-700'
       }
-      return colors[damageClass] || 'bg-gray-100 text-gray-700'
+      return colors[damageClass] || 'bg-slate-100 text-slate-700'
     }
 
     return {

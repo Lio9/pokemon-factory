@@ -25,7 +25,7 @@
         </el-input>
       </div>
 
-      <!-- 属性筛选 - 圆形按钮组 -->
+      <!-- 属性筛选 - 下拉选择 -->
       <div class="w-full sm:w-auto">
         <el-select
           :model-value="selectedType"

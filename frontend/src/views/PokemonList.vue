@@ -18,7 +18,7 @@
           <div class="text-xl font-black text-white">
             {{ allRecords.length }}
           </div>
-          <div class="text-[10px] font-bold uppercase tracking-wider text-white/70">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-white/70">
             {{ tr('宝可梦总数', 'Total Pokemon') }}
           </div>
         </div>

@@ -17,7 +17,7 @@
         <router-link
           :to="`/pokemon/${evo.speciesId}`"
           class="flex flex-col items-center p-6 rounded-2xl transition-all duration-300 group"
-          :class="evo.isCurrent ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl ring-4 ring-blue-300 scale-105' : 'bg-gradient-to-br from-gray-50 to-slate-50 border-2 border-gray-200 hover:border-purple-300 hover:shadow-xl'"
+          :class="evo.isCurrent ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl ring-4 ring-blue-300 scale-105' : 'bg-gradient-to-br from-slate-50 to-slate-50 border-2 border-slate-200 hover:border-purple-300 hover:shadow-xl'"
         >
           <div class="relative">
             <img
@@ -36,19 +36,19 @@
           </div>
           <span
             class="mt-3 font-bold"
-            :class="evo.isCurrent ? 'text-white' : 'text-gray-900'"
+            :class="evo.isCurrent ? 'text-white' : 'text-slate-900'"
           >{{ evo.name }}</span>
           <span
             class="text-xs mt-1"
-            :class="evo.isCurrent ? 'text-blue-100' : 'text-gray-500'"
+            :class="evo.isCurrent ? 'text-blue-100' : 'text-slate-500'"
           >#{{ String(evo.speciesId).padStart(4, '0') }}</span>
         </router-link>
         <div
           v-if="index < evolutionChain.length - 1"
-          class="flex flex-col items-center text-gray-400"
+          class="flex flex-col items-center text-slate-400"
         >
           <ArrowRight class="w-8 h-8 transition-transform duration-300 group-hover:translate-x-1" />
-          <span class="text-xs mt-1 px-3 py-1 bg-gray-100 rounded-full">{{ evo.trigger }}</span>
+          <span class="text-xs mt-1 px-3 py-1 bg-slate-100 rounded-full">{{ evo.trigger }}</span>
           <span
             v-if="evo.minLevel"
             class="text-xs mt-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium"

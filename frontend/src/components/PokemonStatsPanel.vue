@@ -42,7 +42,7 @@
           </div>
           <!-- 数字 -->
           <div class="absolute inset-0 flex items-center justify-end pr-2">
-            <span class="text-[10px] font-extrabold text-slate-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
+            <span class="text-[11px] font-extrabold text-slate-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">
               {{ bar.value || 0 }}
             </span>
           </div>

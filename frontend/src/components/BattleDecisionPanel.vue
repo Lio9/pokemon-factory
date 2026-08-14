@@ -313,7 +313,7 @@
           </div>
           <div
             v-if="mon.moves.length"
-            class="mt-1.5 text-[10px] text-slate-400"
+            class="mt-1.5 text-[11px] text-slate-400"
           >
             {{ tr('提示：按数字键 1-4 快速选择招式', 'Tip: press keys 1-4 to pick a move') }}
           </div>
@@ -346,7 +346,7 @@
                     <div class="truncate text-sm font-semibold text-slate-900">
                       {{ target.name || target.name_en }}
                     </div>
-                    <div class="text-[10px] text-slate-500">
+                    <div class="text-[11px] text-slate-500">
                       {{ tr('槽位 {slot}', 'Slot {slot}', { slot: target.fieldSlot + 1 }) }} · HP {{ target.currentHp }}/{{ target.maxHp || target.stats?.hp || '?' }}
                     </div>
                   </div>

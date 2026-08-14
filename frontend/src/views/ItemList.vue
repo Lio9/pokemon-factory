@@ -15,7 +15,7 @@
           <div class="text-xl font-black text-white">
             {{ total }}
           </div>
-          <div class="text-[10px] font-bold uppercase tracking-wider text-white/70">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-white/70">
             {{ tr('道具总数', 'Total items') }}
           </div>
         </div>

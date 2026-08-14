@@ -138,7 +138,7 @@
               <div class="text-xs font-semibold text-slate-800 truncate">
                 {{ move.name || move.name_en }}
               </div>
-              <div class="text-[10px] text-slate-400">
+              <div class="text-[11px] text-slate-400">
                 {{ tr('威力', 'Pwr') }} {{ move.power || 0 }} · {{ tr('命中', 'Acc') }} {{ move.accuracy ?? '-' }}%
               </div>
             </div>
@@ -162,15 +162,10 @@ const props = defineProps({
 
 defineEmits(['update:visible'])
 
-const TYPE_COLORS_BY_ID = {
-  1: '#A8A77A', 2: '#C62828', 3: '#456AE4', 4: '#A040A0', 5: '#F7D02C',
-  6: '#B69F37', 7: '#A6B91A', 8: '#74C8E2', 9: '#B7B7CE', 10: '#EE8130',
-  11: '#6390F0', 12: '#7AC74C', 13: '#F95587', 14: '#A98FF3', 15: '#98D8D8',
-  16: '#705746', 17: '#6F35FC', 18: '#D685AD'
-}
+import { typeColor } from '../services/typeChart'
 
 function typeIdToColor(typeId) {
-  return TYPE_COLORS_BY_ID[typeId] || '#777'
+  return typeColor(typeId)
 }
 
 const abilityName = computed(() => {
@@ -296,7 +291,7 @@ const evRows = computed(() => {
   @apply rounded-xl bg-gradient-to-b from-slate-50 to-white border border-slate-100 p-3;
 }
 .stat-label {
-  @apply text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1;
+  @apply text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1;
 }
 .stat-value {
   @apply text-sm font-bold text-slate-800;

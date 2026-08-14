@@ -7,40 +7,40 @@
     <nav class="mb-6 flex items-center gap-2 text-sm">
       <router-link
         to="/"
-        class="text-gray-500 hover:text-blue-600 transition-colors"
+        class="text-slate-500 hover:text-blue-600 transition-colors"
       >
         首页
       </router-link>
-      <ChevronRight class="w-4 h-4 text-gray-400" />
+      <ChevronRight class="w-4 h-4 text-slate-400" />
       <router-link
         to="/pokemon"
-        class="text-gray-500 hover:text-blue-600 transition-colors"
+        class="text-slate-500 hover:text-blue-600 transition-colors"
       >
         图鉴
       </router-link>
-      <ChevronRight class="w-4 h-4 text-gray-400" />
-      <span class="text-gray-900 font-medium">{{ pokemon.name }}</span>
+      <ChevronRight class="w-4 h-4 text-slate-400" />
+      <span class="text-slate-900 font-medium">{{ pokemon.name }}</span>
     </nav>
 
     <!-- 快捷操作栏 -->
     <div class="fixed bottom-6 right-4 z-50 flex flex-col gap-2 sm:bottom-auto sm:top-24 sm:right-6 sm:flex-row sm:gap-2">
       <button 
         class="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110 border-2"
-        :class="isFavorite ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-300' : 'bg-white text-gray-600 hover:text-pink-500 border-slate-200'"
+        :class="isFavorite ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-300' : 'bg-white text-slate-600 hover:text-pink-500 border-slate-200'"
         :title="'收藏 / Favorite'"
         @click="toggleFavorite"
       >
         <Heart :class="['w-5 h-5 sm:w-6 sm:h-6 transition-all duration-300', isFavorite ? 'fill-current scale-110' : '']" />
       </button>
       <button 
-        class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-gray-600 hover:text-blue-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center border-2 border-slate-200"
+        class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-slate-600 hover:text-blue-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center border-2 border-slate-200"
         :title="'比较 / Compare'"
         @click="showCompareModal = true"
       >
         <Scale class="w-5 h-5 sm:w-6 sm:h-6" />
       </button>
       <button 
-        class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-gray-600 hover:text-green-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center border-2 border-slate-200"
+        class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white text-slate-600 hover:text-green-600 shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center border-2 border-slate-200"
         :title="'分享 / Share'"
         @click="sharePokemon"
       >
@@ -117,7 +117,7 @@
           </div>
           <p
             class="mt-3 font-medium"
-            :class="selectedFormId === form.id ? 'text-white' : 'text-gray-900'"
+            :class="selectedFormId === form.id ? 'text-white' : 'text-slate-900'"
           >
             {{ form.formName || '默认形态' }}
           </p>

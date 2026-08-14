@@ -15,7 +15,7 @@
           <div class="text-xl font-black text-white">
             {{ total }}
           </div>
-          <div class="text-[10px] font-bold uppercase tracking-wider text-white/70">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-white/70">
             {{ tr('特性总数', 'Total abilities') }}
           </div>
         </div>
@@ -228,7 +228,7 @@
               v-if="ability.generation"
               class="mt-3"
             >
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gradient-to-r from-violet-100 to-purple-100 text-violet-600 shadow-sm">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-violet-100 to-purple-100 text-violet-600 shadow-sm">
                 {{ tr('第 {gen} 世代', 'Gen {gen}', { gen: ability.generation }) }}
               </span>
             </div>
@@ -260,7 +260,7 @@
               </h3>
               <span
                 v-if="ability.generation"
-                class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500"
+                class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500"
               >{{ tr('Gen {gen}', 'Gen {gen}', { gen: ability.generation }) }}</span>
             </div>
             <p class="text-sm text-slate-500 mt-1 truncate">

@@ -80,7 +80,7 @@
               <span class="text-poke-red">Pokemon</span>
               <span class="text-slate-700"> Factory</span>
             </h1>
-            <p class="text-[10px] font-medium text-slate-400 -mt-0.5 tracking-wider hidden sm:block">
+            <p class="text-[11px] font-medium text-slate-400 -mt-0.5 tracking-wider hidden sm:block">
               {{ tr('宝可梦图鉴与对战模拟', 'DEX & BATTLE SIM') }}
             </p>
           </div>

@@ -64,7 +64,7 @@
             :key="`opp-sprite-${mon.index}-${idx}`"
             class="mb-1 flex flex-col items-center"
           >
-            <div class="mb-1 flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-bold text-white">
+            <div class="mb-1 flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 text-[11px] font-bold text-white">
               <span
                 v-if="mon.level"
                 class="text-emerald-200"
@@ -193,7 +193,7 @@
                 /></svg>
               </div>
             </div>
-            <div class="mt-1 flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-bold text-white">
+            <div class="mt-1 flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 text-[11px] font-bold text-white">
               <span>{{ mon.name }}</span>
               <span
                 v-if="mon.level"
@@ -358,7 +358,7 @@
               </template>
               <span
                 v-if="action.hitCount > 1"
-                class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500"
+                class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold text-slate-500"
               >×{{ action.hitCount }}</span>
             </div>
           </div>

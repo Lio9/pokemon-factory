@@ -14,10 +14,10 @@
         v-for="ability in abilities"
         :key="ability.id"
         class="rounded-2xl p-5 hover:shadow-xl transition-all duration-300 cursor-default group"
-        :class="ability.isHidden ? 'bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200' : 'bg-gradient-to-br from-gray-50 to-slate-50 border-2 border-gray-100 hover:border-green-200'"
+        :class="ability.isHidden ? 'bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200' : 'bg-gradient-to-br from-slate-50 to-slate-50 border-2 border-slate-100 hover:border-green-200'"
       >
         <div class="flex items-center justify-between mb-3">
-          <span class="font-bold text-lg text-gray-900 group-hover:text-green-600 transition-colors">{{ ability.name }}</span>
+          <span class="font-bold text-lg text-slate-900 group-hover:text-green-600 transition-colors">{{ ability.name }}</span>
           <span
             v-if="ability.isHidden"
             class="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-sm"
@@ -25,7 +25,7 @@
             隐藏
           </span>
         </div>
-        <p class="text-gray-600 leading-relaxed">
+        <p class="text-slate-600 leading-relaxed">
           {{ ability.description || '暂无描述' }}
         </p>
       </div>
