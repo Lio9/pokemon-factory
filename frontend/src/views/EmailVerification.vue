@@ -1,17 +1,17 @@
 
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 via-indigo-50 to-purple-50 px-4 py-8">
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 px-4 py-8">
     <div class="w-full max-w-md">
       <!-- Verification Card -->
-      <div class="rounded-[28px] border border-slate-200/80 bg-white/95 p-6 shadow-[0_20px_70px_-50px_rgba(15,23,42,0.45)] backdrop-blur sm:p-8">
+      <div class="rounded-[28px] border-3 border-slate-200/80 bg-white/95 p-6 shadow-poke-card backdrop-blur sm:p-8">
         <!-- Status Icon -->
         <div class="flex justify-center mb-6">
           <div
             v-if="status === 'verifying'"
             class="relative"
           >
-            <div class="w-20 h-20 rounded-full border-4 border-sky-200 border-t-sky-600 animate-spin" />
+            <div class="pokeball-spinner" />
           </div>
           <div
             v-else-if="status === 'success'"
@@ -88,7 +88,7 @@
           <button
             v-if="status === 'error'"
             :disabled="loading"
-            class="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            class="btn-poke w-full !rounded-2xl"
             @click="retryVerification"
           >
             {{ loading ? tr('重试中...', 'Retrying...') : tr('重新验证', 'Retry Verification') }}

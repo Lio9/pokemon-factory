@@ -318,28 +318,38 @@
             {{ tr('提示：按数字键 1-4 快速选择招式', 'Tip: press keys 1-4 to pick a move') }}
           </div>
 
-          <!-- 目标选择 -->
+          <!-- 目标选择（Showdown 风格：点击场上精灵） -->
           <div
-            v-if="moveNeedsOpponentTarget(selectedMoveObject(mon)) && opponentActiveOptions.length"
+            v-if="moveNeedsOpponentTarget(selectedMoveObject(mon)) && opponentActiveMons.length"
             class="mt-3"
           >
             <div class="text-xs font-semibold text-slate-500 mb-1.5">
-              {{ tr('选择目标', 'Select target') }}
+              {{ tr('选择目标', 'Select target') }} · {{ tr('点击场上宝可梦', 'Click an active Pokemon') }}
             </div>
             <div class="flex gap-2">
               <button
-                v-for="target in opponentActiveOptions"
-                :key="`target-${mon.fieldSlot}-${target.value}`"
+                v-for="target in opponentActiveMons"
+                :key="`target-${mon.fieldSlot}-${target.fieldSlot}`"
                 type="button"
                 class="flex-1 rounded-xl border-2 px-3 py-2 text-left transition-all"
-                :class="selectedTargets[`target-slot-${mon.fieldSlot}`] === target.value ? 'border-rose-500 bg-rose-50 shadow-sm ring-2 ring-rose-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
-                @click="setSelectedTarget(mon.fieldSlot, target.value)"
+                :class="selectedTargets[`target-slot-${mon.fieldSlot}`] === target.fieldSlot ? 'border-rose-500 bg-rose-50 shadow-sm ring-2 ring-rose-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
+                @click="setSelectedTarget(mon.fieldSlot, target.fieldSlot)"
               >
-                <div class="text-sm font-semibold text-slate-900">
-                  {{ tr('槽位 {slot}', 'Slot {slot}', { slot: target.value + 1 }) }}
-                </div>
-                <div class="text-xs text-slate-500">
-                  {{ target.label }}
+                <div class="flex items-center gap-2">
+                  <img
+                    :src="targetSprite(target)"
+                    :alt="target.name"
+                    class="h-9 w-9 object-contain"
+                    @error="onTargetSpriteError($event, target)"
+                  >
+                  <div class="min-w-0">
+                    <div class="truncate text-sm font-semibold text-slate-900">
+                      {{ target.name || target.name_en }}
+                    </div>
+                    <div class="text-[10px] text-slate-500">
+                      {{ tr('槽位 {slot}', 'Slot {slot}', { slot: target.fieldSlot + 1 }) }} · HP {{ target.currentHp }}/{{ target.maxHp || target.stats?.hp || '?' }}
+                    </div>
+                  </div>
                 </div>
               </button>
             </div>
@@ -410,6 +420,7 @@ import { ref } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import MoveButton from './MoveButton.vue'
 import PokemonDetailPopover from './PokemonDetailPopover.vue'
+import { sprites } from '../services/sprites'
 
 const { translate: tr } = useLocale()
 
@@ -422,6 +433,23 @@ const detailPokemon = ref(null)
 function openDetail(pokemon) {
   detailPokemon.value = pokemon
   showDetailDialog.value = true
+}
+
+// 目标精灵图
+function targetSprite(target) {
+  const id = target?.form_id || target?.species_id || target?.pokemon_id || target?.id
+  return id ? sprites.pokemon(id) : sprites.default
+}
+
+function onTargetSpriteError(event, target) {
+  const img = event.target
+  const src = img?.getAttribute('src') || ''
+  if (src.includes('/api/pokedex/images')) {
+    const id = src.split('/').pop().replace('.png', '')
+    img.src = sprites.fallbackPokemon(id)
+  } else {
+    img.src = sprites.default
+  }
 }
 
 defineProps({
@@ -447,6 +475,7 @@ defineProps({
   moveEffectivenessHints: { type: Function, required: true },
   moveNeedsOpponentTarget: { type: Function, required: true },
   moveTargetText: { type: Function, required: true },
+  opponentActiveMons: { type: Array, default: () => [] },
   opponentActiveOptions: { type: Array, default: () => [] },
   opponentRoster: { type: Array, default: () => [] },
   pendingReplacementCount: { type: Number, default: 0 },

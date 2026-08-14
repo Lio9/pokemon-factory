@@ -71,14 +71,14 @@
         </div>
         <div class="mt-5 grid gap-3 sm:grid-cols-2">
           <button
-            class="rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            class="btn-poke !rounded-2xl disabled:!opacity-50"
             :disabled="loading"
             @click="login"
           >
             {{ loading ? tr('提交中...', 'Submitting...') : tr('登录', 'Login') }}
           </button>
           <button
-            class="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100"
+            class="rounded-2xl border-2 border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 shadow-poke"
             :disabled="loading"
             @click="register"
           >

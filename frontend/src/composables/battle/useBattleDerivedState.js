@@ -522,6 +522,7 @@ export function useBattleDerivedState(state) {
     modeSummary,
     moveEffectivenessHints,
     opponentActiveOptions,
+    opponentActiveMons,
     opponentRoster,
     playerActiveMons,
     playerBenchOptions,

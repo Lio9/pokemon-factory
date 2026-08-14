@@ -117,6 +117,7 @@
             :move-effectiveness-hints="moveEffectivenessHints"
             :move-needs-opponent-target="moveNeedsOpponentTarget"
             :move-target-text="moveTargetText"
+            :opponent-active-mons="opponentActiveMons"
             :opponent-active-options="opponentActiveOptions"
             :opponent-roster="opponentRoster"
             :pending-replacement-count="pendingReplacementCount"
@@ -276,6 +277,7 @@ const {
   onConfirmExchange,
   onSettlementClose,
   openLeaderboard,
+  opponentActiveMons,
   opponentActiveOptions,
   opponentRoster,
   pendingReplacementCount,
