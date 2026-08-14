@@ -118,7 +118,7 @@
           </div>
           <div
             class="mt-1 font-semibold"
-            :class="summary?.status === 'completed' ? 'text-emerald-600' : summary?.status === 'preview' ? 'text-amber-600' : 'text-blue-600'"
+            :class="statusTextColor"
           >
             {{ statusText }}
           </div>
@@ -158,11 +158,12 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useLocale } from '../composables/useLocale'
 
 const { translate: tr } = useLocale()
 
-defineProps({
+const props = defineProps({
   actionHeadline: { type: String, default: '' },
   actionDescription: { type: String, default: '' },
   currentUser: { type: String, default: '' },
@@ -174,9 +175,21 @@ defineProps({
   progressSummary: { type: String, default: '' },
   requestError: { type: String, default: '' },
   statusText: { type: String, default: '' },
+  statusTone: { type: String, default: 'neutral' },
   summary: { type: Object, default: null },
   tierBgClass: { type: String, default: '' },
   tierDisplayName: { type: String, default: '' },
   tierTextClass: { type: String, default: '' }
+})
+
+// 状态色统一走 statusTone（与 BattleArena 一致）
+const statusTextColor = computed(() => {
+  switch (props.statusTone) {
+    case 'success': return 'text-emerald-600'
+    case 'danger': return 'text-rose-600'
+    case 'warning': return 'text-amber-600'
+    case 'info': return 'text-sky-600'
+    default: return 'text-slate-600'
+  }
 })
 </script>

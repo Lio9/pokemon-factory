@@ -474,7 +474,6 @@ defineProps({
   leadRosterIndexes: { type: Array, default: () => [] },
   moveEffectivenessHints: { type: Function, required: true },
   moveNeedsOpponentTarget: { type: Function, required: true },
-  moveTargetText: { type: Function, required: true },
   opponentActiveMons: { type: Array, default: () => [] },
   opponentActiveOptions: { type: Array, default: () => [] },
   opponentRoster: { type: Array, default: () => [] },

@@ -14,7 +14,7 @@
           v-if="settlement.factoryRound"
           class="mt-2 text-sm text-slate-500"
         >
-          {{ tr('工厂挑战第 {round} / 9 轮', 'Factory challenge round {round} / 9', { round: settlement.factoryRound }) }}
+          {{ tr('工厂挑战第 {round} / {max} 轮', 'Factory challenge round {round} / {max}', { round: settlement.factoryRound, max: factoryRun?.max_battles || 9 }) }}
         </div>
       </div>
       <div class="mt-5 space-y-3">

@@ -269,6 +269,7 @@ public class BattleEngine {
 
         Map<String, Object> roundLog = new LinkedHashMap<>();
         roundLog.put("round", round);
+        roundLog.put("ts", java.time.Instant.now().toString());
         List<String> events = new ArrayList<>();
         List<Map<String, Object>> actionLogs = new ArrayList<>();
 

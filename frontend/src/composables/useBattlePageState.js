@@ -19,7 +19,6 @@ import {
   buildMoveSubmission,
   formatPokemonTypes,
   moveNeedsOpponentTarget,
-  moveTargetText,
   normalizeBattlePayload,
   normalizeFactoryRun
 } from '../services/contracts/battleContract'
@@ -72,6 +71,7 @@ export function useBattlePageState() {
   const exchangeJustConfirmed = ref(false)
   const replacedIndex = ref(0)
   const replacedHighlight = ref(-1)
+  let exchangeHighlightTimer = null
   const currentBattleId = ref(null)
   const busyAction = ref('')
   const requestError = ref('')
@@ -195,6 +195,7 @@ export function useBattlePageState() {
       resultText.value = translate('等待开始对战', 'Waiting to start a battle')
     }
     resetLocalSelections()
+    clearManualBattle()
     markUpdated()
   }
 
@@ -388,6 +389,7 @@ export function useBattlePageState() {
     }
 
     markUpdated()
+    persistManualBattle()
 
     if (isPreviewPhase.value) {
       initializePreviewSelections()
@@ -561,9 +563,11 @@ export function useBattlePageState() {
       replacedHighlight.value = replacedIndex.value
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
-      setTimeout(() => {
+      clearTimeout(exchangeHighlightTimer)
+      exchangeHighlightTimer = setTimeout(() => {
         replacedHighlight.value = -1
         exchangeJustConfirmed.value = false
+        exchangeHighlightTimer = null
       }, 4000)
     }).catch((error) => {
       resultText.value = translate('交换失败: {message}', 'Exchange failed: {message}', '', { message: error.message || error })
@@ -798,15 +802,48 @@ export function useBattlePageState() {
     if (factoryRun.value?.current_battle_id) {
       currentBattleId.value = factoryRun.value.current_battle_id
       await refreshStatus(true)
+      return
+    }
+    // 恢复手动对战（刷新页面后续接）
+    let manualBattleId = null
+    try {
+      manualBattleId = sessionStorage.getItem(MANUAL_BATTLE_KEY)
+    } catch { /* ignore */ }
+    if (manualBattleId) {
+      currentBattleId.value = manualBattleId
+      await refreshStatus(true)
     }
   })
 
   onBeforeUnmount(() => {
     stopPolling()
+    if (exchangeHighlightTimer) {
+      clearTimeout(exchangeHighlightTimer)
+      exchangeHighlightTimer = null
+    }
   })
 
   function setShowDebugPanel(value) {
     showDebugPanel.value = Boolean(value)
+  }
+
+  // ===== 手动对战刷新持久化（sessionStorage）=====
+  const MANUAL_BATTLE_KEY = 'pokemon-factory-manual-battle'
+
+  function persistManualBattle() {
+    try {
+      if (currentBattleId.value && !factoryRun.value) {
+        sessionStorage.setItem(MANUAL_BATTLE_KEY, String(currentBattleId.value))
+      } else {
+        sessionStorage.removeItem(MANUAL_BATTLE_KEY)
+      }
+    } catch { /* ignore */ }
+  }
+
+  function clearManualBattle() {
+    try {
+      sessionStorage.removeItem(MANUAL_BATTLE_KEY)
+    } catch { /* ignore */ }
   }
 
   return {
@@ -845,7 +882,6 @@ export function useBattlePageState() {
     modeSummary,
     moveEffectivenessHints,
     moveNeedsOpponentTarget,
-    moveTargetText,
     nextFactoryBattle,
     onConfirmExchange,
     onSettlementClose,

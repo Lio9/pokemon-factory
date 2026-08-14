@@ -49,6 +49,7 @@
         :progress-summary="progressSummary"
         :request-error="requestError"
         :status-text="statusText"
+        :status-tone="statusTone"
         :summary="summary"
         :tier-bg-class="tierBgClass"
         :tier-display-name="tierDisplayName"
@@ -116,7 +117,6 @@
             :lead-roster-indexes="leadRosterIndexes"
             :move-effectiveness-hints="moveEffectivenessHints"
             :move-needs-opponent-target="moveNeedsOpponentTarget"
-            :move-target-text="moveTargetText"
             :opponent-active-mons="opponentActiveMons"
             :opponent-active-options="opponentActiveOptions"
             :opponent-roster="opponentRoster"
@@ -163,7 +163,7 @@
           </div>
           <div
             class="grid gap-2"
-            :class="mobileActionButtons.length > 1 ? 'grid-cols-2' : 'grid-cols-1'"
+            :class="mobileActionButtons.length >= 3 ? 'grid-cols-3' : mobileActionButtons.length > 1 ? 'grid-cols-2' : 'grid-cols-1'"
           >
             <button
               v-for="action in mobileActionButtons"
@@ -272,7 +272,6 @@ const {
   modeSummary,
   moveEffectivenessHints,
   moveNeedsOpponentTarget,
-  moveTargetText,
   nextFactoryBattle,
   onConfirmExchange,
   onSettlementClose,
@@ -344,6 +343,12 @@ const textLogContainer = ref(null)
 
 function toggleTextMode() {
   isTextMode.value = !isTextMode.value
+  // 切换模式时重置日志增量游标，重新生成完整日志
+  if (isTextMode.value) {
+    lastTextLogRound = -1
+    textLogs.value = []
+    generateTextLogs(summary.value)
+  }
 }
 
 function getLogClass(log) {
@@ -354,42 +359,54 @@ function getLogClass(log) {
   return 'text-slate-400'
 }
 
-// 监听 summary 变化，自动生成文字日志
-watch(summary, (newSummary) => {
+// 生成文字日志（增量追加，保留历史回合）
+let lastTextLogRound = -1
+function generateTextLogs(newSummary) {
   if (!isTextMode.value || !newSummary) return
 
   const newLogs = []
   
-  // 基础信息
-  newLogs.push({ type: 'header', content: `=== ${tr('对战状态', 'Battle Status')} ===` })
-  newLogs.push({ type: 'info', content: `${tr('回合', 'Round')}: ${newSummary.currentRound || 0} / ${newSummary.roundLimit || 50}` })
-  newLogs.push({ type: 'info', content: `${tr('状态', 'Status')}: ${newSummary.status || 'waiting'}` })
-
-  // 场上宝可梦
-  newLogs.push({ type: 'header', content: `--- ${tr('当前场上', 'Active Pokemon')} ---` })
-  
-  const playerActive = (newSummary.playerTeam || []).filter((_, i) => (newSummary.playerActiveSlots || []).includes(i))
-  const opponentActive = (newSummary.opponentTeam || []).filter((_, i) => (newSummary.opponentActiveSlots || []).includes(i))
-
-  playerActive.forEach(mon => {
-    newLogs.push({ type: 'status', content: `[${tr('玩家', 'Player')}] ${mon.name} - HP: ${mon.currentHp}/${mon.stats?.hp || '?'}` })
-  })
-  opponentActive.forEach(mon => {
-    newLogs.push({ type: 'status', content: `[${tr('对手', 'Foe')}] ${mon.name} - HP: ${mon.currentHp}/${mon.stats?.hp || '?'}` })
-  })
-
-  // 最新回合事件
-  if (newSummary.rounds && newSummary.rounds.length > 0) {
-    const lastRound = newSummary.rounds[newSummary.rounds.length - 1]
-    newLogs.push({ type: 'header', content: `>>> ${tr('第', 'Round')} ${lastRound.round} ${tr('回合记录', 'Log')} <<<` })
-    ;(lastRound.events || []).forEach(event => {
-      let type = 'event'
-      if (event.includes(tr('造成了', 'dealt')) || event.includes('damage')) type = 'damage'
-      newLogs.push({ type, content: event })
-    })
+  // 仅在状态变化或首次时输出头部/状态/在场信息
+  if (textLogs.value.length === 0) {
+    newLogs.push({ type: 'header', content: `=== ${tr('对战状态', 'Battle Status')} ===` })
+    newLogs.push({ type: 'info', content: `${tr('回合', 'Round')}: ${newSummary.currentRound || 0} / ${newSummary.roundLimit || 50}` })
+    newLogs.push({ type: 'info', content: `${tr('状态', 'Status')}: ${newSummary.status || 'waiting'}` })
   }
 
-  textLogs.value = newLogs
+  // 追加新回合的事件（只处理比上次更新的回合）
+  const rounds = newSummary.rounds || []
+  if (rounds.length > lastTextLogRound + 1) {
+    const startIndex = Math.max(0, lastTextLogRound + 1)
+    for (let i = startIndex; i < rounds.length; i++) {
+      const round = rounds[i]
+      newLogs.push({ type: 'header', content: `>>> ${round.round === 0 ? tr('入场阶段', 'Entry phase') : tr('第', 'Round') + ' ' + round.round + ' ' + tr('回合记录', 'Log')} <<<` })
+      ;(round.events || []).forEach((event) => {
+        let type = 'event'
+        // 伤害判定：优先按事件文本中的常见伤害表述（中/英），避免误判
+        const damageKeywords = [tr('造成了', 'dealt'), tr('造成', 'dealt'), 'damage', '伤害', '点伤害']
+        if (damageKeywords.some((kw) => event.includes(kw))) type = 'damage'
+        newLogs.push({ type, content: event })
+      })
+    }
+    lastTextLogRound = rounds.length - 1
+  }
+
+  // 战斗结束追加胜负
+  if (newSummary.status === 'completed' && textLogs.value.length > 0) {
+    const last = textLogs.value[textLogs.value.length - 1]
+    if (!last.content.includes(tr('胜者', 'Winner'))) {
+      newLogs.push({
+        type: 'status',
+        content: newSummary.winner === 'player'
+          ? `>>> ${tr('战斗胜利！', 'Victory!')} <<<`
+          : `>>> ${tr('战斗失败', 'Defeat')} <<<`
+      })
+    }
+  }
+
+  if (newLogs.length) {
+    textLogs.value = [...textLogs.value, ...newLogs]
+  }
 
   // 自动滚动到底部
   nextTick(() => {
@@ -397,6 +414,11 @@ watch(summary, (newSummary) => {
       textLogContainer.value.scrollTop = textLogContainer.value.scrollHeight
     }
   })
+}
+
+// 监听 summary 变化，自动生成文字日志
+watch(summary, (newSummary) => {
+  generateTextLogs(newSummary)
 }, { deep: true })
 
 // Ban 系统
@@ -503,9 +525,9 @@ async function openBanModal() {
     const profile = await api.battle.profile()
     playerPoints.value = profile?.profile?.totalPoints || 0
 
-    // 加载宝可梦列表
+    // 加载宝可梦列表（全量覆盖全国图鉴）
     if (allPokemon.value.length === 0) {
-      const res = await api.pokemon.getList({ current: 1, size: 200 })
+      const res = await api.pokemon.getList({ current: 1, size: 1100 })
       allPokemon.value = res.data?.records || []
     }
 

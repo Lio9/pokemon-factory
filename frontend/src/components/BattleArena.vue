@@ -289,7 +289,7 @@
           {{ tr('回合日志', 'Round log') }}
         </h3>
         <span class="text-sm text-slate-500">
-          {{ summary?.status === 'completed' ? tr(`胜者：${summary.winner}`, `Winner: ${summary.winner}`) : tr('战斗进行中', 'Battle in progress') }}
+          {{ summary?.status === 'completed' ? winnerLabel : tr('战斗进行中', 'Battle in progress') }}
         </span>
       </div>
       <div
@@ -303,8 +303,14 @@
           :class="roundIndex === summary.rounds.length - 1 && summary.status !== 'completed' ? 'round-current border-2' : ''"
         >
           <div class="flex items-center justify-between gap-3">
-            <div class="font-semibold text-slate-900">
-              {{ round.round === 0 ? tr('入场阶段', 'Entry phase') : tr(`第 ${round.round} 回合`, `Round ${round.round}`) }}
+            <div class="flex items-center gap-2">
+              <div class="font-semibold text-slate-900">
+                {{ round.round === 0 ? tr('入场阶段', 'Entry phase') : tr(`第 ${round.round} 回合`, `Round ${round.round}`) }}
+              </div>
+              <span
+                v-if="roundTime(round)"
+                class="text-[11px] font-medium text-slate-400 tabular-nums"
+              >{{ roundTime(round) }}</span>
             </div>
             <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
               {{ tr('{count} 条事件', '{count} events', { count: (round.events || []).length }) }}
@@ -437,6 +443,25 @@ const statusTextClass = computed(() => {
     default: return 'text-slate-900'
   }
 })
+
+// 胜利方标签（本地化）
+const winnerLabel = computed(() => {
+  if (props.summary?.winner === 'player') return tr('胜者：我方', 'Winner: You')
+  if (props.summary?.winner === 'opponent') return tr('胜者：对手', 'Winner: Opponent')
+  return tr(`胜者：${props.summary?.winner}`, `Winner: ${props.summary?.winner}`)
+})
+
+// 回合时间戳：优先使用后端提供的 created_at/ts，否则前端按回合序号生成参考时间
+function roundTime(round) {
+  const ts = round?.ts || round?.created_at || round?.timestamp
+  if (ts) {
+    const date = new Date(ts)
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    }
+  }
+  return ''
+}
 
 // ===== 数据加工 =====
 

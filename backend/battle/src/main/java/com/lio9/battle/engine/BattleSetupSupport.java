@@ -246,6 +246,7 @@ final class BattleSetupSupport {
         }
         Map<String, Object> roundLog = new LinkedHashMap<>();
         roundLog.put("round", round);
+        roundLog.put("ts", java.time.Instant.now().toString());
         roundLog.put("actions", new ArrayList<>());
         roundLog.put("events", events);
         roundLog.put("playerActive", flowSupport.activeNames(state, true));

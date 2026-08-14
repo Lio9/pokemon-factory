@@ -135,7 +135,7 @@
             <img
               :src="getSpriteUrl(pokemon)"
               class="h-8 w-8 object-contain"
-              @error="$event.target.src='/placeholder.png'"
+              @error="handleSpriteError($event, pokemon)"
             >
             <div class="flex-1 min-w-0">
               <div class="font-medium text-slate-800 truncate">
@@ -227,7 +227,7 @@ const slots = computed(() => {
 })
 
 const filteredPokemon = computed(() => {
-  let list = props.pokemonList
+  let list = [...props.pokemonList] // 拷贝，避免原地修改父组件数组
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     list = list.filter(p =>
@@ -243,9 +243,21 @@ const canConfirm = computed(() => {
   return bannedList.value.length > 0 && totalCost.value <= props.playerPoints
 })
 
-// 方法
+// 方法：优先本地精灵图，失败回退到 PokeAPI 远程，再回退占位图
 function getSpriteUrl(pokemon) {
-  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png`
+  const id = pokemon?.id
+  if (!id) return '/placeholder.png'
+  return `/api/pokedex/images/pokemon/${id}.png`
+}
+
+function handleSpriteError(event, pokemon) {
+  const img = event.target
+  const src = img?.getAttribute('src') || ''
+  if (src.startsWith('/api/pokedex/images')) {
+    img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon?.id}.png`
+  } else if (!src.includes('placeholder')) {
+    img.src = '/placeholder.png'
+  }
 }
 
 function isBanned(pokemon) {

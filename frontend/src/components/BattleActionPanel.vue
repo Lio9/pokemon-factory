@@ -38,20 +38,27 @@
   <div class="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
     <template v-if="!factoryRun && !currentBattleId">
       <!-- 格式切换 -->
-      <div class="col-span-full flex gap-2 rounded-xl border border-slate-200 bg-white p-1">
+      <div class="col-span-full grid grid-cols-3 gap-1 rounded-xl border border-slate-200 bg-white p-1">
         <button
-          class="flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition"
+          class="rounded-lg px-2 py-2 text-sm font-semibold transition"
           :class="battleFormat === 'vgc-doubles' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'"
           @click="emit('update-format', 'vgc-doubles')"
         >
-          {{ tr('VGC 双打 (64)', 'Doubles (VGC)') }}
+          {{ tr('双打 (64)', 'Doubles (64)') }}
         </button>
         <button
-          class="flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition"
+          class="rounded-lg px-2 py-2 text-sm font-semibold transition"
           :class="battleFormat === 'vgc63' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'"
           @click="emit('update-format', 'vgc63')"
         >
           {{ tr('63 单打', 'Singles (63)') }}
+        </button>
+        <button
+          class="rounded-lg px-2 py-2 text-sm font-semibold transition"
+          :class="battleFormat === 'gen9singles' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'"
+          @click="emit('update-format', 'gen9singles')"
+        >
+          {{ tr('9代单打', 'Gen9 Singles') }}
         </button>
       </div>
       <button
@@ -100,9 +107,9 @@
       </button>
     </template>
     <template v-else>
-      <!-- 战斗进行中：刷新 + 投降 -->
+      <!-- 战斗进行中：刷新 + 投降（running/preview/replacement 都提供刷新） -->
       <button
-        v-if="summary?.status === 'running'"
+        v-if="currentBattleId && summary && summary.status !== 'completed'"
         class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
         :disabled="!currentBattleId || isBusy"
         @click="emit('refresh-status')"
