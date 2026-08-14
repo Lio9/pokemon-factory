@@ -470,6 +470,69 @@ public final class MoveRegistry {
         "shadow rush", "shadow-rush"
     );
 
+    // ==== 非接触物理招式（Showdown 规则：不触发接触效果）====
+    // 声音类、风类、远程弹射/波类、地面震动、精神/岩石/毒弹等远程物理招
+    private static final Set<String> NON_CONTACT_PHYSICAL_MOVES = Set.of(
+        // 声音物理招
+        "boomburst", "bug buzz", "bug-buzz", "clanging scales", "clanging-scales",
+        "overdrive", "sparkling aria", "sparkling-aria", "hyper voice", "hyper-voice", "snarl",
+        // 风类
+        "gust", "twister", "hurricane", "heat-wave", "icy wind", "icy-wind",
+        "air slash", "air-slash", "air cutter", "air-cutter", "fairy wind", "fairy-wind",
+        "ominous wind", "ominous-wind", "bleakwind storm", "bleakwind-storm", "springtide storm", "springtide-storm",
+        "wildbolt storm", "wildbolt-storm", "petal blizzard", "petal-blizzard",
+        // 波/脉冲/光线
+        "aura sphere", "aura-sphere", "dragon pulse", "dragon-pulse", "dark pulse", "dark-pulse",
+        "water pulse", "water-pulse", "earth power", "earth-power", "energy ball", "energy-ball",
+        "shadow ball", "shadow-ball", "sludge bomb", "sludge-bomb", "sludge wave", "sludge-wave",
+        "flash cannon", "flash-cannon", "power gem", "power-gem", "ancient power", "ancient-power",
+        "weather ball", "weather-ball", "terrain pulse", "terrain-pulse", "seed bomb", "seed-bomb",
+        "focus blast", "focus-blast", "giga drain", "giga-drain", "mega drain", "mega-drain",
+        // 地震/地面冲击
+        "earthquake", "magnitude", "bulldoze", "high horsepower", "high-horsepower",
+        "stomping tantrum", "stomping-tantrum", "precipice blades", "precipice-blades", "drill run", "drill-run",
+        "bonemerang", "bone rush", "bone-rush", "bone club", "bone-club",
+        // 远程弹射/投掷
+        "rock slide", "rock-slide", "rock throw", "rock-throw", "stone edge", "stone-edge",
+        "rock blast", "rock-blast", "smack down", "smack-down",
+        "icicle spear", "icicle-spear", "icicle crash", "icicle-crash", "ice shard", "ice-shard",
+        "triple axel", "triple-axel", "avalanche",
+        // 精神/意念远程
+        "psychic", "psybeam", "psyshock", "psycho cut", "psycho-cut", "psychic fangs", "psychic-fangs",
+        "extrasensory", "expanding force", "expanding-force", "stored power", "stored-power",
+        // 其他远程
+        "thunderbolt", "thunder", "thunder shock", "thunder-shock", "volt switch", "volt-switch",
+        "discharge", "parabolic charge", "parabolic-charge", "charge beam", "charge-beam",
+        "flamethrower", "fire blast", "fire-blast", "heat wave", "overheat", "ember", "flame burst", "flame-burst",
+        "hydro pump", "hydro-pump", "surf", "water gun", "water-gun", "water spout", "water-spout",
+        "scald", "muddy water", "muddy-water", "octazooka", "origin pulse", "origin-pulse",
+        "ice beam", "ice-beam", "blizzard", "freeze-dry", "freeze dry", "aurora beam", "aurora-beam",
+        "solar beam", "solar-beam", "solar blade", "solar-blade", "leaf storm", "leaf-storm",
+        "razor leaf", "razor-leaf", "magical leaf", "magical-leaf", "bullet seed", "bullet-seed",
+        "dragon breath", "dragon-breath", "dragon rush", "dragon-rush", "dragon claw", "dragon-claw",
+        "hyper beam", "hyper-beam", "tri attack", "tri-attack", "swift", "mud shot", "mud-shot",
+        "mud bomb", "mud-bomb", "venoshock", "acid spray", "acid-spray", "clear smog", "clear-smog",
+        "doom desire", "doom-desire", "future sight", "future-sight", "dream eater", "dream-eater",
+        "night shade", "night-shade", "hex", "shadow sneak", "shadow-sneak", "phantom force", "phantom-force",
+        "iron head", "iron-head", "iron tail", "iron-tail", "steel wing", "steel-wing",
+        "gyro ball", "gyro-ball", "heavy slam", "heavy-slam", "heat crash", "heat-crash",
+        "body press", "body-press", "power whip", "power-whip", "vine whip", "vine-whip",
+        "grass knot", "grass-knot", "razor shell", "razor-shell", "sacred sword", "sacred-sword",
+        "secret sword", "secret-sword", "leaf blade", "leaf-blade", "x-scissor", "night slash", "night-slash"
+    );
+
+    // ==== 半无敌状态命中招式 ====
+    private static final Set<String> SEMI_INVULNERABLE_HITTERS = Set.of(
+        "gust", "twister", "thunder", "hurricane", "smack-down", "smack down",
+        "thousand-arrows", "thousand arrows", "sky-uppercut", "sky uppercut"
+    );
+    private static final Set<String> SEMI_INVULNERABLE_GROUND_HITTERS = Set.of(
+        "earthquake", "magnitude", "fissure"
+    );
+    private static final Set<String> SEMI_INVULNERABLE_WATER_HITTERS = Set.of(
+        "surf", "whirlpool"
+    );
+
     /**
      * 检查是否为保护类招式
      */
@@ -858,20 +921,15 @@ public final class MoveRegistry {
         String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
         String name = String.valueOf(move.get("name")).toLowerCase();
         // Gust/Twister/Thunder/Hurricane/Smack Down/Thousand Arrows/Sky Uppercut → 命中飞行/弹跳
-        if (Set.of("gust", "twister", "thunder", "hurricane", "smack-down", "smack down",
-                "thousand-arrows", "thousand arrows", "sky-uppercut", "sky uppercut")
-                .contains(nameEn) || Set.of("gust", "twister", "thunder", "hurricane",
-                "smack-down", "smack down", "thousand arrows", "sky uppercut").contains(name)) {
+        if (SEMI_INVULNERABLE_HITTERS.contains(nameEn) || SEMI_INVULNERABLE_HITTERS.contains(name)) {
             return true;
         }
         // Earthquake/Magnitude/Fissure → 命中挖洞
-        if (Set.of("earthquake", "magnitude", "fissure")
-                .contains(nameEn) || Set.of("earthquake", "magnitude", "fissure").contains(name)) {
+        if (SEMI_INVULNERABLE_GROUND_HITTERS.contains(nameEn) || SEMI_INVULNERABLE_GROUND_HITTERS.contains(name)) {
             return true;
         }
         // Surf/Whirlpool → 命中潜水
-        if (Set.of("surf", "whirlpool")
-                .contains(nameEn) || Set.of("surf", "whirlpool").contains(name)) {
+        if (SEMI_INVULNERABLE_WATER_HITTERS.contains(nameEn) || SEMI_INVULNERABLE_WATER_HITTERS.contains(name)) {
             return true;
         }
         return false;
@@ -1081,13 +1139,24 @@ public final class MoveRegistry {
     public static boolean hasRecoil(Map<String, Object> move) { return matchesAny(move, RECOIL_MOVES); }
 
     /**
-     * 检查是否为接触技能（通过 flags 或 power 判断）
+     * 检查是否为接触技能（Showdown 规则）。
+     * 优先读显式 contact 标志；否则已知非接触名单判定为非接触；
+     * 兜底：变化技与无威力招非接触，物理/特殊攻击招默认接触（与 PS 一致，绝大多数攻击招是接触）。
      */
     public static boolean isContactMove(Map<String, Object> move) {
         Object contact = move.get("contact");
         if (contact instanceof Boolean bool) return bool;
+        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
+        if (NON_CONTACT_PHYSICAL_MOVES.contains(nameEn)) {
+            return false;
+        }
+        // 兜底：变化技/无威力招非接触；有威力的攻击招默认接触
         int power = BattleUtils.toInt(move.get("power"), 0);
-        return power > 0;
+        int damageClassId = BattleUtils.toInt(move.get("damage_class_id"), 0);
+        if (power <= 0 || damageClassId == 3) {
+            return false;
+        }
+        return true;
     }
 
     public static boolean isGMaxMove(Map<String, Object> move) {

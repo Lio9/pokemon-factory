@@ -212,6 +212,23 @@ public class BattleService {
                 return Map.of("error", "replacement_required", "summary", existingState, "message", "请先为倒下的宝可梦选择替补。");
             }
 
+            // 并发防护：客户端应带上其看到的最新回合数，若落后于服务端则拒绝提交（避免双端覆盖回合）
+            Object clientRoundObj = playerMoveMap == null ? null : playerMoveMap.get("__round");
+            if (clientRoundObj != null) {
+                int clientRound;
+                try {
+                    clientRound = Integer.parseInt(String.valueOf(clientRoundObj));
+                } catch (NumberFormatException e) {
+                    clientRound = -1;
+                }
+                int serverRound = toInt(existingState.get("currentRound"), 0);
+                if (clientRound >= 0 && clientRound != serverRound) {
+                    return Map.of("error", "stale_turn",
+                            "summary", existingState,
+                            "message", "对战状态已更新，请刷新后重新提交。");
+                }
+            }
+
             Map<String, Object> updatedState = battleEngine.playRound(existingState,
                     playerMoveMap == null ? Map.of() : playerMoveMap);
             persistNewRounds((int) (long) battleId, existingState, updatedState);

@@ -515,12 +515,19 @@ export function useBattlePageState() {
         selectedSpecialSystems: selectedSpecialSystems.value,
         selectedSwitchTargets: selectedSwitchTargets.value,
         selectedTargets: selectedTargets.value,
-        selectedMoveObject
+        selectedMoveObject,
+        currentRound: summary.value?.currentRound
       })
       const res = await bat.move(currentBattleId.value, {
         playerMoveMap
       })
       applyBattlePayload(res)
+      // 并发防护：若返回 stale_turn，提示并自动刷新到最新状态
+      if (res?.error === 'stale_turn') {
+        resultText.value = translate('对战状态已更新，已自动刷新。', 'Battle state was updated; auto-refreshed.')
+        await refreshStatus(true)
+        return
+      }
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
       resultText.value = translate('提交失败: {message}', 'Submit failed: {message}', '', { message: error.message || error })

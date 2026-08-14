@@ -250,6 +250,16 @@ final class BattleDamageSupport {
         int basePower = engine.toInt(move.get("power"), 0);
         // Dynamic power moves checked below (friendship/spitUp/naturalGift)
 
+        // 后攻增伤：返击/雪崩——若防御方本回合先行动并对攻击方造成伤害，威力翻倍
+        // （引擎用 lastTakenPhysDmg/lastTakenSpecDmg 记录本回合受击，见 BattleEngine.clearRoundDamageTracking）
+        if (MoveRegistry.isPayback(move) || MoveRegistry.isAvalanche(move)) {
+            boolean tookHitThisTurn = engine.toInt(engine.volatileValue(attacker, "lastTakenPhysDmg", 0), 0) > 0
+                    || engine.toInt(engine.volatileValue(attacker, "lastTakenSpecDmg", 0), 0) > 0;
+            if (tookHitThisTurn) {
+                return basePower * 2;
+            }
+        }
+
         if (MoveRegistry.isElectroBall(move)) {
             // 电球：威力取决于攻击方速度 / 防御方速度的比值
             boolean attackerPlayerSide = engine.isOnSide(state, attacker, true);

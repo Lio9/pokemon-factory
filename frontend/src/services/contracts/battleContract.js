@@ -156,9 +156,14 @@ export function buildMoveSubmission({
   selectedSpecialSystems,
   selectedSwitchTargets,
   selectedTargets,
-  selectedMoveObject
+  selectedMoveObject,
+  currentRound
 }) {
   const playerMoveMap = {}
+  // 附带客户端当前回合数，供后端并发防护（stale_turn 检测）
+  if (typeof currentRound === 'number' && currentRound >= 0) {
+    playerMoveMap['__round'] = String(currentRound)
+  }
   for (const mon of playerActiveMons) {
     const actionType = selectedActions[`action-slot-${mon.fieldSlot}`] || 'move'
     playerMoveMap[`action-slot-${mon.fieldSlot}`] = actionType
