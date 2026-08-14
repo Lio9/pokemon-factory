@@ -40,6 +40,19 @@
       <div class="battle-stage relative overflow-hidden rounded-[24px] border-2 border-slate-700/60 select-none">
         <!-- 背景层（正作风格天空+草地） -->
         <div class="battle-bg absolute inset-0" />
+        <!-- 天气视觉层 -->
+        <div
+          v-if="activeWeather"
+          class="pointer-events-none absolute inset-0"
+          :class="weatherClass"
+        >
+          <div class="weather-overlay absolute inset-0" />
+          <!-- 雨滴动画 -->
+          <div
+            v-if="activeWeather === 'rain'"
+            class="rain-layer absolute inset-0"
+          />
+        </div>
 
         <!-- 场地效果层 -->
         <div
@@ -524,6 +537,26 @@ const latestEvent = computed(() => {
   return events.length ? events[events.length - 1] : ''
 })
 
+// 当前天气（用于背景视觉）
+const activeWeather = computed(() => {
+  const fe = props.summary?.fieldEffects || {}
+  if (Number(fe.rainTurns || 0) > 0) return 'rain'
+  if (Number(fe.sunTurns || 0) > 0) return 'sun'
+  if (Number(fe.sandTurns || 0) > 0) return 'sand'
+  if (Number(fe.snowTurns || 0) > 0) return 'snow'
+  return null
+})
+
+const weatherClass = computed(() => {
+  switch (activeWeather.value) {
+    case 'rain': return 'weather-rain'
+    case 'sun': return 'weather-sun'
+    case 'sand': return 'weather-sand'
+    case 'snow': return 'weather-snow'
+    default: return ''
+  }
+})
+
 // ===== 数据加工 =====
 
 // 精灵图：我方用背面图（正作风格），对手用正面图；本地优先，失败回退
@@ -877,6 +910,40 @@ const fieldEffectChips = computed(() => {
   font-weight: 600;
   color: #64748b;
   font-variant-numeric: tabular-nums;
+}
+
+/* ===== 天气视觉层 ===== */
+.weather-overlay {
+  opacity: 0.35;
+}
+
+.weather-rain .weather-overlay {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.35), rgba(30, 64, 175, 0.4));
+}
+
+.weather-sun .weather-overlay {
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.3), rgba(249, 115, 22, 0.2));
+}
+
+.weather-sand .weather-overlay {
+  background: linear-gradient(180deg, rgba(180, 120, 60, 0.4), rgba(146, 90, 45, 0.45));
+}
+
+.weather-snow .weather-overlay {
+  background: linear-gradient(180deg, rgba(226, 240, 254, 0.5), rgba(203, 230, 248, 0.45));
+}
+
+/* 雨滴动画（CSS 生成斜雨） */
+.rain-layer {
+  background-image:
+    repeating-linear-gradient(105deg, transparent 0 8px, rgba(200, 220, 255, 0.7) 8px 9px);
+  animation: rain-fall 0.5s linear infinite;
+  opacity: 0.5;
+}
+
+@keyframes rain-fall {
+  from { background-position: 0 0; }
+  to { background-position: -30px 60px; }
 }
 
 /* 当前回合高亮 */

@@ -186,17 +186,29 @@
         :class="selectedReplacementIndexes.includes(option.value) ? 'border-rose-500 bg-white shadow-md ring-2 ring-rose-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
         @click="toggleReplacement(option.value)"
       >
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <div class="font-semibold text-slate-900">
+        <div class="flex items-center gap-3">
+          <img
+            :src="previewSprite(option.pokemon || option)"
+            :alt="option.label"
+            class="h-11 w-11 object-contain"
+            @error="onPreviewSpriteError($event, option.pokemon || option)"
+          >
+          <div class="min-w-0 flex-1">
+            <div class="truncate font-semibold text-slate-900">
               {{ option.label }}
             </div>
             <div class="text-xs text-slate-500">
               {{ option.types }}
             </div>
+            <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                class="h-full rounded-full transition-all"
+                :style="{ width: option.maxHp > 0 ? Math.max(2, (option.hp / option.maxHp) * 100) + '%' : '100%', backgroundColor: option.maxHp > 0 && option.hp / option.maxHp <= 0.25 ? '#ef4444' : option.maxHp > 0 && option.hp / option.maxHp <= 0.5 ? '#f59e0b' : '#22c55e' }"
+              />
+            </div>
           </div>
-          <div class="text-xs text-slate-500">
-            HP {{ option.hp }}
+          <div class="shrink-0 text-xs text-slate-500">
+            HP {{ option.hp }}/{{ option.maxHp || '?' }}
           </div>
         </div>
       </button>
@@ -229,12 +241,20 @@
       >
         <!-- 宝可梦信息头 -->
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <div>
-            <div class="font-semibold text-slate-900">
-              {{ mon.name }}
-            </div>
-            <div class="text-xs text-slate-500">
-              {{ tr('槽位 {slot} · HP {current}/{max}', 'Slot {slot} · HP {current}/{max}', { slot: mon.fieldSlot + 1, current: mon.currentHp, max: mon.maxHp }) }}
+          <div class="flex items-center gap-2.5">
+            <img
+              :src="previewSprite(mon)"
+              :alt="mon.name"
+              class="h-11 w-11 object-contain"
+              @error="onPreviewSpriteError($event, mon)"
+            >
+            <div>
+              <div class="font-semibold text-slate-900">
+                {{ mon.name }}
+              </div>
+              <div class="text-xs text-slate-500">
+                {{ tr('槽位 {slot} · HP {current}/{max}', 'Slot {slot} · HP {current}/{max}', { slot: mon.fieldSlot + 1, current: mon.currentHp, max: mon.maxHp }) }}
+              </div>
             </div>
           </div>
           <div class="text-xs text-slate-500">
@@ -263,7 +283,7 @@
           </button>
         </div>
 
-        <!-- 换人面板 -->
+        <!-- 换人面板（Showdown 风格：精灵 + HP 条） -->
         <template v-if="selectedActions[`action-slot-${mon.fieldSlot}`] === 'switch'">
           <div class="mt-3 grid grid-cols-2 gap-2">
             <button
@@ -274,13 +294,33 @@
               :class="selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`] === target.value ? 'border-indigo-500 bg-indigo-50 shadow-sm ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
               @click="setSelectedSwitchTarget(mon.fieldSlot, target.value)"
             >
-              <div class="text-sm font-semibold text-slate-900">
-                {{ target.label }}
-              </div>
-              <div class="text-xs text-slate-500">
-                HP {{ target.hp }}
+              <div class="flex items-center gap-2">
+                <img
+                  :src="previewSprite(target.pokemon || target)"
+                  :alt="target.label"
+                  class="h-10 w-10 object-contain"
+                  @error="onPreviewSpriteError($event, target.pokemon || target)"
+                >
+                <div class="min-w-0 flex-1">
+                  <div class="truncate text-sm font-semibold text-slate-900">
+                    {{ target.label }}
+                  </div>
+                  <!-- HP 条 -->
+                  <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      class="h-full rounded-full transition-all"
+                      :style="{ width: target.maxHp > 0 ? Math.max(2, (target.hp / target.maxHp) * 100) + '%' : '100%', backgroundColor: target.maxHp > 0 && target.hp / target.maxHp <= 0.25 ? '#ef4444' : target.maxHp > 0 && target.hp / target.maxHp <= 0.5 ? '#f59e0b' : '#22c55e' }"
+                    />
+                  </div>
+                  <div class="mt-0.5 text-[11px] text-slate-500">
+                    {{ tr('HP', 'HP') }} {{ target.hp }}/{{ target.maxHp || '?' }}
+                  </div>
+                </div>
               </div>
             </button>
+          </div>
+          <div class="mt-1.5 text-[10px] text-slate-400">
+            {{ tr('提示：S 键快速切换 招式/换人', 'Tip: press S to toggle move/switch') }}
           </div>
         </template>
 

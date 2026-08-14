@@ -218,7 +218,9 @@ export function useBattleDerivedState(state) {
       .map((pokemon, teamIndex) => ({
         value: teamIndex,
          label: pokemon?.name || pokemon?.name_en || translate('替补 {slot}', 'Bench {slot}', '', { slot: teamIndex + 1 }),
-        hp: pokemon?.currentHp || 0
+        hp: pokemon?.currentHp || 0,
+        maxHp: pokemon?.stats?.hp || pokemon?.currentHp || 0,
+        pokemon
       }))
       .filter((pokemon) => pokemon.hp > 0 && !activeSlots.includes(pokemon.value))
   })
@@ -229,7 +231,8 @@ export function useBattleDerivedState(state) {
       .filter((pokemon) => allowed.has(pokemon.value))
       .map((pokemon) => ({
         ...pokemon,
-        types: formatPokemonTypes(playerTeam.value?.[pokemon.value]?.types)
+        types: formatPokemonTypes(playerTeam.value?.[pokemon.value]?.types),
+        maxHp: playerTeam.value?.[pokemon.value]?.stats?.hp || pokemon.hp || 0
       }))
   })
 
