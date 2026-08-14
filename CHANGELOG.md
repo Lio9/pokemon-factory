@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.0] — 2026-08-14
+
+### Added
+- **前端设计系统统一**: 新增 `CatalogPageHeader` 组件，图鉴/技能/特性/物品四页统一渐变头部；Element Plus 全局品牌化（poke-red 主色、统一圆角）；补全 `glass-card` 毛玻璃与 `btn-primary` 按钮全局类
+- **对战 Showdown 化**: 键盘操作（数字键选招、Enter 提交、S 切换招式/换人、R 刷新）、招式按钮 Showdown 风格编号与 PP 显示、回合日志行动摘要栏（出手顺序+伤害）、目标选择支持点击场上精灵（带精灵图与 HP）、当前回合高亮与精灵入场动画
+- **伤害计算器增强**: 表单状态 localStorage 持久化（刷新恢复配置）、头部品牌化、游戏风计算按钮
+- **数据修复脚本**: `scripts/fix_move_data.py`（从本地缓存重放招式字段）、`scripts/rebuild_move_table.py`（完全重建 move 表）
+
+### Fixed
+- **重大：类型编号错位**: `PokemonType` 枚举与 `DamageCalculatorUtil.TYPE_*` 使用游戏内编号（fire=2），与数据库 PokeAPI 编号（fire=10）不一致，导致天气加成、树果抗性、蓄水/引火等大量机制失效——已统一为 PokeAPI 编号
+- **重大：move 表数据错乱**: 离线种子 MOVES 元组字段顺序与 INSERT 列顺序不匹配，导致全部招式 type_id/power/pp/accuracy 错位（tackle 的 type_id=3 应为 1、power=100 应为 40），直接破坏对战引擎计算——已从 947 个 PokeAPI 缓存文件完全重建
+- **Jaboca/Rowap 树果判定反了**: 嘉宝果应物理招反伤、罗子果应特殊招反伤，原代码用反了伤害分类常量
+- **顺风回合数**: 3 → 4（正作规则）
+- **Struggle 属性**: 改为无属性（type_id=0），不再被幽灵系免疫
+- **极巨化换人漏洞**: 极巨化期间主动换人被拦截（正作规则）
+- **AI 选招增强**: 加入伤害估算（STAB × 属性克制 × 基础伤害，Showdown 风格），不再按招式顺序盲选
+- **游客模式错误横幅**: `useBattlePageState` 的 Proxy 不再静默回退到需 JWT 的接口，游客调用 profile/factoryStatus 时静默返回 null
+- **轮询竞态**: silent 轮询在 busyAction 进行中跳过，防止陈旧响应回滚 UI
+- **交换弹窗重复弹出**: 交换确认后标记 `exchangeJustConfirmed`，防止 applyBattlePayload 再次自动弹出
+- **触屏设备按钮不可见**: 详情按钮从 `opacity-0 group-hover:opacity-100` 改为 `opacity-70 group-hover:opacity-100`
+- **前端类型色错位**: MoveButton/DamageCalculator 的类型颜色表同步为 PokeAPI 编号
+- **详情页浮动栏遮挡导航**: 改为底部悬浮球组（移动端）/ 顶部导航下方（桌面端）
+- **死类清理**: `w-4.5/h-4.5` → `w-5/h-5`
+
+---
+
 ## [2.2.0] — 2026-07-01
 
 ### Added

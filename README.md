@@ -105,6 +105,8 @@ pokemon-factory/
 | `python scripts/init_data.py --online` | **在线下载** 完整数据（含中文名，需联网 20-40 分钟） |
 | `python scripts/init_data.py --force` | 清空数据后重新下载 |
 | `python scripts/init_data.py --clear-cache` | 清除 PokeAPI 缓存 |
+| `python scripts/fix_move_data.py` | **从本地缓存重放招式字段**（type_id/power/pp 等修复） |
+| `python scripts/rebuild_move_table.py` | **完全重建 move 表**（离线种子字段错位时使用，自动备份） |
 
 ### 数据维护
 
