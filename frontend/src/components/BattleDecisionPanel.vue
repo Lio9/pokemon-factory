@@ -42,7 +42,7 @@
             <!-- 查看详情按钮 -->
             <button
               type="button"
-              class="absolute top-1/2 -translate-y-1/2 right-2 z-10 h-7 w-7 rounded-full bg-white/90 border border-slate-200 text-slate-400 shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center"
+              class="absolute top-1/2 -translate-y-1/2 right-2 z-10 h-7 w-7 rounded-full bg-white/90 border border-slate-200 text-slate-400 shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition-all opacity-70 group-hover:opacity-100 flex items-center justify-center"
               :title="tr('查看配置', 'View details')"
               @click.stop="openDetail(pokemon)"
             >
