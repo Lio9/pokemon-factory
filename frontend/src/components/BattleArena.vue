@@ -86,6 +86,10 @@
                   :style="{ width: hpWidth(mon) }"
                 />
               </div>
+              <!-- 对手 HP 百分比（正作风格，隐藏精确值） -->
+              <div class="mt-0.5 text-right text-[10px] font-bold tabular-nums text-white/80">
+                {{ mon.hpPercent }}%
+              </div>
               <div class="mt-0.5 flex items-center justify-between">
                 <span
                   v-if="mon.abilityName"
@@ -185,6 +189,10 @@
                     :class="hpTone(mon)"
                     :style="{ width: hpWidth(mon) }"
                   />
+                </div>
+                <!-- 我方 HP 精确数值（正作风格） -->
+                <div class="mt-0.5 text-center text-[11px] font-black tabular-nums text-white drop-shadow">
+                  {{ mon.currentHp }} / {{ mon.maxHp || '?' }}
                 </div>
                 <div class="mt-0.5 flex items-center justify-between gap-2">
                   <span
