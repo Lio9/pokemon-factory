@@ -457,6 +457,12 @@ final class BattleFieldEffectSupport {
         if (before <= 0) {
             return;
         }
+        // 本回合内该效果被修改过（如晴替换雨、重复使用戏法空间取消、场地被新场地覆盖），
+        // 回合末不应按快照值递减/复活，否则被替换或取消的效果会在回合末"复活"。
+        int current = toInt(fieldEffects(state).get(key), 0);
+        if (current != before) {
+            return;
+        }
         int after = Math.max(0, before - 1);
         fieldEffects(state).put(key, after);
         if (after == 0) {

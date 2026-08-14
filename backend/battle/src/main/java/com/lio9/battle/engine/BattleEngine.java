@@ -1147,6 +1147,8 @@ public class BattleEngine {
         // 消耗树果时标记，供打嗝（Belch）判断
         if (isBerry(previousItem)) {
             mon.put("berryConsumed", true);
+            // 颊囊一次性标记：本次食用树果后触发回血
+            mon.put("cheekPouchPending", true);
         }
         // Cud Chew: berry will be consumed again at end of next turn
         if (hasAbility(mon, "cud-chew", "cud chew") && isBerry(previousItem)) {
@@ -1321,7 +1323,8 @@ public class BattleEngine {
                 }
             }
 
-            // Resist Berries (e.g., Babiri Berry for Steel) — Ripen 翻倍减伤效果
+            // Resist Berries (e.g., Babiri Berry for Steel) — 减伤已在伤害计算阶段应用（itemDamageModifier），
+            // 这里只负责实际受到伤害后消耗树果并记录事件
             double resistFactor = getBerryResistFactor(item, toInt(move.get("type_id"), 0));
             if (hasRipen && resistFactor < 1.0) resistFactor = resistFactor * resistFactor; // 0.5 → 0.25
             if (resistFactor < 1.0 && actualDamage > 0 && !itemConsumed(target)) {
@@ -1331,21 +1334,13 @@ public class BattleEngine {
             }
         }
 
-        // 颊囊（Cheek Pouch）：食用树果后额外回复 1/3 最大 HP（回复封锁时无效）
-        if (hasCheekPouch && itemConsumed(target) && target.get("currentHp") instanceof Integer curHp) {
-            if (healBlockTurns(target) > 0) {
-                actionLog.put("cheekPouchBlocked", true);
-                events.add(target.get("name") + " 受到回复封锁，颊囊特性未能生效");
-            } else {
-                int maxHp = toInt(castMap(target.get("stats")).get("hp"), 1);
-                int cheekHeal = Math.max(1, maxHp / 3);
-                int actualHeal = Math.min(cheekHeal, maxHp - curHp);
-                if (actualHeal > 0) {
-                    target.put("currentHp", curHp + actualHeal);
-                    actionLog.put("cheekPouchHeal", actualHeal);
-                    events.add(target.get("name") + " 的颊囊特性发动，回复了 " + actualHeal + " 点 HP");
-                }
-            }
+        // 颊囊（Cheek Pouch）：食用树果的瞬间额外回复 1/3 最大 HP（回复封锁时无效）
+        // 仅在本次受击结算前确实食用了树果（cheekPouchPending 一次性标记）时触发一次，
+        // 触发后清除；不影响 Belch 依赖的 berryConsumed 持久标记。
+        if (hasCheekPouch && Boolean.TRUE.equals(target.get("cheekPouchPending"))
+                && target.get("currentHp") instanceof Integer curHp2) {
+            target.put("cheekPouchPending", false);
+            applyCheekPouchHeal(target, actionLog, events);
         }
     }
 
@@ -1388,6 +1383,28 @@ public class BattleEngine {
         if (moveTypeId == DamageCalculatorUtil.TYPE_NORMAL && "chilan-berry".equals(item))
             return 0.5;
         return 1.0;
+    }
+
+    /** 颊囊：食用树果瞬间额外回复 1/3 最大 HP（一次） */
+    private void applyCheekPouchHeal(Map<String, Object> target, Map<String, Object> actionLog, List<String> events) {
+        if (!hasAbility(target, "cheek-pouch", "cheek pouch")) {
+            return;
+        }
+        if (target.get("currentHp") instanceof Integer curHp) {
+            if (healBlockTurns(target) > 0) {
+                actionLog.put("cheekPouchBlocked", true);
+                events.add(target.get("name") + " 受到回复封锁，颊囊特性未能生效");
+            } else {
+                int maxHp = toInt(castMap(target.get("stats")).get("hp"), 1);
+                int cheekHeal = Math.max(1, maxHp / 3);
+                int actualHeal = Math.min(cheekHeal, maxHp - curHp);
+                if (actualHeal > 0) {
+                    target.put("currentHp", curHp + actualHeal);
+                    actionLog.put("cheekPouchHeal", actualHeal);
+                    events.add(target.get("name") + " 的颊囊特性发动，回复了 " + actualHeal + " 点 HP");
+                }
+            }
+        }
     }
 
     void applyAttackerItemEffects(Map<String, Object> state, Map<String, Object> attacker, int damage, Map<String, Object> actionLog,

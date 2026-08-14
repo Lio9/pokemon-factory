@@ -623,9 +623,8 @@ final class BattleConditionSupport {
             events.add(actor.get("name") + " 的" + statDisplayName(statId)
                     + (Math.abs(delta) >= 2 ? "大幅" : "") + (delta > 0 ? "上升了" : "下降了"));
         }
-        if (!loweredStages.isEmpty()) {
-            restoreLoweredStatsWithWhiteHerb(actor, loweredStages, actionLog, events);
-        }
+        // 白色香草只对"对方造成的下降"触发（Gen 5+ 规则），自身招式/特性造成的下降不触发、不消耗。
+        // 因此这里不再调用 restoreLoweredStatsWithWhiteHerb。
     }
 
     void applyDrainHealing(Map<String, Object> actor, Map<String, Object> target, Map<String, Object> move, int actualDamage,
@@ -916,9 +915,37 @@ final class BattleConditionSupport {
 
     void applyPerishSong(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> target,
                          Map<String, Object> actionLog, List<String> events) {
+        // 正作/Showdown：灭亡之歌使场上所有宝可梦（包括使用者自己）进入 3 回合倒计时，
+        // 隔音（Soundproof）特性免疫（声音类招式）。
         engine.setVolatile(target, "perishSongTurns", 3);
         actionLog.put("result", "perish-song");
         events.add(target.get("name") + " 听到了灭亡之歌");
+    }
+
+    /** 灭亡之歌对全场生效：遍历双方全部在场宝可梦（含使用者），Soundproof 免疫 */
+    void applyPerishSongAll(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> actionLog,
+                            List<String> events) {
+        actionLog.put("result", "perish-song");
+        boolean anyTarget = false;
+        for (boolean side : new boolean[]{true, false}) {
+            List<Map<String, Object>> team = engine.team(state, side);
+            for (Integer slot : engine.activeSlots(state, side)) {
+                if (slot == null || slot < 0 || slot >= team.size()) continue;
+                Map<String, Object> mon = team.get(slot);
+                if (engine.toInt(mon.get("currentHp"), 0) <= 0) continue;
+                // 隔音特性免疫灭亡之歌
+                if (engine.hasAbility(mon, "soundproof")) {
+                    events.add(mon.get("name") + " 的隔音特性免疫了灭亡之歌");
+                    continue;
+                }
+                engine.setVolatile(mon, "perishSongTurns", 3);
+                events.add(mon.get("name") + " 听到了灭亡之歌");
+                anyTarget = true;
+            }
+        }
+        if (!anyTarget) {
+            actionLog.put("result", "failed");
+        }
     }
 
     /**
@@ -1655,6 +1682,19 @@ final class BattleConditionSupport {
         if ("toxic".equals(mon.get("condition"))) {
             mon.put("toxicCounter", 0);
         }
+        // 换下场清除 field-level volatile（正作/Showdown：寄生种子、束缚、灭亡之歌、盐腌、
+        // 诅咒、八爪束缚、同命、恶梦在离场时全部移除；Baton Pass 除外）
+        engine.clearVolatile(mon, "leechSeed");
+        engine.clearVolatile(mon, "leechSeedSource");
+        engine.clearVolatile(mon, "bound");
+        engine.clearVolatile(mon, "boundTurns");
+        engine.clearVolatile(mon, "boundDivisor");
+        engine.clearVolatile(mon, "perishSongTurns");
+        engine.clearVolatile(mon, "nightmare");
+        engine.clearVolatile(mon, "saltCured");
+        engine.clearVolatile(mon, "cursed");
+        engine.clearVolatile(mon, "octolockTurns");
+        engine.clearVolatile(mon, "destinyBond");
         if ("regenerator".equalsIgnoreCase(engine.abilityName(mon))) {
             int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
             int currentHp = engine.toInt(mon.get("currentHp"), 0);
@@ -2429,14 +2469,20 @@ final class BattleConditionSupport {
         if (isStatDropBlocked(null, target, actionLog, events, "speedDropBlocked", "降速")) {
             return;
         }
+        // 统一经 dispatchStatStage 修正（唱反调反转、单纯翻倍等），对齐 Showdown
+        int delta = EffectRegistry.dispatchStatStage(target,
+                new StatStageContext(target, 6, -1, "冰风/电网/大声咆哮等"), -1);
         int previousStage = damageSupport.statStage(target, "speed");
-        int nextStage = Math.max(-6, previousStage - 1);
+        int nextStage = Math.max(-6, previousStage + delta);
         damageSupport.statStages(target).put("speed", nextStage);
         if (nextStage != previousStage) {
-            actionLog.put("speedStageChange", -1);
-            triggerStatDropAbilities(target, events);
-            restoreLoweredStatsWithWhiteHerb(target, Map.of("speed", previousStage - nextStage), actionLog, events);
-            events.add(source.get("name") + " 使 " + target.get("name") + " 的速度下降了");
+            actionLog.put("speedStageChange", nextStage - previousStage);
+            if (delta < 0) {
+                triggerStatDropAbilities(target, events);
+                restoreLoweredStatsWithWhiteHerb(target, Map.of("speed", previousStage - nextStage), actionLog, events);
+            }
+            events.add(source.get("name") + " 使 " + target.get("name") + " 的速度"
+                    + (Math.abs(nextStage - previousStage) >= 2 ? "大幅" : "") + "下降了");
         }
     }
 
@@ -2457,14 +2503,19 @@ final class BattleConditionSupport {
         if (isStatDropBlocked(null, target, actionLog, events, "specialAttackDropBlocked", "特攻下降")) {
             return false;
         }
+        // 统一经 dispatchStatStage 修正（唱反调反转、单纯翻倍等）
+        int delta = EffectRegistry.dispatchStatStage(target,
+                new StatStageContext(target, 4, -Math.max(1, stages), "特攻下降招式"), -Math.max(1, stages));
         int previousStage = damageSupport.statStage(target, "specialAttack");
-        int nextStage = Math.max(-6, previousStage - Math.max(1, stages));
+        int nextStage = Math.max(-6, previousStage + delta);
         damageSupport.statStages(target).put("specialAttack", nextStage);
         if (nextStage != previousStage) {
             actionLog.put("specialAttackStageChange", nextStage - previousStage);
-            triggerStatDropAbilities(target, events);
-            restoreLoweredStatsWithWhiteHerb(target, Map.of("specialAttack", previousStage - nextStage), actionLog,
-                    events);
+            if (delta < 0) {
+                triggerStatDropAbilities(target, events);
+                restoreLoweredStatsWithWhiteHerb(target, Map.of("specialAttack", previousStage - nextStage), actionLog,
+                        events);
+            }
             events.add(source.get("name") + " 使 " + target.get("name") + " 的特攻下降了");
             return true;
         }
@@ -2476,15 +2527,21 @@ final class BattleConditionSupport {
         if (isStatDropBlocked(null, target, actionLog, events, "specialDefenseDropBlocked", "特防下降")) {
             return false;
         }
+        // 统一经 dispatchStatStage 修正（唱反调反转、单纯翻倍等）
+        int delta = EffectRegistry.dispatchStatStage(target,
+                new StatStageContext(target, 5, -Math.max(1, stages), "特防下降招式"), -Math.max(1, stages));
         int previousStage = damageSupport.statStage(target, "specialDefense");
-        int nextStage = Math.max(-6, previousStage - Math.max(1, stages));
+        int nextStage = Math.max(-6, previousStage + delta);
         damageSupport.statStages(target).put("specialDefense", nextStage);
         if (nextStage != previousStage) {
             actionLog.put("specialDefenseStageChange", nextStage - previousStage);
-            triggerStatDropAbilities(target, events);
-            restoreLoweredStatsWithWhiteHerb(target, Map.of("specialDefense", previousStage - nextStage), actionLog,
-                    events);
-            events.add(source.get("name") + " 使 " + target.get("name") + " 的特防大幅下降了");
+            if (delta < 0) {
+                triggerStatDropAbilities(target, events);
+                restoreLoweredStatsWithWhiteHerb(target, Map.of("specialDefense", previousStage - nextStage), actionLog,
+                        events);
+            }
+            events.add(source.get("name") + " 使 " + target.get("name") + " 的特防"
+                    + (Math.abs(nextStage - previousStage) >= 2 ? "大幅" : "") + "下降了");
             return true;
         }
         return false;
@@ -2497,8 +2554,10 @@ final class BattleConditionSupport {
         }
         boolean attackDropped = false;
         int attackDropAmount = 0;
+        int attackDelta = EffectRegistry.dispatchStatStage(target,
+                new StatStageContext(target, 2, -1, "抛下狠话"), -1);
         int previousAttack = damageSupport.statStage(target, "attack");
-        int nextAttack = Math.max(-6, previousAttack - 1);
+        int nextAttack = Math.max(-6, previousAttack + attackDelta);
         damageSupport.statStages(target).put("attack", nextAttack);
         if (nextAttack != previousAttack) {
             attackDropped = true;
@@ -2507,8 +2566,10 @@ final class BattleConditionSupport {
         }
         boolean specialAttackDropped = false;
         int specialAttackDropAmount = 0;
+        int specialAttackDelta = EffectRegistry.dispatchStatStage(target,
+                new StatStageContext(target, 4, -1, "抛下狠话"), -1);
         int previousSpecialAttack = damageSupport.statStage(target, "specialAttack");
-        int nextSpecialAttack = Math.max(-6, previousSpecialAttack - 1);
+        int nextSpecialAttack = Math.max(-6, previousSpecialAttack + specialAttackDelta);
         damageSupport.statStages(target).put("specialAttack", nextSpecialAttack);
         if (nextSpecialAttack != previousSpecialAttack) {
             specialAttackDropped = true;
@@ -2523,8 +2584,10 @@ final class BattleConditionSupport {
             if (specialAttackDropped) {
                 droppedStages.put("specialAttack", specialAttackDropAmount);
             }
-            triggerStatDropAbilities(target, events);
-            restoreLoweredStatsWithWhiteHerb(target, droppedStages, actionLog, events);
+            if (attackDelta < 0 || specialAttackDelta < 0) {
+                triggerStatDropAbilities(target, events);
+                restoreLoweredStatsWithWhiteHerb(target, droppedStages, actionLog, events);
+            }
             events.add(source.get("name") + " 使 " + target.get("name") + " 的攻击和特攻下降了");
             return true;
         }
@@ -2914,6 +2977,8 @@ final class BattleConditionSupport {
             case 4 -> "specialAttack";
             case 5 -> "specialDefense";
             case 6 -> "speed";
+            case 7 -> "accuracy";
+            case 8 -> "evasion";
             default -> "";
         };
     }
@@ -2925,6 +2990,8 @@ final class BattleConditionSupport {
             case 4 -> "特攻";
             case 5 -> "特防";
             case 6 -> "速度";
+            case 7 -> "命中";
+            case 8 -> "闪避";
             default -> "能力";
         };
     }
@@ -2936,6 +3003,8 @@ final class BattleConditionSupport {
             case 4 -> "specialAttackStageChange";
             case 5 -> "specialDefenseStageChange";
             case 6 -> "speedStageChange";
+            case 7 -> "accuracyStageChange";
+            case 8 -> "evasionStageChange";
             default -> "";
         };
     }

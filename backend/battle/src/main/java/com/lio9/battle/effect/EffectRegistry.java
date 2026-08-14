@@ -411,7 +411,7 @@ public final class EffectRegistry {
         regAbility(new Ab() {
             public String id() { return "tinted-lens"; }
             public double onSourceModifyDamage(AttackContext ctx, double mod) {
-                if (mod > 0 && mod < 1) return mod * 2;
+                if (ctx.typeModifier > 0 && ctx.typeModifier < 1) return mod * 2;
                 return mod;
             }
         });
@@ -571,34 +571,10 @@ public final class EffectRegistry {
                 return hasMoveFlag(ctx.move, "contact") ? mod * 0.5 : mod;
             }
         });
-        // Sword of Ruin (+33% 物理伤害 = 防御方物防 reduced 25%)
-        regAbility(new Ab() {
-            public String id() { return "sword-of-ruin"; }
-            public double onTargetModifyDamage(AttackContext ctx, double mod) {
-                return ctx.damageClassId == PHYSICAL ? mod / 0.75 : mod;
-            }
-        });
-        // Tablets of Ruin (+33% 物理伤害 = 防御方物攻 reduced 25%)
-        regAbility(new Ab() {
-            public String id() { return "tablets-of-ruin"; }
-            public double onTargetModifyDamage(AttackContext ctx, double mod) {
-                return ctx.damageClassId == PHYSICAL ? mod / 0.75 : mod;
-            }
-        });
-        // Vessel of Ruin (+33% 特殊伤害 = 防御方特攻 reduced 25%)
-        regAbility(new Ab() {
-            public String id() { return "vessel-of-ruin"; }
-            public double onTargetModifyDamage(AttackContext ctx, double mod) {
-                return ctx.damageClassId == SPECIAL ? mod / 0.75 : mod;
-            }
-        });
-        // Beads of Ruin (+33% 特殊伤害 = 防御方特防 reduced 25%)
-        regAbility(new Ab() {
-            public String id() { return "beads-of-ruin"; }
-            public double onTargetModifyDamage(AttackContext ctx, double mod) {
-                return ctx.damageClassId == SPECIAL ? mod / 0.75 : mod;
-            }
-        });
+        // Sword of Ruin / Tablets of Ruin / Vessel of Ruin / Beads of Ruin：
+        // 灾祸四宝为场地全局降能力效果（对除持有者外的所有在场宝可梦生效），
+        // 已在 BattleDamageSupport.abilityDamageModifier 中按全局判定实现。
+        // 此处移除挂在持有者身上的 onTargetModifyDamage（旧实现作用对象颠倒）。
 
         // ========== 防御方免疫（返回 0） ==========
 
@@ -2611,27 +2587,27 @@ public final class EffectRegistry {
             }
         });
 
-        // 过滤：克制伤害×0.75
+        // 过滤：仅效果绝佳（克制）伤害×0.75
         regAbility(new Ab() {
             public String id() { return "filter"; }
             public double onTargetModifyDamage(AttackContext ctx, double mod) {
-                return mod * 0.75;
+                return ctx.typeModifier > 1.0 ? mod * 0.75 : mod;
             }
         });
 
-        // 坚实岩石：克制伤害×0.75
+        // 坚实岩石：仅效果绝佳伤害×0.75
         regAbility(new Ab() {
             public String id() { return "solid-rock"; }
             public double onTargetModifyDamage(AttackContext ctx, double mod) {
-                return mod * 0.75;
+                return ctx.typeModifier > 1.0 ? mod * 0.75 : mod;
             }
         });
 
-        // 棱镜装甲：克制伤害×0.75
+        // 棱镜装甲：仅效果绝佳伤害×0.75
         regAbility(new Ab() {
             public String id() { return "prism-armor"; }
             public double onTargetModifyDamage(AttackContext ctx, double mod) {
-                return mod * 0.75;
+                return ctx.typeModifier > 1.0 ? mod * 0.75 : mod;
             }
         });
 

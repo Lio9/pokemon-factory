@@ -94,6 +94,21 @@ final class BattleRoundSupport {
         }
 
         Map<String, Object> actor = actingTeam.get(action.actorIndex());
+        Map<String, Object> forcedChargeMove = chargingMove(actor);
+        // 换人动作不受 flinch/麻痹/睡眠/混乱/冰冻/着迷等"行动前阻断"影响
+        // （正作/Showdown：状态只阻止出招，主动换人仅受束缚类效果限制）
+        // 但蓄力中（二回合招式第一回合）不可换人。
+        if (forcedChargeMove == null && action.isSwitch()) {
+            Map<String, Object> actionLog = new LinkedHashMap<>();
+            actionLog.put("side", action.side());
+            actionLog.put("actor", actor.get("name"));
+            if (action.orderSource() != null && !action.orderSource().isBlank()) {
+                actionLog.put("orderSource", action.orderSource());
+                events.add(actor.get("name") + orderSourceMessage(action.orderSource()));
+            }
+            handleSwitch(state, action, actingTeam, actor, playerSide, actionLogs, events, actionLog);
+            return;
+        }
         // 所有“行动前就会阻断本次出手”的状态都在这里集中处理，避免分散到各个伤害/状态模块里。
         if (engine.toInt(actor.get("rechargeTurns"), 0) > 0) {
             Map<String, Object> rechargeLog = new LinkedHashMap<>();
@@ -106,7 +121,6 @@ final class BattleRoundSupport {
             events.add(actor.get("name") + " 正在回复，无法行动");
             return;
         }
-        Map<String, Object> forcedChargeMove = chargingMove(actor);
         if (engine.volatileFlag(actor, "flinch")) {
             Map<String, Object> flinchLog = new LinkedHashMap<>();
             flinchLog.put("side", action.side());
@@ -183,11 +197,6 @@ final class BattleRoundSupport {
             // 把顺序来源写入日志，便于固定 seed 回归时直接观察先后手原因。
             actionLog.put("orderSource", action.orderSource());
             events.add(actor.get("name") + orderSourceMessage(action.orderSource()));
-        }
-
-        if (forcedChargeMove == null && action.isSwitch()) {
-            handleSwitch(state, action, actingTeam, actor, playerSide, actionLogs, events, actionLog);
-            return;
         }
 
         if (forcedChargeMove != null) {
@@ -308,6 +317,10 @@ final class BattleRoundSupport {
                 continue;
             }
             liveTargetFound = true;
+            // 讲究系列锁招：只要招式被"使用"（无论命中、落空、被守住、免疫），即被锁定
+            // （Gen 3+ 锁招语义，对齐 Showdown）
+            engine.rememberLastMove(actor, move);
+            engine.rememberChoiceMove(actor, move);
             Map<String, Object> target = targetSideTeam.get(targetRef.teamIndex());
             Map<String, Object> targetLog = new LinkedHashMap<>(actionLog);
             targetLog.put("target", target.get("name"));
@@ -2011,7 +2024,7 @@ final class BattleRoundSupport {
             return true;
         }
         if (engine.isPerishSong(move)) {
-            conditionSupport.applyPerishSong(state, actor, target, targetLog, events);
+            conditionSupport.applyPerishSongAll(state, actor, targetLog, events);
             actionLogs.add(targetLog);
             return true;
         }
@@ -2258,8 +2271,9 @@ final class BattleRoundSupport {
             boolean atkSucc = conditionSupport.applySelfStatBoost(state, actor, "attack", 1, "磨爪", events);
             targetLog.put("result", atkSucc ? "hone-claws" : "failed");
             actionLogs.add(targetLog);
-            // 命中率 +1 阶级通过 volatile 标记
-            engine.setVolatile(actor, "accuracyBoosted", true);
+            // 命中率 +1 阶级写入 statStages.accuracy（calculateAccuracyWithStages 读取该键）
+            int accStage = engine.toInt(engine.statStages(actor).get("accuracy"), 0);
+            engine.statStages(actor).put("accuracy", Math.min(6, accStage + 1));
             events.add(actor.get("name") + " 的命中率提升了");
             return true;
         }
@@ -2721,6 +2735,17 @@ final class BattleRoundSupport {
         List<Integer> activeSlots = engine.activeSlots(state, playerSide);
         int switchToIndex = engine.firstAvailableBench(team, activeSlots);
         if (switchToIndex < 0) {
+            // 无可替换宝可梦：红牌/逃跑按钮不应消耗道具。
+            // 由调用方（applyDefenderItemEffects）在标记道具消耗前已检查后备，
+            // 此处兜底：若道具已被消耗但换人失败，恢复道具。
+            if ("eject-button".equals(engine.heldItem(actor)) || "red-card".equals(engine.heldItem(actor))) {
+                // 道具仍持有（未消耗）→ 无事发生；若已消耗则回滚
+                if (Boolean.TRUE.equals(actor.get("itemConsumed"))) {
+                    actor.put("itemConsumed", false);
+                    events.add(actor.get("name") + " 因为没有可替换的宝可梦，" 
+                            + ("eject-button".equals(engine.heldItem(actor)) ? "逃脱按钮" : "红牌") + "没有发动");
+                }
+            }
             engine.rememberLastMove(actor, move);
             engine.rememberChoiceMove(actor, move);
             engine.applyCooldown(actor, move);

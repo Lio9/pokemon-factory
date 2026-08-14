@@ -15,6 +15,8 @@ public class AttackContext {
     public final int moveTypeId;
     public final int damageClassId;
     public final boolean criticalHit;
+    /** 类型克制倍率（0/0.5/1/2/4），供 Tinted Lens / Filter 等依赖克制的特性使用 */
+    public double typeModifier = 1.0;
 
     public AttackContext(Map<String, Object> attacker, Map<String, Object> defender,
                         Map<String, Object> move, Map<String, Object> state,

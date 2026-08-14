@@ -87,10 +87,11 @@ final class BattleTurnCleanupSupport {
         clearJustSwitchedIn(engine.team(state, false));
 
         // 结算顺序尽量保持稳定：先状态伤害/回复，再能力与场地，再递减各种倒计时。
-        applyEndTurnStatusEffects(engine.team(state, true), events);
-        applyEndTurnStatusEffects(engine.team(state, false), events);
-        applyEndTurnHealing(engine.team(state, true), events);
-        applyEndTurnHealing(engine.team(state, false), events);
+        // 注意：回合末状态/回复只作用于在场（active）宝可梦，后备宝可梦不承受回合末效果。
+        applyEndTurnStatusEffects(state, true, events);
+        applyEndTurnStatusEffects(state, false, events);
+        applyEndTurnHealing(state, true, events);
+        applyEndTurnHealing(state, false, events);
          applyEndTurnItemEffects(state, true, events);
          applyEndTurnItemEffects(state, false, events);
         applyCudChew(engine.team(state, true), events);
@@ -149,15 +150,13 @@ final class BattleTurnCleanupSupport {
     }
 
     private void applyEndTurnFieldEffects(Map<String, Object> state, List<String> events) {
-        // 沙暴伤害 (Sandstorm)
+        // 沙暴伤害 (Sandstorm) — Gen 9 只有沙暴造成天气伤害
         if (fieldEffectSupport.sandTurns(state) > 0) {
             applyWeatherDamage(state, true, "sand", events);
             applyWeatherDamage(state, false, "sand", events);
         }
-        // 冰雹/雪天伤害 (Hail/Snow)
+        // 雪天（Gen 9 Snow/Snowscape）不造成任何伤害，仅保留冰鳞粉（Ice Face）再生等效果
         if (fieldEffectSupport.snowTurns(state) > 0) {
-            applyWeatherDamage(state, true, "snow", events);
-            applyWeatherDamage(state, false, "snow", events);
             // 冰鳞粉（Ice Face）：雪天时重新生成冰鳞粉
             for (boolean ifSide : new boolean[]{true, false}) {
                 for (Integer ifSlot : engine.activeSlots(state, ifSide)) {
@@ -403,8 +402,14 @@ final class BattleTurnCleanupSupport {
         }
     }
 
-    private void applyEndTurnStatusEffects(List<Map<String, Object>> team, List<String> events) {
-        for (Map<String, Object> mon : team) {
+    private void applyEndTurnStatusEffects(Map<String, Object> state, boolean playerSide, List<String> events) {
+        List<Map<String, Object>> team = engine.team(state, playerSide);
+        // 只结算在场（active）宝可梦：后备宝可梦不承受回合末状态伤害
+        for (Integer slot : engine.activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0 || slot >= team.size()) {
+                continue;
+            }
+            Map<String, Object> mon = team.get(slot);
             if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
                 continue;
             }
@@ -442,8 +447,14 @@ final class BattleTurnCleanupSupport {
         }
     }
 
-    private void applyEndTurnHealing(List<Map<String, Object>> team, List<String> events) {
-        for (Map<String, Object> mon : team) {
+    private void applyEndTurnHealing(Map<String, Object> state, boolean playerSide, List<String> events) {
+        List<Map<String, Object>> team = engine.team(state, playerSide);
+        // 只结算在场（active）宝可梦：后备宝可梦不吃剩饭等回合末回复
+        for (Integer slot : engine.activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0 || slot >= team.size()) {
+                continue;
+            }
+            Map<String, Object> mon = team.get(slot);
             if (engine.toInt(mon.get("currentHp"), 0) <= 0 || !"leftovers".equals(engine.heldItem(mon))) {
                 continue;
             }
@@ -464,7 +475,12 @@ final class BattleTurnCleanupSupport {
 
     private void applyVolatileEndTurnEffects(Map<String, Object> state, boolean playerSide, List<String> events) {
         List<Map<String, Object>> team = engine.team(state, playerSide);
-        for (Map<String, Object> mon : team) {
+        // 只结算在场（active）宝可梦：寄生种子/束缚/灭亡之歌等 volatile 伤害不作用于后备
+        for (Integer slot : engine.activeSlots(state, playerSide)) {
+            if (slot == null || slot < 0 || slot >= team.size()) {
+                continue;
+            }
+            Map<String, Object> mon = team.get(slot);
             if (engine.toInt(mon.get("currentHp"), 0) <= 0) {
                 continue;
             }

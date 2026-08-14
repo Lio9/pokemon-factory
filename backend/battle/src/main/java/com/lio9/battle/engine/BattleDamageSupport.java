@@ -448,8 +448,9 @@ final class BattleDamageSupport {
             }
             baseStat = applyStageModifier(baseStat, attackStage);
 
-            // Burn reduces physical attack by 50% (unless has Guts)
-            if ("burn".equals(mon.get("condition")) && !"guts".equalsIgnoreCase(engine.abilityName(mon))) {
+            // Burn reduces physical attack by 50% — 无论是否持有毅力(Guts)都生效；
+            // Guts 的 1.5x 由 EffectRegistry.dispatchSourceAttack 叠加，净倍率 0.75（与 Showdown 一致）
+            if ("burn".equals(mon.get("condition"))) {
                 baseStat = Math.max(1, (int) Math.floor(baseStat * 0.5d));
             }
         } else if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
@@ -476,6 +477,10 @@ final class BattleDamageSupport {
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
         AttackContext ctx = new AttackContext(mon, defender, move, state, moveTypeId, damageClassId, criticalHit);
         baseStat = EffectRegistry.dispatchItemSourceAttack(mon, ctx, baseStat);
+
+        // 特性修正（Huge Power/Pure Power/Gorilla Tactics/Slow Start 等）
+        // 注：Slow Start 已在上面单独处理，此处派发其余特性修正
+        baseStat = EffectRegistry.dispatchSourceAttack(mon, ctx, baseStat);
 
         // Flash Fire boost（标记型效果，非道具）
         if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL
@@ -572,8 +577,9 @@ final class BattleDamageSupport {
         if (Boolean.TRUE.equals(attacker.get("terastallized"))) {
             int teraTypeId = engine.toInt(attacker.get("teraTypeId"), 0);
             if (teraTypeId == moveTypeId) {
-                // 招式匹配太晶属性：2.0x（同时也匹配原始属性），否则 1.5x
-                stab = matchesOriginalType ? 2.0d : 1.5d;
+                // 太晶化后，只要招式属性==太晶属性即 STAB 2.0x（与原始属性是否匹配无关）
+                // 例：太晶火 Garchomp 的火招为 2.0x
+                stab = 2.0d;
             } else if (matchesOriginalType) {
                 // 招式匹配原始属性但不匹配太晶属性：保留 1.5x STAB
                 stab = 1.5d;
@@ -629,7 +635,63 @@ final class BattleDamageSupport {
             }
         }
 
+        // 抗性树果（Occa/Passho 等）：受到对应属性招式时减半（Ripen 翻倍至 0.25）
+        // 防御方持有且招式属性匹配时在伤害计算阶段直接应用，而不是事后只消耗不减伤
+        double resistFactor = berryResistFactor(heldItem(defender), moveTypeId);
+        if (resistFactor < 1.0d && !isBerryConsumed(defender)) {
+            if (hasAbility(defender, "ripen")) {
+                resistFactor *= resistFactor; // 0.5 → 0.25
+            }
+            modifier *= resistFactor;
+        }
+
         return modifier;
+    }
+
+    /** 防御方树果是否已消耗（供抗性树果判定） */
+    private boolean isBerryConsumed(Map<String, Object> mon) {
+        return Boolean.TRUE.equals(mon.get("itemConsumed"));
+    }
+
+    /** 抗性树果减伤系数：对应属性招式 0.5，否则 1.0 */
+    double berryResistFactor(String item, int moveTypeId) {
+        if (moveTypeId == DamageCalculatorUtil.TYPE_FIRE && "occa-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_WATER && "passho-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_ELECTRIC && "wacan-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_GRASS && "rindo-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_ICE && "yache-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_FIGHTING && "chople-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_POISON && "kebia-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_GROUND && "shuca-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_FLYING && "coba-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_PSYCHIC && "payapa-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_BUG && "tanga-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_ROCK && "charti-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_GHOST && "kasib-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_DRAGON && "haban-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_DARK && "colbur-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_STEEL && "babiri-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_FAIRY && "roseli-berry".equals(item))
+            return 0.5;
+        if (moveTypeId == DamageCalculatorUtil.TYPE_NORMAL && "chilan-berry".equals(item))
+            return 0.5;
+        return 1.0;
     }
 
     /** 石板 → 属性ID（Arceus 制裁光砾用） */
@@ -687,6 +749,8 @@ final class BattleDamageSupport {
             Map<String, Object> move, int moveTypeId, Map<String, Object> state) {
         int damageClassId = engine.toInt(move.get("damage_class_id"), DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL);
         AttackContext ctx = new AttackContext(attacker, defender, move, state, moveTypeId, damageClassId, false);
+        // 类型克制倍率写入上下文，供 Tinted Lens / Filter / Solid Rock / Prism Armor 等依赖克制的特性判断
+        ctx.typeModifier = typeModifier(defender, moveTypeId);
 
         double modifier = 1.0;
 
@@ -694,7 +758,8 @@ final class BattleDamageSupport {
         modifier = EffectRegistry.dispatchSourceDamage(attacker, ctx, modifier);
 
         // 光子喷涌/暗影之光：无视防御方特性（免疫类特性如 Levitate、倍率减半等均无效）
-        boolean ignoreDefAbilities = MoveRegistry.isUnignorableMove(move);
+        // 破格（Mold Breaker/Teravolt/Turboblaze）同样无视防御方特性
+        boolean ignoreDefAbilities = MoveRegistry.isUnignorableMove(move) || ignoresTargetAbility(attacker);
 
         // 防御方特性伤害修正（含免疫返回 0，如 Levitate, Sap Sipper, Flash Fire 等）
         if (!ignoreDefAbilities) {
@@ -706,6 +771,46 @@ final class BattleDamageSupport {
         if ((moveTypeId == EffectRegistry.DARK && hasFieldAbility(state, "dark-aura"))
                 || (moveTypeId == EffectRegistry.FAIRY && hasFieldAbility(state, "fairy-aura"))) {
             modifier *= hasFieldAbility(state, "aura-break") ? 0.75 : 4.0 / 3.0;
+        }
+
+        // 灾祸四宝（Sword/Tablets/Vessel/Beads of Ruin）：场地全局降能力效果，
+        // 对除持有者外的所有在场宝可梦生效；持有者自身不受影响。
+        //  Sword of Ruin: 他人受到的物理伤害 ×4/3（= 他人物防 ×0.75）
+        //  Beads of Ruin: 他人受到的特殊伤害 ×4/3（= 他人特防 ×0.75）
+        //  Tablets of Ruin: 他人的物理攻击 ×0.75
+        //  Vessel of Ruin: 他人的特殊攻击 ×0.75
+        String attackerAbility = engine.abilityName(attacker);
+        String defenderAbility = engine.abilityName(defender);
+        boolean attackerIsHolder = "sword-of-ruin".equalsIgnoreCase(attackerAbility)
+                || "tablets-of-ruin".equalsIgnoreCase(attackerAbility)
+                || "vessel-of-ruin".equalsIgnoreCase(attackerAbility)
+                || "beads-of-ruin".equalsIgnoreCase(attackerAbility);
+        boolean defenderIsHolder = "sword-of-ruin".equalsIgnoreCase(defenderAbility)
+                || "tablets-of-ruin".equalsIgnoreCase(defenderAbility)
+                || "vessel-of-ruin".equalsIgnoreCase(defenderAbility)
+                || "beads-of-ruin".equalsIgnoreCase(defenderAbility);
+        // 攻击方不是四灾持有者时，检查是否存在其他持有者降低其攻击
+        if (!attackerIsHolder) {
+            boolean swordOnField = hasFieldAbility(state, "sword-of-ruin");
+            boolean tabletsOnField = hasFieldAbility(state, "tablets-of-ruin");
+            boolean vesselOnField = hasFieldAbility(state, "vessel-of-ruin");
+            boolean beadsOnField = hasFieldAbility(state, "beads-of-ruin");
+            // Tablets/Vessel 降低攻击方的物攻/特攻
+            if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL && tabletsOnField) {
+                modifier *= 0.75;
+            }
+            if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL && vesselOnField) {
+                modifier *= 0.75;
+            }
+            // Sword/Beads 增加防御方受到的物伤/特伤（防御方不是持有者时）
+            if (!defenderIsHolder) {
+                if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL && swordOnField) {
+                    modifier *= 4.0 / 3.0;
+                }
+                if (damageClassId == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL && beadsOnField) {
+                    modifier *= 4.0 / 3.0;
+                }
+            }
         }
 
         // Neuroforce: 效果绝佳时 ×1.25
