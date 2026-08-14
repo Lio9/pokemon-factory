@@ -278,6 +278,40 @@
       </div>
     </template>
 
+    <!-- ===== 正作风格最新消息对话框 ===== -->
+    <div
+      v-if="latestEvent"
+      class="relative overflow-hidden rounded-2xl border-2 border-slate-300 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-4 shadow-[0_6px_16px_-8px_rgba(0,0,0,0.25)]"
+    >
+      <div class="flex items-center gap-2">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800 text-white shadow">
+          <svg
+            viewBox="0 0 24 24"
+            class="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          ><path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+          /></svg>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            {{ tr('最新消息', 'Latest') }}
+          </div>
+          <div class="text-sm font-semibold leading-6 text-slate-800">
+            {{ latestEvent }}
+          </div>
+        </div>
+        <span
+          v-if="summary?.currentRound"
+          class="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500"
+        >{{ tr('第 {n} 回合', 'Round {n}', { n: summary.currentRound }) }}</span>
+      </div>
+    </div>
+
     <!-- ===== 回合消息流 ===== -->
     <section class="rounded-[24px] border border-slate-200/80 bg-slate-50/70 p-4">
       <div class="mb-3 flex items-center justify-between">
@@ -472,6 +506,15 @@ function roundTime(round) {
   }
   return ''
 }
+
+// 最新一条战斗消息（正作对话框）
+const latestEvent = computed(() => {
+  const rounds = props.summary?.rounds
+  if (!rounds?.length) return ''
+  const lastRound = rounds[rounds.length - 1]
+  const events = lastRound?.events || []
+  return events.length ? events[events.length - 1] : ''
+})
 
 // ===== 数据加工 =====
 
