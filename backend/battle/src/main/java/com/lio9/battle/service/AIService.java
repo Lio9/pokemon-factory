@@ -814,6 +814,8 @@ public class AIService {
         normalized.put("damage_class_id", toInt(move.get("damage_class_id"), 0));
         normalized.put("type_id", toInt(move.get("type_id"), 0));
         normalized.put("target_id", toInt(move.get("target_id"), 0));
+        // 保留 PP 字段（pp 可能为 null，交由引擎侧 normalizeMoves 兜底）
+        normalized.put("pp", move.get("pp"));
         normalized.put("min_hits", toInt(move.get("min_hits"), 0));
         normalized.put("max_hits", toInt(move.get("max_hits"), 0));
         normalized.put("crit_rate", toInt(move.get("crit_rate"), 0));

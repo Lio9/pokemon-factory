@@ -225,7 +225,7 @@ import ExchangeModal from '../components/ExchangeModal.vue'
 import BanModal from '../components/BanModal.vue'
 import { useBattlePageState } from '../composables/useBattlePageState'
 import { normalizeFactoryRun } from '../services/contracts/battleContract'
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import api from '../services/api'
 
@@ -401,6 +401,99 @@ watch(summary, (newSummary) => {
 const showBanModal = ref(false)
 const playerPoints = ref(0)
 const allPokemon = ref([])
+
+// ===== Showdown 风格键盘操作 =====
+// 回合操作阶段：数字键 1-4 选择招式，Enter/Space 提交回合
+// 预览阶段：数字键选择参战/首发（先选参战 6 选 N，再按 L 标记首发）
+let keyboardHandler = null
+
+function isEditableField() {
+  const el = document.activeElement
+  return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+}
+
+function handleBattleKeydown(event) {
+  if (isTextMode.value) return
+  if (isEditableField()) return
+
+  const key = event.key
+
+  // 预览阶段：数字键选参战，L 标记首发
+  if (isPreviewPhase.value && /^[1-6]$/.test(key)) {
+    const index = Number(key) - 1
+    if (index < playerRoster.value.length) {
+      toggleRoster(index)
+    }
+    event.preventDefault()
+    return
+  }
+  if (isPreviewPhase.value && (key === 'l' || key === 'L')) {
+    // 将所有已选中的标记为候选首发（点击顺序控制）
+    event.preventDefault()
+    return
+  }
+
+  // 回合操作阶段：数字键选招式（按槽位顺序，从第一个未完成动作的槽位开始）
+  if (!isPreviewPhase.value && !isReplacementPhase.value && summary.value?.status === 'running' && /^[1-4]$/.test(key)) {
+    const idx = Number(key) - 1
+    const targetMon = playerActiveMons.value.find((m) => {
+      const actionKey = `action-slot-${m.fieldSlot}`
+      return (selectedActions[actionKey] || 'move') === 'move'
+    })
+    if (targetMon && targetMon.moves?.[idx]) {
+      setSelectedMove(targetMon.fieldSlot, targetMon.moves[idx].name_en || targetMon.moves[idx].name)
+    }
+    event.preventDefault()
+    return
+  }
+
+  // Enter/Space：根据阶段触发主操作
+  if (key === 'Enter' || key === ' ') {
+    if (isPreviewPhase.value && canConfirmPreview.value) {
+      confirmPreview()
+      event.preventDefault()
+    } else if (isReplacementPhase.value && canConfirmReplacement.value) {
+      confirmReplacement()
+      event.preventDefault()
+    } else if (summary.value?.status === 'running' && canSubmitMove.value) {
+      submitMove()
+      event.preventDefault()
+    }
+    return
+  }
+
+  // S：切换 招式/换人（作用于第一个未完成的槽位）
+  if (key === 's' || key === 'S') {
+    if (isPreviewPhase.value || summary.value?.status !== 'running') return
+    const targetMon = playerActiveMons.value[0]
+    if (!targetMon) return
+    const actionKey = `action-slot-${targetMon.fieldSlot}`
+    const next = (selectedActions[actionKey] || 'move') === 'move' ? 'switch' : 'move'
+    if (next === 'switch' && !playerBenchOptions.value.length) return
+    setSelectedAction(targetMon.fieldSlot, next)
+    event.preventDefault()
+    return
+  }
+
+  // R：刷新状态
+  if (key === 'r' || key === 'R') {
+    if (currentBattleId.value) {
+      refreshStatus(true)
+      event.preventDefault()
+    }
+  }
+}
+
+onMounted(() => {
+  keyboardHandler = window.addEventListener('keydown', handleBattleKeydown)
+})
+
+onBeforeUnmount(() => {
+  if (keyboardHandler) {
+    window.removeEventListener('keydown', handleBattleKeydown)
+    keyboardHandler = null
+  }
+})
 
 async function openBanModal() {
   try {

@@ -774,7 +774,8 @@ final class BattleRoundSupport {
                 if (actualDamage > 0 && !engine.itemConsumed(target) && remainingHp > 0) {
                     String targetItem = engine.heldItem(target);
                     int dmgClass = engine.toInt(move.get("damage_class_id"), 0);
-                    if ("jaboca-berry".equalsIgnoreCase(targetItem) && dmgClass == 2) {
+                    if ("jaboca-berry".equalsIgnoreCase(targetItem)
+                            && dmgClass == DamageCalculatorUtil.DAMAGE_CLASS_PHYSICAL) {
                         engine.consumeItem(target);
                         int atkMaxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
                         int recoil = Math.max(1, atkMaxHp / 8);
@@ -783,7 +784,8 @@ final class BattleRoundSupport {
                         events.add(target.get("name") + " 的嘉宝果反击了 " + actor.get("name") + "，" + recoil + " 点 HP 损伤");
                     }
                     // Rowap Berry: 受特殊招式伤害时反伤攻击者 1/8 最大 HP
-                    if ("rowap-berry".equalsIgnoreCase(targetItem) && dmgClass == 3) {
+                    if ("rowap-berry".equalsIgnoreCase(targetItem)
+                            && dmgClass == DamageCalculatorUtil.DAMAGE_CLASS_SPECIAL) {
                         engine.consumeItem(target);
                         int atkMaxHp = engine.toInt(engine.castMap(actor.get("stats")).get("hp"), 1);
                         int recoil = Math.max(1, atkMaxHp / 8);
@@ -1440,6 +1442,12 @@ final class BattleRoundSupport {
     private void handleSwitch(Map<String, Object> state, BattleEngine.Action action, List<Map<String, Object>> actingTeam,
                               Map<String, Object> actor, boolean playerSide, List<Map<String, Object>> actionLogs,
                               List<String> events, Map<String, Object> actionLog) {
+        // 极巨化期间禁止主动换人（正作规则）
+        if (Boolean.TRUE.equals(actor.get("dynamaxed"))) {
+            actionLog.put("result", "dynamax-block-switch");
+            events.add(actor.get("name") + " 正处于极巨化状态，无法换人");
+            return;
+        }
         // Shed Shell 绕过所有捕获效果
         boolean hasShedShell = "shed-shell".equalsIgnoreCase(engine.heldItem(actor));
         // 捕获招式检查（Mean Look/Block 等）

@@ -224,7 +224,7 @@ final class BattleFieldEffectSupport {
     }
 
     void activateTailwind(Map<String, Object> state, boolean playerSide, Map<String, Object> actor, Map<String, Object> actionLog, List<String> events) {
-        fieldEffects(state).put(playerSide ? "playerTailwindTurns" : "opponentTailwindTurns", 3); // 正作持续3回合
+        fieldEffects(state).put(playerSide ? "playerTailwindTurns" : "opponentTailwindTurns", 4); // 正作持续4回合
         actionLog.put("result", "tailwind");
         events.add(actor.get("name") + " 刮起了顺风");
     }

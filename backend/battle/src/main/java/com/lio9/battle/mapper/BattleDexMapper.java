@@ -62,7 +62,7 @@ public interface BattleDexMapper {
      * 查询 AI 组队阶段用于挑选的候选招式池。
      */
     @Select("SELECT m.id, m.name, m.name_en, m.type_id, m.damage_class_id, m.target_id, " +
-            "COALESCE(m.power, 0) AS power, COALESCE(m.accuracy, 100) AS accuracy, COALESCE(m.priority, 0) AS priority, " +
+            "COALESCE(m.power, 0) AS power, m.pp AS pp, COALESCE(m.accuracy, 100) AS accuracy, COALESCE(m.priority, 0) AS priority, " +
             "COALESCE(mm.min_hits, 0) AS min_hits, COALESCE(mm.max_hits, 0) AS max_hits, COALESCE(mm.crit_rate, 0) AS crit_rate, " +
             "COALESCE(m.effect_chance, 0) AS effect_chance, COALESCE(mm.ailment_chance, 0) AS ailment_chance, COALESCE(mm.flinch_chance, 0) AS flinch_chance, " +
             "COALESCE(mm.stat_chance, 0) AS stat_chance, COALESCE(mm.drain, 0) AS drain, COALESCE(mm.healing, 0) AS healing, " +
@@ -91,7 +91,7 @@ public interface BattleDexMapper {
             "'parting-shot','ally-switch','feint','recover','roost','slack-off','soft-boiled','moonlight','synthesis','morning-sun'" +
             ") OR (m.damage_class_id IN (1, 2) AND COALESCE(m.power, 0) > 0)" +
             ") " +
-            "GROUP BY m.id, m.name, m.name_en, m.type_id, m.damage_class_id, m.target_id, m.power, m.accuracy, m.priority, " +
+            "GROUP BY m.id, m.name, m.name_en, m.type_id, m.damage_class_id, m.target_id, m.power, m.pp, m.accuracy, m.priority, " +
             "mm.min_hits, mm.max_hits, mm.crit_rate, m.effect_chance, mm.ailment_chance, mm.flinch_chance, mm.stat_chance, mm.drain, mm.healing, ma.name_en, mc.name_en, msc.stat_changes, mf.flags, m.effect_short " +
             "ORDER BY CASE WHEN m.name_en = 'protect' THEN 0 ELSE 1 END, COALESCE(m.power, 0) DESC, COALESCE(m.accuracy, 100) DESC " +
             "LIMIT #{limit}")

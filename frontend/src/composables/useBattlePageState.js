@@ -36,11 +36,15 @@ export function useBattlePageState() {
   const bat = new Proxy({}, {
     get: (_, method) => (...args) => {
       const impl = auth.isAuthenticated.value ? api.battle : guestApi
-      if (typeof impl[method] !== 'function') {
-        // guestApi 没有 factoryStart/factoryNext/factoryAbandon/profile 等方法时回退到认证 API
-        return api.battle[method](...args)
+      if (typeof impl[method] === 'function') {
+        return impl[method](...args)
       }
-      return impl[method](...args)
+      // guestApi 没有 profile/factoryStatus/leaderboard 等方法：
+      // 游客模式下静默返回 null（避免回退到需 JWT 的接口触发 401 错误横幅）
+      if (!auth.isAuthenticated.value) {
+        return Promise.resolve(null)
+      }
+      return api.battle[method](...args)
     }
   })
 
@@ -65,6 +69,7 @@ export function useBattlePageState() {
   const leadRosterIndexes = ref([])
   const selectedReplacementIndexes = ref([])
   const showExchange = ref(false)
+  const exchangeJustConfirmed = ref(false)
   const replacedIndex = ref(0)
   const replacedHighlight = ref(-1)
   const currentBattleId = ref(null)
@@ -179,6 +184,7 @@ export function useBattlePageState() {
     summary.value = null
     settlement.value = null
     showExchange.value = false
+    exchangeJustConfirmed.value = false
     replacedHighlight.value = -1
     requestError.value = ''
     if (!keepFactoryRun) {
@@ -390,7 +396,8 @@ export function useBattlePageState() {
       ensureMoveSelections()
     }
 
-    if (summary.value?.status === 'completed' && summary.value?.winner === 'player' && summary.value?.exchangeAvailable) {
+    if (summary.value?.status === 'completed' && summary.value?.winner === 'player' && summary.value?.exchangeAvailable
+        && !exchangeJustConfirmed.value) {
       replacedIndex.value = 0
       showExchange.value = true
     }
@@ -436,6 +443,10 @@ export function useBattlePageState() {
   async function refreshStatus(silent = false) {
     if (!currentBattleId.value) {
       resultText.value = translate('请先开始对战', 'Start a battle first')
+      return
+    }
+    // 竞态防护：用户正在提交动作时，轮询不应覆盖进行中的操作（陈旧响应回滚 UI）
+    if (silent && busyAction.value) {
       return
     }
 
@@ -543,12 +554,15 @@ export function useBattlePageState() {
         replacedIndex: replacedIndex.value,
         newPokemonJson: JSON.stringify(picked)
       })
+      // 标记本次交换已确认，避免 applyBattlePayload 再次自动弹出交换面板
+      exchangeJustConfirmed.value = true
       showExchange.value = false
       replacedHighlight.value = replacedIndex.value
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
       setTimeout(() => {
         replacedHighlight.value = -1
+        exchangeJustConfirmed.value = false
       }, 4000)
     }).catch((error) => {
       resultText.value = translate('交换失败: {message}', 'Exchange failed: {message}', '', { message: error.message || error })

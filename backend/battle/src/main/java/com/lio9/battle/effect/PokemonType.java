@@ -2,27 +2,28 @@ package com.lio9.battle.effect;
 
 /**
  * 宝可梦 18 种属性与伤害分类枚举。
- * <p>对应 Showdown/PokeAPI 的属性 ID 体系。</p>
+ * <p>对应 PokeAPI/数据库 type 表的属性 ID 体系（PokeAPI 编号）。</p>
+ * <p>注意：PokeAPI 编号与游戏内排序不同，例如 fire=10 而非 2。</p>
  */
 public enum PokemonType {
 
     NORMAL(1),
-    FIRE(2),
-    WATER(3),
-    ELECTRIC(4),
-    GRASS(5),
-    ICE(6),
-    FIGHTING(7),
-    POISON(8),
-    GROUND(9),
-    FLYING(10),
-    PSYCHIC(11),
-    BUG(12),
-    ROCK(13),
-    GHOST(14),
-    DRAGON(15),
-    DARK(16),
-    STEEL(17),
+    FIGHTING(2),
+    FLYING(3),
+    POISON(4),
+    GROUND(5),
+    ROCK(6),
+    BUG(7),
+    GHOST(8),
+    STEEL(9),
+    FIRE(10),
+    WATER(11),
+    GRASS(12),
+    ELECTRIC(13),
+    PSYCHIC(14),
+    ICE(15),
+    DRAGON(16),
+    DARK(17),
     FAIRY(18);
 
     private final int id;

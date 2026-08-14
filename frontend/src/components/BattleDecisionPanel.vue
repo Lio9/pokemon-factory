@@ -303,12 +303,19 @@
           <!-- 招式按钮 -->
           <div class="mt-3 grid grid-cols-2 gap-2">
             <MoveButton
-              v-for="move in mon.moves"
+              v-for="(move, moveIdx) in mon.moves"
               :key="move.name_en || move.name"
               :move="move"
+              :move-index="moveIdx"
               :selected="selectedMoves[`slot-${mon.fieldSlot}`] === (move.name_en || move.name)"
               @select="setSelectedMove(mon.fieldSlot, move.name_en || move.name)"
             />
+          </div>
+          <div
+            v-if="mon.moves.length"
+            class="mt-1.5 text-[10px] text-slate-400"
+          >
+            {{ tr('提示：按数字键 1-4 快速选择招式', 'Tip: press keys 1-4 to pick a move') }}
           </div>
 
           <!-- 目标选择 -->

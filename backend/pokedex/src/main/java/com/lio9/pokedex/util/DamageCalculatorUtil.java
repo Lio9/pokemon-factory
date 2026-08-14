@@ -53,23 +53,24 @@ public class DamageCalculatorUtil {
     public static final int DAMAGE_CLASS_PHYSICAL = 1;
     public static final int DAMAGE_CLASS_SPECIAL = 2;
     public static final int DAMAGE_CLASS_STATUS = 3;
+    // PokeAPI / 数据库 type 表属性编号（与 MoveEffects/ItemEffects/AbilityEffects 保持一致）
     public static final int TYPE_NORMAL = 1;
-    public static final int TYPE_FIRE = 2;
-    public static final int TYPE_WATER = 3;
-    public static final int TYPE_ELECTRIC = 4;
-    public static final int TYPE_GRASS = 5;
-    public static final int TYPE_ICE = 6;
-    public static final int TYPE_FIGHTING = 7;
-    public static final int TYPE_POISON = 8;
-    public static final int TYPE_GROUND = 9;
-    public static final int TYPE_FLYING = 10;
-    public static final int TYPE_PSYCHIC = 11;
-    public static final int TYPE_BUG = 12;
-    public static final int TYPE_ROCK = 13;
-    public static final int TYPE_GHOST = 14;
-    public static final int TYPE_DRAGON = 15;
-    public static final int TYPE_DARK = 16;
-    public static final int TYPE_STEEL = 17;
+    public static final int TYPE_FIGHTING = 2;
+    public static final int TYPE_FLYING = 3;
+    public static final int TYPE_POISON = 4;
+    public static final int TYPE_GROUND = 5;
+    public static final int TYPE_ROCK = 6;
+    public static final int TYPE_BUG = 7;
+    public static final int TYPE_GHOST = 8;
+    public static final int TYPE_STEEL = 9;
+    public static final int TYPE_FIRE = 10;
+    public static final int TYPE_WATER = 11;
+    public static final int TYPE_GRASS = 12;
+    public static final int TYPE_ELECTRIC = 13;
+    public static final int TYPE_PSYCHIC = 14;
+    public static final int TYPE_ICE = 15;
+    public static final int TYPE_DRAGON = 16;
+    public static final int TYPE_DARK = 17;
     public static final int TYPE_FAIRY = 18;
     
     public static int calculateBaseDamage(int level, int power, int attack, int defense) {

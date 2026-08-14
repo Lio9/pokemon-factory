@@ -18,6 +18,12 @@
     <div class="flex items-start justify-between gap-2 pl-1">
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2">
+          <!-- Showdown 风格编号 -->
+          <span
+            v-if="moveIndex != null"
+            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] font-black"
+            :class="selected ? 'border-indigo-300 bg-indigo-500 text-white' : 'border-slate-300 bg-slate-100 text-slate-500'"
+          >{{ moveIndex + 1 }}</span>
           <span class="text-sm font-bold text-slate-900 truncate">{{ name }}</span>
           <span
             class="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
@@ -37,6 +43,11 @@
             v-else-if="move.priority < 0"
             class="font-bold text-red-500"
           >{{ move.priority }}</span>
+          <span
+            v-if="ppLabel"
+            class="font-semibold"
+            :class="ppClass"
+          >PP {{ ppLabel }}</span>
         </div>
       </div>
       <div
@@ -64,30 +75,53 @@ const { translate: tr } = useLocale()
 const props = defineProps({
   move: { type: Object, required: true },
   selected: { type: Boolean, default: false },
-  disabled: { type: Boolean, default: false }
+  disabled: { type: Boolean, default: false },
+  moveIndex: { type: Number, default: null }
 })
 
 defineEmits(['select'])
 
+// PP 显示：优先 currentPp / maxPp，回退到 move.pp（Showdown 风格 PP x/y）
+const ppLabel = computed(() => {
+  const cur = props.move?.currentPp
+  const max = props.move?.maxPp ?? props.move?.pp
+  if (cur != null && max != null) return `${cur}/${max}`
+  if (cur != null) return String(cur)
+  if (max != null) return `—/${max}`
+  return ''
+})
+
+const ppClass = computed(() => {
+  const cur = props.move?.currentPp
+  const max = props.move?.maxPp ?? props.move?.pp
+  if (cur == null || max == null || max <= 0) return 'text-slate-500'
+  const ratio = cur / max
+  if (cur <= 0) return 'text-rose-600 font-bold'
+  if (ratio <= 0.25) return 'text-rose-500'
+  if (ratio <= 0.5) return 'text-amber-600'
+  return 'text-emerald-600'
+})
+
+// PokeAPI / 后端 type 表属性编号（1=normal, 2=fighting, 3=flying ...）
 const TYPE_COLORS = {
-  1: '#A8A77A', 2: '#C62828', 3: '#456AE4', 4: '#A040A0', 5: '#F7D02C',
-  6: '#B69F37', 7: '#A6B91A', 8: '#74C8E2', 9: '#B7B7CE', 10: '#EE8130',
-  11: '#6390F0', 12: '#7AC74C', 13: '#F95587', 14: '#A98FF3', 15: '#98D8D8',
-  16: '#705746', 17: '#6F35FC', 18: '#D685AD'
+  1: '#A8A77A', 2: '#C03028', 3: '#A890F0', 4: '#A040A0', 5: '#E0C068',
+  6: '#B8A038', 7: '#A8B820', 8: '#705898', 9: '#B8B8D0', 10: '#F08030',
+  11: '#6890F0', 12: '#78C850', 13: '#F8D030', 14: '#F85888', 15: '#98D8D8',
+  16: '#7038F8', 17: '#705848', 18: '#EE99AC'
 }
 
 const TYPE_NAMES = {
-  1: '一般', 2: '火', 3: '水', 4: '草', 5: '电',
-  6: '冰', 7: '格斗', 8: '地面', 9: '飞行', 10: '超能力',
-  11: '龙', 12: '虫', 13: '毒', 14: '岩石', 15: '幽灵',
-  16: '钢', 17: '恶', 18: '妖精'
+  1: '一般', 2: '格斗', 3: '飞行', 4: '毒', 5: '地面',
+  6: '岩石', 7: '虫', 8: '幽灵', 9: '钢', 10: '火',
+  11: '水', 12: '草', 13: '电', 14: '超能力', 15: '冰',
+  16: '龙', 17: '恶', 18: '妖精'
 }
 
 const TYPE_NAMES_EN = {
-  1: 'Normal', 2: 'Fire', 3: 'Water', 4: 'Grass', 5: 'Electric',
-  6: 'Ice', 7: 'Fighting', 8: 'Ground', 9: 'Flying', 10: 'Psychic',
-  11: 'Dragon', 12: 'Bug', 13: 'Poison', 14: 'Rock', 15: 'Ghost',
-  16: 'Steel', 17: 'Dark', 18: 'Fairy'
+  1: 'Normal', 2: 'Fighting', 3: 'Flying', 4: 'Poison', 5: 'Ground',
+  6: 'Rock', 7: 'Bug', 8: 'Ghost', 9: 'Steel', 10: 'Fire',
+  11: 'Water', 12: 'Grass', 13: 'Electric', 14: 'Psychic', 15: 'Ice',
+  16: 'Dragon', 17: 'Dark', 18: 'Fairy'
 }
 
 const name = computed(() => props.move.name || props.move.name_en || '?')
