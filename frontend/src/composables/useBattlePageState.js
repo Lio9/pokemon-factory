@@ -429,7 +429,11 @@ export function useBattlePageState() {
       stopPolling()
       resultText.value = translate('正在提交异步模拟...', 'Submitting async simulation...')
       const res = await bat.startAsync({ format: battleFormat.value })
-      currentBattleId.value = res.battleId
+      if (!res) {
+        resultText.value = translate('异步模拟需要登录后使用，请先登录。', 'Async simulation requires login. Please sign in first.')
+        return
+      }
+      currentBattleId.value = res.battleId ?? res.battle?.id
       resultText.value = JSON.stringify(res, null, 2)
       await refreshStatus(true)
       startPolling()
@@ -708,6 +712,10 @@ export function useBattlePageState() {
       stopPolling()
        resultText.value = translate('正在开始工厂挑战...', 'Starting the factory challenge...')
       const res = await bat.factoryStart()
+      if (!res) {
+        resultText.value = translate('工厂挑战需要登录后使用，请先登录。', 'Factory challenge requires login. Please sign in first.')
+        return
+      }
       const nextRun = normalizeFactoryRun(res.run || res)
       factoryRun.value = nextRun
 
@@ -720,8 +728,8 @@ export function useBattlePageState() {
         }
       } else if (nextRun?.id) {
         const nextBattleRes = await bat.factoryNext(nextRun.id)
-        factoryRun.value = normalizeFactoryRun(nextBattleRes.run || nextBattleRes) || nextRun
-        if (nextBattleRes.battleId || nextBattleRes.battle?.id) {
+        factoryRun.value = normalizeFactoryRun(nextBattleRes?.run || nextBattleRes) || nextRun
+        if (nextBattleRes?.battleId || nextBattleRes?.battle?.id) {
           currentBattleId.value = nextBattleRes.battleId || nextBattleRes.battle?.id
           if (normalizeBattlePayload(nextBattleRes).summary) {
             applyBattlePayload(nextBattleRes)
@@ -751,6 +759,10 @@ export function useBattlePageState() {
       stopPolling()
        resultText.value = translate('正在进入下一轮...', 'Entering the next round...')
       const res = await bat.factoryNext(factoryRun.value.id)
+      if (!res) {
+        resultText.value = translate('工厂挑战需要登录后使用，请先登录。', 'Factory challenge requires login. Please sign in first.')
+        return
+      }
       factoryRun.value = normalizeFactoryRun(res.run || res) || factoryRun.value
       if (res.battleId || res.battle?.id) {
         currentBattleId.value = res.battleId || res.battle?.id
@@ -875,11 +887,13 @@ export function useBattlePageState() {
     forfeitBattle,
     formatTypes: formatPokemonTypes,
     handleMobileAction,
+    isAuthenticated,
     isBusy,
     isLead,
     isPicked,
     isPreviewPhase,
     isReplacementPhase,
+    isAuthenticated: auth.isAuthenticated,
     lastUpdatedLabel,
     leadRosterIndexes,
     leaderboardData,

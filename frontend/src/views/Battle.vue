@@ -77,6 +77,7 @@
             :busy-action="busyAction"
             :current-battle-id="currentBattleId"
             :factory-run="factoryRun"
+            :is-authenticated="isAuthenticated"
             :is-busy="isBusy"
             :mode-description="modeDescription"
             :mode-summary="modeSummary"
@@ -260,6 +261,7 @@ const {
   forfeitBattle,
   formatTypes,
   handleMobileAction,
+  isAuthenticated,
   isBusy,
   isLead,
   isPicked,
@@ -587,11 +589,11 @@ async function handleBanConfirm({ bannedPokemon, cost }) {
     playerPoints.value = res.remainingPoints || playerPoints.value - cost
 
     // 处理返回结果（与 startFactoryChallenge 保持一致的解析逻辑）
-    const nextRun = normalizeFactoryRun(res.run || res)
+    const nextRun = normalizeFactoryRun(res?.run || res)
     if (nextRun && nextRun.id) {
       factoryRun.value = nextRun
 
-      if (res.battleId || res.battle?.id) {
+      if (res?.battleId || res?.battle?.id) {
         currentBattleId.value = res.battleId || res.battle?.id
         await refreshStatus(true)
       }

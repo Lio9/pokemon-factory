@@ -22,7 +22,7 @@
           <div class="relative">
             <img
               :src="evo.spriteUrl || getPokemonImage(evo.speciesId)"
-              :alt="evo.name"
+              :alt="evo.pokemonName || evo.name"
               class="w-28 h-28 object-contain transition-transform duration-300 group-hover:scale-110"
               loading="lazy"
               @error="handleImageError"
@@ -37,7 +37,7 @@
           <span
             class="mt-3 font-bold"
             :class="evo.isCurrent ? 'text-white' : 'text-slate-900'"
-          >{{ evo.name }}</span>
+          >{{ evo.pokemonName || evo.name }}</span>
           <span
             class="text-xs mt-1"
             :class="evo.isCurrent ? 'text-blue-100' : 'text-slate-500'"

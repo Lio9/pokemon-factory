@@ -25,6 +25,7 @@ import com.lio9.pokedex.model.Pokemon;
 import com.lio9.pokedex.model.PokemonForm;
 import com.lio9.pokedex.model.Type;
 import com.lio9.pokedex.service.PokedexService;
+import com.lio9.pokedex.service.PokemonService;
 import com.lio9.pokedex.vo.AbilityVO;
 import com.lio9.pokedex.vo.ItemVO;
 import com.lio9.pokedex.vo.MoveVO;
@@ -60,6 +61,7 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
     private final GrowthRateMapper growthRateMapper;
     private final MoveMapper moveMapper;
     private final ItemMapper itemMapper;
+    private final PokemonService pokemonService;
     private final PokeDexAssetProperties assetProperties;
 
     public PokedexServiceImpl(
@@ -74,6 +76,7 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         GrowthRateMapper growthRateMapper,
         MoveMapper moveMapper,
         ItemMapper itemMapper,
+        PokemonService pokemonService,
         PokeDexAssetProperties assetProperties
     ) {
         this.pokemonFormMapper = pokemonFormMapper;
@@ -87,6 +90,7 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         this.growthRateMapper = growthRateMapper;
         this.moveMapper = moveMapper;
         this.itemMapper = itemMapper;
+        this.pokemonService = pokemonService;
         this.assetProperties = assetProperties;
     }
 
@@ -386,6 +390,11 @@ public class PokedexServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
             }
 
             detailVO.setForms(formVOs);
+        }
+
+        // 5. 进化链（扁平列表，供前端 EvolutionChainPanel 直接渲染）
+        if (pokemon.getEvolutionChainId() != null) {
+            detailVO.setEvolutionChain(pokemonService.getEvolutionChain(pokemon.getId().longValue()));
         }
 
         return detailVO;

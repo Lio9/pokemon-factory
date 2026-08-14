@@ -62,11 +62,19 @@
         </button>
       </div>
 
+      <!-- 游客提示 -->
+      <div
+        v-if="!isAuthenticated"
+        class="col-span-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs leading-5 text-amber-700"
+      >
+        {{ tr('当前为游客模式：可直接开始「手动对战」体验；工厂挑战 / 异步模拟 / Ban 挑战需要登录后使用。', 'Guest mode: you can start a Manual Battle right away. Factory Run / Async Sim / Ban & Run require login.') }}
+      </div>
+
       <!-- 开始方式卡片 -->
       <div class="col-span-full grid gap-2 sm:grid-cols-2">
         <button
           class="group relative overflow-hidden rounded-2xl border-2 border-indigo-300 bg-gradient-to-br from-indigo-50 to-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="isBusy"
+          :disabled="isBusy || !isAuthenticated"
           @click="emit('start-factory')"
         >
           <div class="text-lg font-black text-indigo-700">
@@ -90,7 +98,7 @@
         </button>
         <button
           class="group relative overflow-hidden rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="isBusy"
+          :disabled="isBusy || !isAuthenticated"
           @click="emit('start-async')"
         >
           <div class="text-lg font-black text-emerald-700">
@@ -102,7 +110,7 @@
         </button>
         <button
           class="group relative overflow-hidden rounded-2xl border-2 border-rose-300 bg-gradient-to-br from-rose-50 to-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-rose-400 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="isBusy"
+          :disabled="isBusy || !isAuthenticated"
           @click="emit('open-ban')"
         >
           <div class="text-lg font-black text-rose-700">
@@ -241,6 +249,7 @@ defineProps({
   busyAction: { type: String, default: '' },
   currentBattleId: { type: [Number, String], default: null },
   factoryRun: { type: Object, default: null },
+  isAuthenticated: { type: Boolean, default: true },
   isBusy: { type: Boolean, default: false },
   modeDescription: { type: String, default: '' },
   modeSummary: { type: String, default: '' },

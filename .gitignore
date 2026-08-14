@@ -130,3 +130,4 @@ data/image/*.png
 *.db-wal
 data/image/_failed.json
 data/image/_failed.json
+data/image/_failed_back.json
