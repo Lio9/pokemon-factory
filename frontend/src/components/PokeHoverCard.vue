@@ -171,6 +171,7 @@ import { computed, nextTick, ref } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import { sprites } from '../services/sprites'
 import { typeColor, typeNameZh, typeNameEn } from '../services/typeChart'
+import { itemEffectZh } from '../services/itemEffectsZh'
 
 const { translate: tr } = useLocale()
 
@@ -274,17 +275,18 @@ const abilityDescription = computed(() => {
 const itemEffect = computed(() => {
   const info = props.pokemon?.heldItemInfo
   if (info && typeof info === 'object') {
-    return info.effect_short || info.description || ''
+    const en = info.effect_short || info.description || ''
+    return itemEffectZh(en, info.name_en)
   }
   return ''
 })
 
-/** 招式效果文本（effect_short → description） */
+/** 招式效果文本（优先中文 description，回退英文 effect_short） */
 function moveEffectText(move) {
   if (!move) return ''
-  const zh = move.effect_short || ''
-  if (zh) return zh
-  return move.description || ''
+  const zh = move.description || ''
+  if (/[\u4e00-\u9fff]/.test(zh)) return zh
+  return move.effect_short || zh || ''
 }
 
 const NATURE_EFFECTS = {

@@ -56,8 +56,22 @@
             </span>
             <span class="flex items-center gap-1">
               <span class="text-slate-400">{{ tr('道具', 'Item') }}:</span>
-              <span class="font-semibold text-slate-800">{{ formatItemName(pokemon.heldItem) }}</span>
+              <span class="font-semibold text-slate-800">{{ itemName }}</span>
             </span>
+          </div>
+          <!-- 特性效果 -->
+          <div
+            v-if="abilityDescription"
+            class="mt-2 rounded-lg border border-indigo-100 bg-indigo-50/70 px-2.5 py-1.5 text-[11px] leading-5 text-indigo-800"
+          >
+            <span class="font-bold text-indigo-500">{{ tr('特性效果', 'Ability effect') }}：</span>{{ abilityDescription }}
+          </div>
+          <!-- 道具效果 -->
+          <div
+            v-if="itemEffect"
+            class="mt-1.5 rounded-lg border border-emerald-100 bg-emerald-50/70 px-2.5 py-1.5 text-[11px] leading-5 text-emerald-800"
+          >
+            <span class="font-bold text-emerald-600">{{ tr('道具效果', 'Item effect') }}：</span>{{ itemEffect }}
           </div>
         </div>
       </div>
@@ -133,6 +147,10 @@
               <span class="font-bold text-slate-700">{{ move.power || '—' }}</span>
               / {{ move.accuracy ?? '—' }}
             </span>
+            <span
+              v-if="moveEffectText(move)"
+              class="col-span-4 mt-0.5 pl-2.5 text-[10.5px] leading-4 text-slate-500"
+            >{{ moveEffectText(move) }}</span>
           </div>
         </div>
         <div
@@ -150,6 +168,7 @@
 import { computed } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import { sprites } from '../services/sprites'
+import { itemEffectZh } from '../services/itemEffectsZh'
 import { typeColor } from '../services/typeChart'
 
 const { translate: tr } = useLocale()
@@ -171,6 +190,38 @@ const abilityName = computed(() => {
   if (typeof ab === 'string') return ab
   return ab.name || ab.name_en || tr('无特性', '—')
 })
+
+/** 特性描述（优先中文，回退英文） */
+const abilityDescription = computed(() => {
+  const ab = props.pokemon?.ability
+  if (!ab || typeof ab === 'string') return ''
+  return ab.description || ab.description_en || ''
+})
+
+/** 道具名（优先 heldItemInfo 中文名） */
+const itemName = computed(() => {
+  const info = props.pokemon?.heldItemInfo
+  if (info && typeof info === 'object' && info.name) return info.name
+  return formatItemName(props.pokemon?.heldItem)
+})
+
+/** 道具效果（heldItemInfo 对象） */
+const itemEffect = computed(() => {
+  const info = props.pokemon?.heldItemInfo
+  if (info && typeof info === 'object') {
+    const en = info.effect_short || info.description || ''
+    return itemEffectZh(en, info.name_en)
+  }
+  return ''
+})
+
+/** 招式效果文本（优先中文 description，回退英文 effect_short） */
+function moveEffectText(move) {
+  if (!move) return ''
+  const zh = move.description || ''
+  if (/[\u4e00-\u9fff]/.test(zh)) return zh
+  return move.effect_short || zh || ''
+}
 
 function formatItemName(itemId) {
   if (!itemId) return tr('无道具', 'None')
