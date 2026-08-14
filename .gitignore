@@ -129,3 +129,4 @@ data/image/*.png
 *.db-shm
 *.db-wal
 data/image/_failed.json
+data/image/_failed.json
