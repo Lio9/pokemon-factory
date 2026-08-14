@@ -58,6 +58,33 @@
               <div class="mt-1 truncate text-[10px] font-semibold text-slate-300">
                 {{ pokemon.name || pokemon.name_en }}
               </div>
+              <!-- 查看详情按钮（打开完整弹窗） -->
+              <button
+                type="button"
+                class="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-slate-600/70 bg-slate-800/90 text-slate-300 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-700 hover:text-white"
+                :title="tr('查看完整配置', 'View full details')"
+                @click.stop="openDetail(pokemon)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-3 w-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ><circle
+                  cx="11"
+                  cy="11"
+                  r="8"
+                /><line
+                  x1="21"
+                  y1="21"
+                  x2="16.65"
+                  y2="16.65"
+                /></svg>
+              </button>
             </div>
           </PokeHoverCard>
         </div>
@@ -108,6 +135,33 @@
                 class="mt-0.5 rounded-full px-1.5 py-px text-[9px] font-bold"
                 :class="isPicked(index) ? 'bg-slate-700/80 text-slate-300' : 'bg-slate-800 text-slate-500'"
               >Lv.{{ pokemon.level || 50 }}</div>
+            </button>
+            <!-- 查看详情按钮（打开完整弹窗） -->
+            <button
+              type="button"
+              class="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-slate-600/70 bg-slate-800/90 text-slate-300 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-700 hover:text-white"
+              :title="tr('查看完整配置', 'View full details')"
+              @click.stop="openDetail(pokemon)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-3 w-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><circle
+                cx="11"
+                cy="11"
+                r="8"
+              /><line
+                x1="21"
+                y1="21"
+                x2="16.65"
+                y2="16.65"
+              /></svg>
             </button>
           </PokeHoverCard>
         </div>
