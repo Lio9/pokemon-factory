@@ -107,6 +107,9 @@ pokemon-factory/
 | `python scripts/init_data.py --clear-cache` | 清除 PokeAPI 缓存 |
 | `python scripts/fix_move_data.py` | **从本地缓存重放招式字段**（type_id/power/pp 等修复） |
 | `python scripts/rebuild_move_table.py` | **完全重建 move 表**（离线种子字段错位时使用，自动备份） |
+| `python scripts/fix_egg_group.py` | **重建 egg_group 表**（蛋组缺失/为空时使用） |
+| `python scripts/fix_evolution_chain.py` | **填充 evolution_chain_id**（进化链失效时使用，从 PokeAPI 缓存） |
+| `python scripts/fix_evolves_from.py` | **填充 evolves_from_species_id**（进化条件缺失时使用） |
 
 ### 数据维护
 
