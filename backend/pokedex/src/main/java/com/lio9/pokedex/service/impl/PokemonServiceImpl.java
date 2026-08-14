@@ -16,12 +16,14 @@ import com.lio9.pokedex.mapper.PokemonFormStatMapper;
 import com.lio9.pokedex.mapper.PokemonFormTypeMapper;
 import com.lio9.pokedex.mapper.PokemonMapper;
 import com.lio9.pokedex.mapper.PokemonMoveMapper;
+import com.lio9.pokedex.mapper.PokemonEvolutionMapper;
 import com.lio9.pokedex.model.Ability;
 import com.lio9.pokedex.model.EvolutionChain;
 import com.lio9.pokedex.model.GrowthRate;
 import com.lio9.pokedex.model.Move;
 import com.lio9.pokedex.model.Pokemon;
 import com.lio9.pokedex.model.PokemonEggGroup;
+import com.lio9.pokedex.model.PokemonEvolution;
 import com.lio9.pokedex.model.PokemonForm;
 import com.lio9.pokedex.model.PokemonFormAbility;
 import com.lio9.pokedex.model.PokemonFormStat;
@@ -58,8 +60,10 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
     private final GrowthRateMapper growthRateMapper;
     private final AbilityMapper abilityMapper;
     private final EvolutionChainMapper evolutionChainMapper;
+    private final PokemonEvolutionMapper pokemonEvolutionMapper;
     private final PokemonMoveMapper pokemonMoveMapper;
     private final MoveMapper moveMapper;
+    private final com.lio9.pokedex.mapper.ItemMapper itemMapper;
 
     public PokemonServiceImpl(
         PokemonFormMapper pokemonFormMapper,
@@ -71,8 +75,10 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         GrowthRateMapper growthRateMapper,
         AbilityMapper abilityMapper,
         EvolutionChainMapper evolutionChainMapper,
+        PokemonEvolutionMapper pokemonEvolutionMapper,
         PokemonMoveMapper pokemonMoveMapper,
-        MoveMapper moveMapper
+        MoveMapper moveMapper,
+        com.lio9.pokedex.mapper.ItemMapper itemMapper
     ) {
         this.pokemonFormMapper = pokemonFormMapper;
         this.pokemonFormTypeMapper = pokemonFormTypeMapper;
@@ -83,8 +89,10 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         this.growthRateMapper = growthRateMapper;
         this.abilityMapper = abilityMapper;
         this.evolutionChainMapper = evolutionChainMapper;
+        this.pokemonEvolutionMapper = pokemonEvolutionMapper;
         this.pokemonMoveMapper = pokemonMoveMapper;
         this.moveMapper = moveMapper;
+        this.itemMapper = itemMapper;
     }
 
     @Override
@@ -128,7 +136,7 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         }
 
         QueryWrapper<PokemonEggGroup> eggGroupWrapper = new QueryWrapper<>();
-        eggGroupWrapper.eq("pokemon_id", id);
+        eggGroupWrapper.eq("species_id", id);
         List<PokemonEggGroup> pokemonEggGroups = pokemonEggGroupMapper.selectList(eggGroupWrapper);
         if (!pokemonEggGroups.isEmpty()) {
             List<Long> eggGroupIds = pokemonEggGroups.stream()
@@ -251,9 +259,9 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
                 formVOs.add(formVO);
             }
 
-            // 进化链（树形结构，支持分支进化）
+            // 进化链（扁平列表，供前端 EvolutionChainPanel 直接渲染）
             if (pokemon.getEvolutionChainId() != null) {
-                detailVO.setEvolutionChain(getEvolutionChainTree(pokemon.getId().longValue()));
+                detailVO.setEvolutionChain(flattenEvolutionTree(getEvolutionChainTree(pokemon.getId().longValue())));
             }
 
             detailVO.setForms(formVOs);
@@ -343,13 +351,26 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         if (defaultForm != null) node.setSpriteUrl(defaultForm.getSpriteUrl());
 
         if (sp.getEvolvesFromSpeciesId() != null) {
-            QueryWrapper<EvolutionChain> evWrapper = new QueryWrapper<>();
-            evWrapper.eq("pokemon_id", sp.getId());
-            EvolutionChain ev = evolutionChainMapper.selectOne(evWrapper);
+            // 从 pokemon_evolution 表读取进化条件（evolves_from_species_id → 当前物种）
+            // 注意：数据可能存在重复行，用 selectList 取第一条
+            QueryWrapper<PokemonEvolution> evWrapper = new QueryWrapper<>();
+            evWrapper.eq("evolves_from_species_id", sp.getEvolvesFromSpeciesId());
+            evWrapper.eq("evolved_species_id", sp.getId());
+            evWrapper.orderByAsc("min_level");
+            List<PokemonEvolution> evList = pokemonEvolutionMapper.selectList(evWrapper);
+            PokemonEvolution ev = evList.isEmpty() ? null : evList.get(0);
             if (ev != null) {
-                node.setTrigger(ev.getEvolutionMethod());
-                node.setMinLevel(parseEvolutionLevel(ev.getEvolutionValue()));
-                node.setItem(ev.getEvolutionParameter());
+                node.setTrigger(describeEvolutionTrigger(ev));
+                if (ev.getMinLevel() != null) {
+                    node.setMinLevel(ev.getMinLevel());
+                }
+                if (ev.getEvolutionItemId() != null) {
+                    com.lio9.pokedex.model.Item item = itemMapper.selectById(ev.getEvolutionItemId());
+                    if (item != null) node.setItem(item.getName());
+                } else if (ev.getHeldItemId() != null) {
+                    com.lio9.pokedex.model.Item item = itemMapper.selectById(ev.getHeldItemId());
+                    if (item != null) node.setItem(item.getName());
+                }
             }
         }
 
@@ -398,10 +419,49 @@ public class PokemonServiceImpl extends ServiceImpl<PokemonMapper, Pokemon> impl
         }
     }
 
+    /**
+     * 根据进化触发 ID 生成中文描述（匹配 evolution_trigger 表 id 约定）
+     */
+    private String describeEvolutionTrigger(PokemonEvolution ev) {
+        if (ev == null) return null;
+        Integer triggerId = ev.getEvolutionTriggerId();
+        String trigger;
+        switch (triggerId == null ? 0 : triggerId) {
+            case 1: trigger = "等级提升"; break;
+            case 2: trigger = "连接交换"; break;
+            case 3: trigger = "使用道具"; break;
+            case 4: trigger = "蜕皮"; break;
+            case 5: trigger = "学会招式"; break;
+            case 6: trigger = "特殊条件"; break;
+            case 7: trigger = "等级提升"; break;
+            case 8: trigger = "友好度"; break;
+            case 9: trigger = "物理接触"; break;
+            case 10: trigger = "三连会心"; break;
+            case 11: trigger = "受到伤害"; break;
+            case 12: trigger = "特定时间"; break;
+            case 13: trigger = "倒置主机"; break;
+            default: trigger = "特殊条件"; break;
+        }
+        if (triggerId != null && (triggerId == 1 || triggerId == 7) && ev.getMinLevel() != null) {
+            return trigger + " " + ev.getMinLevel() + " 级";
+        }
+        return trigger;
+    }
+
     @Override
     public List<Move> getMoves(Long pokemonId) {
+        // pokemon_form_move 表以 form_id 关联，先解析默认形态再查询
+        QueryWrapper<PokemonForm> formWrapper = new QueryWrapper<>();
+        formWrapper.eq("species_id", pokemonId);
+        formWrapper.eq("is_default", 1);
+        PokemonForm defaultForm = pokemonFormMapper.selectOne(formWrapper);
+        Long formId = defaultForm != null ? defaultForm.getId().longValue() : null;
+        if (formId == null) {
+            return new ArrayList<>();
+        }
+
         QueryWrapper<PokemonMove> wrapper = new QueryWrapper<>();
-        wrapper.eq("pokemon_id", pokemonId);
+        wrapper.eq("form_id", formId);
         List<PokemonMove> pokemonMoves = pokemonMoveMapper.selectList(wrapper);
 
         if (pokemonMoves.isEmpty()) {

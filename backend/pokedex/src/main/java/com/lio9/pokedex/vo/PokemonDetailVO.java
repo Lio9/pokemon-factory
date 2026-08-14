@@ -27,6 +27,6 @@ public class PokemonDetailVO {
     private List<String> eggGroups;
     private List<PokemonFormDetailVO> forms;
 
-    /** 进化链（树形结构，支持分支进化） */
-    private List<EvolutionNodeVO> evolutionChain;
+    /** 进化链（扁平列表，前端 EvolutionChainPanel 直接渲染） */
+    private List<EvolutionVO> evolutionChain;
 }
