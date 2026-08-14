@@ -50,9 +50,19 @@ public interface BattleDexMapper {
     List<Map<String, Object>> selectFormTypes(@Param("formId") Integer formId);
 
     /**
-     * 查询指定形态可用特性。
+     * 查询指定道具的展示信息（中文名 + 效果描述），供前端预览展示。
+     * 注意: item 表 id 与 PokeAPI 不一致，按 name_en 匹配。
      */
-    @Select("SELECT pfa.slot, pfa.is_hidden, a.id AS ability_id, a.name, a.name_en " +
+    @Select("SELECT id AS item_id, name, name_en, " +
+            "COALESCE(effect_short, '') AS effect_short, COALESCE(description, '') AS description " +
+            "FROM item WHERE name_en = #{nameEn} LIMIT 1")
+    Map<String, Object> selectItemInfo(@Param("nameEn") String nameEn);
+
+    /**
+     * 查询指定形态可用特性（含中文描述，供前端预览展示）。
+     */
+    @Select("SELECT pfa.slot, pfa.is_hidden, a.id AS ability_id, a.name, a.name_en, " +
+            "COALESCE(a.description, '') AS description, COALESCE(a.description_en, '') AS description_en " +
             "FROM pokemon_form_ability pfa " +
             "JOIN ability a ON a.id = pfa.ability_id " +
             "WHERE pfa.form_id = #{formId} ORDER BY pfa.is_hidden ASC, pfa.slot ASC")
@@ -68,7 +78,7 @@ public interface BattleDexMapper {
             "COALESCE(mm.stat_chance, 0) AS stat_chance, COALESCE(mm.drain, 0) AS drain, COALESCE(mm.healing, 0) AS healing, " +
             "COALESCE(ma.name_en, '') AS ailment_name_en, COALESCE(mc.name_en, '') AS category_name_en, " +
             "COALESCE(msc.stat_changes, '') AS stat_changes, COALESCE(mf.flags, '') AS flags, " +
-            "COALESCE(m.effect_short, '') AS effect_short " +
+            "COALESCE(m.effect_short, '') AS effect_short, COALESCE(m.description, '') AS description " +
             "FROM pokemon_form_move pfm " +
             "JOIN move m ON m.id = pfm.move_id " +
             "LEFT JOIN move_meta mm ON mm.move_id = m.id " +
@@ -92,7 +102,7 @@ public interface BattleDexMapper {
             ") OR (m.damage_class_id IN (1, 2) AND COALESCE(m.power, 0) > 0)" +
             ") " +
             "GROUP BY m.id, m.name, m.name_en, m.type_id, m.damage_class_id, m.target_id, m.power, m.pp, m.accuracy, m.priority, " +
-            "mm.min_hits, mm.max_hits, mm.crit_rate, m.effect_chance, mm.ailment_chance, mm.flinch_chance, mm.stat_chance, mm.drain, mm.healing, ma.name_en, mc.name_en, msc.stat_changes, mf.flags, m.effect_short " +
+            "mm.min_hits, mm.max_hits, mm.crit_rate, m.effect_chance, mm.ailment_chance, mm.flinch_chance, mm.stat_chance, mm.drain, mm.healing, ma.name_en, mc.name_en, msc.stat_changes, mf.flags, m.effect_short, m.description " +
             "ORDER BY CASE WHEN m.name_en = 'protect' THEN 0 ELSE 1 END, COALESCE(m.power, 0) DESC, COALESCE(m.accuracy, 100) DESC " +
             "LIMIT #{limit}")
     List<Map<String, Object>> selectCompetitiveMoves(@Param("formId") Integer formId, @Param("limit") int limit);

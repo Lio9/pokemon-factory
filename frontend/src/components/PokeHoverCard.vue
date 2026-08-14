@@ -45,6 +45,20 @@
               <span><span class="text-slate-400">{{ tr('道具', 'Item') }}:</span> <b class="text-slate-800">{{ itemName }}</b></span>
               <span v-if="natureName !== '-'"><span class="text-slate-400">{{ tr('性格', 'Nature') }}:</span> <b class="text-slate-800">{{ natureName }}</b></span>
             </div>
+            <!-- 特性描述 -->
+            <div
+              v-if="abilityDescription"
+              class="mt-1.5 rounded-lg bg-indigo-50/70 border border-indigo-100 px-2.5 py-1.5 text-[10.5px] leading-4.5 text-indigo-800"
+            >
+              <span class="font-bold text-indigo-500">{{ tr('特性效果', 'Ability effect') }}：</span>{{ abilityDescription }}
+            </div>
+            <!-- 道具效果 -->
+            <div
+              v-if="itemEffect"
+              class="mt-1.5 rounded-lg bg-emerald-50/70 border border-emerald-100 px-2.5 py-1.5 text-[10.5px] leading-4.5 text-emerald-800"
+            >
+              <span class="font-bold text-emerald-600">{{ tr('道具效果', 'Item effect') }}：</span>{{ itemEffect }}
+            </div>
           </div>
           <div class="px-3 pb-2">
             <div
@@ -69,18 +83,24 @@
             <div class="mb-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
               {{ tr('招式', 'Moves') }}
             </div>
-            <div class="grid grid-cols-2 gap-x-3 gap-y-0.5">
+            <div class="grid grid-cols-1 gap-1">
               <div
                 v-for="move in pokemon.moves.slice(0, 4)"
                 :key="move.name_en || move.name"
-                class="flex items-center gap-1 text-[10px]"
+                class="rounded-md border border-slate-100 bg-slate-50/60 px-1.5 py-1"
               >
-                <span
-                  class="h-1.5 w-1.5 shrink-0 rounded-full"
-                  :style="{ backgroundColor: typeIdToColor(move.type_id) }"
-                />
-                <span class="truncate font-semibold text-slate-700">{{ move.name || move.name_en }}</span>
-                <span class="ml-auto shrink-0 text-slate-400">{{ move.power || '—' }}</span>
+                <div class="flex items-center gap-1 text-[10px]">
+                  <span
+                    class="h-1.5 w-1.5 shrink-0 rounded-full"
+                    :style="{ backgroundColor: typeIdToColor(move.type_id) }"
+                  />
+                  <span class="truncate font-semibold text-slate-700">{{ move.name || move.name_en }}</span>
+                  <span class="ml-auto shrink-0 text-slate-400">{{ move.power || '—' }}</span>
+                </div>
+                <div
+                  v-if="moveEffectText(move)"
+                  class="mt-0.5 pl-2.5 text-[9.5px] leading-4 text-slate-500"
+                >{{ moveEffectText(move) }}</div>
               </div>
             </div>
           </div>
@@ -236,9 +256,36 @@ const abilityName = computed(() => {
 const itemName = computed(() => {
   const item = props.pokemon?.heldItem
   if (!item) return tr('无道具', 'None')
+  // 优先显示 heldItemInfo 里的中文名
+  const info = props.pokemon?.heldItemInfo
+  if (info && typeof info === 'object' && info.name) return info.name
   if (typeof item === 'object' && item.name) return item.name
   return String(item).split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 })
+
+/** 特性描述（优先中文，回退英文） */
+const abilityDescription = computed(() => {
+  const ab = props.pokemon?.ability
+  if (!ab || typeof ab === 'string') return ''
+  return ab.description || ab.description_en || ''
+})
+
+/** 道具效果（heldItemInfo 对象，引擎兼容的 heldItem 字符串不变） */
+const itemEffect = computed(() => {
+  const info = props.pokemon?.heldItemInfo
+  if (info && typeof info === 'object') {
+    return info.effect_short || info.description || ''
+  }
+  return ''
+})
+
+/** 招式效果文本（effect_short → description） */
+function moveEffectText(move) {
+  if (!move) return ''
+  const zh = move.effect_short || ''
+  if (zh) return zh
+  return move.description || ''
+}
 
 const NATURE_EFFECTS = {
   lonely: { up: 'attack', down: 'defense' },

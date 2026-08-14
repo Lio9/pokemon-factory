@@ -209,7 +209,15 @@ public class AIService {
         pokemon.put("ability", selectBestAbility(abilities, selectedMoves));
 
         // 智能选择道具
-        pokemon.put("heldItem", selectBestItem(itemPool, pokemon, selectedMoves));
+        String heldItem = selectBestItem(itemPool, pokemon, selectedMoves);
+        pokemon.put("heldItem", heldItem == null ? "" : heldItem);
+        // 道具展示信息（仅供前端预览，引擎仍读 heldItem 字符串）
+        if (heldItem != null && !heldItem.isBlank()) {
+            Map<String, Object> itemInfo = battleDexMapper.selectItemInfo(heldItem);
+            if (itemInfo != null && !itemInfo.isEmpty()) {
+                pokemon.put("heldItemInfo", itemInfo);
+            }
+        }
 
         Map<String, Object> teraType = pickTeraType(types, selectedMoves, random);
         pokemon.put("teraType", teraType);

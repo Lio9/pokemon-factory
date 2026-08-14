@@ -61,7 +61,7 @@
               <!-- 查看详情按钮（打开完整弹窗） -->
               <button
                 type="button"
-                class="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-slate-600/70 bg-slate-800/90 text-slate-300 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-700 hover:text-white"
+                class="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-slate-600/70 bg-slate-800/90 text-slate-300 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-700 hover:text-white"
                 :title="tr('查看完整配置', 'View full details')"
                 @click.stop="openDetail(pokemon)"
               >
@@ -139,7 +139,7 @@
             <!-- 查看详情按钮（打开完整弹窗） -->
             <button
               type="button"
-              class="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-slate-600/70 bg-slate-800/90 text-slate-300 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-700 hover:text-white"
+              class="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-slate-600/70 bg-slate-800/90 text-slate-300 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-700 hover:text-white"
               :title="tr('查看完整配置', 'View full details')"
               @click.stop="openDetail(pokemon)"
             >
