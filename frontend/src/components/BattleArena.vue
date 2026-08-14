@@ -1,14 +1,13 @@
-
-
 <template>
   <div class="battle-arena space-y-4 rounded-[24px] border border-slate-200/80 bg-white/95 p-4 shadow-[0_24px_90px_-54px_rgba(15,23,42,0.5)] backdrop-blur sm:rounded-[28px] sm:p-6">
+    <!-- 顶部信息 -->
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h2 class="text-xl font-black tracking-tight text-slate-900">
           {{ tr('战场', 'Battlefield') }}
         </h2>
         <p class="mt-1 text-sm leading-6 text-slate-500">
-          {{ tr('聚焦当前场上态势、场地效果和逐回合事件，方便你复盘决策链。', 'Focus on the active board state, field effects, and round-by-round events so you can review the decision flow.') }}
+          {{ tr('战斗中的宝可梦、状态与逐回合事件。', 'Active Pokemon, statuses, and round-by-round events.') }}
         </p>
       </div>
       <div
@@ -16,211 +15,210 @@
         class="grid gap-2 text-sm sm:grid-cols-3"
       >
         <div class="rounded-2xl bg-slate-50 px-4 py-3 shadow-sm">
-          <div class="text-slate-500">
-            {{ tr('规则', 'Format') }}
-          </div>
-          <div class="font-semibold text-slate-900">
-            {{ summary.format || 'vgc-doubles' }}
-          </div>
+          <div class="text-slate-500">{{ tr('规则', 'Format') }}</div>
+          <div class="font-semibold text-slate-900">{{ summary.format || 'vgc-doubles' }}</div>
         </div>
         <div class="rounded-2xl bg-slate-50 px-4 py-3 shadow-sm">
-          <div class="text-slate-500">
-            {{ tr('当前回合', 'Current round') }}
-          </div>
-          <div class="font-semibold text-slate-900">
-            {{ summary.currentRound || 0 }} / {{ summary.roundLimit || '-' }}
-          </div>
+          <div class="text-slate-500">{{ tr('回合', 'Round') }}</div>
+          <div class="font-semibold text-slate-900">{{ summary.currentRound || 0 }} / {{ summary.roundLimit || '-' }}</div>
         </div>
         <div
           class="rounded-2xl px-4 py-3 shadow-sm"
           :class="statusChipClass"
         >
-          <div class="text-slate-500">
-            {{ tr('状态', 'Status') }}
-          </div>
+          <div class="text-slate-500">{{ tr('状态', 'Status') }}</div>
           <div
             class="font-semibold"
             :class="statusTextClass"
-          >
-            {{ statusText || tr('未开始', 'Not started') }}
-          </div>
+          >{{ statusText || tr('未开始', 'Not started') }}</div>
         </div>
       </div>
     </div>
 
-    <!-- ===== Showdown 式战场主舞台 ===== -->
+    <!-- ===== 正作风格战场 ===== -->
     <template v-if="summary">
-      <div class="showdown-field relative overflow-hidden rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,#dfece4_0%,#c3d9c6_42%,#a8c4ad_100%)] p-4 sm:p-6">
-        <!-- 场地纹理点缀 -->
-        <div
-          class="pointer-events-none absolute inset-0 opacity-40"
-          style="background-image: radial-gradient(circle at 20% 25%, rgba(255,255,255,0.5) 0, transparent 26%), radial-gradient(circle at 78% 70%, rgba(255,255,255,0.45) 0, transparent 30%), radial-gradient(circle at 60% 15%, rgba(120,150,110,0.25) 0, transparent 22%);"
-        />
+      <div class="battle-stage relative overflow-hidden rounded-[24px] border-2 border-slate-700/60 select-none">
+        <!-- 背景层（正作风格天空+草地） -->
+        <div class="battle-bg absolute inset-0" />
 
-        <!-- 对手信息（右上） -->
-        <div class="relative flex items-end justify-end">
-          <div
-            v-for="(mon, idx) in opponentActiveMons"
-            :key="`opp-sprite-${mon.index}-${idx}`"
-            class="mb-1 flex flex-col items-center"
-          >
-            <div class="mb-1 flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 text-[11px] font-bold text-white">
-              <span
-                v-if="mon.level"
-                class="text-emerald-200"
-              >Lv.{{ mon.level }}</span>
-              <span>{{ mon.name }}</span>
-            </div>
-            <div class="sprite-wrap relative h-24 w-24 sm:h-28 sm:w-28">
-              <img
-                :src="spriteUrl(mon)"
-                :alt="mon.name"
-                class="h-full w-full object-contain drop-shadow-[0_6px_8px_rgba(0,0,0,0.35)] transition-all"
-                :class="mon.fainted ? 'grayscale opacity-40' : ''"
-                @error="onSpriteError"
-              >
-              <!-- 倒下标记 -->
-              <div
-                v-if="mon.fainted"
-                class="absolute inset-0 flex items-center justify-center rounded-full"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  class="h-8 w-8 text-rose-600 drop-shadow"
-                ><path
-                  fill="currentColor"
-                  d="M7 7h10v10H7z"
-                  transform="rotate(45 12 12)"
-                /></svg>
-              </div>
-            </div>
-            <!-- 状态徽章 -->
-            <div
-              v-if="conditionBadges(mon).length"
-              class="mt-1 flex flex-wrap justify-center gap-1"
-            >
-              <span
-                v-for="badge in conditionBadges(mon)"
-                :key="badge.label"
-                class="rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white"
-                :style="{ backgroundColor: badge.color }"
-              >
-                {{ badge.label }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 对手信息条（HP） -->
-        <div class="relative mt-2 space-y-2">
-          <div
-            v-for="mon in opponentActiveMons"
-            :key="`opp-hp-${mon.index}`"
-            class="showdown-hp-row"
-          >
-            <span class="showdown-hp-label">{{ mon.name }}</span>
-            <div class="showdown-hp-bar">
-              <div
-                class="showdown-hp-fill"
-                :class="hpTone(mon)"
-                :style="{ width: hpWidth(mon) }"
-              />
-            </div>
-            <span class="showdown-hp-num">{{ mon.currentHp }}/{{ mon.maxHp || '?' }}</span>
-          </div>
-        </div>
-
-        <!-- 场地效果（中间） -->
+        <!-- 场地效果层 -->
         <div
           v-if="hasFieldEffects"
-          class="relative mt-3 flex flex-wrap justify-center gap-1.5"
+          class="absolute inset-x-0 top-2 z-20 flex flex-wrap justify-center gap-1.5 px-2"
         >
           <span
             v-for="(effect, key) in fieldEffectChips"
             :key="key"
             class="field-chip"
             :class="effect.tone"
-          >
-            {{ effect.label }}
-          </span>
+          >{{ effect.label }}</span>
         </div>
 
-        <!-- 我方信息条（HP，左下） -->
-        <div class="relative mt-4 space-y-2">
+        <!-- ===== 对手区（右上） ===== -->
+        <div class="relative z-10 flex justify-end pt-6 pr-4 sm:pt-8 sm:pr-8">
           <div
-            v-for="mon in playerActiveMons"
-            :key="`player-hp-${mon.index}`"
-            class="showdown-hp-row justify-end"
+            v-for="(mon, idx) in opponentActiveMons"
+            :key="`opp-${mon.index}-${idx}`"
+            class="opponent-zone ml-3"
           >
-            <span class="showdown-hp-num">{{ mon.currentHp }}/{{ mon.maxHp || '?' }}</span>
-            <div class="showdown-hp-bar">
+            <!-- 对手信息框 -->
+            <div class="opp-info-box mb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-[13px] font-extrabold text-white drop-shadow">{{ mon.name || mon.name_en }}</span>
+                <span
+                  v-if="mon.level"
+                  class="text-[11px] font-bold text-sky-200"
+                >Lv.{{ mon.level }}</span>
+                <span
+                  v-if="mon.gender === 'female'"
+                  class="text-[12px] font-bold text-pink-300"
+                >♀</span>
+                <span
+                  v-else-if="mon.gender === 'male'"
+                  class="text-[12px] font-bold text-sky-300"
+                >♂</span>
+              </div>
+              <!-- HP 条（Showdown 分段色） -->
+              <div class="opp-hp-track mt-1">
+                <div
+                  class="opp-hp-fill"
+                  :class="hpTone(mon)"
+                  :style="{ width: hpWidth(mon) }"
+                />
+              </div>
+              <div class="mt-0.5 flex items-center justify-between">
+                <span
+                  v-if="mon.abilityName"
+                  class="text-[10px] font-semibold text-white/70 truncate max-w-[80px]"
+                >{{ mon.abilityName }}</span>
+                <span
+                  v-if="mon.heldItem"
+                  class="text-[10px] font-semibold text-amber-200/80 truncate max-w-[80px]"
+                >{{ mon.heldItem }}</span>
+              </div>
+              <!-- 状态徽章 -->
               <div
-                class="showdown-hp-fill"
-                :class="hpTone(mon)"
-                :style="{ width: hpWidth(mon) }"
-              />
-            </div>
-            <span class="showdown-hp-label">{{ mon.name }}</span>
-          </div>
-        </div>
-
-        <!-- 我方信息（左下） -->
-        <div class="relative mt-2 flex items-end justify-start">
-          <div
-            v-for="(mon, idx) in playerActiveMons"
-            :key="`player-sprite-${mon.index}-${idx}`"
-            class="mr-4 flex flex-col items-center"
-          >
-            <div class="sprite-wrap relative h-24 w-24 sm:h-28 sm:w-28">
-              <img
-                :src="spriteUrl(mon)"
-                :alt="mon.name"
-                class="h-full w-full object-contain drop-shadow-[0_6px_8px_rgba(0,0,0,0.35)]"
-                :class="mon.fainted ? 'grayscale opacity-40' : ''"
-                @error="onSpriteError"
+                v-if="conditionBadges(mon).length"
+                class="mt-1 flex flex-wrap gap-1"
               >
-              <div
-                v-if="mon.fainted"
-                class="absolute inset-0 flex items-center justify-center rounded-full"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  class="h-8 w-8 text-rose-600 drop-shadow"
-                ><path
-                  fill="currentColor"
-                  d="M7 7h10v10H7z"
-                  transform="rotate(45 12 12)"
-                /></svg>
+                <span
+                  v-for="badge in conditionBadges(mon)"
+                  :key="badge.label"
+                  class="rounded px-1 py-px text-[9px] font-bold text-white"
+                  :style="{ backgroundColor: badge.color }"
+                >{{ badge.label }}</span>
               </div>
             </div>
-            <div class="mt-1 flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 text-[11px] font-bold text-white">
-              <span>{{ mon.name }}</span>
-              <span
-                v-if="mon.level"
-                class="text-emerald-200"
-              >Lv.{{ mon.level }}</span>
-            </div>
-            <!-- 状态徽章 -->
-            <div
-              v-if="conditionBadges(mon).length"
-              class="mt-1 flex flex-wrap justify-center gap-1"
-            >
-              <span
-                v-for="badge in conditionBadges(mon)"
-                :key="badge.label"
-                class="rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white"
-                :style="{ backgroundColor: badge.color }"
+
+            <!-- 对手精灵（正面，可点击作为目标） -->
+            <div class="relative">
+              <button
+                type="button"
+                class="block cursor-pointer transition-transform hover:scale-105 focus:outline-none"
+                :class="canTarget ? '' : 'cursor-default pointer-events-none'"
+                :title="canTarget ? tr('点击选择为目标', 'Click to target') : ''"
+                @click="onTargetClick(mon)"
               >
-                {{ badge.label }}
-              </span>
+                <img
+                  :src="spriteUrl(mon, false)"
+                  :alt="mon.name"
+                  class="opp-sprite h-28 w-28 object-contain sm:h-36 sm:w-36"
+                  :class="[mon.fainted ? 'sprite-fainted' : 'sprite-idle', targetHighlight(mon) ? 'sprite-target' : '']"
+                  @error="onSpriteError($event, mon, false)"
+                >
+              </button>
+              <!-- 倒下动画 -->
+              <div
+                v-if="mon.fainted"
+                class="absolute inset-0 flex items-end justify-center pb-2 pointer-events-none"
+              >
+                <div class="text-xl font-black text-white/80 drop-shadow">✕</div>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- ===== 中央战场分割线 + 我方区（左下） ===== -->
+        <div class="relative z-10 mt-2 flex items-end justify-start px-4 pb-4 sm:px-8 sm:pb-6">
+          <div
+            v-for="(mon, idx) in playerActiveMons"
+            :key="`player-${mon.index}-${idx}`"
+            class="player-zone mr-4"
+          >
+            <!-- 我方精灵（背面） -->
+            <div class="flex flex-col items-center">
+              <div class="relative">
+                <img
+                  :src="spriteUrl(mon, true)"
+                  :alt="mon.name"
+                  class="player-sprite h-28 w-28 object-contain sm:h-36 sm:w-36"
+                  :class="[mon.fainted ? 'sprite-fainted' : 'sprite-idle']"
+                  @error="onSpriteError($event, mon, true)"
+                >
+                <div
+                  v-if="mon.fainted"
+                  class="absolute inset-0 flex items-end justify-center pb-2"
+                >
+                  <div class="text-xl font-black text-white/80 drop-shadow">✕</div>
+                </div>
+              </div>
+              <!-- 我方信息框 -->
+              <div class="player-info-box mt-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-[13px] font-extrabold text-white drop-shadow">{{ mon.name || mon.name_en }}</span>
+                  <span
+                    v-if="mon.level"
+                    class="text-[11px] font-bold text-sky-200"
+                  >Lv.{{ mon.level }}</span>
+                  <span
+                    v-if="mon.gender === 'female'"
+                    class="text-[12px] font-bold text-pink-300"
+                  >♀</span>
+                  <span
+                    v-else-if="mon.gender === 'male'"
+                    class="text-[12px] font-bold text-sky-300"
+                  >♂</span>
+                </div>
+                <div class="player-hp-track mt-1">
+                  <div
+                    class="player-hp-fill"
+                    :class="hpTone(mon)"
+                    :style="{ width: hpWidth(mon) }"
+                  />
+                </div>
+                <div class="mt-0.5 flex items-center justify-between gap-2">
+                  <span
+                    v-if="mon.abilityName"
+                    class="text-[10px] font-semibold text-white/70 truncate max-w-[90px]"
+                  >{{ mon.abilityName }}</span>
+                  <span
+                    v-if="mon.heldItem"
+                    class="text-[10px] font-semibold text-amber-200/80 truncate max-w-[90px]"
+                  >{{ mon.heldItem }}</span>
+                </div>
+                <!-- 状态徽章 -->
+                <div
+                  v-if="conditionBadges(mon).length"
+                  class="mt-1 flex flex-wrap gap-1"
+                >
+                  <span
+                    v-for="badge in conditionBadges(mon)"
+                    :key="badge.label"
+                    class="rounded px-1 py-px text-[9px] font-bold text-white"
+                    :style="{ backgroundColor: badge.color }"
+                  >{{ badge.label }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部阴影 -->
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/25 to-transparent" />
       </div>
 
-      <!-- 替补区：双方后备队伍横条 -->
+      <!-- 替补区 -->
       <div class="grid gap-3 lg:grid-cols-2">
-        <!-- 对手后备 -->
         <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
           <div class="mb-2 text-[11px] font-semibold text-slate-500">
             {{ tr('对手后备', 'Opponent bench') }} · {{ tr('剩余 {count}', 'Remaining {count}', { count: summary.opponentRemaining || 0 }) }}
@@ -234,19 +232,17 @@
               :title="mon.name"
             >
               <img
-                :src="spriteUrl(mon)"
+                :src="spriteUrl(mon, false)"
                 :alt="mon.name"
                 class="h-7 w-7 object-contain"
                 :class="mon.fainted ? 'grayscale opacity-50' : ''"
-                @error="onSpriteError"
+                @error="onSpriteError($event, mon, false)"
               >
               <span class="bench-pill-name">{{ mon.name }}</span>
               <span class="bench-pill-hp">{{ mon.currentHp }}/{{ mon.maxHp || '?' }}</span>
             </div>
           </div>
         </div>
-
-        <!-- 我方后备 -->
         <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
           <div class="mb-2 text-[11px] font-semibold text-slate-500">
             {{ tr('我方后备', 'Your bench') }} · {{ tr('剩余 {count}', 'Remaining {count}', { count: summary.playerRemaining || 0 }) }}
@@ -260,11 +256,11 @@
               :title="mon.name"
             >
               <img
-                :src="spriteUrl(mon)"
+                :src="spriteUrl(mon, true)"
                 :alt="mon.name"
                 class="h-7 w-7 object-contain"
                 :class="mon.fainted ? 'grayscale opacity-50' : ''"
-                @error="onSpriteError"
+                @error="onSpriteError($event, mon, true)"
               >
               <span class="bench-pill-name">{{ mon.name }}</span>
               <span class="bench-pill-hp">{{ mon.currentHp }}/{{ mon.maxHp || '?' }}</span>
@@ -282,12 +278,10 @@
       </div>
     </template>
 
-    <!-- ===== 回合消息流（Showdown 风格） ===== -->
+    <!-- ===== 回合消息流 ===== -->
     <section class="rounded-[24px] border border-slate-200/80 bg-slate-50/70 p-4">
       <div class="mb-3 flex items-center justify-between">
-        <h3 class="font-semibold text-slate-900">
-          {{ tr('回合日志', 'Round log') }}
-        </h3>
+        <h3 class="font-semibold text-slate-900">{{ tr('回合日志', 'Round log') }}</h3>
         <span class="text-sm text-slate-500">
           {{ summary?.status === 'completed' ? winnerLabel : tr('战斗进行中', 'Battle in progress') }}
         </span>
@@ -317,7 +311,7 @@
             </span>
           </div>
 
-          <!-- 行动摘要（Showdown 风格：出手顺序 + 伤害） -->
+          <!-- 行动摘要 -->
           <div
             v-if="round.actions?.length"
             class="mt-3 space-y-1"
@@ -364,7 +358,7 @@
               </template>
               <span
                 v-if="action.hitCount > 1"
-                class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] font-bold text-slate-500"
+                class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500"
               >×{{ action.hitCount }}</span>
             </div>
           </div>
@@ -405,6 +399,8 @@ import { sprites } from '../services/sprites'
 
 const { translate: tr } = useLocale()
 
+const emit = defineEmits(['target-select'])
+
 const props = defineProps({
   summary: {
     type: Object,
@@ -421,8 +417,22 @@ const props = defineProps({
   statusTone: {
     type: String,
     default: 'neutral'
+  },
+  targetFieldSlot: {
+    type: [Number, String],
+    default: null
+  },
+  canTarget: {
+    type: Boolean,
+    default: false
   }
 })
+
+// 点击对手精灵选择目标（由父组件决定是否启用）
+function onTargetClick(mon) {
+  if (!props.canTarget) return
+  emit('target-select', mon.fieldSlot)
+}
 
 const statusChipClass = computed(() => {
   switch (props.statusTone) {
@@ -451,7 +461,7 @@ const winnerLabel = computed(() => {
   return tr(`胜者：${props.summary?.winner}`, `Winner: ${props.summary?.winner}`)
 })
 
-// 回合时间戳：优先使用后端提供的 created_at/ts，否则前端按回合序号生成参考时间
+// 回合时间戳
 function roundTime(round) {
   const ts = round?.ts || round?.created_at || round?.timestamp
   if (ts) {
@@ -465,22 +475,29 @@ function roundTime(round) {
 
 // ===== 数据加工 =====
 
-// 精灵图 URL（本地优先，失败时 onSpriteError 回退）
-function spriteUrl(mon) {
+// 精灵图：我方用背面图（正作风格），对手用正面图；本地优先，失败回退
+function spriteUrl(mon, isPlayer) {
   const id = mon?.form_id || mon?.species_id || mon?.pokemon_id || mon?.id
-  return id ? sprites.pokemon(id) : sprites.default
+  if (!id) return sprites.default
+  return isPlayer ? sprites.pokemonBack(id) : sprites.pokemon(id)
 }
 
-// 精灵图加载失败时的二级回退：本地 -> 远程
-function onSpriteError(event) {
+// 精灵图加载失败回退：本地 → 远程（背面/正面分别回退）→ 默认
+function onSpriteError(event, mon, isPlayer) {
   const img = event.target
   const src = img?.getAttribute('src') || ''
+  const id = mon?.form_id || mon?.species_id || mon?.pokemon_id || mon?.id
   if (src.includes('/api/pokedex/images')) {
-    const id = src.split('/').pop().replace('.png', '')
-    img.src = sprites.fallbackPokemon(id)
-  } else {
+    img.src = isPlayer ? sprites.fallbackPokemonBack(id) : sprites.fallbackPokemon(id)
+  } else if (src.includes('raw.githubusercontent')) {
     img.src = sprites.default
   }
+}
+
+// 目标高亮（供点击选目标使用）
+function targetHighlight(mon) {
+  const target = props.targetFieldSlot
+  return target !== null && target !== undefined && Number(target) === Number(mon.fieldSlot)
 }
 
 // 宝可梦对象加工：补全展示字段
@@ -488,12 +505,14 @@ function buildMons(team = [], activeSlots = []) {
   return (team || []).map((pokemon, index) => {
     const maxHp = pokemon?.stats?.hp || pokemon?.maxHp || null
     const currentHp = Math.max(0, Number(pokemon?.currentHp ?? 0))
+    const ability = pokemon?.ability
     return {
       ...pokemon,
       index,
       active: (activeSlots || []).includes(index),
       name: pokemon.name || pokemon.name_en || tr(`宝可梦 ${index + 1}`, `Pokemon ${index + 1}`),
       level: pokemon.level || 50,
+      abilityName: typeof ability === 'string' ? ability : (ability?.name_en || ability?.name || ''),
       currentHp,
       maxHp,
       fainted: currentHp <= 0,
@@ -538,18 +557,29 @@ const CONDITION_COLORS = {
   taunt: '#d9a619'
 }
 
+const CONDITION_LABELS = {
+  paralysis: tr('麻痹', 'Par'),
+  burn: tr('灼伤', 'BRN'),
+  freeze: tr('冰冻', 'FRZ'),
+  sleep: tr('睡眠', 'SLP'),
+  poison: tr('中毒', 'PSN'),
+  toxic: tr('剧毒', 'TOX'),
+  confusion: tr('混乱', 'Conf'),
+  taunt: tr('挑衅', 'Taunt')
+}
+
 function conditionBadges(mon) {
   if (mon.fainted || !mon) return []
   const badges = []
   const cond = mon.condition || mon.status
   if (cond && CONDITION_COLORS[cond]) {
-    badges.push({ label: tr(CONDITION_LABELS[cond] || cond, cond), color: CONDITION_COLORS[cond] })
+    badges.push({ label: CONDITION_LABELS[cond] || cond, color: CONDITION_COLORS[cond] })
   }
   if ((mon.tauntTurns || 0) > 0) {
     badges.push({ label: tr('挑衅', 'Taunt'), color: CONDITION_COLORS.taunt })
   }
   if (mon.confused) {
-    badges.push({ label: tr('混乱', 'Confusion'), color: CONDITION_COLORS.confusion })
+    badges.push({ label: tr('混乱', 'Conf'), color: CONDITION_COLORS.confusion })
   }
   if (mon.terastallized) {
     badges.push({ label: tr('太晶', 'Tera'), color: '#6366f1' })
@@ -557,18 +587,10 @@ function conditionBadges(mon) {
   if (mon.dynamaxed) {
     badges.push({ label: tr('极巨', 'Max'), color: '#dc2626' })
   }
+  if (mon.megaEvolved) {
+    badges.push({ label: tr('Mega', 'Mega'), color: '#7c3aed' })
+  }
   return badges
-}
-
-const CONDITION_LABELS = {
-  paralysis: '麻痹',
-  burn: '灼伤',
-  freeze: '冰冻',
-  sleep: '睡眠',
-  poison: '中毒',
-  toxic: '剧毒',
-  confusion: '混乱',
-  taunt: '挑衅'
 }
 
 // ===== 场地效果 =====
@@ -587,7 +609,7 @@ const fieldEffectChips = computed(() => {
     }
   }
   push(tr('顺风', 'Tailwind'), 'playerTailwindTurns', 'tone-blue')
-  push(tr('对手顺风', 'Opp. Tailwind'), 'opponentTailwindTurns', 'tone-rose')
+  push(tr('对手顺风', 'Opp. TW'), 'opponentTailwindTurns', 'tone-rose')
   push(tr('戏法空间', 'Trick Room'), 'trickRoomTurns', 'tone-violet')
   push(tr('雨天', 'Rain'), 'rainTurns', 'tone-cyan')
   push(tr('晴天', 'Sun'), 'sunTurns', 'tone-amber')
@@ -598,148 +620,149 @@ const fieldEffectChips = computed(() => {
   push(tr('青草场地', 'G-Terrain'), 'grassyTerrainTurns', 'tone-green')
   push(tr('薄雾场地', 'M-Terrain'), 'mistyTerrainTurns', 'tone-pink')
   push(tr('我方反射壁', 'Reflect'), 'playerReflectTurns', 'tone-blue')
-  push(tr('对手反射壁', 'Opp. Reflect'), 'opponentReflectTurns', 'tone-rose')
+  push(tr('对手反射壁', 'Opp. Ref'), 'opponentReflectTurns', 'tone-rose')
   push(tr('我方光墙', 'L.Screen'), 'playerLightScreenTurns', 'tone-blue')
-  push(tr('对手光墙', 'Opp. L.Screen'), 'opponentLightScreenTurns', 'tone-rose')
-  push(tr('我方极光幕', 'Aurora Veil'), 'playerAuroraVeilTurns', 'tone-blue')
-  push(tr('对手极光幕', 'Opp. Aurora'), 'opponentAuroraVeilTurns', 'tone-rose')
-  push(tr('我方神秘守护', 'Safeguard'), 'playerSafeguardTurns', 'tone-emerald')
-  push(tr('对手神秘守护', 'Opp. Safeguard'), 'opponentSafeguardTurns', 'tone-teal')
+  push(tr('对手光墙', 'Opp. LS'), 'opponentLightScreenTurns', 'tone-rose')
+  push(tr('我方极光幕', 'Aurora'), 'playerAuroraVeilTurns', 'tone-blue')
+  push(tr('对手极光幕', 'Opp. AV'), 'opponentAuroraVeilTurns', 'tone-rose')
   push(tr('我方隐形岩', 'S.Rock'), 'playerStealthRock', 'tone-gray')
-  push(tr('对手隐形岩', 'Opp. S.Rock'), 'opponentStealthRock', 'tone-gray')
+  push(tr('对手隐形岩', 'Opp. SR'), 'opponentStealthRock', 'tone-gray')
   if (Number(fe.playerSpikesLayers || 0) > 0) chips.push({ label: `撒菱 ${fe.playerSpikesLayers}/3`, tone: 'tone-green' })
   if (Number(fe.opponentSpikesLayers || 0) > 0) chips.push({ label: `对手撒菱 ${fe.opponentSpikesLayers}/3`, tone: 'tone-red' })
   if (Number(fe.playerToxicSpikesLayers || 0) > 0) chips.push({ label: `毒菱 ${fe.playerToxicSpikesLayers}/2`, tone: 'tone-purple' })
   if (Number(fe.opponentToxicSpikesLayers || 0) > 0) chips.push({ label: `对手毒菱 ${fe.opponentToxicSpikesLayers}/2`, tone: 'tone-pink' })
-  if (fe.playerStickyWeb) chips.push({ label: '我方黏黏网', tone: 'tone-yellow' })
-  if (fe.opponentStickyWeb) chips.push({ label: '对手黏黏网', tone: 'tone-orange' })
   return chips
 })
 </script>
 
 <style scoped>
-.battle-arena {
+/* ===== 战场背景（正作风格：天空渐变 + 草地） ===== */
+.battle-bg {
   background:
-    radial-gradient(circle at top left, rgba(224, 242, 254, 0.7), transparent 20%),
-    radial-gradient(circle at top right, rgba(254, 226, 226, 0.5), transparent 22%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+    radial-gradient(circle at 20% 18%, rgba(255,255,255,0.35) 0, transparent 30%),
+    radial-gradient(circle at 80% 12%, rgba(135,206,250,0.5) 0, transparent 35%),
+    linear-gradient(180deg,
+      #6eb5e8 0%,
+      #8ec9f0 32%,
+      #a8d8a8 52%,
+      #6fae6f 72%,
+      #4a8a4a 100%);
+}
+
+/* 战斗舞台 */
+.battle-stage {
+  min-height: 380px;
+  box-shadow: inset 0 2px 12px rgba(0,0,0,0.15), 0 10px 30px -12px rgba(0,0,0,0.3);
 }
 
 @media (max-width: 640px) {
-  .battle-arena {
-    background:
-      radial-gradient(circle at top left, rgba(224, 242, 254, 0.5), transparent 25%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+  .battle-stage {
+    min-height: 320px;
   }
 }
 
-/* ===== Showdown 式战场 ===== */
-.showdown-field {
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.08);
-}
-
-.sprite-wrap img {
+/* ===== 精灵动画 ===== */
+.sprite-idle {
   image-rendering: pixelated;
-}
-
-/* 精灵图入场动画 */
-.sprite-wrap img {
-  animation: sprite-enter 0.4s ease-out;
+  animation: sprite-enter 0.45s ease-out;
+  transition: transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease;
 }
 
 @keyframes sprite-enter {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(24px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* HP 数字变化闪烁 */
-.showdown-hp-num {
-  transition: color 0.3s;
+.sprite-fainted {
+  image-rendering: pixelated;
+  filter: grayscale(1) brightness(0.5);
+  transform: translateY(30px) rotate(75deg);
+  opacity: 0.55;
+  transition: all 0.8s ease;
 }
 
-/* 当前回合高亮 */
-.round-current {
-  border-color: rgba(99, 102, 241, 0.45);
-  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 8px 24px -8px rgba(99, 102, 241, 0.35);
+.sprite-target {
+  filter: drop-shadow(0 0 14px rgba(249, 115, 22, 0.9));
+  animation: target-pulse 1s ease-in-out infinite;
 }
 
-/* HP 条（Showdown 风格：白底、色块、分段） */
-.showdown-hp-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+@keyframes target-pulse {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.7)); }
+  50% { filter: drop-shadow(0 0 20px rgba(249, 115, 22, 1)); }
 }
 
-.showdown-hp-label {
-  flex-shrink: 0;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #1e293b;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+/* 对手精灵略微漂浮 */
+.opp-sprite {
+  animation: float-soft 3.5s ease-in-out infinite;
 }
 
-.showdown-hp-bar {
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* ===== 正作信息框 ===== */
+.opp-info-box,
+.player-info-box {
+  background: linear-gradient(160deg, rgba(30, 58, 138, 0.82), rgba(30, 41, 82, 0.88));
+  border: 2px solid rgba(255,255,255,0.28);
+  border-radius: 12px;
+  padding: 6px 10px;
+  min-width: 150px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.player-info-box {
+  background: linear-gradient(160deg, rgba(3, 105, 161, 0.82), rgba(12, 74, 110, 0.88));
+}
+
+/* HP 条（正作/Showdown 分段色） */
+.opp-hp-track,
+.player-hp-track {
   position: relative;
-  height: 14px;
-  flex: 1;
-  max-width: 260px;
+  height: 12px;
   border-radius: 4px;
   background: #1e293b;
   border: 2px solid #334155;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 2px rgba(0,0,0,0.4);
 }
 
-.showdown-hp-fill {
+.opp-hp-fill,
+.player-hp-fill {
   height: 100%;
   border-radius: 2px;
-  transition: width 0.5s ease, background 0.5s ease;
-  background: linear-gradient(180deg, #4ade80, #16a34a);
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 7px,
-      rgba(0,0,0,0.18) 7px,
-      rgba(0,0,0,0.18) 8px
-    ),
-    linear-gradient(180deg, #4ade80, #16a34a);
-}
-
-.showdown-hp-fill.high {
+  transition: width 0.6s ease, background 0.6s ease;
   background-image:
     repeating-linear-gradient(90deg, transparent, transparent 7px, rgba(0,0,0,0.18) 7px, rgba(0,0,0,0.18) 8px),
     linear-gradient(180deg, #4ade80, #16a34a);
 }
 
-.showdown-hp-fill.mid {
+.opp-hp-fill.high,
+.player-hp-fill.high {
+  background-image:
+    repeating-linear-gradient(90deg, transparent, transparent 7px, rgba(0,0,0,0.18) 7px, rgba(0,0,0,0.18) 8px),
+    linear-gradient(180deg, #4ade80, #16a34a);
+}
+
+.opp-hp-fill.mid,
+.player-hp-fill.mid {
   background-image:
     repeating-linear-gradient(90deg, transparent, transparent 7px, rgba(0,0,0,0.18) 7px, rgba(0,0,0,0.18) 8px),
     linear-gradient(180deg, #fbbf24, #d97706);
 }
 
-.showdown-hp-fill.low {
+.opp-hp-fill.low,
+.player-hp-fill.low {
   background-image:
     repeating-linear-gradient(90deg, transparent, transparent 7px, rgba(0,0,0,0.18) 7px, rgba(0,0,0,0.18) 8px),
     linear-gradient(180deg, #f87171, #dc2626);
 }
 
-.showdown-hp-fill.empty {
+.opp-hp-fill.empty,
+.player-hp-fill.empty {
   background: #64748b;
-}
-
-.showdown-hp-num {
-  flex-shrink: 0;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #334155;
-  font-variant-numeric: tabular-nums;
 }
 
 /* 场地效果徽章 */
@@ -748,8 +771,8 @@ const fieldEffectChips = computed(() => {
   border-radius: 9999px;
   font-size: 0.68rem;
   font-weight: 700;
-  border: 1px solid rgba(255,255,255,0.7);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  border: 1px solid rgba(255,255,255,0.8);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
 
 .tone-blue { background: #dbeafe; color: #1d4ed8; }
@@ -803,5 +826,11 @@ const fieldEffectChips = computed(() => {
   font-weight: 600;
   color: #64748b;
   font-variant-numeric: tabular-nums;
+}
+
+/* 当前回合高亮 */
+.round-current {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 8px 24px -8px rgba(99, 102, 241, 0.35);
 }
 </style>

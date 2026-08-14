@@ -35,6 +35,38 @@ def dl_poke(pid):
     if data: dest.write_bytes(data); return True
     return False
 
+def dl_poke_back(pid):
+    dest = IMG / "pokemon" / "back" / (str(pid) + ".png")
+    if dest.exists(): return True
+    Path(dest.parent).mkdir(parents=True, exist_ok=True)
+    url = SRC + "/pokemon/back/" + str(pid) + ".png"
+    data = get(url)
+    if data: dest.write_bytes(data); return True
+    url2 = SRC + "/pokemon/back/0" + str(pid) + ".png"
+    data = get(url2)
+    if data: dest.write_bytes(data); return True
+    return False
+
+def batch_back(start, end):
+    ids = list(range(start, end+1))
+    total, ok, fail = len(ids), 0, []
+    print("Downloading " + str(total) + " back sprites [" + str(start) + "-" + str(end) + "]")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+        fs = {ex.submit(dl_poke_back, pid): pid for pid in ids}
+        for f in concurrent.futures.as_completed(fs):
+            pid = fs[f]
+            if f.result(): ok += 1
+            else: fail.append(pid)
+            done = ok + len(fail)
+            pct = int(done * 100 / total)
+            bar = "#" * (pct // 5) + "-" * (20 - pct // 5)
+            print("\\r  [" + bar + "] " + str(pct) + "% (" + str(done) + "/" + str(total) + ")", end="")
+    print()
+    if fail:
+        with open(IMG / "_failed_back.json", "w") as f: json.dump(dict(pokemon=fail), f)
+    print("Done: " + str(ok) + " ok, " + str(len(fail)) + " failed, " + str(total) + " total")
+    return len(fail) == 0
+
 def batch(start, end):
     ids = list(range(start, end+1))
     total, ok, fail = len(ids), 0, []
@@ -69,6 +101,14 @@ def verify():
 def main():
     s, e, args = 1, 1025, sys.argv[1:]
     if "--verify" in args: verify(); return
+    if "--back" in args:
+        args.remove("--back")
+        s, e = 1, 1025
+        if "--range" in args:
+            i = args.index("--range")
+            if i + 2 <= len(args): s, e = int(args[i+1]), int(args[i+2])
+        batch_back(s, e)
+        return
     if "--retry" in args and FAILED.exists():
         with open(FAILED) as f: fd = json.load(f)
         fl = fd.get("pokemon", [])

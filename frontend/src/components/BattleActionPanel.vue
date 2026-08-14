@@ -61,34 +61,58 @@
           {{ tr('9代单打', 'Gen9 Singles') }}
         </button>
       </div>
-      <button
-        class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-        :disabled="isBusy"
-        @click="emit('start-factory')"
-      >
-        {{ busyAction === 'factory-start' ? tr('正在创建挑战...', 'Creating run...') : tr('开始工厂挑战（9 轮）', 'Start factory challenge (9 rounds)') }}
-      </button>
-      <button
-        class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-        :disabled="isBusy"
-        @click="emit('open-ban')"
-      >
-        🚫 {{ tr('Ban 后开始挑战', 'Ban & Start') }}
-      </button>
-      <button
-        class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-        :disabled="isBusy"
-        @click="emit('start-manual')"
-      >
-        {{ busyAction === 'start-manual' ? tr('正在创建战斗...', 'Creating battle...') : tr('单场手动对战', 'Single manual battle') }}
-      </button>
-      <button
-        class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-        :disabled="isBusy"
-        @click="emit('start-async')"
-      >
-        {{ busyAction === 'start-async' ? tr('正在提交模拟...', 'Submitting simulation...') : tr('异步模拟', 'Async simulation') }}
-      </button>
+
+      <!-- 开始方式卡片 -->
+      <div class="col-span-full grid gap-2 sm:grid-cols-2">
+        <button
+          class="group relative overflow-hidden rounded-2xl border-2 border-indigo-300 bg-gradient-to-br from-indigo-50 to-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="isBusy"
+          @click="emit('start-factory')"
+        >
+          <div class="text-lg font-black text-indigo-700">
+            🏟️ {{ busyAction === 'factory-start' ? tr('创建中...', 'Creating...') : tr('工厂挑战', 'Factory Run') }}
+          </div>
+          <div class="mt-1 text-xs leading-5 text-slate-500">
+            {{ tr('9 轮连战，胜后可交换宝可梦', '9 battles, exchange reward on wins') }}
+          </div>
+        </button>
+        <button
+          class="group relative overflow-hidden rounded-2xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="isBusy"
+          @click="emit('start-manual')"
+        >
+          <div class="text-lg font-black text-blue-700">
+            ⚔️ {{ busyAction === 'start-manual' ? tr('创建中...', 'Creating...') : tr('手动对战', 'Manual Battle') }}
+          </div>
+          <div class="mt-1 text-xs leading-5 text-slate-500">
+            {{ tr('逐回合亲自操作', 'Full turn-by-turn control') }}
+          </div>
+        </button>
+        <button
+          class="group relative overflow-hidden rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="isBusy"
+          @click="emit('start-async')"
+        >
+          <div class="text-lg font-black text-emerald-700">
+            ⏩ {{ busyAction === 'start-async' ? tr('提交中...', 'Submitting...') : tr('异步模拟', 'Async Sim') }}
+          </div>
+          <div class="mt-1 text-xs leading-5 text-slate-500">
+            {{ tr('后台自动打完一整场', 'Auto-plays the whole battle') }}
+          </div>
+        </button>
+        <button
+          class="group relative overflow-hidden rounded-2xl border-2 border-rose-300 bg-gradient-to-br from-rose-50 to-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-rose-400 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="isBusy"
+          @click="emit('open-ban')"
+        >
+          <div class="text-lg font-black text-rose-700">
+            🚫 {{ tr('Ban 后挑战', 'Ban & Run') }}
+          </div>
+          <div class="mt-1 text-xs leading-5 text-slate-500">
+            {{ tr('消耗积分禁用宝可梦', 'Spend points to ban Pokemon') }}
+          </div>
+        </button>
+      </div>
     </template>
     <template v-else-if="factoryRun && !currentBattleId">
       <button

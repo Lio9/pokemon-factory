@@ -55,8 +55,14 @@ export const sprites = {
   /** 宝可梦正面图（本地）/ Pokemon front sprite (local) */
   pokemon: (id) => url(LOCAL_BASE, "/pokemon/" + id + ".png"),
 
+  /** 宝可梦背面图（本地，战斗我方用）/ Pokemon back sprite (local) */
+  pokemonBack: (id) => url(LOCAL_BASE, "/pokemon/back/" + id + ".png"),
+
   /** 宝可梦正面图（远程备用）/ Pokemon front sprite (remote fallback) */
   fallbackPokemon: (id) => url(REMOTE_BASE, "/pokemon/" + id + ".png"),
+
+  /** 宝可梦背面图（远程备用）/ Pokemon back sprite (remote fallback) */
+  fallbackPokemonBack: (id) => url(REMOTE_BASE, "/pokemon/back/" + id + ".png"),
 
   /** 官方艺术图（本地）/ Official artwork (local) */
   official: (id) => url(LOCAL_BASE, "/pokemon/other/official-artwork/" + id + ".png"),

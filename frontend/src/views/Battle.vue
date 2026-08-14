@@ -62,6 +62,9 @@
           :highlight-index="replacedHighlight"
           :status-text="statusText"
           :status-tone="statusTone"
+          :target-field-slot="arenaTargetSlot"
+          :can-target="arenaCanTarget"
+          @target-select="onArenaTargetSelect"
         />
 
         <div class="space-y-4 rounded-3xl border-3 border-slate-200/80 bg-white/95 p-4 shadow-poke-card backdrop-blur sm:p-6">
@@ -226,7 +229,7 @@ import ExchangeModal from '../components/ExchangeModal.vue'
 import BanModal from '../components/BanModal.vue'
 import { useBattlePageState } from '../composables/useBattlePageState'
 import { normalizeFactoryRun } from '../services/contracts/battleContract'
-import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import api from '../services/api'
 
@@ -340,6 +343,37 @@ const {
 const isTextMode = ref(false)
 const textLogs = ref([])
 const textLogContainer = ref(null)
+
+// ===== 战场点击选目标（Showdown 风格） =====
+const arenaTargetSlot = ref(null)
+
+const arenaCanTarget = computed(() => {
+  if (isPreviewPhase.value || isReplacementPhase.value || summary.value?.status !== 'running') return false
+  return playerActiveMons.value.some((mon) => {
+    const actionKey = `action-slot-${mon.fieldSlot}`
+    if ((selectedActions[actionKey] || 'move') !== 'move') return false
+    const move = selectedMoveObject(mon)
+    if (!moveNeedsOpponentTarget(move)) return false
+    return selectedTargets[`target-slot-${mon.fieldSlot}`] === undefined
+  })
+})
+
+// 点击战场对手精灵 → 设置目标
+function onArenaTargetSelect(fieldSlot) {
+  // 找到第一个需要目标选择的在场宝可梦，设置目标
+  const needTarget = playerActiveMons.value.find((mon) => {
+    const actionKey = `action-slot-${mon.fieldSlot}`
+    if ((selectedActions[actionKey] || 'move') !== 'move') return false
+    const move = selectedMoveObject(mon)
+    if (!moveNeedsOpponentTarget(move)) return false
+    return selectedTargets[`target-slot-${mon.fieldSlot}`] === undefined
+  })
+  if (!needTarget) return
+  setSelectedTarget(needTarget.fieldSlot, fieldSlot)
+  // 短暂高亮选中的目标精灵
+  arenaTargetSlot.value = fieldSlot
+  setTimeout(() => { arenaTargetSlot.value = null }, 1200)
+}
 
 function toggleTextMode() {
   isTextMode.value = !isTextMode.value

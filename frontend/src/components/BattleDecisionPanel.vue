@@ -11,9 +11,9 @@
     <div class="grid gap-4 lg:grid-cols-2">
       <div>
         <div class="mb-2 text-xs font-semibold text-slate-500">
-          {{ tr('你的队伍（点击查看配置）', 'Your roster (click to view details)') }}
+          {{ tr('你的队伍（点击选择/取消）', 'Your roster (click to toggle)') }}
         </div>
-        <div class="space-y-2">
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <div
             v-for="(pokemon, index) in playerRoster"
             :key="`player-roster-${index}`"
@@ -22,33 +22,48 @@
             <button
               type="button"
               :class="previewCardClass(index)"
+              class="!flex !flex-col !items-center !p-3 !text-center"
               @click="toggleRoster(index)"
             >
-              <div class="flex items-center justify-between gap-3">
-                <div class="text-left">
-                  <div class="font-semibold text-slate-900">
-                    {{ pokemon.name || pokemon.name_en || tr(`宝可梦 ${index + 1}`, `Pokemon ${index + 1}`) }}
-                  </div>
-                  <div class="text-xs text-slate-500">
-                    {{ formatTypes(pokemon.types) }}
-                  </div>
-                </div>
-                <div class="text-right text-xs text-slate-500">
-                  <div>{{ isPicked(index) ? tr('已选入', 'Selected') : tr('未选入', 'Not selected') }}</div>
-                  <div>{{ isLead(index) ? tr('首发', 'Lead') : tr('后备', 'Back') }}</div>
+              <div class="relative">
+                <img
+                  :src="previewSprite(pokemon)"
+                  :alt="pokemon.name"
+                  class="h-16 w-16 object-contain transition-transform group-hover:scale-110"
+                  :class="isPicked(index) ? '' : 'opacity-40 grayscale'"
+                  @error="onPreviewSpriteError($event, pokemon)"
+                >
+                <!-- 首发标记 -->
+                <span
+                  v-if="isLead(index)"
+                  class="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-white shadow-lg ring-2 ring-white"
+                >首</span>
+              </div>
+              <div class="mt-1.5 w-full">
+                <div
+                  class="truncate text-xs font-bold"
+                  :class="isPicked(index) ? 'text-slate-900' : 'text-slate-400'"
+                >{{ pokemon.name || pokemon.name_en }}</div>
+                <div class="mt-1 flex flex-wrap justify-center gap-1">
+                  <span
+                    v-for="type in pokemon.types || []"
+                    :key="type.id || type.type_id"
+                    class="type-badge type-badge-sm"
+                    :style="{ backgroundColor: type.color || typeColor(type.type_id) }"
+                  >{{ type.name }}</span>
                 </div>
               </div>
             </button>
             <!-- 查看详情按钮 -->
             <button
               type="button"
-              class="absolute top-1/2 -translate-y-1/2 right-2 z-10 h-7 w-7 rounded-full bg-white/90 border border-slate-200 text-slate-400 shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition-all opacity-70 group-hover:opacity-100 flex items-center justify-center"
+              class="absolute top-1 right-1 z-10 h-6 w-6 rounded-full bg-white/90 border border-slate-200 text-slate-400 shadow-sm hover:bg-indigo-50 hover:text-indigo-600 transition-all opacity-70 group-hover:opacity-100 flex items-center justify-center"
               :title="tr('查看配置', 'View details')"
               @click.stop="openDetail(pokemon)"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-3.5 w-3.5"
+                class="h-3 w-3"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -74,27 +89,38 @@
         <div class="mb-2 text-xs font-semibold text-slate-500">
           {{ tr('对手公开队伍', 'Opponent preview') }}
         </div>
-        <div class="space-y-2">
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <div
             v-for="(pokemon, index) in opponentRoster"
             :key="`opponent-roster-${index}`"
-            class="group relative rounded-xl border border-slate-200 bg-white p-3"
+            class="group relative rounded-xl border border-slate-200 bg-white p-2.5 text-center"
           >
-            <div class="font-semibold text-slate-900">
-              {{ pokemon.name || pokemon.name_en || tr(`宝可梦 ${index + 1}`, `Pokemon ${index + 1}`) }}
+            <img
+              :src="previewSprite(pokemon)"
+              :alt="pokemon.name"
+              class="mx-auto h-14 w-14 object-contain transition-transform group-hover:scale-110"
+              @error="onPreviewSpriteError($event, pokemon)"
+            >
+            <div class="mt-1 truncate text-xs font-bold text-slate-800">
+              {{ pokemon.name || pokemon.name_en }}
             </div>
-            <div class="text-xs text-slate-500">
-              {{ formatTypes(pokemon.types) }}
+            <div class="mt-1 flex flex-wrap justify-center gap-1">
+              <span
+                v-for="type in pokemon.types || []"
+                :key="type.id || type.type_id"
+                class="type-badge type-badge-sm"
+                :style="{ backgroundColor: type.color || typeColor(type.type_id) }"
+              >{{ type.name }}</span>
             </div>
             <button
               type="button"
-              class="absolute top-1/2 -translate-y-1/2 right-2 z-10 h-7 w-7 rounded-full bg-white/90 border border-slate-200 text-slate-400 shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center"
+              class="absolute top-1 right-1 z-10 h-6 w-6 rounded-full bg-white/90 border border-slate-200 text-slate-400 shadow-sm hover:bg-indigo-50 hover:text-indigo-600 transition-all opacity-70 group-hover:opacity-100 flex items-center justify-center"
               :title="tr('查看配置', 'View details')"
               @click.stop="openDetail(pokemon)"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-3.5 w-3.5"
+                class="h-3 w-3"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -377,6 +403,55 @@
         </template>
       </div>
 
+      <!-- 行动总览（Showdown 风格：提交前一眼确认） -->
+      <div
+        v-if="playerActiveMons.length > 0 && !isPreviewPhase && !isReplacementPhase"
+        class="mt-1 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2"
+      >
+        <div class="mb-1 text-[10px] font-bold uppercase tracking-widest text-indigo-500">
+          {{ tr('本回合行动', 'This turn') }}
+        </div>
+        <div class="space-y-1">
+          <div
+            v-for="mon in playerActiveMons"
+            :key="`overview-${mon.fieldSlot}`"
+            class="flex items-center gap-2 text-xs"
+          >
+            <span class="font-bold text-slate-800">{{ mon.name || mon.name_en }}</span>
+            <span class="text-slate-400">→</span>
+            <template v-if="(selectedActions[`action-slot-${mon.fieldSlot}`] || 'move') === 'switch'">
+              <span class="font-semibold text-indigo-600">{{ tr('换人', 'Switch') }}</span>
+              <span
+                v-if="selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`] !== undefined"
+                class="font-semibold text-slate-600"
+              >→ {{ benchName(selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`]) }}</span>
+              <span
+                v-else
+                class="text-amber-600 font-semibold"
+              >{{ tr('请选目标', 'Pick target') }}</span>
+            </template>
+            <template v-else>
+              <span class="font-semibold text-slate-600">{{ moveName(selectedMoves[`slot-${mon.fieldSlot}`], mon) }}</span>
+              <template v-if="moveNeedsOpponentTarget(selectedMoveObject(mon))">
+                <span class="text-slate-400">→</span>
+                <span
+                  v-if="selectedTargets[`target-slot-${mon.fieldSlot}`] !== undefined"
+                  class="font-semibold text-rose-600"
+                >{{ targetName(selectedTargets[`target-slot-${mon.fieldSlot}`]) }}</span>
+                <span
+                  v-else
+                  class="text-amber-600 font-semibold"
+                >{{ tr('请选目标', 'Pick target') }}</span>
+              </template>
+              <span
+                v-if="selectedSpecialSystems[`special-slot-${mon.fieldSlot}`]"
+                class="ml-auto rounded-full bg-amber-200/80 px-1.5 py-px text-[10px] font-bold text-amber-800"
+              >{{ specialSystemLabel(selectedSpecialSystems[`special-slot-${mon.fieldSlot}`]) }}</span>
+            </template>
+          </div>
+        </div>
+      </div>
+
       <button
         class="w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         :disabled="!canSubmitMove || isBusy"
@@ -421,6 +496,7 @@ import { useLocale } from '../composables/useLocale'
 import MoveButton from './MoveButton.vue'
 import PokemonDetailPopover from './PokemonDetailPopover.vue'
 import { sprites } from '../services/sprites'
+import { typeColor } from '../services/typeChart'
 
 const { translate: tr } = useLocale()
 
@@ -450,6 +526,39 @@ function onTargetSpriteError(event, target) {
   } else {
     img.src = sprites.default
   }
+}
+
+// 预览精灵图
+function previewSprite(pokemon) {
+  const id = pokemon?.form_id || pokemon?.species_id || pokemon?.pokemon_id || pokemon?.id
+  return id ? sprites.pokemon(id) : sprites.default
+}
+
+function onPreviewSpriteError(event, pokemon) {
+  const img = event.target
+  const src = img?.getAttribute('src') || ''
+  const id = pokemon?.form_id || pokemon?.species_id || pokemon?.pokemon_id || pokemon?.id
+  if (src.includes('/api/pokedex/images')) {
+    img.src = sprites.fallbackPokemon(id)
+  } else {
+    img.src = sprites.default
+  }
+}
+
+// 行动总览辅助函数
+function benchName(teamIndex) {
+  const mon = playerBenchOptions.value?.find((o) => o.value === Number(teamIndex))
+  return mon?.label || tr('宝可梦 {n}', 'Pokemon {n}', { n: Number(teamIndex) + 1 })
+}
+
+function moveName(moveKey, mon) {
+  const mv = (mon?.moves || []).find((m) => (m.name_en || m.name) === moveKey)
+  return mv?.name || mv?.name_en || moveKey || tr('未选', 'Pick a move')
+}
+
+function targetName(fieldSlot) {
+  const t = opponentActiveMons.value?.find((o) => Number(o.fieldSlot) === Number(fieldSlot))
+  return t?.name || t?.name_en || tr('目标 {n}', 'Target {n}', { n: Number(fieldSlot) + 1 })
 }
 
 defineProps({
