@@ -528,13 +528,35 @@ function roundTime(round) {
   return ''
 }
 
-// 最新一条战斗消息（正作对话框）
+// 最新一条战斗消息（正作对话框）：聚合同源群体事件（如威吓对多目标）
 const latestEvent = computed(() => {
   const rounds = props.summary?.rounds
   if (!rounds?.length) return ''
   const lastRound = rounds[rounds.length - 1]
   const events = lastRound?.events || []
-  return events.length ? events[events.length - 1] : ''
+  if (!events.length) return ''
+
+  // 找最后一条"攻击下降"类群体事件：聚合同一发起者的多条"威吓使 XX 攻击下降"
+  const intimidateLines = events.filter(e => e.includes('威吓特性使'))
+  if (intimidateLines.length >= 2) {
+    // 提取发起者与目标
+    const targets = []
+    let actor = ''
+    for (const line of intimidateLines) {
+      const m = line.match(/^(.+?) 的威吓特性使 (.+?) 的攻击下降了！$/)
+      if (m) {
+        actor = m[1]
+        targets.push(m[2])
+      }
+    }
+    if (actor && targets.length >= 2) {
+      return tr('{actor} 的威吓特性使 {targets} 的攻击下降了！', '{actor} Intimidates {targets}, lowering their Attack!', '', {
+        actor,
+        targets: targets.join('、')
+      })
+    }
+  }
+  return events[events.length - 1]
 })
 
 // 当前天气（用于背景视觉）

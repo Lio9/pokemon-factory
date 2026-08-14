@@ -1534,9 +1534,12 @@ final class BattleConditionSupport {
             triggerStatDropAbilities(target, events);
             restoreLoweredStatsWithWhiteHerb(target, Map.of(statKey, previousStage - nextStage), actionLog, events);
         }
-        events.add(target.get("name") + " 因" + trigger + "触发，" + statDisplayName(statId)
-                + (Math.abs(nextStage - previousStage) >= 2 ? "大幅" : "")
-                + ((nextStage - previousStage) > 0 ? "提升了" : "下降了"));
+        // 空 trigger 时不生成通用文本（调用方自行输出更清晰的说明）
+        if (trigger != null && !trigger.isBlank()) {
+            events.add(target.get("name") + " 因" + trigger + "触发，" + statDisplayName(statId)
+                    + (Math.abs(nextStage - previousStage) >= 2 ? "大幅" : "")
+                    + ((nextStage - previousStage) > 0 ? "提升了" : "下降了"));
+        }
     }
 
     /** 孢子：各 10% 概率施加睡眠/麻痹/中毒（总 30%） */
@@ -2010,6 +2013,7 @@ final class BattleConditionSupport {
     void applyIntimidate(Map<String, Object> state, boolean player, Map<String, Object> source, List<String> events) {
         source.put("intimidateActivated", true);
         List<Map<String, Object>> opposingTeam = engine.team(state, !player);
+        boolean anyAffected = false;
         for (Integer targetSlot : engine.activeSlots(state, !player)) {
             if (targetSlot == null || targetSlot < 0 || targetSlot >= opposingTeam.size())
                 continue;
@@ -2020,17 +2024,19 @@ final class BattleConditionSupport {
             // Intimidate fails against Clear Body, White Smoke, Full Metal Body, Inner Focus, Oblivious, Own Tempo
             if (engine.hasAbility(target, "clear-body", "white-smoke", "full-metal-body", "inner-focus", "oblivious",
                     "own-tempo")) {
-                events.add(target.get("name") + " 的特性挡住了威吓");
+                events.add(source.get("name") + " 的威吓发动了，但 " + target.get("name") + " 的"
+                        + abilityDisplayName(engine.abilityName(target)) + "特性使其免疫！");
                 continue;
             }
             // Guard Dog: 受到威吓时攻击提升 1 级
             if (engine.hasAbility(target, "guard-dog", "guard dog")) {
                 applyAbilityStageChange(state, target, 2, 1, null, events, "看门犬");
-                events.add(target.get("name") + " 的看门犬特性发动，攻击提升！");
+                events.add(source.get("name") + " 的威吓使 " + target.get("name")
+                        + " 的看门犬特性发动，攻击反而提升了！");
                 continue;
             }
             if ("clear-amulet".equals(engine.heldItem(target))) {
-                events.add(target.get("name") + " 的清净护符挡住了威吓");
+                events.add(source.get("name") + " 的威吓被 " + target.get("name") + " 的清净护符挡下了");
                 continue;
             }
             // Adrenaline Orb: Speed +1 when Intimidated
@@ -2041,8 +2047,22 @@ final class BattleConditionSupport {
             }
 
             // 使用统一的能力阶级变更方法（支持唱反调反转）
-            applyAbilityStageChange(state, target, 2, -1, null, events, "威吓");
+            // 注意：内部生成的通用文本（"XX 因威吓触发..."）会冗余，这里传入空 trigger
+            // 并靠下方的清晰事件文本展示发起者与目标。
+            int before = damageSupport.statStage(target, "attack");
+            applyAbilityStageChange(state, target, 2, -1, null, events, "");
+            int after = damageSupport.statStage(target, "attack");
+            if (after < before) {
+                events.add(source.get("name") + " 的威吓特性使 " + target.get("name") + " 的攻击下降了！");
+                anyAffected = true;
+            }
         }
+    }
+
+    /** 特性中文名/英文名展示辅助 */
+    private String abilityDisplayName(String nameEn) {
+        if (nameEn == null || nameEn.isBlank()) return "";
+        return nameEn;
     }
 
     /**
