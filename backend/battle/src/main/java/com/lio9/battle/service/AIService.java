@@ -269,18 +269,9 @@ public class AIService {
             return false; // 4 个招式如果全是同一种属性，可玩性太低
         }
 
-        // 3. 检查属性冲突（例如水系宝可梦带电系装备）
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> types = (List<Map<String, Object>>) pokemon.get("types");
-        String heldItem = String.valueOf(pokemon.getOrDefault("heldItem", ""));
-
-        // 示例：水珠 + 火/电属性的冲突
-        if ("life-orb".equals(heldItem) && types.stream()
-                .anyMatch(type -> "fire".equalsIgnoreCase(String.valueOf(type.get("name_en"))) ||
-                        "electric".equalsIgnoreCase(String.valueOf(type.get("name_en"))))) {
-            return false; // 水珠与火/电属性相冲
-        }
-
+        // 3. 移除原先错误的"生命宝珠+火/电属性相冲"判定：
+        //    Life Orb（生命宝珠）对任何属性都适用且无属性冲突，
+        //    原逻辑混淆了 Life Orb 与 Mystic Water（神秘水滴），导致火/电系高攻宝可梦被误拒建队。
         return true;
     }
 
