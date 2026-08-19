@@ -209,7 +209,8 @@ final class BattleAiSwitchSupport {
         if (moveTypeIds.isEmpty()) {
             return 1.0;
         }
-        List<Map<String, Object>> monTypes = engine.castList(mon.get("types"));
+        // 用 activeTypes（处理太晶化/属性变化后的实际属性），而非 base types
+        List<Map<String, Object>> monTypes = engine.activeTypes(mon);
         double maxFactor = 0.0;
         for (int moveTypeId : moveTypeIds) {
             double moveFactor = 1.0;

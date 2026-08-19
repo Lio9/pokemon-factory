@@ -36,8 +36,11 @@ public final class ItemHandlers {
         regItem(items, new ItemHandler() {
             public String id() { return "metronome"; }
             public double onSourceModifyDamage(AttackContext ctx, double mod) {
+                // VGC/Showdown: 每次连续使用同一招式 +0.1，封顶 +1.0（即最大 2.0x）
                 int count = intVal(ctx.attacker, "metronomeCount");
-                return count > 0 ? mod * (1.0 + count * 0.2) : mod;
+                if (count <= 0) return mod;
+                double mult = Math.min(2.0, 1.0 + count * 0.1);
+                return mod * mult;
             }
         });
         regItem(items, new ItemHandler() {

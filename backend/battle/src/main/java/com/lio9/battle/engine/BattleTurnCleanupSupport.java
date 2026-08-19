@@ -631,6 +631,24 @@ final class BattleTurnCleanupSupport {
         events.add(mon.get("name") + msg + " " + heal + " 点 HP");
     }
 
+    /** 回合末按最大 HP 的 1/denominator 对单只宝可梦造成伤害（用于干旱肌肤/太阳之力等天气损耗） */
+    private void applyWeatherDamageToMon(Map<String, Object> state, Map<String, Object> mon, int denominator,
+            List<String> events, String msg) {
+        int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+        int curHp = engine.toInt(mon.get("currentHp"), 0);
+        if (curHp <= 0) {
+            return;
+        }
+        int dmg = Math.max(1, maxHp / denominator);
+        int remaining = Math.max(0, curHp - dmg);
+        mon.put("currentHp", remaining);
+        events.add(mon.get("name") + msg + " " + dmg + " 点 HP");
+        if (remaining <= 0) {
+            mon.put("status", "fainted");
+            events.add(mon.get("name") + " 倒下了");
+        }
+    }
+
     /** Cud Chew: 回合末重新触发树果效果 */
     private void applyCudChew(List<Map<String, Object>> team, List<String> events) {
         for (Map<String, Object> mon : team) {
@@ -763,6 +781,7 @@ final class BattleTurnCleanupSupport {
             Map<String, Object> fieldEffects = engine.castMap(state.get("fieldEffects"));
             int rainTurns = engine.toInt(fieldEffects.get("rainTurns"), 0);
             int snowTurns = engine.toInt(fieldEffects.get("snowTurns"), 0);
+            int sunTurnsNow = engine.toInt(fieldEffects.get("sunTurns"), 0);
             if (("rain-dish".equalsIgnoreCase(ability) || "rain dish".equalsIgnoreCase(ability))
                     && rainTurns > 0 && engine.healBlockTurns(mon) <= 0) {
                 applyFractionalHeal(mon, 16, events, "的雨盘回复了");
@@ -770,6 +789,19 @@ final class BattleTurnCleanupSupport {
             if (("ice-body".equalsIgnoreCase(ability) || "ice body".equalsIgnoreCase(ability))
                     && snowTurns > 0 && engine.healBlockTurns(mon) <= 0) {
                 applyFractionalHeal(mon, 16, events, "的冰鳞粉回复了");
+            }
+            // 干燥肌肤：雨天回复 1/8、晴天损失 1/8 最大 HP（受回复封锁/魔法防守约束）
+            if ("dry-skin".equalsIgnoreCase(ability) || "dry skin".equalsIgnoreCase(ability)) {
+                if (rainTurns > 0 && engine.healBlockTurns(mon) <= 0) {
+                    applyFractionalHeal(mon, 8, events, "的干燥肌肤在雨中回复了");
+                } else if (sunTurnsNow > 0 && !engine.isMagicGuard(mon)) {
+                    applyWeatherDamageToMon(state, mon, 8, events, "的干燥肌肤受到晴天影响损失了");
+                }
+            }
+            // 太阳之力：晴天每回合损失 1/8 最大 HP（魔法防守免疫）
+            if (("solar-power".equalsIgnoreCase(ability) || "solar power".equalsIgnoreCase(ability))
+                    && sunTurnsNow > 0 && !engine.isMagicGuard(mon)) {
+                applyWeatherDamageToMon(state, mon, 8, events, "的太阳之力受到晴天影响损失了");
             }
             // 毒疗：中毒/剧毒时每回合回复 1/8 HP
             if ("poison-heal".equalsIgnoreCase(ability) || "poison heal".equalsIgnoreCase(ability)) {

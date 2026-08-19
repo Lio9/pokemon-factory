@@ -133,15 +133,27 @@ final class BattleTargetSupport {
                                                                   Map<String, BattleEngine.RedirectionEffect> redirectionTargets,
                                                                   Map<String, Object> attacker,
                                                                   boolean tracksTarget) {
-        if ((tracksTarget || ignoresRedirection(attacker)) && targetTeamIndex >= 0
+        // 坚毅/螺旋尾翼：无视一切吸引（看我嘛/愤怒粉 + 避雷针/引水），直接打预设目标
+        if (ignoresRedirection(attacker) && targetTeamIndex >= 0
                 && engine.isAvailableMon(engine.team(state, playerTarget), targetTeamIndex)) {
             return List.of(new BattleEngine.TargetRef(playerTarget ? "player" : "opponent", playerTarget,
                     targetTeamIndex, fieldSlotForTeamIndex(state, playerTarget, targetTeamIndex)));
         }
-        int redirected = redirectedTargetIndex(state, playerTarget, redirectionTargets, attacker);
+        // 特性级吸引（避雷针/引水）优先于招式级吸引（看我嘛/愤怒粉）
         int abilityRedirected = abilityRedirectedTargetIndex(state, playerTarget, move, attacker);
-        int teamIndex = redirected >= 0 ? redirected
-            : abilityRedirected >= 0 ? abilityRedirected : targetIndex(state, playerTarget, targetFieldSlot);
+        int redirected = redirectedTargetIndex(state, playerTarget, redirectionTargets, attacker);
+        int teamIndex;
+        if (abilityRedirected >= 0) {
+            teamIndex = abilityRedirected;
+        } else if (redirected >= 0) {
+            teamIndex = redirected;
+        } else if (!tracksTarget && targetTeamIndex >= 0
+                && engine.isAvailableMon(engine.team(state, playerTarget), targetTeamIndex)) {
+            // Snipe Shot（tracksTarget=true）锁定原始目标，无视看我嘛/愤怒粉的招式级吸引
+            teamIndex = targetTeamIndex;
+        } else {
+            teamIndex = targetIndex(state, playerTarget, targetFieldSlot);
+        }
         if (teamIndex >= 0 && !engine.isAvailableMon(engine.team(state, playerTarget), teamIndex)) {
             List<BattleEngine.TargetRef> availableTargets = activeTargetRefs(state, playerTarget);
             if (availableTargets.isEmpty()) {
@@ -161,15 +173,16 @@ final class BattleTargetSupport {
                                                                   Map<String, BattleEngine.RedirectionEffect> redirectionTargets,
                                                                   Map<String, Object> attacker,
                                                                   Map<String, Object> move) {
-        int redirected = redirectedTargetIndex(state, playerTarget, redirectionTargets, attacker);
-        if (redirected >= 0) {
-            return List.of(new BattleEngine.TargetRef(playerTarget ? "player" : "opponent", playerTarget, redirected,
-                    fieldSlotForTeamIndex(state, playerTarget, redirected)));
-        }
+        // 特性级吸引（避雷针/引水）优先于招式级吸引（看我嘛/愤怒粉）
         int abilityRedirected = abilityRedirectedTargetIndex(state, playerTarget, move, attacker);
         if (abilityRedirected >= 0) {
             return List.of(new BattleEngine.TargetRef(playerTarget ? "player" : "opponent", playerTarget, abilityRedirected,
                     fieldSlotForTeamIndex(state, playerTarget, abilityRedirected)));
+        }
+        int redirected = redirectedTargetIndex(state, playerTarget, redirectionTargets, attacker);
+        if (redirected >= 0) {
+            return List.of(new BattleEngine.TargetRef(playerTarget ? "player" : "opponent", playerTarget, redirected,
+                    fieldSlotForTeamIndex(state, playerTarget, redirected)));
         }
         List<BattleEngine.TargetRef> targets = activeTargetRefs(state, playerTarget);
         if (targets.isEmpty()) {
@@ -263,6 +276,11 @@ final class BattleTargetSupport {
         }
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
         if (moveTypeId != DamageCalculatorUtil.TYPE_WATER && moveTypeId != DamageCalculatorUtil.TYPE_ELECTRIC) {
+            return -1;
+        }
+        // 避雷针/引水只重定向造成伤害的水/电招式；非伤害水/电变化招式（如浸水 Soak）不被吸引
+        int power = engine.toInt(move.get("power"), 0);
+        if (power <= 0) {
             return -1;
         }
         for (BattleEngine.TargetRef targetRef : activeTargetRefs(state, playerTarget)) {

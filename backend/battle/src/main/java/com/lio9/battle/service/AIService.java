@@ -457,9 +457,11 @@ public class AIService {
         int spe = stats != null ? toInt(stats.get("speed"), 0) : 0;
 
         boolean hasSetupMove = moves.stream().anyMatch(this::isSetupMove);
-        boolean isPhysical = toInt(pokemon.get("nature"), 0) == 0 ||
-                "adamant".equals(pokemon.get("nature")) ||
-                "jolly".equals(pokemon.get("nature"));
+        // 物理/特殊定位：按修正后种族值比较攻击 vs 特攻（避免 toInt(nature) 恒为 0 的 bug）
+        // 修正：判断物理/特殊应看该宝可梦的物攻与特攻基础能力，而非字符串 nature
+        int atk = stats != null ? toInt(stats.get("attack"), 0) : 0;
+        int spa = stats != null ? toInt(stats.get("specialAttack"), 0) : 0;
+        boolean isPhysical = atk >= spa;  // 物攻不弱于特攻 → 偏向物理
 
         // 根据定位选择道具
         String selectedItem;

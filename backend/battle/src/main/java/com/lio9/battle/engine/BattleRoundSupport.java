@@ -322,6 +322,20 @@ final class BattleRoundSupport {
             engine.rememberLastMove(actor, move);
             engine.rememberChoiceMove(actor, move);
             Map<String, Object> target = targetSideTeam.get(targetRef.teamIndex());
+            // 心灵感应（Telepathy）：免疫队友的群体攻击伤害（地震/冲浪打自己队友时）
+            boolean targetIsAlly = ("player".equals(action.side()) && targetRef.playerSide()
+                    && targetRef.teamIndex() != action.actorIndex())
+                    || ("opponent".equals(action.side()) && !targetRef.playerSide()
+                    && targetRef.teamIndex() != action.actorIndex());
+            if (targetIsAlly && engine.hasAbility(target, "telepathy")) {
+                Map<String, Object> telepathyLog = new LinkedHashMap<>(actionLog);
+                telepathyLog.put("target", target.get("name"));
+                telepathyLog.put("result", "telepathy");
+                telepathyLog.put("damage", 0);
+                actionLogs.add(telepathyLog);
+                events.add(target.get("name") + " 的心灵感应特性免疫了队友的攻击");
+                continue;
+            }
             Map<String, Object> targetLog = new LinkedHashMap<>(actionLog);
             targetLog.put("target", target.get("name"));
             targetLog.put("targetFieldSlot", targetRef.fieldSlot());
@@ -1884,6 +1898,38 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
+        if (engine.isEerieImpulse(move)) {
+            targetLog.put("result", conditionSupport.applySpecialAttackDrop(actor, target, 2, targetLog, events) ? "eerie-impulse" : "failed");
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isNobleRoar(move)) {
+            targetLog.put("result", conditionSupport.applyAttackAndSpecialAttackDrop(actor, target, targetLog, events) ? "noble-roar" : "failed");
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isScaryFace(move)) {
+            conditionSupport.applySpeedDropBy(actor, target, 2, targetLog, events);
+            targetLog.put("result", "scary-face");
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isCottonSpore(move)) {
+            conditionSupport.applySpeedDropBy(actor, target, 2, targetLog, events);
+            targetLog.put("result", "cotton-spore");
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isFeatherDance(move)) {
+            targetLog.put("result", conditionSupport.applyAttackDropBy(actor, target, 2, targetLog, events) ? "feather-dance" : "failed");
+            actionLogs.add(targetLog);
+            return true;
+        }
+        if (engine.isCharm(move)) {
+            targetLog.put("result", conditionSupport.applyAttackDropBy(actor, target, 2, targetLog, events) ? "charm" : "failed");
+            actionLogs.add(targetLog);
+            return true;
+        }
         if (engine.isConfuseRay(move)) {
             conditionSupport.applyConfusion(actor, target, targetLog, events, random);
             actionLogs.add(targetLog);
@@ -2361,43 +2407,43 @@ final class BattleRoundSupport {
 
         // Recovery moves
         if (engine.isRecover(move)) {
-            boolean succeeded = conditionSupport.applyRecoveryMove(actor, move, "自我再生", events);
+            boolean succeeded = conditionSupport.applyRecoveryMove(state, actor, move, "自我再生", events);
             targetLog.put("result", succeeded ? "recover" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isRoost(move)) {
-            boolean succeeded = conditionSupport.applyRecoveryMove(actor, move, "羽栖", events);
+            boolean succeeded = conditionSupport.applyRecoveryMove(state, actor, move, "羽栖", events);
             targetLog.put("result", succeeded ? "roost" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isRest(move)) {
-            boolean succeeded = conditionSupport.applyRecoveryMove(actor, move, "睡觉", events);
+            boolean succeeded = conditionSupport.applyRecoveryMove(state, actor, move, "睡觉", events);
             targetLog.put("result", succeeded ? "rest" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isSoftBoiled(move)) {
-            boolean succeeded = conditionSupport.applyRecoveryMove(actor, move, "生蛋", events);
+            boolean succeeded = conditionSupport.applyRecoveryMove(state, actor, move, "生蛋", events);
             targetLog.put("result", succeeded ? "soft-boiled" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isMilkDrink(move)) {
-            boolean succeeded = conditionSupport.applyRecoveryMove(actor, move, "喝牛奶", events);
+            boolean succeeded = conditionSupport.applyRecoveryMove(state, actor, move, "喝牛奶", events);
             targetLog.put("result", succeeded ? "milk-drink" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isSynthesis(move)) {
-            boolean succeeded = conditionSupport.applyRecoveryMove(actor, move, "光合作用", events);
+            boolean succeeded = conditionSupport.applyRecoveryMove(state, actor, move, "光合作用", events);
             targetLog.put("result", succeeded ? "synthesis" : "failed");
             actionLogs.add(targetLog);
             return true;
         }
         if (engine.isMoonlight(move)) {
-            boolean succeeded = conditionSupport.applyRecoveryMove(actor, move, "月光", events);
+            boolean succeeded = conditionSupport.applyRecoveryMove(state, actor, move, "月光", events);
             targetLog.put("result", succeeded ? "moonlight" : "failed");
             actionLogs.add(targetLog);
             return true;
@@ -2458,7 +2504,7 @@ final class BattleRoundSupport {
         }
 
         if (engine.isMorningSun(move)) {
-            boolean succeeded = conditionSupport.applyRecoveryMove(actor, move, "晨光", events);
+            boolean succeeded = conditionSupport.applyRecoveryMove(state, actor, move, "晨光", events);
             targetLog.put("result", succeeded ? "morning-sun" : "failed");
             actionLogs.add(targetLog);
             return true;

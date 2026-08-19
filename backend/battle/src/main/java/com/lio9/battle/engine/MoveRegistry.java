@@ -26,7 +26,8 @@ public final class MoveRegistry {
         "protect", "detect", "king's shield", "kings-shield",
         "obstruct", "silk trap", "silk-trap",
         "burning bulwark", "burning-bulwark",
-        "baneful bunker", "baneful-bunker"
+        "baneful bunker", "baneful-bunker",
+        "spiky shield", "spiky-shield"
     );
 
     private static final Set<String> WIDE_GUARD_MOVES = Set.of(
@@ -78,7 +79,7 @@ public final class MoveRegistry {
     private static final Set<String> WILL_O_WISP_MOVES = Set.of("will-o-wisp", "will o wisp");
     private static final Set<String> TOXIC_MOVES = Set.of("toxic");
     private static final Set<String> POISON_POWDER_MOVES = Set.of("poison powder", "poison-powder");
-    private static final Set<String> SPORE_MOVES = Set.of("spore");
+    private static final Set<String> SPORE_MOVES = Set.of("spore", "sleep powder", "sleep-powder");
     private static final Set<String> YAWN_MOVES = Set.of("yawn");
     private static final Set<String> CONFUSE_RAY_MOVES = Set.of("confuse ray", "confuse-ray");
 
@@ -116,6 +117,12 @@ public final class MoveRegistry {
     private static final Set<String> ELECTROWEB_MOVES = Set.of("electroweb");
     private static final Set<String> SNARL_MOVES = Set.of("snarl");
     private static final Set<String> FAKE_TEARS_MOVES = Set.of("fake tears", "fake-tears");
+    private static final Set<String> EERIE_IMPULSE_MOVES = Set.of("eerie impulse", "eerie-impulse");
+    private static final Set<String> NOBLE_ROAR_MOVES = Set.of("noble roar", "noble-roar");
+    private static final Set<String> SCARY_FACE_MOVES = Set.of("scary face", "scary-face");
+    private static final Set<String> COTTON_SPORE_MOVES = Set.of("cotton spore", "cotton-spore");
+    private static final Set<String> FEATHER_DANCE_MOVES = Set.of("feather dance", "feather-dance");
+    private static final Set<String> CHARM_MOVES = Set.of("charm");
 
     // === 轮换类招式 ===
     private static final Set<String> U_TURN_MOVES = Set.of("u turn", "u-turn");
@@ -770,6 +777,30 @@ public final class MoveRegistry {
 
     public static boolean isFakeTears(Map<String, Object> move) {
         return matchesAny(move, FAKE_TEARS_MOVES);
+    }
+
+    public static boolean isEerieImpulse(Map<String, Object> move) {
+        return matchesAny(move, EERIE_IMPULSE_MOVES);
+    }
+
+    public static boolean isNobleRoar(Map<String, Object> move) {
+        return matchesAny(move, NOBLE_ROAR_MOVES);
+    }
+
+    public static boolean isScaryFace(Map<String, Object> move) {
+        return matchesAny(move, SCARY_FACE_MOVES);
+    }
+
+    public static boolean isCottonSpore(Map<String, Object> move) {
+        return matchesAny(move, COTTON_SPORE_MOVES);
+    }
+
+    public static boolean isFeatherDance(Map<String, Object> move) {
+        return matchesAny(move, FEATHER_DANCE_MOVES);
+    }
+
+    public static boolean isCharm(Map<String, Object> move) {
+        return matchesAny(move, CHARM_MOVES);
     }
 
     /**

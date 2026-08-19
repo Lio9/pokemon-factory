@@ -207,7 +207,9 @@ final class BattleConditionSupport {
             events.add(target.get("name") + " 受到薄雾场地保护，无法陷入异常状态");
             return;
         }
-        if (engine.isPowderImmune(target)) {
+        // 粉末免疫（草系/防尘/防尘护目镜）只针对粉末类睡眠招式（孢子/睡眠粉）；
+        // 催眠术、暗黑洞、唱歌、哈欠等非粉末睡眠招式不受粉末免疫影响
+        if (MoveRegistry.isSpore(move) && engine.isPowderImmune(target)) {
             actionLog.put("result", "status-immune");
             events.add(powderImmunityMessage(target, move));
             return;
@@ -1784,9 +1786,10 @@ final class BattleConditionSupport {
             // 入场钉可能导致宝可梦倒下，倒下后不触发出场特性/道具
             if (engine.toInt(source.get("currentHp"), 0) <= 0) continue;
 
-            // 场地种子：对应场地活跃时入场即消耗并提升能力
+            // 场地种子：对应场地活跃且持有者接地时，入场即消耗并提升能力
+            // （VGC：飞行/飘浮未接地宝可梦不会触发场地震子）
             String heldItem = engine.heldItem(source);
-            if (!engine.itemConsumed(source)) {
+            if (!engine.itemConsumed(source) && engine.isGrounded(source)) {
                 Map<String, Object> effects = engine.castMap(state.get("fieldEffects"));
                 boolean electricTerrain = engine.toInt(effects.get("electricTerrainTurns"), 0) > 0;
                 boolean grassyTerrain = engine.toInt(effects.get("grassyTerrainTurns"), 0) > 0;
@@ -2063,7 +2066,7 @@ final class BattleConditionSupport {
 
             // Intimidate fails against Clear Body, White Smoke, Full Metal Body, Inner Focus, Oblivious, Own Tempo
             if (engine.hasAbility(target, "clear-body", "white-smoke", "full-metal-body", "inner-focus", "oblivious",
-                    "own-tempo")) {
+                    "own-tempo", "hyper-cutter", "hyper cutter")) {
                 events.add(source.get("name") + " 的威吓发动了，但 " + target.get("name") + " 的"
                         + abilityDisplayName(engine.abilityName(target)) + "特性使其免疫！");
                 continue;
@@ -2404,8 +2407,8 @@ final class BattleConditionSupport {
     /**
      * Apply recovery moves (Pokemon Showdown standard)
      */
-    boolean applyRecoveryMove(Map<String, Object> actor, Map<String, Object> move, String moveName,
-            List<String> events) {
+    boolean applyRecoveryMove(Map<String, Object> state, Map<String, Object> actor, Map<String, Object> move,
+            String moveName, List<String> events) {
         Map<String, Object> stats = engine.castMap(actor.get("stats"));
         int maxHp = engine.toInt(stats.get("hp"), 1);
         int currentHp = engine.toInt(actor.get("currentHp"), 0);
@@ -2416,7 +2419,7 @@ final class BattleConditionSupport {
         }
 
         // Calculate heal amount based on move type and weather
-        double healFraction = getHealFraction(move, moveName);
+        double healFraction = getHealFraction(state, move, moveName);
         int healAmount = Math.max(1, (int) Math.floor(maxHp * healFraction));
         int newHp = Math.min(maxHp, currentHp + healAmount);
 
@@ -2438,13 +2441,13 @@ final class BattleConditionSupport {
         return true;
     }
 
-    private double getHealFraction(Map<String, Object> move, String moveName) {
+    private double getHealFraction(Map<String, Object> state, Map<String, Object> move, String moveName) {
         // Weather-dependent moves: Synthesis, Moonlight, Morning Sun
         if (engine.isSynthesis(move) || engine.isMoonlight(move) || engine.isMorningSun(move)) {
-            // In sun: 2/3, normal: 1/2, other weather: 1/4
-            if (fieldEffectSupport.sunTurns(null) > 0) {
+            // In sun: 2/3, normal: 1/2, other weather: 1/4（读取真实战场 state 的天气）
+            if (fieldEffectSupport.sunTurns(state) > 0) {
                 return 2.0 / 3.0;
-            } else if (fieldEffectSupport.weatherTurns(null) > 0) {
+            } else if (fieldEffectSupport.weatherTurns(state) > 0) {
                 return 1.0 / 4.0;
             } else {
                 return 1.0 / 2.0;
@@ -2466,12 +2469,18 @@ final class BattleConditionSupport {
 
     void applySpeedDrop(Map<String, Object> source, Map<String, Object> target, Map<String, Object> actionLog,
             List<String> events) {
+        applySpeedDropBy(source, target, 1, actionLog, events);
+    }
+
+    /** 按指定段数降低目标速度（Scary Face/Cotton Spore 等降 2 段用） */
+    void applySpeedDropBy(Map<String, Object> source, Map<String, Object> target, int dropStages,
+            Map<String, Object> actionLog, List<String> events) {
         if (isStatDropBlocked(null, target, actionLog, events, "speedDropBlocked", "降速")) {
             return;
         }
         // 统一经 dispatchStatStage 修正（唱反调反转、单纯翻倍等），对齐 Showdown
         int delta = EffectRegistry.dispatchStatStage(target,
-                new StatStageContext(target, 6, -1, "冰风/电网/大声咆哮等"), -1);
+                new StatStageContext(target, 6, -Math.max(1, dropStages), "降速招式"), -Math.max(1, dropStages));
         int previousStage = damageSupport.statStage(target, "speed");
         int nextStage = Math.max(-6, previousStage + delta);
         damageSupport.statStages(target).put("speed", nextStage);
@@ -2541,6 +2550,31 @@ final class BattleConditionSupport {
                         events);
             }
             events.add(source.get("name") + " 使 " + target.get("name") + " 的特防"
+                    + (Math.abs(nextStage - previousStage) >= 2 ? "大幅" : "") + "下降了");
+            return true;
+        }
+        return false;
+    }
+
+    /** 按指定段数降低目标攻击（Feather Dance/Charm 等降 2 段用） */
+    boolean applyAttackDropBy(Map<String, Object> source, Map<String, Object> target, int dropStages,
+            Map<String, Object> actionLog, List<String> events) {
+        if (isStatDropBlocked(null, target, actionLog, events, "attackDropBlocked", "攻击下降")) {
+            return false;
+        }
+        // 统一经 dispatchStatStage 修正（唱反调反转、单纯翻倍等），对齐 Showdown
+        int delta = EffectRegistry.dispatchStatStage(target,
+                new StatStageContext(target, 2, -Math.max(1, dropStages), "降攻击招式"), -Math.max(1, dropStages));
+        int previousStage = damageSupport.statStage(target, "attack");
+        int nextStage = Math.max(-6, previousStage + delta);
+        damageSupport.statStages(target).put("attack", nextStage);
+        if (nextStage != previousStage) {
+            actionLog.put("attackStageChange", nextStage - previousStage);
+            if (delta < 0) {
+                triggerStatDropAbilities(target, events);
+                restoreLoweredStatsWithWhiteHerb(target, Map.of("attack", previousStage - nextStage), actionLog, events);
+            }
+            events.add(source.get("name") + " 使 " + target.get("name") + " 的攻击"
                     + (Math.abs(nextStage - previousStage) >= 2 ? "大幅" : "") + "下降了");
             return true;
         }
@@ -3056,6 +3090,23 @@ final class BattleConditionSupport {
             actionLog.put(logKey, true);
             events.add(target.get("name") + " 的清净护符挡住了" + effectName);
             return true;
+        }
+        // 怪力钳：免疫攻击下降（不挡其他能力）；健壮胸肌：免疫防御下降
+        if (effectName != null && effectName.contains("攻击")) {
+            if (hasAbility(target, "hyper-cutter", "hyper cutter")) {
+                actionLog.put(logKey, true);
+                actionLog.put("ability", engine.abilityName(target));
+                events.add(target.get("name") + " 的怪力钳特性挡住了" + effectName);
+                return true;
+            }
+        }
+        if (effectName != null && effectName.contains("防御")) {
+            if (hasAbility(target, "big-pecks", "big pecks")) {
+                actionLog.put(logKey, true);
+                actionLog.put("ability", engine.abilityName(target));
+                events.add(target.get("name") + " 的健壮胸肌特性挡住了" + effectName);
+                return true;
+            }
         }
         if (EffectRegistry.dispatchStatDropBlocked(target)) {
             actionLog.put(logKey, true);

@@ -542,6 +542,30 @@ public class BattleEngine {
         return MoveRegistry.isFakeTears(move);
     }
 
+    boolean isEerieImpulse(Map<String, Object> move) {
+        return MoveRegistry.isEerieImpulse(move);
+    }
+
+    boolean isNobleRoar(Map<String, Object> move) {
+        return MoveRegistry.isNobleRoar(move);
+    }
+
+    boolean isScaryFace(Map<String, Object> move) {
+        return MoveRegistry.isScaryFace(move);
+    }
+
+    boolean isCottonSpore(Map<String, Object> move) {
+        return MoveRegistry.isCottonSpore(move);
+    }
+
+    boolean isFeatherDance(Map<String, Object> move) {
+        return MoveRegistry.isFeatherDance(move);
+    }
+
+    boolean isCharm(Map<String, Object> move) {
+        return MoveRegistry.isCharm(move);
+    }
+
     boolean isLeechSeed(Map<String, Object> move) {
         return MoveRegistry.isLeechSeed(move);
     }
@@ -1219,8 +1243,10 @@ public class BattleEngine {
             events.add(target.get("name") + " 的逃脱按钮被触发");
         }
 
-        // Red Card: forces attacker to switch when holder is hit
-        if ("red-card".equals(item) && actualDamage > 0 && !itemConsumed(target)) {
+        // Red Card: forces attacker to switch when holder is hit by a CONTACT move (VGC/Showdown)
+        // 红牌仅在受到接触类招式伤害时触发
+        if ("red-card".equals(item) && actualDamage > 0 && !itemConsumed(target)
+                && isContactMove(move)) {
             consumeItem(target);
             actionLog.put("redCard", true);
             events.add(target.get("name") + " 的红牌迫使对方交换宝可梦");
@@ -1486,11 +1512,11 @@ public class BattleEngine {
         if (!moveName.isBlank()) {
             usedMoves.add(moveName);
         }
-        // 节拍器追踪连续使用同一招式的次数
+        // 节拍器追踪连续使用同一招式的次数（VGC：每连续一次 +10%，第 10 次封顶 2.0x）
         if ("metronome".equals(heldItem(mon))) {
             if (currentMove.equalsIgnoreCase(lastMove) && !lastMove.isBlank()) {
-                int consecutive = toInt(mon.get("metronomeCount"), 1);
-                mon.put("metronomeCount", Math.min(6, consecutive + 1));
+                int consecutive = Math.max(1, toInt(mon.get("metronomeCount"), 1));
+                mon.put("metronomeCount", Math.min(10, consecutive + 1));
             } else {
                 mon.put("metronomeCount", 0);
             }

@@ -407,6 +407,13 @@ public final class EffectRegistry {
                 return fieldActive(ctx.state, "sandTurns") && ctx.moveTypeIs(ROCK, GROUND, STEEL) ? mod * 1.3 : mod;
             }
         });
+        // Snow Force: 雪天中冰系 x1.3（沙之力的雪天对称特性）
+        regAbility(new Ab() {
+            public String id() { return "snow-force"; }
+            public double onSourceModifyDamage(AttackContext ctx, double mod) {
+                return fieldActive(ctx.state, "snowTurns") && ctx.moveTypeIs(ICE) ? mod * 1.3 : mod;
+            }
+        });
         // Tinted Lens: 效果不好时 x2
         regAbility(new Ab() {
             public String id() { return "tinted-lens"; }
