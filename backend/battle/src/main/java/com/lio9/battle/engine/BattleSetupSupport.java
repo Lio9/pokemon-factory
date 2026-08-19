@@ -37,14 +37,13 @@ final class BattleSetupSupport {
 
     Map<String, Object> createPreviewState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed,
             String format) {
-        int activeSlotsLimit = switch (format.toLowerCase()) {
-            case "gen9singles", "vgc-singles", "vgc63" -> 1;
-            default -> 2;
-        };
-        int battleTeamSizeVal = switch (format.toLowerCase()) {
-            case "gen9singles", "vgc-singles", "vgc63" -> 3;
-            default -> 4;
-        };
+        // 格式归一化（小写 + 去空格）与白名单校验：非法格式直接抛错，不静默落为双打
+        String normalizedFormat = normalizeFormat(format);
+        validateFormat(normalizedFormat);
+        // VGC 官方对战场次一律为双打（2 活跃/6 选 4）；单打格式仅 gen9singles/vgc-singles
+        boolean isSingle = "gen9singles".equals(normalizedFormat) || "vgc-singles".equals(normalizedFormat);
+        int activeSlotsLimit = isSingle ? 1 : 2;
+        int battleTeamSizeVal = isSingle ? 3 : 4;
         Map<String, Object> state = new LinkedHashMap<>();
         List<Map<String, Object>> playerRoster = previewSupport
                 .normalizeRoster(previewSupport.parseTeam(playerTeamJson));
@@ -53,7 +52,7 @@ final class BattleSetupSupport {
 
         state.put("status", "preview");
         state.put("phase", "team-preview");
-        state.put("format", format);
+        state.put("format", normalizedFormat);
         state.put("seed", seed);
         state.put("level", level);
         state.put("teamSize", 6);
@@ -85,6 +84,28 @@ final class BattleSetupSupport {
         state.put("rounds", new ArrayList<>());
         flowSupport.refreshDerivedState(state);
         return state;
+    }
+
+    /** 支持的对战格式白名单（小写） */
+    private static final Set<String> VALID_FORMATS = Set.of(
+            "vgc-doubles", "vgc-doubles8", "vgc2025", "vgc2024", "vgc2023",
+            "vgc63", "gen9doubles",
+            "gen9singles", "vgc-singles", "singles", "gen9singles-ou"
+    );
+
+    /** 格式归一化：小写 + 去除所有空白/连字符歧义 */
+    private static String normalizeFormat(String format) {
+        if (format == null) return "vgc-doubles";
+        return format.trim().toLowerCase();
+    }
+
+    /** 格式白名单校验：非法格式抛 IllegalArgumentException（对齐 Showdown：只接受已注册格式） */
+    private static void validateFormat(String format) {
+        // vgc63 是 VGC 双打的一个系列标识，不是单打；这里保持其为合法双打格式
+        if (!VALID_FORMATS.contains(format)) {
+            throw new IllegalArgumentException("未知对战格式: " + format
+                    + "（支持: vgc-doubles/vgc63/gen9doubles/gen9singles/vgc-singles 等）");
+        }
     }
 
     Map<String, Object> createBattleState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {
