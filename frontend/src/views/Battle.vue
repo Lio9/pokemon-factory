@@ -197,9 +197,7 @@
 
 <script setup>
 import BattleArena from '../components/BattleArena.vue'
-import BattleActionPanel from '../components/BattleActionPanel.vue'
 import BattleDecisionPanel from '../components/BattleDecisionPanel.vue'
-import BattleHeaderPanel from '../components/BattleHeaderPanel.vue'
 import BattleLeaderboardModal from '../components/BattleLeaderboardModal.vue'
 import BattleSettlementModal from '../components/BattleSettlementModal.vue'
 import ExchangeModal from '../components/ExchangeModal.vue'
