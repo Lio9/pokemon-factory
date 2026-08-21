@@ -280,6 +280,10 @@ function availableSpecialSystems(mon) {
     return false
   })
 }
+function selMoveObj(mon) {
+  const moveName = selectedMoves.value[`slot-${mon.fieldSlot}`]
+  return (mon?.moves || []).find((m) => (m.name_en || m.name) === moveName) || null
+}
 
 // ===== 精灵数据 =====
 const myTeam = computed(() => summary.value?.playerTeam || [])
@@ -364,7 +368,6 @@ function typeName(id) { return tr(typeNameZh(id), typeNameEn(id)) }
 function tgtLabel(tid) {
   switch (tid) { case 4: case 7: return '自身'; case 8: return '随机'; case 9: return '全体'; case 11: return '群'; case 13: return '己方'; case 14: return '全场'; default: return '' }
 }
-function selMoveObj(mon) { return selectedMoveObject(mon) }
 
 // ===== 目标点击 =====
 function onOppClick(mon) { /* could be used for target selection */ }
