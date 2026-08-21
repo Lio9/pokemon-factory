@@ -231,7 +231,6 @@ const { translate: tr } = useLocale()
 const {
   actionHeadline, actionDescription, abandonFactoryRun, availableActionCount,
   battleFormat, busyAction, canConfirmPreview, canConfirmReplacement,
-  availableSpecialSystems, activeSpecialSystemLabel, canUseSpecialSystem,
   canTerastallize, canSubmitMove, confirmPreview, confirmReplacement,
   currentBattleId, currentUser, exchangeCandidates, factoryRun, forfeitBattle,
   handleMobileAction, isAuthenticated, isBusy, isLead, isPicked,
@@ -247,17 +246,40 @@ const {
   selectedRosterIndexes, selectedSwitchTargets, setSelectedSwitchTarget,
   selectedTargets, setSelectedTarget, setBattleFormat, settlement,
   setShowDebugPanel, showContinueFactoryButton, showExchange, showLeaderboard,
-  showResetBattleButton, specialSystemLabel, startAsyncBattle, startBattle,
+  showResetBattleButton, startAsyncBattle, startBattle,
   startFactoryChallenge, statusText, statusTone, submitMove, summary,
   prepareNextFactoryStage, toggleLead, toggleReplacement, toggleRoster
 } = useBattlePageState()
-
-// ===== 格式选项 =====
 const formats = [
   { id: 'vgc-doubles', label: '双打 (64)' },
   { id: 'vgc63', label: '63 单打' },
   { id: 'gen9singles', label: '9代单打' }
 ]
+
+// ===== 特殊系统标签 =====
+function teraTypeLabel(mon) {
+  const tt = mon?.teraType || {}
+  return tt.name || tt.name_en || `Type ${tt.type_id || mon?.teraTypeId || '?'}`
+}
+function specialSystemLabel(sys) {
+  switch (sys) {
+    case 'tera': return '太晶化'
+    case 'mega': return 'Mega'
+    case 'z-move': return 'Z招式'
+    case 'dynamax': return '极巨化'
+    default: return sys || ''
+  }
+}
+function availableSpecialSystems(mon) {
+  return (mon?.specialSystems || []).filter((sys) => {
+    if (sys === 'tera') return !mon?.terastallized && Number(mon?.teraTypeId || mon?.teraType?.type_id || 0) > 0 && !summary.value?.playerTeraUsed
+    if (summary.value?.playerSpecialUsed) return false
+    if (sys === 'mega') return !!mon?.megaEligible && !mon?.megaEvolved
+    if (sys === 'z-move') return !!mon?.zMoveEligible && !mon?.zMoveUsed
+    if (sys === 'dynamax') return !!mon?.dynamaxEligible && !mon?.dynamaxed
+    return false
+  })
+}
 
 // ===== 精灵数据 =====
 const myTeam = computed(() => summary.value?.playerTeam || [])
