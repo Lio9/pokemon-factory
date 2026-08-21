@@ -47,35 +47,39 @@ abstract class AIStrategy {
     }
 
     /**
-     * 计算类型克制系数
+     * 计算类型克制系数（使用引擎真实的 typeModifier）
      */
     protected double calculateTypeEffectiveness(Map<String, Object> defender, int moveTypeId) {
-        // 简化版本：实际应该查询typeEfficacyMapper
-        // 这里返回1.0作为默认值
-        return 1.0;
+        if (moveTypeId <= 0) return 1.0;
+        return engine.typeModifier(defender, moveTypeId);
     }
 
     /**
-     * 预估伤害（简化版）
+     * 预估伤害（使用引擎的 calculateDamage 或简化版 STAB+克制+攻防比）
      */
     protected int estimateDamage(Map<String, Object> attacker, Map<String, Object> defender,
                                  Map<String, Object> move, Map<String, Object> state) {
         int power = engine.toInt(move.get("power"), 0);
         if (power <= 0) return 0;
 
-        // 简化伤害估算：基于威力和HP比例
-        int defenderHp = engine.toInt(defender.get("currentHp"), 0);
-        int defenderMaxHp = engine.toInt(engine.castMap(defender.get("stats")).get("hp"), 1);
-
-        // 基础伤害估算（非常简化）
-        double baseDamage = power * 0.5;
-
-        // 考虑属性克制
         int moveTypeId = engine.toInt(move.get("type_id"), 0);
-        double typeMod = calculateTypeEffectiveness(defender, moveTypeId);
-        baseDamage *= typeMod;
+        boolean isSpecial = engine.toInt(move.get("damage_class_id"), 0) == 2;
+        Map<String, Object> atkStats = engine.castMap(attacker.get("stats"));
+        Map<String, Object> defStats = engine.castMap(defender.get("stats"));
+        int atkStat = isSpecial ? engine.toInt(atkStats.get("specialAttack"), 100) : engine.toInt(atkStats.get("attack"), 100);
+        int defStat = isSpecial ? engine.toInt(defStats.get("specialDefense"), 100) : engine.toInt(defStats.get("defense"), 100);
 
-        return (int) baseDamage;
+        // STAB
+        double stab = 1.0;
+        for (Map<String, Object> t : engine.activeTypes(attacker)) {
+            if (engine.toInt(t.get("type_id"), 0) == moveTypeId) { stab = 1.5; break; }
+        }
+
+        double typeMod = calculateTypeEffectiveness(defender, moveTypeId);
+        if (typeMod <= 0) return 0;
+
+        double base = (2.0 * 50 / 5.0 + 2.0) * power * atkStat / Math.max(1, defStat) / 50.0 + 2.0;
+        return (int) Math.floor(base * stab * typeMod);
     }
 }
 

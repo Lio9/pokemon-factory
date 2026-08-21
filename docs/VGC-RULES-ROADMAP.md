@@ -18,7 +18,7 @@
 | Sev | 问题 | 位置 | 状态 |
 |---|---|---|---|
 | critical | 未知格式字符串静默落为双打，无格式校验 | BattleSetupSupport.java:40-47 | #done（VALID_FORMATS 白名单+IllegalArgumentException） |
-| critical | 缺禁传说/受限宝可梦校验，任意队伍可开战 | BattlePreviewSupport.normalizePokemon / BattleSetupSupport | #todo |
+| critical | 缺禁传说/受限宝可梦校验，任意队伍可开战 | BattlePreviewSupport.normalizePokemon / BattleSetupSupport | #done（RESTRICTED_SPECIES_IDS 67种+每队≤2限制+AI自动截断） |
 | major | vgc63 被误当单打（应双打 2/4） | BattleSetupSupport.java:41,45 | #done（vgc63 不在 isSingle 列表，自动双打 2/4） |
 | major | 传说/幻兽排除过宽且只作用于随机池 | BattleDexMapper.java:33-34 | #todo |
 | major | 缺格式级禁道具（心之水滴）/禁招式（暗黑洞） | ItemHandlers.java:93 / MoveRegistry | #todo |
@@ -44,7 +44,7 @@
 | major | 避雷针/引水优先级低于看我嘛（应特性级优先） | BattleTargetSupport.java:141-144,164-172 | #code（已调整单目标+随机目标） |
 | major | applySleep 把所有睡眠招式按粉末免疫 | BattleConditionSupport.java:210-213 | #code（已限定仅孢子/睡眠粉） |
 | minor | 能力吸引未限定伤害招式（Soak 不该被引水吸引） | BattleTargetSupport.java:252-281 | #code（已加 power<=0 判定） |
-| minor | target_id 13 注释与实现冲突，被计 0.75 spread | BattleDamageSupport.java:608 | #todo |
+| minor | target_id 13 注释与实现冲突，被计 0.75 spread | BattleDamageSupport.java:608 | #done（13=users-field 非攻击，已从 spread 列表移除） |
 | info | spread 0.75 衰减核对通过 | BattleRoundSupport:299-313 | 已确认正确 |
 | info | 坚毅/尾翼无视吸引、破格仅无视引水/避雷针 | BattleTargetSupport:117,136-139 | 已确认正确 |
 
@@ -114,7 +114,7 @@
 | major | 目标选择与招式打分脱节，双打随机挑目标不查免疫 | BattleActionBuilder.java:68-77 | #done（selectBestTargetSlot 类型克制+低血补刀） |
 | major | 换人一维属性最小化 + 随机概率门控 | BattleAiSwitchSupport.java:43-87 | #done（多维评分：typeResist+HP+offense+OHKO惩罚） |
 | major | selectBestDamageMove 忽略命中率/次要效果/必杀线 | BattleDecisionSupport.java:145-185 | #done（+accuracy权重+ailment/flinch加分+KO bonus） |
-| major | 难度宣称能力未实现（伤害预测占位、克制固定 1.0） | AIStrategy.java:52-56 | #todo |
+| major | 难度宣称能力未实现（伤害预测占位、克制固定 1.0） | AIStrategy.java:52-56 | #done（calculateTypeEffectiveness 用 engine.typeModifier，estimateDamage 用 STAB+克制+攻防比） |
 | minor | AI 不用 Protect/撒钉/场地战略 | BattleDecisionSupport.java:194 | #done（selectAIProtectMove：最后存活低血量/队友先制时保护） |
 | minor | 资源招只随机放行无收益权衡 | BattleAISupport.java:47-198 | #todo |
 | info | 换人评估用 base types 而非 activeTypes | BattleAiSwitchSupport.java:212 | #done（已改用 engine.activeTypes） |

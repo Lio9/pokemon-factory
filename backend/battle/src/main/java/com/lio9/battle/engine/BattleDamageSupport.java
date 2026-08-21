@@ -600,12 +600,14 @@ final class BattleDamageSupport {
     /**
      * Spread move modifier for Doubles battles
      * Multi-target moves deal 75% damage in Pokemon Showdown
-     * target_id: 9=all other active, 11=all opponents, 12=all active, 13=all adjacent, 14=all active(field-wide)
+     * target_id: 9=all other active, 11=all opponents, 12=all active, 14=all active(field-wide)
      * target_id 10 = single opponent (NOT spread)
+     * target_id 13 = user's field (Light Screen/Reflect etc.) — NOT spread damage
      */
     double spreadMoveModifier(Map<String, Object> move, Map<String, Object> state) {
         Integer targetId = engine.toInt(move.get("target_id"), 10);
-        boolean isSpreadMove = (targetId == 9 || targetId == 11 || targetId == 12 || targetId == 13 || targetId == 14);
+        // C6: target_id 13 (users-field) is a field effect, NOT a spread attack
+        boolean isSpreadMove = (targetId == 9 || targetId == 11 || targetId == 12 || targetId == 14);
 
         if (isSpreadMove) {
             int spreadTargetCount = engine.toInt(move.get("spreadTargetCount"), 2);
