@@ -56,9 +56,12 @@ public class AIService {
         int normalizedSize = Math.max(4, Math.min(6, size));
         int level = config.getLevel();
 
-        // 扩大候选池，增加选择空间
-        List<Map<String, Object>> candidates = battleDexMapper.selectRandomDefaultForms(normalizedSize * 15);
+        // D6: 用确定性随机（seed）控制候选池打乱顺序，确保同 seed 生成相同队伍
+        // SQL ORDER BY RANDOM() 不可控，改为先取大池再用 seeded Random 打乱
+        List<Map<String, Object>> allCandidates = battleDexMapper.selectRandomDefaultForms(normalizedSize * 30);
         Random random = new Random(seed);
+        java.util.Collections.shuffle(allCandidates, random);
+        List<Map<String, Object>> candidates = allCandidates.subList(0, Math.min(allCandidates.size(), normalizedSize * 15));
         Set<String> excluded = normalizeNames(excludedNames);
 
         // 生成多个候选队伍，选择最平衡的
@@ -208,8 +211,8 @@ public class AIService {
         // 智能选择特性
         pokemon.put("ability", selectBestAbility(abilities, selectedMoves));
 
-        // 智能选择道具
-        String heldItem = selectBestItem(itemPool, pokemon, selectedMoves);
+        // 智能选择道具（D6: 使用 seeded Random 而非 ThreadLocalRandom）
+        String heldItem = selectBestItem(itemPool, pokemon, selectedMoves, random);
         pokemon.put("heldItem", heldItem == null ? "" : heldItem);
         // 道具展示信息（仅供前端预览，引擎仍读 heldItem 字符串）
         if (heldItem != null && !heldItem.isBlank()) {
@@ -484,7 +487,7 @@ public class AIService {
      */
     @SuppressWarnings("unchecked")
     private String selectBestItem(List<String> itemPool, Map<String, Object> pokemon,
-            List<Map<String, Object>> moves) {
+            List<Map<String, Object>> moves, Random random) {
         if (itemPool == null || itemPool.isEmpty()) {
             return null;
         }
@@ -522,7 +525,7 @@ public class AIService {
                 // 高耐久：吃剩饭或突击背心
                 selectedItem = "leftovers";
             } else {
-                selectedItem = itemPool.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(itemPool.size()));
+                selectedItem = itemPool.get(random.nextInt(itemPool.size()));
             }
         }
 

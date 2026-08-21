@@ -57,7 +57,7 @@
 | major | BattleScore 强度评分饱和失真，无法分层 | TeamBalanceEvaluator.java:36,367 | #done（归一化 0-100 加权合并：BST 40%+招式25%+特性15%+道具10%+速度10%） |
 | major | validatePlayability 误拒生命宝珠+火/电 | AIService.java:278-282 | #done（已移除错误的 Life Orb+fire/electric 判定） |
 | minor | 慢速宝可梦可能同时拿突击背心与变化招 | AIService.java:474-475,637-665 | #done（有变化招时改用 leftovers） |
-| minor | seed 无法复现团队（SQL RANDOM + ThreadLocalRandom） | AIService.java:60-61,478 | #todo |
+| minor | seed 无法复现团队（SQL RANDOM + ThreadLocalRandom） | AIService.java:60-61,478 | #done（取大池后 seeded Random shuffle 替代 SQL RANDOM） |
 | minor | AI 从不使用强化招式（剑舞/龙舞等） | BattleDecisionSupport.java:54-116 | #done（selectAISetupMove 已实现） |
 | minor | Z 招式覆盖已选道具且 heldItemInfo 陈旧 | AIService.java:216,859-862 | #todo |
 
