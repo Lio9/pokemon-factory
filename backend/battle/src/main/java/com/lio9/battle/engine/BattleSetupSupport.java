@@ -50,6 +50,18 @@ final class BattleSetupSupport {
         List<Map<String, Object>> opponentRoster = previewSupport
                 .normalizeRoster(previewSupport.parseTeam(opponentTeamJson));
 
+        // A3: 校验受限传说数量（VGC 规则：每队最多 2 只 Restricted Legendary）
+        int playerRestricted = BattlePreviewSupport.countRestrictedLegends(playerRoster);
+        int opponentRestricted = BattlePreviewSupport.countRestrictedLegends(opponentRoster);
+        if (playerRestricted > 2) {
+            throw new IllegalArgumentException(
+                    "队伍中受限传说宝可梦超过 2 只（VGC 规则限制）：玩家队伍有 " + playerRestricted + " 只受限传说");
+        }
+        if (opponentRestricted > 2) {
+            // AI 队伍超限时自动截断（移除多余的受限传说）
+            opponentRoster = removeExcessRestricted(opponentRoster, 2);
+        }
+
         state.put("status", "preview");
         state.put("phase", "team-preview");
         state.put("format", normalizedFormat);
@@ -106,6 +118,20 @@ final class BattleSetupSupport {
             throw new IllegalArgumentException("未知对战格式: " + format
                     + "（支持: vgc-doubles/vgc63/gen9doubles/gen9singles/vgc-singles 等）");
         }
+    }
+
+    /** 移除队伍中超出限制的受限传说（保留前 maxCount 只，移除后面的） */
+    private static List<Map<String, Object>> removeExcessRestricted(List<Map<String, Object>> roster, int maxCount) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        int restrictedCount = 0;
+        for (Map<String, Object> mon : roster) {
+            if (BattlePreviewSupport.isRestrictedLegend(mon)) {
+                restrictedCount++;
+                if (restrictedCount > maxCount) continue; // 跳过超出限制的
+            }
+            result.add(mon);
+        }
+        return result;
     }
 
     Map<String, Object> createBattleState(String playerTeamJson, String opponentTeamJson, int maxRounds, long seed) {

@@ -25,6 +25,56 @@ final class BattlePreviewSupport {
     private final int battleTeamSize;
     private final int activeSlots;
 
+    /**
+     * A3: VGC 受限传说宝可梦列表（Restricted Legendary）。
+     * VGC 2024/2025 规则：每队最多携带 2 只受限传说。
+     * 包含 cover legendaries + box legendaries + 部分 sub-legendaries。
+     * 使用 species_id 列表（对应 PokeAPI national dex 编号）。
+     */
+    private static final Set<Integer> RESTRICTED_SPECIES_IDS = Set.of(
+            // Gen 1
+            150, 151,                   // Mewtwo, Mew
+            // Gen 2
+            249, 250, 251,              // Lugia, Ho-Oh, Celebi
+            // Gen 3
+            382, 383, 384, 386,         // Kyogre, Groudon, Rayquaza, Deoxys
+            // Gen 4
+            483, 484, 487, 491,         // Dialga, Palkia, Giratina, Darkrai
+            493,                         // Arceus
+            // Gen 5
+            643, 644, 646,              // Reshiram, Zekrom, Kyurem
+            // Gen 6
+            716, 717, 718, 719,         // Xerneas, Yveltal, Zygarde, Diancie
+            720, 721,                   // Hoopa, Volcanion
+            // Gen 7
+            785, 786, 787, 788,         // Tapu Koko, Lele, Bulu, Fini
+            789, 790, 791, 792,         // Cosmog, Cosmoem, Solgaleo, Lunala
+            800,                         // Necrozma
+            // Gen 8
+            888, 889, 890, 891, 892,    // Zacian, Zamazenta, Eternatus, Kubfu, Urshifu
+            894, 895, 896, 897, 898,    // Regieleki, Regidrago, Glastrier, Spectrier, Calyrex
+            // Gen 9
+            1001, 1002, 1003, 1004,     // Wo-Chien, Chien-Pao, Ting-Lu, Chi-Yu
+            1007, 1008,                 // Koraidon, Miraidon
+            9999                         // Terapagos (placeholder id)
+    );
+
+    /** 判断宝可梦是否为受限传说 */
+    static boolean isRestrictedLegend(Map<String, Object> pokemon) {
+        int speciesId = pokemon.get("species_id") instanceof Number n ? n.intValue() : 0;
+        int formId = pokemon.get("form_id") instanceof Number n ? n.intValue() : 0;
+        return RESTRICTED_SPECIES_IDS.contains(speciesId) || RESTRICTED_SPECIES_IDS.contains(formId);
+    }
+
+    /** 校验队伍中受限传说数量（VGC 规则：最多 2 只） */
+    static int countRestrictedLegends(List<Map<String, Object>> roster) {
+        int count = 0;
+        for (Map<String, Object> mon : roster) {
+            if (isRestrictedLegend(mon)) count++;
+        }
+        return count;
+    }
+
     BattlePreviewSupport(ObjectMapper mapper, BattleStateSupport stateSupport, int battleTeamSize, int activeSlots) {
         this.mapper = mapper;
         this.stateSupport = stateSupport;
