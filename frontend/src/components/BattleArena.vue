@@ -135,6 +135,7 @@
                 :class="canTarget ? '' : 'cursor-default pointer-events-none'"
                 :title="canTarget ? tr('点击选择为目标', 'Click to target') : ''"
                 @click="onTargetClick(mon)"
+                @contextmenu.prevent="openMonDetail(mon)"
               >
                 <img
                   :src="spriteUrl(mon, false)"
@@ -144,6 +145,13 @@
                   @error="onSpriteError($event, mon, false)"
                 >
               </button>
+              <!-- 详情按钮 -->
+              <button
+                type="button"
+                class="absolute right-0 top-0 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-slate-400/60 bg-slate-800/80 text-white text-xs shadow transition-all hover:bg-slate-600 hover:scale-110"
+                :title="tr('查看详情', 'View details')"
+                @click.stop="openMonDetail(mon)"
+              >ℹ</button>
               <!-- 倒下动画 -->
               <div
                 v-if="mon.fainted"
@@ -171,7 +179,15 @@
                   class="player-sprite h-28 w-28 object-contain sm:h-36 sm:w-36"
                   :class="[mon.fainted ? 'sprite-fainted' : 'sprite-idle']"
                   @error="onSpriteError($event, mon, true)"
+                  @contextmenu.prevent="openMonDetail(mon)"
                 >
+                <!-- 详情按钮 -->
+                <button
+                  type="button"
+                  class="absolute right-0 top-0 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-slate-400/60 bg-slate-800/80 text-white text-xs shadow transition-all hover:bg-slate-600 hover:scale-110"
+                  :title="tr('查看详情', 'View details')"
+                  @click.stop="openMonDetail(mon)"
+                >ℹ</button>
                 <div
                   v-if="mon.fainted"
                   class="absolute inset-0 flex items-end justify-center pb-2"
@@ -444,13 +460,20 @@
     >
       {{ tr('暂无对战数据', 'No battle data yet') }}
     </div>
+
+    <!-- 精灵详情弹窗（G3） -->
+    <PokemonDetailPopover
+      v-model:visible="showDetailDialog"
+      :pokemon="detailPokemon"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import { sprites } from '../services/sprites'
+import PokemonDetailPopover from './PokemonDetailPopover.vue'
 
 const { translate: tr } = useLocale()
 
@@ -487,6 +510,15 @@ const props = defineProps({
 function onTargetClick(mon) {
   if (!props.canTarget) return
   emit('target-select', mon.fieldSlot)
+}
+
+// 点击精灵查看详情（G3）
+const showDetailDialog = ref(false)
+const detailPokemon = ref(null)
+function openMonDetail(mon) {
+  // 将场上精灵数据映射为 PokemonDetailPopover 期望的格式
+  detailPokemon.value = mon
+  showDetailDialog.value = true
 }
 
 const statusChipClass = computed(() => {

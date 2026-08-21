@@ -432,6 +432,7 @@
               :move="move"
               :move-index="moveIdx"
               :selected="selectedMoves[`slot-${mon.fieldSlot}`] === (move.name_en || move.name)"
+              :effectiveness="moveEffectivenessFor(mon, move)"
               @select="setSelectedMove(mon.fieldSlot, move.name_en || move.name)"
             />
           </div>
@@ -600,7 +601,7 @@ import MoveButton from './MoveButton.vue'
 import PokemonDetailPopover from './PokemonDetailPopover.vue'
 import PokeHoverCard from './PokeHoverCard.vue'
 import { sprites } from '../services/sprites'
-import { typeColor } from '../services/typeChart'
+import { typeColor, getTypeEffectiveness, resolveTypeId } from '../services/typeChart'
 
 const { translate: tr } = useLocale()
 
@@ -653,6 +654,28 @@ function onPreviewSpriteError(event, pokemon) {
 function benchName(teamIndex) {
   const mon = playerBenchOptions.value?.find((o) => o.value === Number(teamIndex))
   return mon?.label || tr('宝可梦 {n}', 'Pokemon {n}', { n: Number(teamIndex) + 1 })
+}
+
+// G9: 计算单个招式对在场对手的最大克制倍率（用于招式按钮着色）
+function moveEffectivenessFor(mon, move) {
+  if (!move || Number(move?.power || 0) <= 0) return null
+  const moveTypeId = Number(move?.type_id || 0)
+  if (moveTypeId <= 0) return null
+  const targets = opponentActiveMons.value || []
+  if (!targets.length) return null
+  const eff = getTypeEffectiveness()
+  let maxMult = 0
+  for (const t of targets) {
+    const types = t?.types || []
+    let mult = 1
+    for (const tp of types) {
+      const tid = typeof tp === 'object' ? Number(tp.type_id) : Number(tp)
+      const factor = eff[moveTypeId]?.[resolveTypeId(tid)] ?? 100
+      mult *= (factor / 100)
+    }
+    if (mult > maxMult) maxMult = mult
+  }
+  return maxMult > 0 ? maxMult : null
 }
 
 function moveName(moveKey, mon) {

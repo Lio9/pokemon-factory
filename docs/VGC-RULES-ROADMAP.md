@@ -94,14 +94,14 @@
 |---|---|---|---|
 | critical | 完全缺失能力阶级(+X/-X)显示 | BattleArena.vue conditionBadges:655-699 / BattleDecisionPanel:293-316 | #done（+N Atk/-N SpD 蓝/红色徽章） |
 | major | 天气/场地/双墙/钉子无剩余回合数 | BattleArena.vue fieldEffectChips:709-741 | #done（显示 Nt 后缀如 "雨天 3T"） |
-| major | 无法点击在场精灵查看完整配置 | BattleArena.vue:130-146 | #todo |
+| major | 无法点击在场精灵查看完整配置 | BattleArena.vue:130-146 | #done（ℹ按钮+右键打开 PokemonDetailPopover） |
 | major | 精灵无攻击/受击动画 | BattleArena.vue:770-808 | #todo |
 | major | 键盘快捷键 L 标记首发起死代码 | Battle.vue:490-494 | #todo |
 | minor | 移动端战场横向溢出 | BattleArena.vue:817 | #todo |
 | minor | 回合日志不可折叠、无限加长 | BattleArena.vue:363-431 | #todo |
 | minor | 队伍预览放大镜按钮视觉噪音 | BattleDecisionPanel.vue:62-87 | #todo |
 | info | 决策面板在场精灵头部信息过少 | BattleDecisionPanel.vue:293-316 | #todo |
-| info | 招式按钮无按克制着色 | MoveButton.vue | #todo |
+| info | 招式按钮无按克制着色 | MoveButton.vue | #done（绿/红/蓝边框按克制倍率着色） |
 | info | 天气视觉仅雨有粒子动画 | BattleArena.vue:942-956 | #todo |
 | info | 无回合计时/时钟 | BattleArena.vue | #todo |
 
