@@ -383,6 +383,7 @@ export function useBattlePageState() {
    */
   function applyBattlePayload(payload) {
     const normalized = normalizeBattlePayload(payload)
+    console.log('[Battle] applyBattlePayload:', { status: normalized.summary?.status, phase: normalized.summary?.phase, battleId: normalized.battleId, hasTeam: !!normalized.summary?.playerTeam?.length })
     summary.value = normalized.summary
     if (normalized.battleId) {
       currentBattleId.value = normalized.battleId
@@ -495,10 +496,12 @@ export function useBattlePageState() {
     }
 
     await runBusy('confirm-preview', async () => {
+      console.log('[Battle] confirmPreview: calling bat.preview with', currentBattleId.value)
       const res = await bat.preview(currentBattleId.value, {
         pickedRosterIndexes: selectedRosterIndexes.value,
         leadRosterIndexes: leadRosterIndexes.value
       })
+      console.log('[Battle] confirmPreview: got response', { status: res?.summary?.status, hasTeam: !!res?.summary?.playerTeam?.length })
       applyBattlePayload(res)
       resultText.value = JSON.stringify(res, null, 2)
     }).catch((error) => {
