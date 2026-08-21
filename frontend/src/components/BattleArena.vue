@@ -37,7 +37,7 @@
 
     <!-- ===== 正作风格战场 ===== -->
     <template v-if="summary">
-      <div class="battle-stage relative overflow-hidden rounded-[24px] border-2 border-slate-700/60 select-none">
+      <div class="battle-stage relative overflow-hidden rounded-[24px] border-2 border-slate-700/60 select-none max-w-full">
         <!-- 背景层（正作风格天空+草地） -->
         <div class="battle-bg absolute inset-0" />
         <!-- 天气视觉层 -->
@@ -364,11 +364,17 @@
         <article
           v-for="(round, roundIndex) in summary.rounds"
           :key="`${round.round}-${roundIndex}`"
-          class="rounded-2xl bg-white p-4 shadow-sm"
-          :class="roundIndex === summary.rounds.length - 1 && summary.status !== 'completed' ? 'round-current border-2' : ''"
+          class="rounded-2xl bg-white shadow-sm"
+          :class="roundIndex === summary.rounds.length - 1 && summary.status !== 'completed' ? 'round-current border-2' : 'border border-slate-100'"
         >
+          <details
+            :open="roundIndex >= summary.rounds.length - 2"
+            class="group"
+          >
+            <summary class="cursor-pointer list-none rounded-2xl p-4 transition-colors hover:bg-slate-50/60">
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2">
+              <span class="text-slate-400 text-xs transition-transform group-open:rotate-90">▶</span>
               <div class="font-semibold text-slate-900">
                 {{ round.round === 0 ? tr('入场阶段', 'Entry phase') : tr(`第 ${round.round} 回合`, `Round ${round.round}`) }}
               </div>
@@ -381,6 +387,8 @@
               {{ tr('{count} 条事件', '{count} events', { count: (round.events || []).length }) }}
             </span>
           </div>
+            </summary>
+            <div class="px-4 pb-4">
 
           <!-- 行动摘要 -->
           <div
@@ -444,6 +452,8 @@
               <span>{{ event }}</span>
             </div>
           </div>
+          </div>
+          </details>
         </article>
       </div>
       <div

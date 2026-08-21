@@ -116,6 +116,11 @@ final class BattleDecisionSupport {
         if (weatherMove != null && random.nextDouble() < strategicChance(0.35d)) {
             return weatherMove;
         }
+        // H5: AI 使用 Protect（最后一只+低血量时提高概率）
+        Map<String, Object> protectMove = aiSupport.selectAIProtectMove(mon, state, playerSide, currentRound);
+        if (protectMove != null && random.nextDouble() < strategicChance(0.25d)) {
+            return protectMove;
+        }
         Map<String, Object> best = selectBestDamageMove(mon, state, playerSide, currentRound);
         if (best == null) {
             best = defaultMoveSelection(mon, currentRound);

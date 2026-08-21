@@ -97,8 +97,8 @@
 | major | 无法点击在场精灵查看完整配置 | BattleArena.vue:130-146 | #done（ℹ按钮+右键打开 PokemonDetailPopover） |
 | major | 精灵无攻击/受击动画 | BattleArena.vue:770-808 | #todo |
 | major | 键盘快捷键 L 标记首发起死代码 | Battle.vue:490-494 | #done（L键循环切换首发标记） |
-| minor | 移动端战场横向溢出 | BattleArena.vue:817 | #todo |
-| minor | 回合日志不可折叠、无限加长 | BattleArena.vue:363-431 | #todo |
+| minor | 移动端战场横向溢出 | BattleArena.vue:817 | #done（max-w-full + overflow-hidden） |
+| minor | 回合日志不可折叠、无限加长 | BattleArena.vue:363-431 | #done（details/summary 折叠，默认展开最近2回合） |
 | minor | 队伍预览放大镜按钮视觉噪音 | BattleDecisionPanel.vue:62-87 | #todo |
 | info | 决策面板在场精灵头部信息过少 | BattleDecisionPanel.vue:293-316 | #todo |
 | info | 招式按钮无按克制着色 | MoveButton.vue | #done（绿/红/蓝边框按克制倍率着色） |
@@ -115,7 +115,7 @@
 | major | 换人一维属性最小化 + 随机概率门控 | BattleAiSwitchSupport.java:43-87 | #done（多维评分：typeResist+HP+offense+OHKO惩罚） |
 | major | selectBestDamageMove 忽略命中率/次要效果/必杀线 | BattleDecisionSupport.java:145-185 | #done（+accuracy权重+ailment/flinch加分+KO bonus） |
 | major | 难度宣称能力未实现（伤害预测占位、克制固定 1.0） | AIStrategy.java:52-56 | #todo |
-| minor | AI 不用 Protect/撒钉/场地战略 | BattleDecisionSupport.java:194 | #todo |
+| minor | AI 不用 Protect/撒钉/场地战略 | BattleDecisionSupport.java:194 | #done（selectAIProtectMove：最后存活低血量/队友先制时保护） |
 | minor | 资源招只随机放行无收益权衡 | BattleAISupport.java:47-198 | #todo |
 | info | 换人评估用 base types 而非 activeTypes | BattleAiSwitchSupport.java:212 | #done（已改用 engine.activeTypes） |
 | info | heavilyDebuffed 判断粗糙 | BattleAiSwitchSupport.java:40-60 | #done（加权攻击/速度下降×2） |

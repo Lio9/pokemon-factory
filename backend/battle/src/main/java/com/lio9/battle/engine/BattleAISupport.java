@@ -198,6 +198,60 @@ final class BattleAISupport {
         return null;
     }
 
+    /**
+     * H5: AI 选择 Protect（保护）。
+     * 条件：最后一只存活时低血量，或上回合未使用保护（防连续保护失败）。
+     */
+    Map<String, Object> selectAIProtectMove(Map<String, Object> mon, Map<String, Object> state,
+            boolean playerSide, int currentRound) {
+        // 不在第一回合使用保护（浪费）
+        if (currentRound <= 1) return null;
+
+        // 检查保护连续成功率递减
+        int streak = engine.toInt(mon.get("protectionStreak"), 0);
+        if (streak >= 2) return null; // 连续保护2次后成功率太低，不再尝试
+
+        int currentHp = engine.toInt(mon.get("currentHp"), 0);
+        int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+        int hpPercent = maxHp > 0 ? currentHp * 100 / maxHp : 100;
+
+        // 条件1：最后一只存活 + 低血量 → 保护争取回合
+        int aliveCount = 0;
+        for (Integer slot : engine.activeSlots(state, playerSide)) {
+            List<Map<String, Object>> team = engine.team(state, playerSide);
+            if (slot != null && slot >= 0 && slot < team.size()
+                    && engine.toInt(team.get(slot).get("currentHp"), 0) > 0) {
+                aliveCount++;
+            }
+        }
+        boolean lastMonLowHp = aliveCount <= 1 && hpPercent <= 40;
+
+        // 条件2：场上队友使用了先制招式（如假勇敢）时保护自己
+        boolean allyUsingPriority = false;
+        for (Integer slot : engine.activeSlots(state, playerSide)) {
+            List<Map<String, Object>> team = engine.team(state, playerSide);
+            if (slot == null || slot < 0 || slot >= team.size()) continue;
+            Map<String, Object> ally = team.get(slot);
+            if (ally == mon) continue;
+            for (Map<String, Object> move : engine.moves(ally)) {
+                if (engine.toInt(move.get("priority"), 0) > 0 && engine.toInt(move.get("power"), 0) > 0) {
+                    allyUsingPriority = true;
+                    break;
+                }
+            }
+        }
+
+        if (!lastMonLowHp && !allyUsingPriority) return null;
+
+        for (Map<String, Object> move : engine.moves(mon)) {
+            if (MoveRegistry.isProtect(move) && engine.cooldown(mon, move) == 0
+                    && engine.canUseMove(mon, move, currentRound)) {
+                return move;
+            }
+        }
+        return null;
+    }
+
     Map<String, Object> selectAIRedirectionMove(Map<String, Object> mon, Map<String, Object> state,
             boolean playerSide, int currentRound) {
         if (engine.activeSlots(state, playerSide).size() < 2) {
