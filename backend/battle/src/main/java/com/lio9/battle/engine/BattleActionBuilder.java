@@ -66,15 +66,7 @@ final class BattleActionBuilder {
             Map<String, Object> move = engine.withEffectivePriority(mon, engine.selectAIMove(mon, random, state, false, currentRound));
             move = boostGrassyGlide(state, move);
             List<Integer> playerActive = engine.activeSlots(state, true);
-            int targetFieldSlot;
-            if (playerActive.size() <= 1) {
-                targetFieldSlot = 0;
-            } else {
-                targetFieldSlot = random.nextBoolean() ? fieldSlot : (fieldSlot == 0 ? 1 : 0);
-                if (targetFieldSlot >= playerActive.size()) {
-                    targetFieldSlot = 0;
-                }
-            }
+            int targetFieldSlot = selectBestTargetSlot(mon, move, state, playerActive, random);
             int targetTeamIndex = engine.targetIndex(state, true, targetFieldSlot);
             String specialSystemRequested = shouldAIUseSpecialSystem(state, mon, move, currentRound);
             actions.add(BattleEngine.Action.moveAction("opponent", monIndex, fieldSlot, targetTeamIndex,
@@ -174,5 +166,52 @@ final class BattleActionBuilder {
             }
         }
         return "mega".equals(system) || "dynamax".equals(system);
+    }
+
+    /**
+     * AI 智能选目标（H3）：按类型克制 × 剩余HP 选最优攻击目标。
+     * 替代之前随机选择，让双打 AI 打弱点、补刀更精准。
+     */
+    private int selectBestTargetSlot(Map<String, Object> mon, Map<String, Object> move,
+            Map<String, Object> state, List<Integer> playerActive, Random random) {
+        if (playerActive.size() <= 1) {
+            return 0;
+        }
+        List<Map<String, Object>> playerTeam = engine.team(state, true);
+        int moveTypeId = engine.toInt(move.get("type_id"), 0);
+        int power = engine.toInt(move.get("power"), 0);
+
+        int bestSlot = 0;
+        double bestScore = -1.0d;
+
+        for (int fieldSlot = 0; fieldSlot < playerActive.size(); fieldSlot++) {
+            int teamIdx = playerActive.get(fieldSlot);
+            if (teamIdx < 0 || teamIdx >= playerTeam.size()) continue;
+            Map<String, Object> target = playerTeam.get(teamIdx);
+            if (engine.toInt(target.get("currentHp"), 0) <= 0) continue;
+
+            double score = 0.0d;
+            if (power > 0 && moveTypeId > 0) {
+                // 类型克制系数
+                double typeMod = engine.typeModifier(target, moveTypeId);
+                score = typeMod * power;
+                // 低血量加分（补刀优先）
+                int hp = engine.toInt(target.get("currentHp"), 0);
+                int maxHp = engine.toInt(engine.castMap(target.get("stats")).get("hp"), 1);
+                if (maxHp > 0) {
+                    double hpRatio = (double) hp / maxHp;
+                    if (hpRatio < 0.3) score += 30.0d; // 低血量目标优先
+                }
+            } else {
+                // 变化招式：默认选第一个
+                score = fieldSlot == 0 ? 1.0d : 0.5d;
+            }
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestSlot = fieldSlot;
+            }
+        }
+        return bestSlot;
     }
 }

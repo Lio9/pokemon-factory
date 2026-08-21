@@ -518,4 +518,73 @@ final class BattleAISupport {
         String nameEn = String.valueOf(move.get("name_en"));
         return "will-o-wisp".equalsIgnoreCase(nameEn) || "will o wisp".equalsIgnoreCase(nameEn);
     }
+
+    // ── 强化/Setup 招式支持 (H2) ──────────────────────────────────────────
+
+    private static final java.util.Set<String> SETUP_MOVES = java.util.Set.of(
+            "swords-dance", "dragon-dance", "bulk-up", "hone-claws", "howl", "coil",
+            "nasty-plot", "calm-mind", "quiver-dance", "tail-glow", "work-up",
+            "agility", "rock-polish", "shell-smash", "shift-gear", "iron-defense",
+            "amnesia", "cosmic-power", "stockpile"
+    );
+
+    private boolean isSetupMove(Map<String, Object> move) {
+        String nameEn = String.valueOf(move.get("name_en")).toLowerCase();
+        return SETUP_MOVES.contains(nameEn);
+    }
+
+    /**
+     * AI 选择强化招式：仅在安全时（HP>60%、无即死威胁、未满强化）使用。
+     */
+    Map<String, Object> selectAISetupMove(Map<String, Object> mon, Map<String, Object> state,
+            boolean playerSide, int currentRound) {
+        // HP 检查：低于 60% 不冒险强化
+        int currentHp = engine.toInt(mon.get("currentHp"), 0);
+        int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+        if (maxHp > 0 && currentHp * 100 / maxHp < 60) {
+            return null;
+        }
+
+        // 已满强化不再叠加
+        Map<String, Object> stages = engine.castMap(mon.get("statStages"));
+        int atkStage = engine.toInt(stages.get("attack"), 0);
+        int spaStage = engine.toInt(stages.get("specialAttack"), 0);
+        int speStage = engine.toInt(stages.get("speed"), 0);
+        if (atkStage >= 4 && spaStage >= 4) {
+            return null; // 双攻都已很高
+        }
+
+        // 威胁检查：对手是否有能造成 OHKO 的招式
+        List<Integer> oppSlots = engine.activeSlots(state, !playerSide);
+        List<Map<String, Object>> oppTeam = engine.team(state, !playerSide);
+        boolean ohkoDanger = false;
+        for (Integer slot : oppSlots) {
+            if (slot == null || slot < 0 || slot >= oppTeam.size()) continue;
+            Map<String, Object> opp = oppTeam.get(slot);
+            if (engine.toInt(opp.get("currentHp"), 0) <= 0) continue;
+            for (Map<String, Object> oppMove : engine.moves(opp)) {
+                int oppPower = engine.toInt(oppMove.get("power"), 0);
+                if (oppPower <= 0) continue;
+                int oppTypeId = engine.toInt(oppMove.get("type_id"), 0);
+                double typeMod = engine.typeModifier(mon, oppTypeId);
+                if (typeMod >= 2.0 && oppPower >= 80) {
+                    ohkoDanger = true;
+                    break;
+                }
+            }
+            if (ohkoDanger) break;
+        }
+        if (ohkoDanger) {
+            return null;
+        }
+
+        // 找第一个可用的强化招式
+        for (Map<String, Object> move : engine.moves(mon)) {
+            if (isSetupMove(move) && engine.cooldown(mon, move) == 0
+                    && engine.canUseMove(mon, move, currentRound)) {
+                return move;
+            }
+        }
+        return null;
+    }
 }

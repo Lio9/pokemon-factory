@@ -472,6 +472,11 @@ export function useBattlePageState() {
       } catch (error) {
         requestError.value = error?.message || String(error)
         resultText.value = translate('刷新失败: {message}', 'Refresh failed: {message}', '', { message: error.message || error })
+        // 后端重启后旧 battleId 会 404：清除残留状态，回到起始界面
+        if (!summary.value && currentBattleId.value) {
+          currentBattleId.value = null
+          clearManualBattle()
+        }
       }
       return
     }

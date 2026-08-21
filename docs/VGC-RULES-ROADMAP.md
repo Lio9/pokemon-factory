@@ -92,8 +92,8 @@
 
 | Sev | 问题 | 位置 | 状态 |
 |---|---|---|---|
-| critical | 完全缺失能力阶级(+X/-X)显示 | BattleArena.vue conditionBadges:655-699 / BattleDecisionPanel:293-316 | #todo |
-| major | 天气/场地/双墙/钉子无剩余回合数 | BattleArena.vue fieldEffectChips:709-741 | #todo |
+| critical | 完全缺失能力阶级(+X/-X)显示 | BattleArena.vue conditionBadges:655-699 / BattleDecisionPanel:293-316 | #done（+N Atk/-N SpD 蓝/红色徽章） |
+| major | 天气/场地/双墙/钉子无剩余回合数 | BattleArena.vue fieldEffectChips:709-741 | #done（显示 Nt 后缀如 "雨天 3T"） |
 | major | 无法点击在场精灵查看完整配置 | BattleArena.vue:130-146 | #todo |
 | major | 精灵无攻击/受击动画 | BattleArena.vue:770-808 | #todo |
 | major | 键盘快捷键 L 标记首发起死代码 | Battle.vue:490-494 | #todo |
@@ -109,11 +109,11 @@
 
 | Sev | 问题 | 位置 | 状态 |
 |---|---|---|---|
-| critical | AI 难度体系（Easy/Normal/Hard/Expert）是死代码，真实路径无难度参数，四档零差异 | AIStrategy.java / AIDifficulty.java / BattleActionBuilder.java:49 | #todo |
-| critical | AI 从不主动使用强化技（剑舞/冥想/龙舞等） | BattleDecisionSupport.java:54-142 | #todo |
-| major | 目标选择与招式打分脱节，双打随机挑目标不查免疫 | BattleActionBuilder.java:68-77 | #todo |
+| critical | AI 难度体系（Easy/Normal/Hard/Expert）是死代码，真实路径无难度参数，四档零差异 | AIStrategy.java / AIDifficulty.java / BattleActionBuilder.java:49 | #done（难度已接入 selectAIMove，strategicChance 四档缩放） |
+| critical | AI 从不主动使用强化技（剑舞/冥想/龙舞等） | BattleDecisionSupport.java:54-142 | #done（新增 selectAISetupMove 16 种强化招式+安全判定） |
+| major | 目标选择与招式打分脱节，双打随机挑目标不查免疫 | BattleActionBuilder.java:68-77 | #done（selectBestTargetSlot 类型克制+低血补刀） |
 | major | 换人一维属性最小化 + 随机概率门控 | BattleAiSwitchSupport.java:43-87 | #todo |
-| major | selectBestDamageMove 忽略命中率/次要效果/必杀线 | BattleDecisionSupport.java:145-185 | #todo |
+| major | selectBestDamageMove 忽略命中率/次要效果/必杀线 | BattleDecisionSupport.java:145-185 | #done（+accuracy权重+ailment/flinch加分+KO bonus） |
 | major | 难度宣称能力未实现（伤害预测占位、克制固定 1.0） | AIStrategy.java:52-56 | #todo |
 | minor | AI 不用 Protect/撒钉/场地战略 | BattleDecisionSupport.java:194 | #todo |
 | minor | 资源招只随机放行无收益权衡 | BattleAISupport.java:47-198 | #todo |

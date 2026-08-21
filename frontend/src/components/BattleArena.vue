@@ -696,6 +696,23 @@ function conditionBadges(mon) {
   if (mon.megaEvolved) {
     badges.push({ label: tr('Mega', 'Mega'), color: '#7c3aed' })
   }
+  // 能力阶级显示（G1：Showdown 风格 +2 Atk / -1 SpA 等）
+  const stages = mon.statStages || {}
+  const stageNames = {
+    attack: tr('物攻', 'Atk'),
+    specialAttack: tr('特攻', 'SpA'),
+    defense: tr('物防', 'Def'),
+    specialDefense: tr('特防', 'SpD'),
+    speed: tr('速度', 'Spe')
+  }
+  for (const [key, name] of Object.entries(stageNames)) {
+    const val = Number(stages[key] || 0)
+    if (val > 0) {
+      badges.push({ label: `+${val} ${name}`, color: '#2563eb' })
+    } else if (val < 0) {
+      badges.push({ label: `${val} ${name}`, color: '#dc2626' })
+    }
+  }
   return badges
 }
 
@@ -710,8 +727,11 @@ const fieldEffectChips = computed(() => {
   const fe = props.summary?.fieldEffects || {}
   const chips = []
   const push = (label, key, tone) => {
-    if (Number(fe[key] || 0) > 0 || fe[key] === true) {
-      chips.push({ label, tone })
+    const val = Number(fe[key] || 0)
+    if (val > 0 || fe[key] === true) {
+      // 显示剩余回合数（Showdown 风格：如 "雨天 3T"）
+      const turns = typeof fe[key] === 'number' || typeof fe[key] === 'string' ? val : 0
+      chips.push({ label: turns > 0 ? `${label} ${turns}T` : label, tone })
     }
   }
   push(tr('顺风', 'Tailwind'), 'playerTailwindTurns', 'tone-blue')
