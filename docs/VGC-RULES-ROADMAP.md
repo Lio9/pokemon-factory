@@ -59,7 +59,7 @@
 | minor | 慢速宝可梦可能同时拿突击背心与变化招 | AIService.java:474-475,637-665 | #done（有变化招时改用 leftovers） |
 | minor | seed 无法复现团队（SQL RANDOM + ThreadLocalRandom） | AIService.java:60-61,478 | #done（取大池后 seeded Random shuffle 替代 SQL RANDOM） |
 | minor | AI 从不使用强化招式（剑舞/龙舞等） | BattleDecisionSupport.java:54-116 | #done（selectAISetupMove 已实现） |
-| minor | Z 招式覆盖已选道具且 heldItemInfo 陈旧 | AIService.java:216,859-862 | #todo |
+| minor | Z 招式覆盖已选道具且 heldItemInfo 陈旧 | AIService.java:216,859-862 | #done（assignSpecialSystemProfile 移到 heldItem 设定之前，Z 覆盖后重刷 heldItemInfo） |
 
 ## 第三轮审查（特性 12 项 + 道具 5 项）
 
@@ -123,7 +123,7 @@
 | info | findBestDefensiveSwitch 无被一击死兜底 | BattleAiSwitchSupport.java:224-243 | #done（OHKO 惩罚 -50 分） |
 | info | 无终局资源意识 | 全局 | #todo |
 | info | evaluateThreatLevel 是死代码从未调用 | BattleAnalysisSupport.java:218-251 | #todo |
-| info | 睡眠/哈欠仅 40% 随机放行 | BattleAISupport.java:29-46 | #todo |
+| info | 睡眠/哈欠仅 40% 随机放行 | BattleAISupport.java:29-46 | #done（提升至 55%，高难度可达 82%） |
 
 ## 执行优先级建议
 

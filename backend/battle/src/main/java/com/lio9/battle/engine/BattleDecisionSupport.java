@@ -81,7 +81,7 @@ final class BattleDecisionSupport {
             return setupMove;
         }
         Map<String, Object> sleepMove = aiSupport.selectAISleepMove(mon, state, playerSide, currentRound);
-        if (sleepMove != null && random.nextDouble() < strategicChance(0.4d)) {
+        if (sleepMove != null && random.nextDouble() < strategicChance(0.55d)) {
             return sleepMove;
         }
         Map<String, Object> terrainMove = aiSupport.selectAITerrainMove(mon, state, playerSide, currentRound);

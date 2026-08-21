@@ -213,6 +213,12 @@ public class AIService {
 
         // 智能选择道具（D6: 使用 seeded Random 而非 ThreadLocalRandom）
         String heldItem = selectBestItem(itemPool, pokemon, selectedMoves, random);
+
+        // 特殊系统分配（Mega/Z/极巨化）— 必须在 heldItem 设定之前，因为 Z 会覆盖道具
+        assignSpecialSystemProfile(pokemon, random);
+
+        // 使用最终道具（Z 招式可能覆盖为 normalium-z）
+        heldItem = String.valueOf(pokemon.getOrDefault("heldItem", heldItem));
         pokemon.put("heldItem", heldItem == null ? "" : heldItem);
         // 道具展示信息（仅供前端预览，引擎仍读 heldItem 字符串）
         if (heldItem != null && !heldItem.isBlank()) {
@@ -236,8 +242,6 @@ public class AIService {
 
         // 构建战斗属性
         pokemon.put("stats", buildBattleStats(statMap, evSpread, nature));
-
-        assignSpecialSystemProfile(pokemon, random);
 
         // 计算战斗力评分
         double strength = balanceEvaluator.evaluatePokemonStrength(pokemon);
