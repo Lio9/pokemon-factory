@@ -1,597 +1,204 @@
-
 <template>
-  <!-- 队伍预览阶段（Showdown 风格） -->
-  <section
-    v-if="isPreviewPhase"
-    class="overflow-hidden rounded-2xl border-2 border-slate-800 bg-[linear-gradient(180deg,#1e293b_0%,#0f172a_100%)] shadow-xl"
-  >
-    <!-- 顶部横幅 -->
-    <div class="flex items-center justify-between gap-3 border-b border-slate-700/60 bg-slate-900/60 px-4 py-3">
-      <div class="flex items-center gap-2.5">
-        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-lg">⚔️</span>
-        <div>
-          <div class="text-sm font-extrabold tracking-wide text-white">
-            {{ tr('队伍预览', 'Team Preview') }}
-          </div>
-          <div class="text-[11px] text-slate-400">
-            {{ tr(`选择 ${rosterLimit} 只出战，并指定 ${leadLimit} 只首发`, `Pick ${rosterLimit} Pokemon and choose ${leadLimit} lead(s)`) }}
-          </div>
-        </div>
-      </div>
-      <!-- 选择进度 -->
-      <div class="flex items-center gap-1.5 rounded-full bg-slate-800/80 px-3 py-1.5">
-        <span class="text-[11px] font-bold text-slate-400">{{ tr('已选', 'Picked') }}</span>
-        <span class="text-sm font-black text-white">{{ selectedRosterIndexes.length }}</span>
-        <span class="text-[11px] text-slate-500">/</span>
-        <span class="text-sm font-black text-slate-300">{{ rosterLimit }}</span>
-        <span class="mx-1 text-slate-700">|</span>
-        <span class="text-[11px] font-bold text-slate-400">{{ tr('首发', 'Leads') }}</span>
-        <span class="text-sm font-black text-amber-400">{{ leadRosterIndexes.length }}</span>
-        <span class="text-[11px] text-slate-500">/</span>
-        <span class="text-sm font-black text-slate-300">{{ leadLimit }}</span>
-      </div>
-    </div>
+  <!-- Showdown 风格决策面板：招式 + 换人 + 确认 -->
+  <div class="sd-panel">
 
-    <div class="space-y-4 p-4">
-      <!-- 对手队伍（不可选，hover 查看） -->
-      <div v-if="opponentRoster.length">
-        <div class="mb-1.5 flex items-center gap-2">
-          <span class="h-1.5 w-1.5 rounded-full bg-rose-400" />
-          <span class="text-[11px] font-bold uppercase tracking-widest text-rose-300/90">
-            {{ tr('对手队伍', 'Opponent team') }}
-          </span>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <PokeHoverCard
-            v-for="(pokemon, index) in opponentRoster"
-            :key="`opponent-roster-${index}`"
-            :pokemon="pokemon"
-            wrap-class="cursor-help"
+    <!-- ===== 预览阶段 ===== -->
+    <section v-if="isPreviewPhase" class="sd-preview">
+      <div class="sd-preview-header">
+        <span class="sd-preview-title">{{ tr('队伍预览', 'Team Preview') }}</span>
+        <span class="sd-preview-info">
+          {{ tr(`选 ${rosterLimit} 出战，${leadLimit} 首发`, `Pick ${rosterLimit}, ${leadLimit} lead(s)`) }}
+          · {{ selectedRosterIndexes.length }}/{{ rosterLimit }} {{ tr('已选', 'picked') }}
+          · {{ leadRosterIndexes.length }}/{{ leadLimit }} {{ tr('首发', 'lead') }}
+        </span>
+      </div>
+
+      <!-- 对手队伍 -->
+      <div v-if="opponentRoster.length" class="sd-roster-row">
+        <span class="sd-roster-label sd-roster-opp">{{ tr('对手', 'Foe') }}</span>
+        <div class="sd-roster-cards">
+          <div
+            v-for="(pokemon, i) in opponentRoster"
+            :key="`opp-${i}`"
+            class="sd-roster-card sd-roster-card-opp"
+            @click="openDetail(pokemon)"
           >
-            <div class="group relative w-[76px] rounded-xl border border-slate-700/70 bg-slate-800/50 p-2 text-center transition-colors hover:border-slate-500 hover:bg-slate-800">
-              <img
-                :src="previewSprite(pokemon)"
-                :alt="pokemon.name"
-                class="mx-auto h-12 w-12 object-contain transition-transform group-hover:scale-110"
-                @error="onPreviewSpriteError($event, pokemon)"
-              >
-              <div class="mt-1 truncate text-[10px] font-semibold text-slate-300">
-                {{ pokemon.name || pokemon.name_en }}
-              </div>
-              <!-- 查看详情按钮（打开完整弹窗） -->
-              <button
-                type="button"
-                class="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-slate-600/70 bg-slate-800/90 text-slate-300 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-700 hover:text-white"
-                :title="tr('查看完整配置', 'View full details')"
-                @click.stop="openDetail(pokemon)"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-3 w-3"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><circle
-                  cx="11"
-                  cy="11"
-                  r="8"
-                /><line
-                  x1="21"
-                  y1="21"
-                  x2="16.65"
-                  y2="16.65"
-                /></svg>
-              </button>
-            </div>
-          </PokeHoverCard>
+            <img :src="previewSprite(pokemon)" :alt="pokemon.name" class="sd-roster-img" @error="onSpriteError($event, pokemon)">
+            <span class="sd-roster-name">{{ pokemon.name || pokemon.name_en }}</span>
+          </div>
         </div>
       </div>
 
-      <!-- 我的队伍（点击选择） -->
-      <div>
-        <div class="mb-1.5 flex items-center gap-2">
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          <span class="text-[11px] font-bold uppercase tracking-widest text-emerald-300/90">
-            {{ tr('我的队伍 · 点击选择', 'Your team · click to pick') }}
-          </span>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <PokeHoverCard
-            v-for="(pokemon, index) in playerRoster"
-            :key="`player-roster-${index}`"
-            :pokemon="pokemon"
-            wrap-class="group relative"
-          >
-            <button
-              type="button"
-              :class="previewCardClass(index)"
-              class="flex w-[76px] flex-col items-center rounded-xl border-2 p-2 text-center transition-all duration-150"
-              @click="toggleRoster(index)"
-            >
-              <!-- 精灵图：未选中变暗 -->
-              <div class="relative">
-                <img
-                  :src="previewSprite(pokemon)"
-                  :alt="pokemon.name"
-                  class="h-12 w-12 object-contain transition-all duration-150 group-hover:scale-110"
-                  :class="isPicked(index) ? '' : 'opacity-35 grayscale'"
-                  @error="onPreviewSpriteError($event, pokemon)"
-                >
-                <!-- 首发角标 -->
-                <span
-                  v-if="isLead(index)"
-                  class="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-amber-950 shadow ring-2 ring-slate-900"
-                >首</span>
-              </div>
-              <!-- 名字 + 等级 -->
-              <div
-                class="mt-1 w-full truncate text-[10px] font-bold"
-                :class="isPicked(index) ? 'text-white' : 'text-slate-400'"
-              >{{ pokemon.name || pokemon.name_en }}</div>
-              <div
-                class="mt-0.5 rounded-full px-1.5 py-px text-[9px] font-bold"
-                :class="isPicked(index) ? 'bg-slate-700/80 text-slate-300' : 'bg-slate-800 text-slate-500'"
-              >Lv.{{ pokemon.level || 50 }}</div>
-            </button>
-            <!-- 查看详情按钮（打开完整弹窗） -->
-            <button
-              type="button"
-              class="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-slate-600/70 bg-slate-800/90 text-slate-300 shadow-sm transition-all hover:border-slate-400 hover:bg-slate-700 hover:text-white"
-              :title="tr('查看完整配置', 'View full details')"
-              @click.stop="openDetail(pokemon)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-3 w-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><circle
-                cx="11"
-                cy="11"
-                r="8"
-              /><line
-                x1="21"
-                y1="21"
-                x2="16.65"
-                y2="16.65"
-              /></svg>
-            </button>
-          </PokeHoverCard>
-        </div>
-      </div>
-
-      <!-- 首发选择条（Showdown 风格） -->
-      <div
-        v-if="selectedRosterIndexes.length"
-        class="rounded-xl border border-slate-700/60 bg-slate-800/40 p-2.5"
-      >
-        <div class="mb-1.5 flex items-center gap-2">
-          <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            {{ tr('首发阵容', 'Lead picks') }}
-          </span>
-          <span class="text-[10px] text-slate-500">
-            {{ tr('点击已选精灵设为首发', 'Click a picked Pokemon to make it lead') }}
-          </span>
-        </div>
-        <div class="flex flex-wrap items-center gap-1.5">
+      <!-- 我方队伍 -->
+      <div class="sd-roster-row">
+        <span class="sd-roster-label sd-roster-player">{{ tr('你的队伍', 'Your team') }}</span>
+        <div class="sd-roster-cards">
           <button
-            v-for="index in selectedRosterIndexes"
-            :key="`lead-${index}`"
+            v-for="(pokemon, i) in playerRoster"
+            :key="`plr-${i}`"
             type="button"
-            class="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-semibold transition-all"
-            :class="isLead(index)
-              ? 'border-amber-400/70 bg-amber-400/15 text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.15)]'
-              : 'border-slate-600/70 bg-slate-800/60 text-slate-300 hover:border-slate-400 hover:text-white'"
-            @click="toggleLead(index)"
+            class="sd-roster-card"
+            :class="[isPicked(i) ? 'sd-picked' : 'sd-unpicked', isLead(i) ? 'sd-lead' : '']"
+            @click="toggleRoster(i)"
+            @contextmenu.prevent="toggleLead(i)"
           >
-            <img
-              :src="previewSprite(playerRoster[index])"
-              :alt="playerRoster[index]?.name"
-              class="h-5 w-5 object-contain"
-              @error="onPreviewSpriteError($event, playerRoster[index])"
-            >
-            <span class="max-w-[80px] truncate">{{ playerRoster[index]?.name || playerRoster[index]?.name_en }}</span>
-            <span v-if="isLead(index)" class="text-amber-400">★</span>
+            <img :src="previewSprite(pokemon)" :alt="pokemon.name" class="sd-roster-img" :class="isPicked(i) ? '' : 'sd-img-dim'" @error="onSpriteError($event, pokemon)">
+            <span class="sd-roster-name">{{ pokemon.name || pokemon.name_en }}</span>
+            <span v-if="isLead(i)" class="sd-lead-mark">★</span>
           </button>
         </div>
       </div>
 
       <!-- 确认按钮 -->
       <button
-        class="w-full rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 disabled:shadow-none"
+        class="sd-confirm-btn"
         :disabled="!canConfirmPreview || isBusy"
         @click="confirmPreview"
       >
-        {{ busyAction === 'confirm-preview' ? tr('正在确认阵容...', 'Confirming team...') : tr(`确认出战 · 6 选 ${rosterLimit}`, `Confirm · pick ${rosterLimit}`) }}
+        {{ busyAction === 'confirm-preview' ? tr('确认中...', 'Confirming...') : tr('确认出战', 'Confirm Team') }}
       </button>
-    </div>
-  </section>
+    </section>
 
-  <!-- 补位阶段 -->
-  <section
-    v-if="isReplacementPhase"
-    class="rounded-2xl border border-rose-200 bg-[linear-gradient(180deg,rgba(255,228,230,0.72),rgba(255,255,255,0.96))] p-4"
-  >
-    <div class="mb-3 text-sm font-semibold text-slate-800">
-      {{ tr('倒下补位：请选择 {count} 只后备宝可梦上场', 'Replacement: choose {count} bench Pokemon to send in', { count: pendingReplacementCount }) }}
-    </div>
-    <div class="space-y-2">
-      <PokeHoverCard
-        v-for="option in replacementBenchOptions"
-        :key="`replacement-${option.value}`"
-        :pokemon="option.pokemon || option"
-        wrap-class="w-full"
-      >
+    <!-- ===== 补位阶段 ===== -->
+    <section v-if="isReplacementPhase" class="sd-replacement">
+      <div class="sd-replacement-header">
+        {{ tr('补位：选 {count} 只后备上场', 'Choose {count} replacements', { count: pendingReplacementCount }) }}
+      </div>
+      <div class="sd-replacement-options">
         <button
+          v-for="opt in replacementBenchOptions"
+          :key="opt.value"
           type="button"
-          class="w-full rounded-xl border-2 p-3 text-left transition-all"
-          :class="selectedReplacementIndexes.includes(option.value) ? 'border-rose-500 bg-white shadow-md ring-2 ring-rose-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
-          @click="toggleReplacement(option.value)"
+          class="sd-replacement-btn"
+          :class="selectedReplacementIndexes.includes(opt.value) ? 'sd-replacement-selected' : ''"
+          @click="toggleReplacement(opt.value)"
         >
-          <div class="flex items-center gap-3">
-            <img
-              :src="previewSprite(option.pokemon || option)"
-              :alt="option.label"
-              class="h-11 w-11 object-contain"
-              @error="onPreviewSpriteError($event, option.pokemon || option)"
-            >
-            <div class="min-w-0 flex-1">
-              <div class="truncate font-semibold text-slate-900">
-                {{ option.label }}
-              </div>
-              <div class="text-xs text-slate-500">
-                {{ option.types }}
-              </div>
-              <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                <div
-                  class="h-full rounded-full transition-all"
-                  :style="{ width: option.maxHp > 0 ? Math.max(2, (option.hp / option.maxHp) * 100) + '%' : '100%', backgroundColor: option.maxHp > 0 && option.hp / option.maxHp <= 0.25 ? '#ef4444' : option.maxHp > 0 && option.hp / option.maxHp <= 0.5 ? '#f59e0b' : '#22c55e' }"
-                />
-              </div>
+          <img :src="previewSprite(opt.pokemon || opt)" :alt="opt.label" class="sd-replacement-img" @error="onSpriteError($event, opt.pokemon || opt)">
+          <div class="sd-replacement-info">
+            <span class="sd-replacement-name">{{ opt.label }}</span>
+            <div class="sd-replacement-hp-bar">
+              <div class="sd-replacement-hp-fill" :style="{ width: opt.maxHp > 0 ? Math.max(2, (opt.hp / opt.maxHp) * 100) + '%' : '100%', background: opt.maxHp > 0 && opt.hp / opt.maxHp <= 0.25 ? '#ef4444' : opt.maxHp > 0 && opt.hp / opt.maxHp <= 0.5 ? '#fbbf24' : '#4ade80' }" />
             </div>
-            <div class="shrink-0 text-xs text-slate-500">
-              HP {{ option.hp }}/{{ option.maxHp || '?' }}
-            </div>
+            <span class="sd-replacement-hp-text">{{ opt.hp }}/{{ opt.maxHp || '?' }}</span>
           </div>
         </button>
-      </PokeHoverCard>
-    </div>
-    <button
-      class="mt-4 w-full rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-      :disabled="!canConfirmReplacement || isBusy"
-      @click="confirmReplacement"
-    >
-      {{ busyAction === 'confirm-replacement' ? tr('正在确认替补...', 'Confirming replacements...') : tr('确认替补上场', 'Confirm replacement') }}
-    </button>
-  </section>
-
-  <!-- 对战操作阶段 -->
-  <section
-    v-if="!isPreviewPhase"
-    class="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-  >
-    <div class="mb-3 text-sm font-semibold text-slate-800">
-      {{ isReplacementPhase ? tr('当前回合已暂停，等待补位', 'The turn is paused until replacements are chosen') : tr('当前可选招式', 'Available actions this turn') }}
-    </div>
-    <div
-      v-if="playerActiveMons.length && !isPreviewPhase && !isReplacementPhase"
-      class="space-y-4"
-    >
-      <div
-        v-for="mon in playerActiveMons"
-        :key="mon.fieldSlot"
-        class="rounded-xl border border-slate-200 bg-white p-4"
+      </div>
+      <button
+        class="sd-confirm-btn"
+        :disabled="!canConfirmReplacement || isBusy"
+        @click="confirmReplacement"
       >
-        <!-- 宝可梦信息头 -->
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <PokeHoverCard
-            :pokemon="mon"
-            wrap-class="flex items-center gap-2.5 cursor-help"
-          >
-            <img
-              :src="previewSprite(mon)"
-              :alt="mon.name"
-              class="h-11 w-11 object-contain"
-              @error="onPreviewSpriteError($event, mon)"
-            >
-            <div>
-              <div class="font-semibold text-slate-900">
-                {{ mon.name }}
-              </div>
-              <div class="text-xs text-slate-500">
-                {{ tr('槽位 {slot} · HP {current}/{max}', 'Slot {slot} · HP {current}/{max}', { slot: mon.fieldSlot + 1, current: mon.currentHp, max: mon.maxHp }) }}
-              </div>
-            </div>
-          </PokeHoverCard>
-          <div class="text-xs text-slate-500">
-            {{ formatTypes(mon.types) }}
+        {{ tr('确认替补', 'Confirm') }}
+      </button>
+    </section>
+
+    <!-- ===== 战斗操作阶段 ===== -->
+    <section v-if="!isPreviewPhase && !isReplacementPhase" class="sd-battle">
+      <div v-if="playerActiveMons.length" class="sd-battle-grid">
+        <!-- 每只在场宝可梦的招式/换人 -->
+        <div
+          v-for="mon in playerActiveMons"
+          :key="mon.fieldSlot"
+          class="sd-mon-section"
+        >
+          <!-- 操作切换 -->
+          <div class="sd-action-toggle">
+            <button
+              class="sd-toggle-btn"
+              :class="(selectedActions[`action-slot-${mon.fieldSlot}`] || 'move') === 'move' ? 'sd-toggle-active' : ''"
+              @click="setSelectedAction(mon.fieldSlot, 'move')"
+            >{{ tr('招式', 'Moves') }}</button>
+            <button
+              class="sd-toggle-btn"
+              :class="selectedActions[`action-slot-${mon.fieldSlot}`] === 'switch' ? 'sd-toggle-active' : ''"
+              :disabled="!playerBenchOptions.length"
+              @click="setSelectedAction(mon.fieldSlot, 'switch')"
+            >{{ tr('换人', 'Switch') }}</button>
           </div>
-        </div>
 
-        <!-- 操作类型切换：招式 / 换人 -->
-        <div class="mt-3 flex gap-2">
-          <button
-            type="button"
-            class="flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all"
-            :class="(selectedActions[`action-slot-${mon.fieldSlot}`] || 'move') === 'move' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-            @click="setSelectedAction(mon.fieldSlot, 'move')"
-          >
-            {{ tr('使用招式', 'Move') }}
-          </button>
-          <button
-            type="button"
-            class="flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all"
-            :class="selectedActions[`action-slot-${mon.fieldSlot}`] === 'switch' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-            :disabled="!playerBenchOptions.length"
-            @click="setSelectedAction(mon.fieldSlot, 'switch')"
-          >
-            {{ tr('换人', 'Switch') }}
-          </button>
-        </div>
-
-        <!-- 换人面板（Showdown 风格：精灵 + HP 条） -->
-        <template v-if="selectedActions[`action-slot-${mon.fieldSlot}`] === 'switch'">
-          <div class="mt-3 grid grid-cols-2 gap-2">
-            <PokeHoverCard
-              v-for="target in playerBenchOptions"
-              :key="`switch-${mon.fieldSlot}-${target.value}`"
-              :pokemon="target.pokemon || target"
-              wrap-class="w-full"
-            >
+          <!-- 招式面板 -->
+          <template v-if="(selectedActions[`action-slot-${mon.fieldSlot}`] || 'move') === 'move'">
+            <div class="sd-moves-grid">
+              <MoveButton
+                v-for="(move, mi) in mon.moves"
+                :key="move.name_en || move.name"
+                :move="move"
+                :move-index="mi"
+                :selected="selectedMoves[`slot-${mon.fieldSlot}`] === (move.name_en || move.name)"
+                :effectiveness="moveEffectivenessFor(mon, move)"
+                @select="setSelectedMove(mon.fieldSlot, move.name_en || move.name)"
+              />
+            </div>
+            <!-- 目标选择 -->
+            <div v-if="moveNeedsOpponentTarget(selectedMoveObject(mon)) && opponentActiveMons.length" class="sd-target-row">
+              <span class="sd-target-label">{{ tr('目标:', 'Target:') }}</span>
               <button
+                v-for="t in opponentActiveMons"
+                :key="`t-${t.fieldSlot}`"
                 type="button"
-                class="w-full rounded-xl border-2 px-3 py-2.5 text-left transition-all"
-                :class="selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`] === target.value ? 'border-indigo-500 bg-indigo-50 shadow-sm ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
+                class="sd-target-btn"
+                :class="selectedTargets[`target-slot-${mon.fieldSlot}`] === t.fieldSlot ? 'sd-target-selected' : ''"
+                @click="setSelectedTarget(mon.fieldSlot, t.fieldSlot)"
+              >{{ t.name || t.name_en }}</button>
+            </div>
+            <!-- 特殊系统 -->
+            <div v-if="availableSpecialSystems(mon).length" class="sd-special-row">
+              <button
+                class="sd-special-btn"
+                :class="!selectedSpecialSystems[`special-slot-${mon.fieldSlot}`] ? 'sd-special-active' : ''"
+                @click="setSelectedSpecialSystem(mon.fieldSlot, undefined)"
+              >{{ tr('无', 'None') }}</button>
+              <button
+                v-for="sys in availableSpecialSystems(mon)"
+                :key="sys"
+                class="sd-special-btn"
+                :class="selectedSpecialSystems[`special-slot-${mon.fieldSlot}`] === sys ? 'sd-special-active' : ''"
+                @click="setSelectedSpecialSystem(mon.fieldSlot, sys)"
+              >{{ specialSystemLabel(sys) }}<template v-if="sys === 'tera'"> · {{ teraTypeLabel(mon) }}</template></button>
+            </div>
+          </template>
+
+          <!-- 换人面板 -->
+          <template v-else>
+            <div class="sd-switch-grid">
+              <button
+                v-for="target in playerBenchOptions"
+                :key="`sw-${mon.fieldSlot}-${target.value}`"
+                type="button"
+                class="sd-switch-btn"
+                :class="selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`] === target.value ? 'sd-switch-selected' : ''"
                 @click="setSelectedSwitchTarget(mon.fieldSlot, target.value)"
               >
-                <div class="flex items-center gap-2">
-                  <img
-                    :src="previewSprite(target.pokemon || target)"
-                    :alt="target.label"
-                    class="h-10 w-10 object-contain"
-                    @error="onPreviewSpriteError($event, target.pokemon || target)"
-                  >
-                  <div class="min-w-0 flex-1">
-                    <div class="truncate text-sm font-semibold text-slate-900">
-                      {{ target.label }}
-                    </div>
-                    <!-- HP 条 -->
-                    <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        class="h-full rounded-full transition-all"
-                        :style="{ width: target.maxHp > 0 ? Math.max(2, (target.hp / target.maxHp) * 100) + '%' : '100%', backgroundColor: target.maxHp > 0 && target.hp / target.maxHp <= 0.25 ? '#ef4444' : target.maxHp > 0 && target.hp / target.maxHp <= 0.5 ? '#f59e0b' : '#22c55e' }"
-                      />
-                    </div>
-                    <div class="mt-0.5 text-[11px] text-slate-500">
-                      {{ tr('HP', 'HP') }} {{ target.hp }}/{{ target.maxHp || '?' }}
-                    </div>
+                <img :src="previewSprite(target.pokemon || target)" :alt="target.label" class="sd-switch-img" @error="onSpriteError($event, target.pokemon || target)">
+                <div class="sd-switch-info">
+                  <span class="sd-switch-name">{{ target.label }}</span>
+                  <div class="sd-switch-hp-bar">
+                    <div class="sd-switch-hp-fill" :style="{ width: target.maxHp > 0 ? Math.max(2, (target.hp / target.maxHp) * 100) + '%' : '100%', background: target.maxHp > 0 && target.hp / target.maxHp <= 0.25 ? '#ef4444' : '#4ade80' }" />
                   </div>
                 </div>
               </button>
-            </PokeHoverCard>
-          </div>
-          <div class="mt-1.5 text-[10px] text-slate-400">
-            {{ tr('提示：S 键快速切换 招式/换人', 'Tip: press S to toggle move/switch') }}
-          </div>
-        </template>
-
-        <!-- 招式面板 -->
-        <template v-else>
-          <!-- 特殊系统 -->
-          <div
-            v-if="activeSpecialSystemLabel(mon) || availableSpecialSystems(mon).length"
-            class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
-          >
-            <div
-              v-if="activeSpecialSystemLabel(mon)"
-              class="font-semibold"
-            >
-              {{ tr('已发动', 'Activated') }}：{{ activeSpecialSystemLabel(mon) }}<span v-if="mon.terastallized"> · {{ teraTypeLabel(mon) }}</span>
             </div>
-            <template v-if="availableSpecialSystems(mon).length">
-              <div class="font-semibold">
-                {{ tr('本回合可发动特殊系统', 'Special systems available this turn') }}
-              </div>
-              <div class="mt-2 flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-all"
-                  :class="!selectedSpecialSystems[`special-slot-${mon.fieldSlot}`] ? 'bg-amber-500 text-white' : 'bg-white border border-amber-300 text-amber-700 hover:bg-amber-50'"
-                  @click="setSelectedSpecialSystem(mon.fieldSlot, undefined)"
-                >
-                  {{ tr('不发动', 'None') }}
-                </button>
-                <button
-                  v-for="system in availableSpecialSystems(mon)"
-                  :key="`special-${mon.fieldSlot}-${system}`"
-                  type="button"
-                  class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-all"
-                  :class="selectedSpecialSystems[`special-slot-${mon.fieldSlot}`] === system ? 'bg-amber-500 text-white' : 'bg-white border border-amber-300 text-amber-700 hover:bg-amber-50'"
-                  @click="setSelectedSpecialSystem(mon.fieldSlot, system)"
-                >
-                  {{ specialSystemLabel(system) }}<template v-if="system === 'tera'">
-                    · {{ teraTypeLabel(mon) }}
-                  </template>
-                </button>
-              </div>
-            </template>
-          </div>
-
-          <!-- 招式按钮 -->
-          <div class="mt-3 grid grid-cols-2 gap-2">
-            <MoveButton
-              v-for="(move, moveIdx) in mon.moves"
-              :key="move.name_en || move.name"
-              :move="move"
-              :move-index="moveIdx"
-              :selected="selectedMoves[`slot-${mon.fieldSlot}`] === (move.name_en || move.name)"
-              :effectiveness="moveEffectivenessFor(mon, move)"
-              @select="setSelectedMove(mon.fieldSlot, move.name_en || move.name)"
-            />
-          </div>
-          <div
-            v-if="mon.moves.length"
-            class="mt-1.5 text-[11px] text-slate-400"
-          >
-            {{ tr('提示：按数字键 1-4 快速选择招式', 'Tip: press keys 1-4 to pick a move') }}
-          </div>
-
-          <!-- 目标选择（Showdown 风格：点击场上精灵） -->
-          <div
-            v-if="moveNeedsOpponentTarget(selectedMoveObject(mon)) && opponentActiveMons.length"
-            class="mt-3"
-          >
-            <div class="text-xs font-semibold text-slate-500 mb-1.5">
-              {{ tr('选择目标', 'Select target') }} · {{ tr('点击场上宝可梦', 'Click an active Pokemon') }}
-            </div>
-            <div class="flex gap-2">
-              <PokeHoverCard
-                v-for="target in opponentActiveMons"
-                :key="`target-${mon.fieldSlot}-${target.fieldSlot}`"
-                :pokemon="target"
-                wrap-class="flex-1"
-              >
-                <button
-                  type="button"
-                  class="w-full rounded-xl border-2 px-3 py-2 text-left transition-all"
-                  :class="selectedTargets[`target-slot-${mon.fieldSlot}`] === target.fieldSlot ? 'border-rose-500 bg-rose-50 shadow-sm ring-2 ring-rose-200' : 'border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm'"
-                  @click="setSelectedTarget(mon.fieldSlot, target.fieldSlot)"
-                >
-                  <div class="flex items-center gap-2">
-                    <img
-                      :src="targetSprite(target)"
-                      :alt="target.name"
-                      class="h-9 w-9 object-contain"
-                      @error="onTargetSpriteError($event, target)"
-                    >
-                    <div class="min-w-0">
-                      <div class="truncate text-sm font-semibold text-slate-900">
-                        {{ target.name || target.name_en }}
-                      </div>
-                      <div class="text-[11px] text-slate-500">
-                        {{ tr('槽位 {slot}', 'Slot {slot}', { slot: target.fieldSlot + 1 }) }} · HP {{ target.currentHp }}/{{ target.maxHp || target.stats?.hp || '?' }}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              </PokeHoverCard>
-            </div>
-          </div>
-
-          <!-- 克制关系提示 -->
-          <div
-            v-if="moveEffectivenessHints(mon).length"
-            class="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
-          >
-            <div class="text-xs font-semibold text-slate-600">
-              {{ tr('技能克制关系', 'Type matchup hints') }}
-            </div>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <span
-                v-for="hint in moveEffectivenessHints(mon)"
-                :key="hint.key"
-                class="rounded-full border px-2.5 py-1 text-xs font-semibold"
-                :class="hint.className"
-              >
-                {{ hint.targetLabel }} · {{ hint.label }}
-              </span>
-            </div>
-          </div>
-        </template>
-      </div>
-
-      <!-- 行动总览（Showdown 风格：提交前一眼确认） -->
-      <div
-        v-if="playerActiveMons.length > 0 && !isPreviewPhase && !isReplacementPhase"
-        class="mt-1 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2"
-      >
-        <div class="mb-1 text-[10px] font-bold uppercase tracking-widest text-indigo-500">
-          {{ tr('本回合行动', 'This turn') }}
-        </div>
-        <div class="space-y-1">
-          <div
-            v-for="mon in playerActiveMons"
-            :key="`overview-${mon.fieldSlot}`"
-            class="flex items-center gap-2 text-xs"
-          >
-            <span class="font-bold text-slate-800">{{ mon.name || mon.name_en }}</span>
-            <span class="text-slate-400">→</span>
-            <template v-if="(selectedActions[`action-slot-${mon.fieldSlot}`] || 'move') === 'switch'">
-              <span class="font-semibold text-indigo-600">{{ tr('换人', 'Switch') }}</span>
-              <span
-                v-if="selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`] !== undefined"
-                class="font-semibold text-slate-600"
-              >→ {{ benchName(selectedSwitchTargets[`switch-slot-${mon.fieldSlot}`]) }}</span>
-              <span
-                v-else
-                class="text-amber-600 font-semibold"
-              >{{ tr('请选目标', 'Pick target') }}</span>
-            </template>
-            <template v-else>
-              <span class="font-semibold text-slate-600">{{ moveName(selectedMoves[`slot-${mon.fieldSlot}`], mon) }}</span>
-              <template v-if="moveNeedsOpponentTarget(selectedMoveObject(mon))">
-                <span class="text-slate-400">→</span>
-                <span
-                  v-if="selectedTargets[`target-slot-${mon.fieldSlot}`] !== undefined"
-                  class="font-semibold text-rose-600"
-                >{{ targetName(selectedTargets[`target-slot-${mon.fieldSlot}`]) }}</span>
-                <span
-                  v-else
-                  class="text-amber-600 font-semibold"
-                >{{ tr('请选目标', 'Pick target') }}</span>
-              </template>
-              <span
-                v-if="selectedSpecialSystems[`special-slot-${mon.fieldSlot}`]"
-                class="ml-auto rounded-full bg-amber-200/80 px-1.5 py-px text-[10px] font-bold text-amber-800"
-              >{{ specialSystemLabel(selectedSpecialSystems[`special-slot-${mon.fieldSlot}`]) }}</span>
-            </template>
-          </div>
+          </template>
         </div>
       </div>
 
+      <!-- 提交按钮 -->
       <button
-        class="w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+        class="sd-submit-btn"
         :disabled="!canSubmitMove || isBusy"
         @click="submitMove"
       >
-        {{ busyAction === 'submit-move' ? tr('正在提交回合...', 'Submitting turn...') : tr('提交当前回合', 'Submit turn') }}
+        {{ busyAction === 'submit-move' ? tr('提交中...', 'Submitting...') : tr('提交回合', 'End Turn') }}
       </button>
-    </div>
-    <div
-      v-else
-      class="text-sm text-slate-500"
-    >
-      {{ isPreviewPhase ? tr('先完成队伍预览后，才能提交回合操作。', 'Complete team preview before submitting turn actions.') : isReplacementPhase ? tr('有宝可梦倒下时，必须先完成替补上场。', 'When a Pokemon faints, you must finish replacements first.') : tr('先开始一场手动对战后，这里会显示你当前两只在场宝可梦的出招选择。', 'Start a manual battle first, then this panel will show the move choices for your two active Pokemon.') }}
-    </div>
-  </section>
 
-  <!-- 调试面板 -->
-  <details
-    class="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-    :open="showDebugPanel"
-    @toggle="emit('toggle-debug-panel', $event.target.open)"
-  >
-    <summary class="cursor-pointer list-none text-sm font-semibold text-slate-800">
-      {{ tr('调试响应', 'Debug response') }}
-    </summary>
-    <div class="mt-2 text-xs leading-5 text-slate-500">
-      {{ tr('日常使用时可以收起；排查接口返回时再展开。', 'Keep this collapsed for normal play and expand it when you need to inspect API responses.') }}
-    </div>
-    <pre class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-slate-950 p-4 text-xs text-slate-100">{{ resultText }}</pre>
-  </details>
+      <div v-if="!playerActiveMons.length" class="sd-empty">
+        {{ tr('开始一场对战后这里会显示招式选择', 'Start a battle to see move options') }}
+      </div>
+    </section>
 
-  <!-- 宝可梦详情弹窗 -->
-  <PokemonDetailPopover
-    v-model:visible="showDetailDialog"
-    :pokemon="detailPokemon"
-  />
+    <!-- 详情弹窗 -->
+    <PokemonDetailPopover v-model:visible="showDetailDialog" :pokemon="detailPokemon" />
+  </div>
 </template>
 
 <script setup>
@@ -599,7 +206,6 @@ import { ref } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import MoveButton from './MoveButton.vue'
 import PokemonDetailPopover from './PokemonDetailPopover.vue'
-import PokeHoverCard from './PokeHoverCard.vue'
 import { sprites } from '../services/sprites'
 import { typeColor, getTypeEffectiveness, resolveTypeId } from '../services/typeChart'
 
@@ -607,56 +213,24 @@ const { translate: tr } = useLocale()
 
 const emit = defineEmits(['toggle-debug-panel'])
 
-// 详情弹窗状态
 const showDetailDialog = ref(false)
 const detailPokemon = ref(null)
-
 function openDetail(pokemon) {
   detailPokemon.value = pokemon
   showDetailDialog.value = true
 }
 
-// 目标精灵图
-function targetSprite(target) {
-  const id = target?.form_id || target?.species_id || target?.pokemon_id || target?.id
-  return id ? sprites.pokemon(id) : sprites.default
-}
-
-function onTargetSpriteError(event, target) {
-  const img = event.target
-  const src = img?.getAttribute('src') || ''
-  if (src.includes('/api/pokedex/images')) {
-    const id = src.split('/').pop().replace('.png', '')
-    img.src = sprites.fallbackPokemon(id)
-  } else {
-    img.src = sprites.default
-  }
-}
-
-// 预览精灵图
 function previewSprite(pokemon) {
   const id = pokemon?.form_id || pokemon?.species_id || pokemon?.pokemon_id || pokemon?.id
   return id ? sprites.pokemon(id) : sprites.default
 }
 
-function onPreviewSpriteError(event, pokemon) {
+function onSpriteError(event, pokemon) {
   const img = event.target
-  const src = img?.getAttribute('src') || ''
   const id = pokemon?.form_id || pokemon?.species_id || pokemon?.pokemon_id || pokemon?.id
-  if (src.includes('/api/pokedex/images')) {
-    img.src = sprites.fallbackPokemon(id)
-  } else {
-    img.src = sprites.default
-  }
+  img.src = sprites.fallbackPokemon(id)
 }
 
-// 行动总览辅助函数
-function benchName(teamIndex) {
-  const mon = playerBenchOptions.value?.find((o) => o.value === Number(teamIndex))
-  return mon?.label || tr('宝可梦 {n}', 'Pokemon {n}', { n: Number(teamIndex) + 1 })
-}
-
-// G9: 计算单个招式对在场对手的最大克制倍率（用于招式按钮着色）
 function moveEffectivenessFor(mon, move) {
   if (!move || Number(move?.power || 0) <= 0) return null
   const moveTypeId = Number(move?.type_id || 0)
@@ -670,22 +244,11 @@ function moveEffectivenessFor(mon, move) {
     let mult = 1
     for (const tp of types) {
       const tid = typeof tp === 'object' ? Number(tp.type_id) : Number(tp)
-      const factor = eff[moveTypeId]?.[resolveTypeId(tid)] ?? 100
-      mult *= (factor / 100)
+      mult *= (eff[moveTypeId]?.[resolveTypeId(tid)] ?? 100) / 100
     }
     if (mult > maxMult) maxMult = mult
   }
   return maxMult > 0 ? maxMult : null
-}
-
-function moveName(moveKey, mon) {
-  const mv = (mon?.moves || []).find((m) => (m.name_en || m.name) === moveKey)
-  return mv?.name || mv?.name_en || moveKey || tr('未选', 'Pick a move')
-}
-
-function targetName(fieldSlot) {
-  const t = opponentActiveMons.value?.find((o) => Number(o.fieldSlot) === Number(fieldSlot))
-  return t?.name || t?.name_en || tr('目标 {n}', 'Target {n}', { n: Number(fieldSlot) + 1 })
 }
 
 defineProps({
@@ -742,3 +305,275 @@ defineProps({
   toggleRoster: { type: Function, required: true }
 })
 </script>
+
+<style scoped>
+/* ===== Showdown 风格决策面板 ===== */
+.sd-panel {
+  background: #2d2d2d;
+  border-radius: 4px;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 预览阶段 */
+.sd-preview {
+  padding: 12px;
+}
+.sd-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #444;
+}
+.sd-preview-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+.sd-preview-info {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.sd-roster-row {
+  margin-bottom: 10px;
+}
+.sd-roster-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  color: #94a3b8;
+}
+.sd-roster-opp { color: #f87171; }
+.sd-roster-player { color: #4ade80; }
+
+.sd-roster-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.sd-roster-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 6px;
+  border: 2px solid #444;
+  border-radius: 3px;
+  background: #1a1a1a;
+  cursor: pointer;
+  min-width: 60px;
+  transition: all 0.15s;
+  position: relative;
+}
+.sd-roster-card:hover { border-color: #666; }
+.sd-roster-card-opp { cursor: default; opacity: 0.7; }
+.sd-picked { border-color: #4ade80; background: #1a2e1a; }
+.sd-unpicked { opacity: 0.4; }
+.sd-lead { border-color: #fbbf24; }
+.sd-lead-mark {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 10px;
+  color: #fbbf24;
+}
+.sd-roster-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.sd-img-dim { filter: grayscale(0.7) brightness(0.5); }
+.sd-roster-name {
+  font-size: 9px;
+  color: #cbd5e1;
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.sd-confirm-btn {
+  width: 100%;
+  padding: 8px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.sd-confirm-btn:hover:not(:disabled) { background: #2563eb; }
+.sd-confirm-btn:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+
+/* 补位阶段 */
+.sd-replacement { padding: 12px; }
+.sd-replacement-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 8px;
+}
+.sd-replacement-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sd-replacement-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 2px solid #444;
+  border-radius: 3px;
+  background: #1a1a1a;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sd-replacement-btn:hover { border-color: #666; }
+.sd-replacement-selected { border-color: #f87171; background: #2a1a1a; }
+.sd-replacement-img { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+.sd-replacement-info { display: flex; flex-direction: column; gap: 2px; }
+.sd-replacement-name { font-size: 12px; color: #e2e8f0; font-weight: 600; }
+.sd-replacement-hp-bar { height: 6px; background: #333; border-radius: 2px; overflow: hidden; width: 80px; }
+.sd-replacement-hp-fill { height: 100%; transition: width 0.3s; }
+.sd-replacement-hp-text { font-size: 10px; color: #94a3b8; }
+
+/* 战斗操作阶段 */
+.sd-battle { padding: 10px; }
+.sd-battle-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sd-mon-section {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  padding: 8px;
+}
+
+.sd-action-toggle {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+.sd-toggle-btn {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid #444;
+  background: #252525;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sd-toggle-btn:first-child { border-radius: 3px 0 0 3px; }
+.sd-toggle-btn:last-child { border-radius: 0 3px 3px 0; }
+.sd-toggle-active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+.sd-toggle-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.sd-moves-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.sd-target-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+.sd-target-label {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.sd-target-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid #555;
+  border-radius: 3px;
+  background: #252525;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+.sd-target-btn:hover { border-color: #888; }
+.sd-target-selected { border-color: #f87171; background: #3a1a1a; color: #fca5a5; }
+
+.sd-special-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.sd-special-btn {
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid #555;
+  border-radius: 3px;
+  background: #252525;
+  color: #fcd34d;
+  cursor: pointer;
+}
+.sd-special-active { background: #92400e; border-color: #f59e0b; color: #fef3c7; }
+
+/* 换人面板 */
+.sd-switch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 4px;
+  margin-top: 6px;
+}
+.sd-switch-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 2px solid #444;
+  border-radius: 3px;
+  background: #252525;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sd-switch-btn:hover { border-color: #666; }
+.sd-switch-selected { border-color: #3b82f6; background: #1a2a3a; }
+.sd-switch-img { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+.sd-switch-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sd-switch-name { font-size: 11px; color: #e2e8f0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-switch-hp-bar { height: 5px; background: #333; border-radius: 2px; overflow: hidden; }
+.sd-switch-hp-fill { height: 100%; transition: width 0.3s; }
+
+.sd-submit-btn {
+  width: 100%;
+  padding: 10px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.sd-submit-btn:hover:not(:disabled) { background: #2563eb; }
+.sd-submit-btn:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+
+.sd-empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: #64748b;
+}
+</style>

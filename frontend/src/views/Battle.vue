@@ -1,7 +1,7 @@
 
 
 <template>
-  <div class="space-y-6 pb-24 md:pb-0">
+  <div class="sd-page">
     <!-- 纯文字模式开关 -->
     <div class="flex justify-end">
       <button 
@@ -37,26 +37,45 @@
 
     <!-- 原有图形界面 -->
     <template v-else>
-      <BattleHeaderPanel
-        :action-headline="actionHeadline"
-        :action-description="actionDescription"
-        :current-user="currentUser"
-        :factory-round-class="factoryRoundClass"
-        :factory-run="factoryRun"
-        :last-updated-label="lastUpdatedLabel"
-        :player-profile="playerProfile"
-        :polling-active="pollingActive"
-        :progress-summary="progressSummary"
-        :request-error="requestError"
-        :status-text="statusText"
-        :status-tone="statusTone"
-        :summary="summary"
-        :tier-bg-class="tierBgClass"
-        :tier-display-name="tierDisplayName"
-        :tier-text-class="tierTextClass"
-      />
+      <!-- Showdown 风格布局：战场 + 操作面板 + 日志 -->
 
-      <div class="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(420px,0.9fr)] xl:gap-6">
+      <!-- 开始/模式选择（无战斗时显示） -->
+      <div v-if="!currentBattleId && !factoryRun" class="sd-start-panel">
+        <div class="sd-start-modes">
+          <button
+            v-for="fmt in [['vgc-doubles', '双打 (64)'], ['vgc63', '63 单打'], ['gen9singles', '9代单打']]"
+            :key="fmt[0]"
+            class="sd-format-btn"
+            :class="battleFormat === fmt[0] ? 'sd-format-active' : ''"
+            @click="setBattleFormat(fmt[0])"
+          >{{ fmt[1] }}</button>
+        </div>
+        <div class="sd-start-actions">
+          <button class="sd-start-btn" :disabled="isBusy" @click="startBattle">
+            ⚔️ {{ busyAction === 'start-manual' ? '...' : tr('手动对战', 'Manual Battle') }}
+          </button>
+          <button v-if="isAuthenticated" class="sd-start-btn sd-start-factory" :disabled="isBusy" @click="startFactoryChallenge">
+            🏟️ {{ busyAction === 'factory-start' ? '...' : tr('工厂挑战', 'Factory Run') }}
+          </button>
+          <button v-if="isAuthenticated" class="sd-start-btn sd-start-async" :disabled="isBusy" @click="startAsyncBattle">
+            ⏩ {{ tr('异步模拟', 'Async') }}
+          </button>
+        </div>
+        <div v-if="!isAuthenticated" class="sd-guest-note">
+          {{ tr('游客模式：可直接手动对战，登录后解锁工厂挑战', 'Guest: manual battle available. Login for factory.') }}
+        </div>
+      </div>
+
+      <!-- 工厂挑战进行中（无当前战斗时） -->
+      <div v-if="factoryRun && !currentBattleId" class="sd-factory-bar">
+        <span class="sd-factory-info">{{ tr('工厂挑战', 'Factory') }} {{ factoryRun.wins || 0 }}W/{{ factoryRun.losses || 0 }}L · {{ factoryRun.current_battle || 0 }}/{{ factoryRun.max_battles || 9 }}</span>
+        <button class="sd-start-btn" :disabled="isBusy" @click="nextFactoryBattle">{{ tr('进入下一轮', 'Next Round') }}</button>
+        <button class="sd-forfeit-btn" :disabled="isBusy" @click="abandonFactoryRun">{{ tr('放弃', 'Abandon') }}</button>
+      </div>
+
+      <!-- 战斗进行中 -->
+      <template v-if="summary">
+        <!-- 战场 -->
         <BattleArena
           :summary="summary"
           :highlight-index="replacedHighlight"
@@ -67,122 +86,82 @@
           @target-select="onArenaTargetSelect"
         />
 
-        <div class="space-y-4 rounded-3xl border-3 border-slate-200/80 bg-white/95 p-4 shadow-poke-card backdrop-blur sm:p-6">
-          <BattleActionPanel
-            :action-headline="actionHeadline"
-            :action-description="actionDescription"
-            :available-action-count="availableActionCount"
-            :available-action-description="availableActionDescription"
-            :battle-format="battleFormat"
-            :busy-action="busyAction"
-            :current-battle-id="currentBattleId"
-            :factory-run="factoryRun"
-            :is-authenticated="isAuthenticated"
-            :is-busy="isBusy"
-            :mode-description="modeDescription"
-            :mode-summary="modeSummary"
-            :polling-active="pollingActive"
-            :recommended-mode="recommendedMode"
-            :show-continue-factory-button="showContinueFactoryButton"
-            :show-reset-battle-button="showResetBattleButton"
-            :summary="summary"
-            @abandon-factory="abandonFactoryRun"
-            @forfeit-battle="forfeitBattle"
-            @next-factory="nextFactoryBattle"
-            @open-leaderboard="openLeaderboard"
-            @open-ban="openBanModal"
-            @prepare-next="prepareNextFactoryStage"
-            @refresh-status="refreshStatus"
-            @reset-battle="resetBattleState({ keepFactoryRun: false })"
-            @start-async="startAsyncBattle"
-            @start-factory="startFactoryChallenge"
-            @start-manual="startBattle"
-            @update-format="setBattleFormat"
-          />
+        <!-- 操作面板（预览/招式/换人） -->
+        <BattleDecisionPanel
+          :busy-action="busyAction"
+          :can-confirm-preview="canConfirmPreview"
+          :can-confirm-replacement="canConfirmReplacement"
+          :available-special-systems="availableSpecialSystems"
+          :active-special-system-label="activeSpecialSystemLabel"
+          :can-use-special-system="canUseSpecialSystem"
+          :can-terastallize="canTerastallize"
+          :can-submit-move="canSubmitMove"
+          :confirm-preview="confirmPreview"
+          :confirm-replacement="confirmReplacement"
+          :format-types="formatTypes"
+          :is-busy="isBusy"
+          :is-lead="isLead"
+          :is-picked="isPicked"
+          :is-preview-phase="isPreviewPhase"
+          :is-replacement-phase="isReplacementPhase"
+          :lead-limit="leadLimit"
+          :lead-roster-indexes="leadRosterIndexes"
+          :move-effectiveness-hints="moveEffectivenessHints"
+          :move-needs-opponent-target="moveNeedsOpponentTarget"
+          :opponent-active-mons="opponentActiveMons"
+          :opponent-active-options="opponentActiveOptions"
+          :opponent-roster="opponentRoster"
+          :pending-replacement-count="pendingReplacementCount"
+          :player-active-mons="playerActiveMons"
+          :player-bench-options="playerBenchOptions"
+          :player-roster="playerRoster"
+          :preview-card-class="previewCardClass"
+          :replacement-bench-options="replacementBenchOptions"
+          :result-text="resultText"
+          :roster-limit="rosterLimit"
+          :selected-actions="selectedActions"
+          :set-selected-action="setSelectedAction"
+          :selected-move-object="selectedMoveObject"
+          :selected-moves="selectedMoves"
+          :set-selected-move="setSelectedMove"
+          :selected-special-systems="selectedSpecialSystems"
+          :set-selected-special-system="setSelectedSpecialSystem"
+          :selected-replacement-indexes="selectedReplacementIndexes"
+          :selected-roster-indexes="selectedRosterIndexes"
+          :selected-switch-targets="selectedSwitchTargets"
+          :set-selected-switch-target="setSelectedSwitchTarget"
+          :selected-targets="selectedTargets"
+          :set-selected-target="setSelectedTarget"
+          :show-debug-panel="showDebugPanel"
+          :special-system-label="specialSystemLabel"
+          :submit-move="submitMove"
+          :tera-type-label="teraTypeLabel"
+          :toggle-lead="toggleLead"
+          :toggle-replacement="toggleReplacement"
+          :toggle-roster="toggleRoster"
+          @toggle-debug-panel="setShowDebugPanel"
+        />
 
-          <BattleDecisionPanel
-            :busy-action="busyAction"
-            :can-confirm-preview="canConfirmPreview"
-            :can-confirm-replacement="canConfirmReplacement"
-            :available-special-systems="availableSpecialSystems"
-            :active-special-system-label="activeSpecialSystemLabel"
-            :can-use-special-system="canUseSpecialSystem"
-            :can-terastallize="canTerastallize"
-            :can-submit-move="canSubmitMove"
-            :confirm-preview="confirmPreview"
-            :confirm-replacement="confirmReplacement"
-            :format-types="formatTypes"
-            :is-busy="isBusy"
-            :is-lead="isLead"
-            :is-picked="isPicked"
-            :is-preview-phase="isPreviewPhase"
-            :is-replacement-phase="isReplacementPhase"
-            :lead-limit="leadLimit"
-            :lead-roster-indexes="leadRosterIndexes"
-            :move-effectiveness-hints="moveEffectivenessHints"
-            :move-needs-opponent-target="moveNeedsOpponentTarget"
-            :opponent-active-mons="opponentActiveMons"
-            :opponent-active-options="opponentActiveOptions"
-            :opponent-roster="opponentRoster"
-            :pending-replacement-count="pendingReplacementCount"
-            :player-active-mons="playerActiveMons"
-            :player-bench-options="playerBenchOptions"
-            :player-roster="playerRoster"
-            :preview-card-class="previewCardClass"
-            :replacement-bench-options="replacementBenchOptions"
-            :result-text="resultText"
-            :roster-limit="rosterLimit"
-            :selected-actions="selectedActions"
-            :set-selected-action="setSelectedAction"
-            :selected-move-object="selectedMoveObject"
-            :selected-moves="selectedMoves"
-            :set-selected-move="setSelectedMove"
-            :selected-special-systems="selectedSpecialSystems"
-            :set-selected-special-system="setSelectedSpecialSystem"
-            :selected-replacement-indexes="selectedReplacementIndexes"
-            :selected-roster-indexes="selectedRosterIndexes"
-            :selected-switch-targets="selectedSwitchTargets"
-            :set-selected-switch-target="setSelectedSwitchTarget"
-            :selected-targets="selectedTargets"
-            :set-selected-target="setSelectedTarget"
-            :show-debug-panel="showDebugPanel"
-            :special-system-label="specialSystemLabel"
-            :submit-move="submitMove"
-            :tera-type-label="teraTypeLabel"
-            :toggle-lead="toggleLead"
-            :toggle-replacement="toggleReplacement"
-            :toggle-roster="toggleRoster"
-            @toggle-debug-panel="setShowDebugPanel"
-          />
+        <!-- 操作栏 -->
+        <div class="sd-action-bar">
+          <button v-if="currentBattleId && summary.status !== 'completed'" class="sd-action-btn" :disabled="isBusy" @click="refreshStatus">
+            🔄 {{ tr('刷新', 'Refresh') }}
+          </button>
+          <button v-if="currentBattleId && summary.status === 'running'" class="sd-forfeit-btn" :disabled="isBusy" @click="forfeitBattle">
+            {{ tr('投降', 'Forfeit') }}
+          </button>
+          <button v-if="showContinueFactoryButton" class="sd-start-btn" :disabled="isBusy" @click="prepareNextFactoryStage">
+            {{ tr('准备下一轮', 'Next') }}
+          </button>
+          <button v-if="showResetBattleButton" class="sd-action-btn" :disabled="isBusy" @click="resetBattleState({ keepFactoryRun: false })">
+            {{ tr('重置', 'Reset') }}
+          </button>
+          <button class="sd-action-btn" @click="openLeaderboard">📊 {{ tr('排行', 'Rank') }}</button>
+          <span v-if="lastUpdatedLabel" class="sd-updated">{{ lastUpdatedLabel }}</span>
         </div>
-      </div>
+      </template>
 
-      <div
-        v-if="showMobileActionDock"
-        class="fixed inset-x-0 bottom-0 z-40 border-t border-white/70 bg-white/90 px-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 shadow-[0_-18px_60px_-34px_rgba(15,23,42,0.4)] backdrop-blur-xl md:hidden"
-      >
-        <div class="mx-auto flex max-w-7xl flex-col gap-2">
-          <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            快捷操作
-          </div>
-          <div
-            class="grid gap-2"
-            :class="mobileActionButtons.length >= 3 ? 'grid-cols-3' : mobileActionButtons.length > 1 ? 'grid-cols-2' : 'grid-cols-1'"
-          >
-            <button
-              v-for="action in mobileActionButtons"
-              :key="action.key"
-              class="rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-              :class="action.tone === 'primary' ? 'bg-slate-950 text-white hover:bg-slate-800' : action.tone === 'danger' ? 'bg-rose-600 text-white hover:bg-rose-700' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'"
-              :disabled="action.disabled"
-              @click="handleMobileAction(action.key)"
-            >
-              {{ action.label }}
-            </button>
-          </div>
-        </div>
-      </div>
-
+      <!-- ExchangeModal / SettlementModal / LeaderboardModal / BanModal -->
       <ExchangeModal
         v-if="showExchange"
         v-model:replaced-index="replacedIndex"
@@ -192,7 +171,6 @@
         @close="showExchange = false"
         @confirm="onConfirmExchange"
       />
-
       <BattleSettlementModal
         v-if="settlement"
         :factory-run="factoryRun"
@@ -200,14 +178,12 @@
         @close="onSettlementClose"
         @continue="prepareNextFactoryStage"
       />
-
       <BattleLeaderboardModal
         v-if="showLeaderboard"
         :leaderboard-data="leaderboardData"
         :loading="leaderboardLoading"
         @close="showLeaderboard = false"
       />
-
       <BanModal
         :show="showBanModal"
         :player-points="playerPoints"
@@ -621,18 +597,116 @@ async function handleBanConfirm({ bannedPokemon, cost }) {
 </script>
 
 <style scoped>
-.battle-hero {
-  background:
-    radial-gradient(circle at top left, rgba(125, 211, 252, 0.46), transparent 28%),
-    radial-gradient(circle at top right, rgba(99, 102, 241, 0.24), transparent 24%),
-    linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.86) 48%, rgba(224, 242, 254, 0.95));
+/* ===== Showdown 风格全局布局 ===== */
+.sd-page {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 8px;
+  background: #2d2d2d;
+  min-height: 100vh;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }
 
-@media (max-width: 640px) {
-  .battle-hero {
-    background:
-      radial-gradient(circle at top left, rgba(125, 211, 252, 0.4), transparent 34%),
-      linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.92) 55%, rgba(224, 242, 254, 0.94));
-  }
+/* ===== Showdown 风格全局布局 ===== */
+.sd-start-panel {
+  background: #2d2d2d;
+  border-radius: 4px;
+  padding: 16px;
+}
+.sd-start-modes {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.sd-format-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #555;
+  border-radius: 3px;
+  background: #1a1a1a;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.sd-format-active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+.sd-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sd-start-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  border-radius: 3px;
+  background: #3b82f6;
+  color: #fff;
+  cursor: pointer;
+}
+.sd-start-btn:hover:not(:disabled) { background: #2563eb; }
+.sd-start-btn:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+.sd-start-factory { background: #6366f1; }
+.sd-start-factory:hover:not(:disabled) { background: #4f46e5; }
+.sd-start-async { background: #10b981; }
+.sd-start-async:hover:not(:disabled) { background: #059669; }
+.sd-guest-note {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #f59e0b;
+}
+.sd-factory-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #2d2d2d;
+  border-radius: 4px;
+}
+.sd-factory-info {
+  font-size: 12px;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+.sd-forfeit-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #7f1d1d;
+  border-radius: 3px;
+  background: #451a1a;
+  color: #fca5a5;
+  cursor: pointer;
+}
+.sd-forfeit-btn:hover:not(:disabled) { background: #7f1d1d; }
+.sd-forfeit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.sd-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: #252525;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+.sd-action-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid #444;
+  border-radius: 3px;
+  background: #1a1a1a;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.sd-action-btn:hover { border-color: #666; color: #e2e8f0; }
+.sd-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.sd-updated {
+  margin-left: auto;
+  font-size: 10px;
+  color: #475569;
 }
 </style>
