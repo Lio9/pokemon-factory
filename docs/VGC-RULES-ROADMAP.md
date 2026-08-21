@@ -54,7 +54,7 @@
 |---|---|---|---|
 | major | isPhysical 判定恒 true，特攻手被错发 Choice Band | AIService.java:460-472 | #code（已改为 atk>=spa 判定） |
 | major | 只生成攻向构建，无坦克/辅助定位 | AIService.java:290-389 | #done（determineBuild 新增 tank/support + 防御性格/EV/道具） |
-| major | BattleScore 强度评分饱和失真，无法分层 | TeamBalanceEvaluator.java:36,367 | #todo |
+| major | BattleScore 强度评分饱和失真，无法分层 | TeamBalanceEvaluator.java:36,367 | #done（归一化 0-100 加权合并：BST 40%+招式25%+特性15%+道具10%+速度10%） |
 | major | validatePlayability 误拒生命宝珠+火/电 | AIService.java:278-282 | #todo |
 | minor | 慢速宝可梦可能同时拿突击背心与变化招 | AIService.java:474-475,637-665 | #todo |
 | minor | seed 无法复现团队（SQL RANDOM + ThreadLocalRandom） | AIService.java:60-61,478 | #todo |
@@ -73,7 +73,7 @@
 | major | 雪之力 Snow Force 未注册（雪天冰系 1.3x） | EffectRegistry | #code（已注册） |
 | info | 太阳之力缺晴天 1/8 损耗 | 回合末天气 | #code（已加 solar-power 晴损） |
 | minor | 压迫感 Pressure 未接 PP 系统 | EffectRegistry.java:1038-1041 | #done（BattleEngine:439 已有实现：对方 Pressure 时多扣 1 PP） |
-| minor | 引爆 Aftermath 触发时机（应被击倒时才触发） | EffectRegistry.java:890-896 | #todo |
+| minor | 引爆 Aftermath 触发时机（应被击倒时才触发） | EffectRegistry.java:890-896 | #done（已有 currentHp<=0 判定，逻辑正确） |
 | 说明 | Guts×灼伤：第一轮 0.75x 修复正确（Showdown 中灼伤×0.5 与 Guts×1.5 独立相乘），特性子代理的 1.5x 判断有误，不回退 | − | 已确认 |
 | 说明 | 魔法防守/威吓/先制控速/加速/踩影等已正确 | 多处 | 已确认 |
 | info | 久经沙场/拟态兽：disguise 已实现挡一击 | BattleRoundSupport.java:664 | 已确认 |

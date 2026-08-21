@@ -24,61 +24,53 @@ public class TeamBalanceEvaluator {
      * @param pokemon 宝可梦数据
      * @return 战斗力分数 (越高越强)
      */
+    /**
+     * D3: 评估单只宝可梦的战斗力（归一化到 0-100 区间，解决饱和失真）。
+     *
+     * <p>旧公式各项直接累加导致所有宝可梦得分集中在 400-600，
+     * 无法区分强弱层级。新公式将每个维度归一化后加权合并。</p>
+     */
     public double evaluatePokemonStrength(Map<String, Object> pokemon) {
         if (pokemon == null)
             return 0.0;
 
-        double score = 0.0;
-
-        // 1. 种族值总和 (BST) - 基础战斗力
+        // 1. 种族值总和 (BST) 归一化：最高 ~720(传说) → 100, 最低 ~200 → 0
         Map<String, Object> stats = BattleUtils.toMap(pokemon.get("stats"));
         int bst = calculateBST(stats);
-        score += bst * 0.5; // BST贡献基础分
+        double bstScore = Math.max(0, Math.min(100, (bst - 200.0) / 5.2)); // 200→0, 720→100
 
-        // 2. 招式质量评估
+        // 2. 招式质量 (0-100)
         List<Map<String, Object>> moves = castList(pokemon.get("moves"));
+        double moveScore = 30.0; // 基线：有4个招式
         if (!moves.isEmpty()) {
-            // 平均威力
             double avgPower = calculateAverageMovePower(moves);
-            score += avgPower * 1.5;
-
-            // 属性覆盖度
+            moveScore = Math.min(60, avgPower * 0.5); // 威力0-120 → 0-60
             Set<Integer> coveredTypes = getCoveredTypes(moves);
-            score += coveredTypes.size() * 8.0; // 每个不同属性+8分
-
-            // 是否有强化技能
+            moveScore += Math.min(15, coveredTypes.size() * 4); // 属性覆盖 +15 max
             long setupMoves = moves.stream().filter(this::isSetupMove).count();
-            score += setupMoves * 15;
-
-            // 是否有回复技能
+            moveScore += Math.min(10, setupMoves * 10);
             long recoveryMoves = moves.stream().filter(this::isRecoveryMove).count();
-            score += recoveryMoves * 12;
-
-            // 是否有先制技能
+            moveScore += Math.min(8, recoveryMoves * 8);
             long priorityMoves = moves.stream().filter(this::isPriorityMove).count();
-            score += priorityMoves * 10;
-
-            // 是否有变化技能
-            long statusMoves = moves.stream().filter(MoveRegistry::isStatusMove).count();
-            score += statusMoves * 5;
+            moveScore += Math.min(7, priorityMoves * 7);
         }
+        moveScore = Math.min(100, moveScore);
 
-        // 3. 特性质量
+        // 3. 特性质量 (0-100)
         String ability = BattleUtils.toString(pokemon.get("ability"), "");
-        score += evaluateAbilityQuality(ability, moves);
+        double abilityScore = Math.min(100, evaluateAbilityQuality(ability, moves));
 
-        // 4. 道具质量
+        // 4. 道具质量 (0-100)
         String item = BattleUtils.toString(pokemon.get("heldItem"), "");
-        score += evaluateItemQuality(item, pokemon, moves);
+        double itemScore = Math.min(100, evaluateItemQuality(item, pokemon, moves));
 
-        // 5. 速度层次加分 (高速宝可梦更有价值)
+        // 5. 速度 (0-100)
         int speed = BattleUtils.toInt(stats.get("speed"), 0);
-        if (speed >= 100)
-            score += 20;
-        else if (speed >= 80)
-            score += 10;
+        double speedScore = Math.min(100, speed * 0.65); // 154→100
 
-        return score;
+        // 加权合并：BST 40% + 招式 25% + 特性 15% + 道具 10% + 速度 10%
+        return bstScore * 0.40 + moveScore * 0.25 + abilityScore * 0.15
+                + itemScore * 0.10 + speedScore * 0.10;
     }
 
     /**
