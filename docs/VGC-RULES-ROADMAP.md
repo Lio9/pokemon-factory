@@ -72,7 +72,7 @@
 | major | 心灵感应 Telepathy 未注册（免疫队友群伤） | BattleRoundSupport spread 循环 | #code（已加 telepathy 跳过） |
 | major | 雪之力 Snow Force 未注册（雪天冰系 1.3x） | EffectRegistry | #code（已注册） |
 | info | 太阳之力缺晴天 1/8 损耗 | 回合末天气 | #code（已加 solar-power 晴损） |
-| minor | 压迫感 Pressure 未接 PP 系统 | EffectRegistry.java:1038-1041 | #todo |
+| minor | 压迫感 Pressure 未接 PP 系统 | EffectRegistry.java:1038-1041 | #done（BattleEngine:439 已有实现：对方 Pressure 时多扣 1 PP） |
 | minor | 引爆 Aftermath 触发时机（应被击倒时才触发） | EffectRegistry.java:890-896 | #todo |
 | 说明 | Guts×灼伤：第一轮 0.75x 修复正确（Showdown 中灼伤×0.5 与 Guts×1.5 独立相乘），特性子代理的 1.5x 判断有误，不回退 | − | 已确认 |
 | 说明 | 魔法防守/威吓/先制控速/加速/踩影等已正确 | 多处 | 已确认 |
@@ -96,7 +96,7 @@
 | major | 天气/场地/双墙/钉子无剩余回合数 | BattleArena.vue fieldEffectChips:709-741 | #done（显示 Nt 后缀如 "雨天 3T"） |
 | major | 无法点击在场精灵查看完整配置 | BattleArena.vue:130-146 | #done（ℹ按钮+右键打开 PokemonDetailPopover） |
 | major | 精灵无攻击/受击动画 | BattleArena.vue:770-808 | #todo |
-| major | 键盘快捷键 L 标记首发起死代码 | Battle.vue:490-494 | #todo |
+| major | 键盘快捷键 L 标记首发起死代码 | Battle.vue:490-494 | #done（L键循环切换首发标记） |
 | minor | 移动端战场横向溢出 | BattleArena.vue:817 | #todo |
 | minor | 回合日志不可折叠、无限加长 | BattleArena.vue:363-431 | #todo |
 | minor | 队伍预览放大镜按钮视觉噪音 | BattleDecisionPanel.vue:62-87 | #todo |
@@ -112,15 +112,15 @@
 | critical | AI 难度体系（Easy/Normal/Hard/Expert）是死代码，真实路径无难度参数，四档零差异 | AIStrategy.java / AIDifficulty.java / BattleActionBuilder.java:49 | #done（难度已接入 selectAIMove，strategicChance 四档缩放） |
 | critical | AI 从不主动使用强化技（剑舞/冥想/龙舞等） | BattleDecisionSupport.java:54-142 | #done（新增 selectAISetupMove 16 种强化招式+安全判定） |
 | major | 目标选择与招式打分脱节，双打随机挑目标不查免疫 | BattleActionBuilder.java:68-77 | #done（selectBestTargetSlot 类型克制+低血补刀） |
-| major | 换人一维属性最小化 + 随机概率门控 | BattleAiSwitchSupport.java:43-87 | #todo |
+| major | 换人一维属性最小化 + 随机概率门控 | BattleAiSwitchSupport.java:43-87 | #done（多维评分：typeResist+HP+offense+OHKO惩罚） |
 | major | selectBestDamageMove 忽略命中率/次要效果/必杀线 | BattleDecisionSupport.java:145-185 | #done（+accuracy权重+ailment/flinch加分+KO bonus） |
 | major | 难度宣称能力未实现（伤害预测占位、克制固定 1.0） | AIStrategy.java:52-56 | #todo |
 | minor | AI 不用 Protect/撒钉/场地战略 | BattleDecisionSupport.java:194 | #todo |
 | minor | 资源招只随机放行无收益权衡 | BattleAISupport.java:47-198 | #todo |
-| info | 换人评估用 base types 而非 activeTypes | BattleAiSwitchSupport.java:212 | #code（已改用 engine.activeTypes） |
-| info | heavilyDebuffed 判断粗糙 | BattleAiSwitchSupport.java:40-60 | #todo |
+| info | 换人评估用 base types 而非 activeTypes | BattleAiSwitchSupport.java:212 | #done（已改用 engine.activeTypes） |
+| info | heavilyDebuffed 判断粗糙 | BattleAiSwitchSupport.java:40-60 | #done（加权攻击/速度下降×2） |
 | info | 双打换人逐只独立决策可能连环对位 | BattleActionBuilder.java:54-64 | #todo |
-| info | findBestDefensiveSwitch 无被一击死兜底 | BattleAiSwitchSupport.java:224-243 | #todo |
+| info | findBestDefensiveSwitch 无被一击死兜底 | BattleAiSwitchSupport.java:224-243 | #done（OHKO 惩罚 -50 分） |
 | info | 无终局资源意识 | 全局 | #todo |
 | info | evaluateThreatLevel 是死代码从未调用 | BattleAnalysisSupport.java:218-251 | #todo |
 | info | 睡眠/哈欠仅 40% 随机放行 | BattleAISupport.java:29-46 | #todo |

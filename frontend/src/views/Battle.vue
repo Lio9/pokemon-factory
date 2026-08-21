@@ -488,8 +488,21 @@ function handleBattleKeydown(event) {
     return
   }
   if (isPreviewPhase.value && (key === 'l' || key === 'L')) {
-    // 将所有已选中的标记为候选首发（点击顺序控制）
+    // L 键：将下一个已选中的宝可梦标记为首发（循环切换）
     event.preventDefault()
+    const picked = selectedRosterIndexes.value
+    if (!picked.length) return
+    const leads = leadRosterIndexes.value
+    if (leads.length === 0) {
+      // 没有首发时，标记第一个已选中的
+      toggleLead(picked[0])
+    } else {
+      // 找到当前最后一个首发在 picked 中的索引，标记下一个
+      const lastLead = leads[leads.length - 1]
+      const idx = picked.indexOf(lastLead)
+      const nextIdx = (idx + 1) % picked.length
+      toggleLead(picked[nextIdx])
+    }
     return
   }
 
@@ -545,7 +558,8 @@ function handleBattleKeydown(event) {
 }
 
 onMounted(() => {
-  keyboardHandler = window.addEventListener('keydown', handleBattleKeydown)
+  window.addEventListener('keydown', handleBattleKeydown)
+  keyboardHandler = true
 })
 
 onBeforeUnmount(() => {

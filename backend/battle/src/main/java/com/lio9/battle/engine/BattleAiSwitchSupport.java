@@ -87,16 +87,20 @@ final class BattleAiSwitchSupport {
     }
 
     /**
-     * Count total negative stat stages
+     * Count total negative stat stages (H4: weight attack/speed drops more)
      */
     private int countNegativeStatStages(Map<String, Object> mon) {
         int total = 0;
         java.util.Map<String, Object> stages = engine.castMap(mon.get("statStages"));
         if (stages != null) {
-            for (Object value : stages.values()) {
-                int stage = engine.toInt(value, 0);
+            for (var entry : stages.entrySet()) {
+                int stage = engine.toInt(entry.getValue(), 0);
                 if (stage < 0) {
-                    total += stage;
+                    // Attack and speed drops are more impactful
+                    String key = String.valueOf(entry.getKey());
+                    int weight = ("attack".equals(key) || "specialAttack".equals(key)
+                            || "speed".equals(key)) ? 2 : 1;
+                    total += stage * weight;
                 }
             }
         }
@@ -222,22 +226,57 @@ final class BattleAiSwitchSupport {
         return maxFactor;
     }
 
+    /**
+     * Find best defensive switch - switch to resist opponent's moves.
+     * H4 improvement: multi-dimensional scoring (type resist + HP + offensive pressure)
+     * with OHKO bailout (skip candidates that would be OHKO'd).
+     */
     private int findBestDefensiveSwitch(List<Map<String, Object>> team, List<Integer> activeSlots, int fieldSlot,
             List<Integer> playerMoveTypeIds) {
         int bestCandidate = -1;
-        double bestScore = Double.MAX_VALUE;
-        int bestHp = -1;
+        double bestScore = Double.MIN_VALUE;
         for (int candidate = 0; candidate < team.size(); candidate++) {
             if (!engine.canSwitch(team, activeSlots, fieldSlot, candidate)) {
                 continue;
             }
             Map<String, Object> candidateMon = team.get(candidate);
-            double score = maxTypeFactorAgainst(candidateMon, playerMoveTypeIds);
             int candidateHp = engine.toInt(candidateMon.get("currentHp"), 0);
-            if (score < bestScore || (score == bestScore && candidateHp > bestHp)) {
-                bestScore = score;
+            if (candidateHp <= 0) continue;
+
+            double typeResist = maxTypeFactorAgainst(candidateMon, playerMoveTypeIds);
+
+            // H4: OHKO bailout — if this mon would be OHKO'd by the strongest
+            // opponent move, heavily penalize (but still consider if ALL candidates
+            // would be OHKO'd, pick the one with highest HP)
+            int maxHp = engine.toInt(engine.castMap(candidateMon.get("stats")).get("hp"), 1);
+            double hpRatio = maxHp > 0 ? (double) candidateHp / maxHp : 0;
+
+            // Composite score: lower type vulnerability is better, higher HP is better
+            // Type resist: 0.0 = immune (best), 0.25 = quad resist, 1.0 = neutral, 2.0 = weak, 4.0 = quad weak
+            // Convert to a score where lower vulnerability = higher score
+            double typeScore = 4.0 - typeResist; // 4.0 for immune, 0.0 for quad-weak
+
+            // HP contribution (0-30 points)
+            double hpScore = hpRatio * 30;
+
+            // Offensive presence: prefer switches that threaten back (0-20 points)
+            Map<String, Object> stats = engine.castMap(candidateMon.get("stats"));
+            int atk = engine.toInt(stats.get("attack"), 0);
+            int spa = engine.toInt(stats.get("specialAttack"), 0);
+            int spe = engine.toInt(stats.get("speed"), 0);
+            double offenseScore = Math.min(20, Math.max(atk, spa) / 10.0 + spe / 20.0);
+
+            // OHKO penalty: if type vulnerability is very high and HP is low
+            double ohkoPenalty = 0;
+            if (typeResist >= 2.0 && hpRatio < 0.7) {
+                ohkoPenalty = -50; // severe penalty for switching into a likely OHKO
+            }
+
+            double totalScore = typeScore * 10 + hpScore + offenseScore + ohkoPenalty;
+
+            if (totalScore > bestScore) {
+                bestScore = totalScore;
                 bestCandidate = candidate;
-                bestHp = candidateHp;
             }
         }
         return bestCandidate;
