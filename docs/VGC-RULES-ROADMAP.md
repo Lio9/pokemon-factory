@@ -34,7 +34,7 @@
 | major | 尖刺防守未注册为保护招式 | MoveRegistry.java:25-30 | #code（已加入 PROTECT_MOVES） |
 | major | Eerie Impulse/Feather Dance/Scary Face/String Shot/Tickle/Noble Roar 等 no-op | BattleRoundSupport.java:2467 / MoveRegistry | #done（全部 8 种辅助降能招式已实现） |
 | minor | 冷启回合（Chilly Reception）未实现 | MoveRegistry | #todo |
-| minor | 治疗招式（治愈铃声等）队员时只看活体 | 待定位 | #todo |
+| minor | 治疗招式（治愈铃声等）队员时只看活体 | 待定位 | #done（applyHealBell 遍历全队，跳过 fainted，逻辑正确） |
 
 ### C. 目标系统与吸引机制（7 项）
 
