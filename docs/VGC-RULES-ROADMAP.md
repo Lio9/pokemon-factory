@@ -95,7 +95,7 @@
 | critical | 完全缺失能力阶级(+X/-X)显示 | BattleArena.vue conditionBadges:655-699 / BattleDecisionPanel:293-316 | #done（+N Atk/-N SpD 蓝/红色徽章） |
 | major | 天气/场地/双墙/钉子无剩余回合数 | BattleArena.vue fieldEffectChips:709-741 | #done（显示 Nt 后缀如 "雨天 3T"） |
 | major | 无法点击在场精灵查看完整配置 | BattleArena.vue:130-146 | #done（ℹ按钮+右键打开 PokemonDetailPopover） |
-| major | 精灵无攻击/受击动画 | BattleArena.vue:770-808 | #todo |
+| major | 精灵无攻击/受击动画 | BattleArena.vue:770-808 | #done（attack-left/right + hit shake/flash + heal glow CSS 动画） |
 | major | 键盘快捷键 L 标记首发起死代码 | Battle.vue:490-494 | #done（L键循环切换首发标记） |
 | minor | 移动端战场横向溢出 | BattleArena.vue:817 | #done（max-w-full + overflow-hidden） |
 | minor | 回合日志不可折叠、无限加长 | BattleArena.vue:363-431 | #done（details/summary 折叠，默认展开最近2回合） |

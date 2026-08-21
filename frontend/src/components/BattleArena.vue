@@ -141,7 +141,7 @@
                   :src="spriteUrl(mon, false)"
                   :alt="mon.name"
                   class="opp-sprite h-28 w-28 object-contain sm:h-36 sm:w-36"
-                  :class="[mon.fainted ? 'sprite-fainted' : 'sprite-idle', targetHighlight(mon) ? 'sprite-target' : '']"
+                  :class="[mon.fainted ? 'sprite-fainted' : 'sprite-idle', targetHighlight(mon) ? 'sprite-target' : '', getAnimClass('opp', idx)]"
                   @error="onSpriteError($event, mon, false)"
                 >
               </button>
@@ -177,7 +177,7 @@
                   :src="spriteUrl(mon, true)"
                   :alt="mon.name"
                   class="player-sprite h-28 w-28 object-contain sm:h-36 sm:w-36"
-                  :class="[mon.fainted ? 'sprite-fainted' : 'sprite-idle']"
+                  :class="[mon.fainted ? 'sprite-fainted' : 'sprite-idle', getAnimClass('player', idx)]"
                   @error="onSpriteError($event, mon, true)"
                   @contextmenu.prevent="openMonDetail(mon)"
                 >
@@ -480,7 +480,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useLocale } from '../composables/useLocale'
 import { sprites } from '../services/sprites'
 import PokemonDetailPopover from './PokemonDetailPopover.vue'
@@ -530,6 +530,50 @@ function openMonDetail(mon) {
   detailPokemon.value = mon
   showDetailDialog.value = true
 }
+
+// G11: 攻击/受击动画状态
+const animClasses = ref({}) // { 'opp-0': 'sprite-hit', 'player-1': 'sprite-attack-left', ... }
+let animTimer = null
+
+function applyAnim(key, cls, duration = 600) {
+  animClasses.value = { ...animClasses.value, [key]: cls }
+  setTimeout(() => {
+    const next = { ...animClasses.value }
+    delete next[key]
+    animClasses.value = next
+  }, duration)
+}
+
+function getAnimClass(side, slot) {
+  return animClasses.value[`${side}-${slot}`] || ''
+}
+
+// 监听新回合，根据事件触发动画
+watch(() => props.summary?.rounds?.length, (newLen, oldLen) => {
+  if (!newLen || newLen <= (oldLen || 0)) return
+  const latestRound = props.summary.rounds[newLen - 1]
+  if (!latestRound?.events) return
+
+  const events = latestRound.events.join(' ')
+  // 简单匹配：有伤害事件 → 受击动画；有攻击动词 → 攻击动画
+  const hasDamage = /伤害|damage|造成了|造成/.test(events)
+  const hasHeal = /回复|恢复|治愈|heal/.test(events)
+
+  // 为所有在场精灵触发动画
+  const opp = props.summary?.opponentActiveSlots || []
+  const plr = props.summary?.playerActiveSlots || []
+
+  if (hasDamage) {
+    opp.forEach((_, i) => { if (Math.random() < 0.5) applyAnim(`opp-${i}`, 'sprite-hit') })
+    plr.forEach((_, i) => { if (Math.random() < 0.5) applyAnim(`player-${i}`, 'sprite-hit') })
+    // 攻击方冲刺
+    opp.forEach((_, i) => { if (Math.random() < 0.4) applyAnim(`opp-${i}`, 'sprite-attack-left') })
+    plr.forEach((_, i) => { if (Math.random() < 0.4) applyAnim(`player-${i}`, 'sprite-attack-right') })
+  }
+  if (hasHeal) {
+    plr.forEach((_, i) => applyAnim(`player-${i}`, 'sprite-heal'))
+  }
+})
 
 const statusChipClass = computed(() => {
   switch (props.statusTone) {
@@ -867,6 +911,55 @@ const fieldEffectChips = computed(() => {
 @keyframes float-soft {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
+}
+
+/* ===== G11: 攻击/受击动画 ===== */
+
+/* 攻击动画：精灵向前冲刺 */
+.sprite-attack-right {
+  animation: attack-right 0.35s ease-out;
+}
+.sprite-attack-left {
+  animation: attack-left 0.35s ease-out;
+}
+
+@keyframes attack-right {
+  0% { transform: translateX(0); }
+  40% { transform: translateX(30px) scale(1.08); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes attack-left {
+  0% { transform: translateX(0); }
+  40% { transform: translateX(-30px) scale(1.08); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+/* 受击动画：精灵抖动 + 闪红 */
+.sprite-hit {
+  animation: sprite-hit 0.5s ease-out;
+}
+
+@keyframes sprite-hit {
+  0% { filter: brightness(1); transform: translateX(0); }
+  15% { filter: brightness(2) saturate(0.3); transform: translateX(-8px); }
+  30% { filter: brightness(1.5); transform: translateX(8px); }
+  45% { filter: brightness(2) saturate(0.3); transform: translateX(-5px); }
+  60% { filter: brightness(1); transform: translateX(5px); }
+  80% { filter: brightness(1); transform: translateX(-2px); }
+  100% { filter: brightness(1); transform: translateX(0); }
+}
+
+/* 回复动画：精灵闪烁绿色 */
+.sprite-heal {
+  animation: sprite-heal 0.6s ease-out;
+}
+
+@keyframes sprite-heal {
+  0% { filter: brightness(1); }
+  30% { filter: brightness(1.3) hue-rotate(90deg); }
+  60% { filter: brightness(1.2) hue-rotate(60deg); }
+  100% { filter: brightness(1) hue-rotate(0deg); }
 }
 
 /* ===== 正作信息框 ===== */
