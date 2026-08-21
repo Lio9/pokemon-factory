@@ -22,7 +22,7 @@
 | major | vgc63 被误当单打（应双打 2/4） | BattleSetupSupport.java:41,45 | #done（vgc63 不在 isSingle 列表，自动双打 2/4） |
 | major | 传说/幻兽排除过宽且只作用于随机池 | BattleDexMapper.java:33-34 | #todo |
 | major | 缺格式级禁道具（心之水滴）/禁招式（暗黑洞） | ItemHandlers.java:93 / MoveRegistry | #todo |
-| minor | 格式映射重复死代码 | BattleEngine.java:36-46 | #todo |
+| minor | 格式映射重复死代码 | BattleEngine.java:36-46 | #done（移除 activeSlotsForFormat/battleTeamSizeForFormat 未调用方法） |
 | minor | 12 回合上限硬编码多处重复 | BattleFlowSupport.java:33 / BattleService / BattleExecutor / BattleConfig | #todo |
 | info | VGC 应禁用 Mega/Z/极巨化（仅太晶化） | BattleConfig.java:208-266 | #todo |
 

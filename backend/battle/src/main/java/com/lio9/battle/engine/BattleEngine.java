@@ -32,19 +32,6 @@ public class BattleEngine {
     private static final int BATTLE_TEAM_SIZE = 4;
     private static final int ACTIVE_SLOTS = 2;
 
-    // 格式配置：根据 format 字符串返回对应的活跃槽位数和队伍大小
-    static int activeSlotsForFormat(String format) {
-        if ("gen9singles".equalsIgnoreCase(format) || "vgc-singles".equalsIgnoreCase(format) || "vgc63".equalsIgnoreCase(format))
-            return 1;
-        return ACTIVE_SLOTS;
-    }
-
-    static int battleTeamSizeForFormat(String format) {
-        if ("gen9singles".equalsIgnoreCase(format) || "vgc-singles".equalsIgnoreCase(format) || "vgc63".equalsIgnoreCase(format))
-            return 3;
-        return BATTLE_TEAM_SIZE;
-    }
-
     private final SkillService skillService;
     private final BattleStateSupport stateSupport;
     private final BattlePreviewSupport previewSupport;
