@@ -130,10 +130,23 @@
       <div v-if="!isPreviewPhase && !isReplacementPhase" class="panel">
         <div v-if="myMons.length">
           <div v-for="mon in myMons" :key="'act'+mon.fieldSlot" class="act-section">
+            <!-- 精灵信息头（Showdown 风格：sprite + 名字 + HP） -->
+            <div class="act-header">
+              <img :src="sprite(mon, true)" class="act-sprite" :class="{fainted:mon.fainted}" @error="imgErr($event,mon,true)">
+              <div class="act-info">
+                <div class="act-name">{{ mon.name || mon.name_en }}</div>
+                <div class="act-hp-bar"><div class="act-hp-fill" :class="hpColor(mon)" :style="{width: hpPct(mon)}" /></div>
+                <div class="act-hp-text">HP {{ mon.currentHp }}/{{ mon.maxHp }}</div>
+              </div>
+              <div class="act-tags">
+                <span v-for="b in badges(mon)" :key="b.t" class="bf-tag" :style="{background:b.c}">{{ b.t }}</span>
+              </div>
+            </div>
+
             <!-- 招式/换人 切换 -->
             <div class="act-toggle">
-              <button class="act-tog" :class="(selectedActions['action-slot-'+mon.fieldSlot]||'move')==='move'?'act-tog-on':''" @click="setSelectedAction(mon.fieldSlot,'move')">招式</button>
-              <button class="act-tog" :class="selectedActions['action-slot-'+mon.fieldSlot]==='switch'?'act-tog-on':''" :disabled="!playerBenchOptions.length" @click="setSelectedAction(mon.fieldSlot,'switch')">换人</button>
+              <button class="act-tog" :class="(selectedActions['action-slot-'+mon.fieldSlot]||'move')==='move'?'act-tog-on':''" @click="setSelectedAction(mon.fieldSlot,'move')">⚔️ 招式</button>
+              <button class="act-tog" :class="selectedActions['action-slot-'+mon.fieldSlot]==='switch'?'act-tog-on':''" :disabled="!playerBenchOptions.length" @click="setSelectedAction(mon.fieldSlot,'switch')">🔄 换人</button>
             </div>
 
             <!-- 招式面板 -->
@@ -145,23 +158,25 @@
                   @click="setSelectedMove(mon.fieldSlot, mv.name_en||mv.name)">
                   <div class="mv-top"><span class="mv-name">{{ mv.name || mv.name_en }}</span><span v-if="mv.target_id&&mv.target_id!==10" class="mv-tgt">{{ tgtLabel(mv.target_id) }}</span></div>
                   <div class="mv-bot">
-                    <span v-if="mv.power" class="mv-stat">{{ mv.power }}</span>
-                    <span v-if="mv.accuracy" class="mv-stat">{{ mv.accuracy }}%</span>
-                    <span class="mv-pp">{{ mv.currentPp!=null ? mv.currentPp+'/'+(mv.maxPp||mv.pp||'?') : '' }}</span>
+                    <span v-if="mv.power" class="mv-stat">威力 {{ mv.power }}</span>
+                    <span v-if="mv.accuracy && mv.accuracy < 100" class="mv-stat">命中 {{ mv.accuracy }}%</span>
+                    <span class="mv-pp">PP {{ mv.currentPp!=null ? mv.currentPp+'/'+(mv.maxPp||mv.pp||'?') : '--' }}</span>
                     <span class="mv-type">{{ typeName(mv.type_id) }}</span>
                   </div>
                 </button>
               </div>
               <!-- 目标选择 -->
               <div v-if="moveNeedsOpponentTarget(selMoveObj(mon)) && oppMons.length" class="tgt-row">
-                <span class="tgt-label">目标:</span>
+                <span class="tgt-label">选择目标 →</span>
                 <button v-for="t in oppMons" :key="t.fieldSlot" type="button"
                   class="tgt-btn" :class="selectedTargets['target-slot-'+mon.fieldSlot]===t.fieldSlot?'tgt-on':''"
-                  @click="setSelectedTarget(mon.fieldSlot, t.fieldSlot)">{{ t.name || t.name_en }}</button>
+                  @click="setSelectedTarget(mon.fieldSlot, t.fieldSlot)">
+                  {{ t.name || t.name_en }}
+                </button>
               </div>
               <!-- 特殊系统 -->
               <div v-if="availableSpecialSystems(mon).length" class="sp-row">
-                <button class="sp-btn" :class="!selectedSpecialSystems['special-slot-'+mon.fieldSlot]?'sp-on':''" @click="setSelectedSpecialSystem(mon.fieldSlot,undefined)">无</button>
+                <button class="sp-btn" :class="!selectedSpecialSystems['special-slot-'+mon.fieldSlot]?'sp-on':''" @click="setSelectedSpecialSystem(mon.fieldSlot,undefined)">不发动</button>
                 <button v-for="s in availableSpecialSystems(mon)" :key="s" class="sp-btn" :class="selectedSpecialSystems['special-slot-'+mon.fieldSlot]===s?'sp-on':''" @click="setSelectedSpecialSystem(mon.fieldSlot,s)">{{ specialSystemLabel(s) }}<template v-if="s==='tera'"> · {{ teraTypeLabel(mon) }}</template></button>
               </div>
             </template>
@@ -174,7 +189,8 @@
                   @click="setSelectedSwitchTarget(mon.fieldSlot, t.value)">
                   <img :src="spr(t.pokemon||t)" class="sw-img" @error="imgErr2($event,t.pokemon||t)">
                   <div class="sw-info"><span class="sw-name">{{ t.label }}</span>
-                  <div class="sw-hp"><div class="sw-hp-bar" :style="{width:hpPct2(t),background:hpCol2(t)}" /></div></div>
+                  <div class="sw-hp"><div class="sw-hp-bar" :style="{width:hpPct2(t),background:hpCol2(t)}" /></div>
+                  <span class="sw-hp-num">{{ t.hp }}/{{ t.maxHp || '?' }}</span></div>
                 </button>
               </div>
             </template>
@@ -182,7 +198,7 @@
 
           <!-- 提交 -->
           <button class="sd-btn sd-btn-blue sd-btn-full" :disabled="!canSubmitMove||isBusy" @click="submitMove">
-            {{ busyAction==='submit-move' ? '提交中...' : '提交回合' }}
+            {{ busyAction==='submit-move' ? '提交中...' : '✅ 提交回合' }}
           </button>
         </div>
         <div v-else class="sd-empty">开始对战后这里会显示招式选择</div>
@@ -391,8 +407,8 @@ watch(() => summary.value?.rounds?.length, (n) => {
 <style>
 /* ===== 全局 ===== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #1a1a1a; }
-.sd-page { display: flex; flex-direction: column; gap: 4px; max-width: 640px; margin: 0 auto; padding: 8px; font-family: 'Segoe UI', Arial, sans-serif; color: #e2e8f0; }
+body { background: #111111; }
+.sd-page { display: flex; flex-direction: column; gap: 6px; max-width: 640px; margin: 0 auto; padding: 10px; font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; color: #e2e8f0; }
 
 /* ===== 开始面板 ===== */
 .sd-start { background: #2d2d2d; border-radius: 4px; padding: 16px; }
@@ -400,7 +416,7 @@ body { background: #1a1a1a; }
 .sd-fmt-btn { padding: 6px 14px; font-size: 12px; font-weight: 600; border: 1px solid #555; border-radius: 3px; background: #1a1a1a; color: #94a3b8; cursor: pointer; }
 .sd-fmt-on { background: #3b82f6; color: #fff; border-color: #3b82f6; }
 .sd-btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.sd-btn { padding: 8px 16px; font-size: 13px; font-weight: 700; border: none; border-radius: 3px; cursor: pointer; color: #fff; }
+.sd-btn { padding: 8px 16px; font-size: 13px; font-weight: 700; border: none; border-radius: 5px; cursor: pointer; color: #fff; transition: all 0.15s; letter-spacing: 0.02em; }
 .sd-btn:disabled { background: #374151 !important; color: #6b7280; cursor: not-allowed; }
 .sd-btn-blue { background: #3b82f6; } .sd-btn-blue:hover:not(:disabled) { background: #2563eb; }
 .sd-btn-purple { background: #6366f1; } .sd-btn-purple:hover:not(:disabled) { background: #4f46e5; }
@@ -415,7 +431,7 @@ body { background: #1a1a1a; }
 .sd-bar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #252525; border-radius: 4px; }
 
 /* ===== 战场 ===== */
-.bf { background: linear-gradient(180deg, #6b8f5e 0%, #5a7a4f 40%, #4a6940 100%); border-radius: 4px; padding: 12px 16px; min-height: 300px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+.bf { background: linear-gradient(180deg, #7aa86e 0%, #5e8a50 35%, #4a7240 65%, #3d6235 100%); border-radius: 6px; padding: 16px 20px; min-height: 320px; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: inset 0 2px 20px rgba(0,0,0,0.3); }
 .bf-row { display: flex; gap: 12px; }
 .bf-opp-row { justify-content: flex-start; }
 .bf-my-row { justify-content: flex-end; }
@@ -442,7 +458,7 @@ body { background: #1a1a1a; }
 .chip-sky { background: rgba(14,165,233,0.7); } .chip-yellow { background: rgba(234,179,8,0.7); } .chip-green { background: rgba(34,197,94,0.7); }
 
 /* ===== 面板（预览/操作） ===== */
-.panel { background: #2d2d2d; border-radius: 4px; padding: 12px; }
+.panel { background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 14px; }
 .panel-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #444; }
 .panel-title { font-size: 14px; font-weight: 700; color: #e2e8f0; }
 .panel-sub { font-size: 11px; color: #94a3b8; }
@@ -470,38 +486,50 @@ body { background: #1a1a1a; }
 .sw-img { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
 .sw-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sw-name { font-size: 11px; color: #e2e8f0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sw-hp { height: 5px; background: #333; border-radius: 2px; overflow: hidden; }
+.sw-hp { height: 5px; background: #222; border-radius: 2px; overflow: hidden; }
 .sw-hp-bar { height: 100%; transition: width 0.3s; }
+.sw-hp-num { font-size: 9px; color: #64748b; font-weight: 600; }
 
 /* 操作切换 */
-.act-section { background: #1a1a1a; border: 1px solid #333; border-radius: 3px; padding: 8px; margin-bottom: 8px; }
-.act-toggle { display: flex; gap: 2px; margin-bottom: 6px; }
-.act-tog { flex: 1; padding: 4px 8px; font-size: 11px; font-weight: 700; border: 1px solid #444; background: #252525; color: #94a3b8; cursor: pointer; }
-.act-tog:first-child { border-radius: 3px 0 0 3px; }
-.act-tog:last-child { border-radius: 0 3px 3px 0; }
+.act-section { background: #1e1e1e; border: 1px solid #3a3a3a; border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+.act-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #333; }
+.act-sprite { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
+.act-sprite.fainted { filter: grayscale(1) brightness(0.4); opacity: 0.5; }
+.act-info { flex: 1; min-width: 0; }
+.act-name { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+.act-hp-bar { height: 8px; background: #111; border-radius: 3px; overflow: hidden; border: 1px solid #333; margin: 3px 0; }
+.act-hp-fill { height: 100%; transition: width 0.4s; border-radius: 2px; }
+.act-hp-text { font-size: 11px; color: #94a3b8; font-weight: 600; }
+.act-tags { display: flex; flex-wrap: wrap; gap: 3px; align-self: flex-start; }
+.act-toggle { display: flex; gap: 2px; margin-bottom: 8px; }
+.act-tog { flex: 1; padding: 6px 10px; font-size: 12px; font-weight: 700; border: 1px solid #444; background: #252525; color: #94a3b8; cursor: pointer; border-radius: 4px; transition: all 0.15s; }
+.act-tog:first-child { border-radius: 4px 0 0 4px; }
+.act-tog:last-child { border-radius: 0 4px 4px 0; }
 .act-tog-on { background: #3b82f6; color: #fff; border-color: #3b82f6; }
 .act-tog:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* 招式按钮 */
-.mv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.mv-btn { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 2px solid #555; border-radius: 4px; background: var(--tc, #666); color: #fff; cursor: pointer; text-align: left; font-size: 12px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); min-height: 48px; transition: all 0.15s; }
-.mv-btn:hover:not(:disabled) { filter: brightness(1.15); border-color: #888; }
-.mv-sel { border-color: #fbbf24; box-shadow: 0 0 8px rgba(251,191,36,0.5); }
+.mv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.mv-btn { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 2px solid rgba(255,255,255,0.15); border-radius: 6px; background: var(--tc, #666); color: #fff; cursor: pointer; text-align: left; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.6); min-height: 56px; transition: all 0.15s; }
+.mv-btn:hover:not(:disabled) { filter: brightness(1.2); border-color: rgba(255,255,255,0.4); transform: translateY(-1px); }
+.mv-sel { border-color: #fbbf24 !important; box-shadow: 0 0 12px rgba(251,191,36,0.4), inset 0 0 8px rgba(251,191,36,0.1); }
 .mv-top { display: flex; justify-content: space-between; align-items: center; }
-.mv-name { font-weight: 700; font-size: 13px; }
-.mv-tgt { font-size: 9px; background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 2px; }
-.mv-bot { display: flex; align-items: center; gap: 6px; font-size: 10px; opacity: 0.85; }
-.mv-stat { font-weight: 600; }
-.mv-pp { margin-left: auto; font-weight: 600; }
-.mv-type { background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 2px; font-weight: 700; font-size: 9px; text-transform: uppercase; }
+.mv-name { font-weight: 800; font-size: 13px; letter-spacing: 0.02em; }
+.mv-tgt { font-size: 9px; background: rgba(0,0,0,0.35); padding: 1px 5px; border-radius: 3px; font-weight: 600; }
+.mv-bot { display: flex; align-items: center; gap: 6px; font-size: 10px; opacity: 0.9; }
+.mv-stat { font-weight: 700; }
+.mv-pp { margin-left: auto; font-weight: 600; opacity: 0.7; }
+.mv-type { background: rgba(0,0,0,0.35); padding: 1px 5px; border-radius: 3px; font-weight: 700; font-size: 9px; text-transform: uppercase; letter-spacing: 0.03em; }
 
 /* 目标/特殊系统 */
-.tgt-row { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+.tgt-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
 .tgt-label { font-size: 11px; color: #94a3b8; font-weight: 600; }
-.tgt-btn { padding: 4px 10px; font-size: 11px; font-weight: 600; border: 1px solid #555; border-radius: 3px; background: #252525; color: #e2e8f0; cursor: pointer; }
-.tgt-on { border-color: #f87171; background: #3a1a1a; color: #fca5a5; }
-.sp-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.sp-btn { padding: 3px 8px; font-size: 10px; font-weight: 600; border: 1px solid #555; border-radius: 3px; background: #252525; color: #fcd34d; cursor: pointer; }
+.tgt-btn { padding: 5px 12px; font-size: 12px; font-weight: 600; border: 1px solid #555; border-radius: 4px; background: #252525; color: #e2e8f0; cursor: pointer; transition: all 0.15s; }
+.tgt-btn:hover { border-color: #888; background: #333; }
+.tgt-on { border-color: #f87171; background: #451a1a; color: #fca5a5; }
+.sp-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.sp-btn { padding: 4px 10px; font-size: 11px; font-weight: 600; border: 1px solid #555; border-radius: 4px; background: #252525; color: #fcd34d; cursor: pointer; transition: all 0.15s; }
+.sp-btn:hover { border-color: #888; }
 .sp-on { background: #92400e; border-color: #f59e0b; color: #fef3c7; }
 
 /* ===== 日志 ===== */
