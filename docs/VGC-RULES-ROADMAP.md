@@ -17,9 +17,9 @@
 
 | Sev | 问题 | 位置 | 状态 |
 |---|---|---|---|
-| critical | 未知格式字符串静默落为双打，无格式校验 | BattleSetupSupport.java:40-47 | #todo |
+| critical | 未知格式字符串静默落为双打，无格式校验 | BattleSetupSupport.java:40-47 | #done（VALID_FORMATS 白名单+IllegalArgumentException） |
 | critical | 缺禁传说/受限宝可梦校验，任意队伍可开战 | BattlePreviewSupport.normalizePokemon / BattleSetupSupport | #todo |
-| major | vgc63 被误当单打（应双打 2/4） | BattleSetupSupport.java:41,45 | #todo |
+| major | vgc63 被误当单打（应双打 2/4） | BattleSetupSupport.java:41,45 | #done（vgc63 不在 isSingle 列表，自动双打 2/4） |
 | major | 传说/幻兽排除过宽且只作用于随机池 | BattleDexMapper.java:33-34 | #todo |
 | major | 缺格式级禁道具（心之水滴）/禁招式（暗黑洞） | ItemHandlers.java:93 / MoveRegistry | #todo |
 | minor | 格式映射重复死代码 | BattleEngine.java:36-46 | #todo |
@@ -55,10 +55,10 @@
 | major | isPhysical 判定恒 true，特攻手被错发 Choice Band | AIService.java:460-472 | #code（已改为 atk>=spa 判定） |
 | major | 只生成攻向构建，无坦克/辅助定位 | AIService.java:290-389 | #done（determineBuild 新增 tank/support + 防御性格/EV/道具） |
 | major | BattleScore 强度评分饱和失真，无法分层 | TeamBalanceEvaluator.java:36,367 | #done（归一化 0-100 加权合并：BST 40%+招式25%+特性15%+道具10%+速度10%） |
-| major | validatePlayability 误拒生命宝珠+火/电 | AIService.java:278-282 | #todo |
-| minor | 慢速宝可梦可能同时拿突击背心与变化招 | AIService.java:474-475,637-665 | #todo |
+| major | validatePlayability 误拒生命宝珠+火/电 | AIService.java:278-282 | #done（已移除错误的 Life Orb+fire/electric 判定） |
+| minor | 慢速宝可梦可能同时拿突击背心与变化招 | AIService.java:474-475,637-665 | #done（有变化招时改用 leftovers） |
 | minor | seed 无法复现团队（SQL RANDOM + ThreadLocalRandom） | AIService.java:60-61,478 | #todo |
-| minor | AI 从不使用强化招式（剑舞/龙舞等） | BattleDecisionSupport.java:54-116 | #todo |
+| minor | AI 从不使用强化招式（剑舞/龙舞等） | BattleDecisionSupport.java:54-116 | #done（selectAISetupMove 已实现） |
 | minor | Z 招式覆盖已选道具且 heldItemInfo 陈旧 | AIService.java:216,859-862 | #todo |
 
 ## 第三轮审查（特性 12 项 + 道具 5 项）
@@ -119,7 +119,7 @@
 | minor | 资源招只随机放行无收益权衡 | BattleAISupport.java:47-198 | #todo |
 | info | 换人评估用 base types 而非 activeTypes | BattleAiSwitchSupport.java:212 | #done（已改用 engine.activeTypes） |
 | info | heavilyDebuffed 判断粗糙 | BattleAiSwitchSupport.java:40-60 | #done（加权攻击/速度下降×2） |
-| info | 双打换人逐只独立决策可能连环对位 | BattleActionBuilder.java:54-64 | #todo |
+| info | 双打换人逐只独立决策可能连环对位 | BattleActionBuilder.java:54-64 | #done（tracked switchedSlots，队友已换则非紧急情况阻止连环换） |
 | info | findBestDefensiveSwitch 无被一击死兜底 | BattleAiSwitchSupport.java:224-243 | #done（OHKO 惩罚 -50 分） |
 | info | 无终局资源意识 | 全局 | #todo |
 | info | evaluateThreatLevel 是死代码从未调用 | BattleAnalysisSupport.java:218-251 | #todo |

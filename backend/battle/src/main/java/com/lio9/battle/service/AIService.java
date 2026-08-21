@@ -509,8 +509,10 @@ public class AIService {
             // 高速：讲究围巾或讲究头带/眼镜
             selectedItem = isPhysical ? "choice-band" : "choice-specs";
         } else if (spe < 60) {
-            // 低速：突击背心
-            selectedItem = "assault-vest";
+            // 低速：突击背心（但有变化招式时改用剩饭，因为突击背心禁用变化招）
+            boolean hasStatusMoves = moves.stream().anyMatch(m -> toInt(m.get("damage_class_id"), 0) == 3
+                    && !"protect".equalsIgnoreCase(String.valueOf(m.get("name_en"))));
+            selectedItem = hasStatusMoves ? "leftovers" : "assault-vest";
         } else {
             // 中速：根据防御端倾向选择
             int def = stats != null ? toInt(stats.get("defense"), 0) : 0;

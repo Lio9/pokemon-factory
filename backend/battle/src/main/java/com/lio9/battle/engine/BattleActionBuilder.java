@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 final class BattleActionBuilder {
     private final BattleEngine engine;
@@ -51,13 +52,26 @@ final class BattleActionBuilder {
         List<Integer> activeSlots = engine.activeSlots(state, false);
         List<Map<String, Object>> opponentTeam = engine.team(state, false);
         int currentRound = engine.toInt(state.get("currentRound"), 0);
+        // H6: 追踪已换人的槽位，避免双打连环换人
+        Set<Integer> switchedSlots = new java.util.HashSet<>();
         for (int fieldSlot = 0; fieldSlot < activeSlots.size(); fieldSlot++) {
             int monIndex = activeSlots.get(fieldSlot);
             if (!engine.isAvailableMon(opponentTeam, monIndex)) {
                 continue;
             }
             int switchToIndex = aiSwitchSupport.chooseAISwitch(opponentTeam, activeSlots, monIndex, fieldSlot, random, state);
+            // H6: 如果队友已经决定换人，且当前宝可梦不是紧急情况，阻止同时换人
+            if (switchToIndex >= 0 && !switchedSlots.isEmpty()) {
+                Map<String, Object> mon = opponentTeam.get(monIndex);
+                int hp = engine.toInt(mon.get("currentHp"), 0);
+                int maxHp = engine.toInt(engine.castMap(mon.get("stats")).get("hp"), 1);
+                int hpPercent = maxHp > 0 ? hp * 100 / maxHp : 100;
+                if (hpPercent > 30) {
+                    switchToIndex = -1; // 取消换人，改用攻击
+                }
+            }
             if (switchToIndex >= 0) {
+                switchedSlots.add(fieldSlot);
                 actions.add(BattleEngine.Action.switchAction("opponent", monIndex, fieldSlot, switchToIndex,
                         engine.speedValue(opponentTeam.get(monIndex), state, false)));
                 continue;
