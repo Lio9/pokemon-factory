@@ -36,6 +36,10 @@
             >
               {{ typeName }}
             </span>
+            <span
+              v-if="targetLabel"
+              class="shrink-0 rounded-md px-1 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-500"
+            >{{ targetLabel }}</span>
           </div>
           <div class="mt-0.5 flex items-center gap-3 text-[11px] text-slate-500">
             <span v-if="move.power">{{ tr('威力', 'Pwr') }} {{ move.power }}</span>
@@ -89,6 +93,22 @@ const props = defineProps({
 })
 
 defineEmits(['select'])
+
+// G8: 目标类型短标签（Showdown 风格）
+const targetLabel = computed(() => {
+  const tid = Number(props.move?.target_id || 10)
+  switch (tid) {
+    case 4: return '自身'
+    case 7: return '自身'
+    case 8: return '随机'
+    case 9: return '全体'
+    case 10: return ''
+    case 11: return '群'
+    case 13: return '己方'
+    case 14: return '全场'
+    default: return ''
+  }
+})
 
 // PP 显示：优先 currentPp / maxPp，回退到 move.pp（Showdown 风格 PP x/y）
 const ppLabel = computed(() => {
