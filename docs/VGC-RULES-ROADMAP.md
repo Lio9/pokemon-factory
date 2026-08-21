@@ -32,7 +32,7 @@
 |---|---|---|---|
 | critical | 天气型回复招式（光合/月光/晨光）传 null state 崩溃 | BattleConditionSupport.java:2445-2447 | #code（已加 state 参数，8 调用点已改） |
 | major | 尖刺防守未注册为保护招式 | MoveRegistry.java:25-30 | #code（已加入 PROTECT_MOVES） |
-| major | Eerie Impulse/Feather Dance/Scary Face/String Shot/Tickle/Noble Roar 等 no-op | BattleRoundSupport.java:2467 / MoveRegistry | #code 部分——Eerie Impulse/Noble Roar/Scary Face/Cotton Spore/Feather Dance/Charm 已实现；String Shot(群体)/Tickle(攻防) 待补 |
+| major | Eerie Impulse/Feather Dance/Scary Face/String Shot/Tickle/Noble Roar 等 no-op | BattleRoundSupport.java:2467 / MoveRegistry | #done（全部 8 种辅助降能招式已实现） |
 | minor | 冷启回合（Chilly Reception）未实现 | MoveRegistry | #todo |
 | minor | 治疗招式（治愈铃声等）队员时只看活体 | 待定位 | #todo |
 
@@ -53,7 +53,7 @@
 | Sev | 问题 | 位置 | 状态 |
 |---|---|---|---|
 | major | isPhysical 判定恒 true，特攻手被错发 Choice Band | AIService.java:460-472 | #code（已改为 atk>=spa 判定） |
-| major | 只生成攻向构建，无坦克/辅助定位 | AIService.java:290-389 | #todo |
+| major | 只生成攻向构建，无坦克/辅助定位 | AIService.java:290-389 | #done（determineBuild 新增 tank/support + 防御性格/EV/道具） |
 | major | BattleScore 强度评分饱和失真，无法分层 | TeamBalanceEvaluator.java:36,367 | #todo |
 | major | validatePlayability 误拒生命宝珠+火/电 | AIService.java:278-282 | #todo |
 | minor | 慢速宝可梦可能同时拿突击背心与变化招 | AIService.java:474-475,637-665 | #todo |

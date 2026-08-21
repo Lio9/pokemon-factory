@@ -2581,6 +2581,30 @@ final class BattleConditionSupport {
         return false;
     }
 
+    /** 按指定段数降低目标防御（Tickle 等用） */
+    boolean applyDefenseDropBy(Map<String, Object> source, Map<String, Object> target, int dropStages,
+            Map<String, Object> actionLog, List<String> events) {
+        if (isStatDropBlocked(null, target, actionLog, events, "defenseDropBlocked", "防御下降")) {
+            return false;
+        }
+        int delta = EffectRegistry.dispatchStatStage(target,
+                new StatStageContext(target, 3, -Math.max(1, dropStages), "降防御招式"), -Math.max(1, dropStages));
+        int previousStage = damageSupport.statStage(target, "defense");
+        int nextStage = Math.max(-6, previousStage + delta);
+        damageSupport.statStages(target).put("defense", nextStage);
+        if (nextStage != previousStage) {
+            actionLog.put("defenseStageChange", nextStage - previousStage);
+            if (delta < 0) {
+                triggerStatDropAbilities(target, events);
+                restoreLoweredStatsWithWhiteHerb(target, Map.of("defense", previousStage - nextStage), actionLog, events);
+            }
+            events.add(source.get("name") + " 使 " + target.get("name") + " 的防御"
+                    + (Math.abs(nextStage - previousStage) >= 2 ? "大幅" : "") + "下降了");
+            return true;
+        }
+        return false;
+    }
+
     boolean applyAttackAndSpecialAttackDrop(Map<String, Object> source, Map<String, Object> target,
             Map<String, Object> actionLog, List<String> events) {
         if (isStatDropBlocked(null, target, actionLog, events, "partingShotBlocked", "攻击与特攻下降")) {

@@ -276,12 +276,31 @@ public class AIService {
     }
 
     /**
-     * 智能判断定位
+     * 智能判断定位（D2：新增坦克/辅助构建）
+     * 根据种族值分布决定构建风格：
+     * - physical/special/mixed：攻击向（原有逻辑）
+     * - tank：HP+双防种族值高，攻击较低 → 耐久向
+     * - support：速度慢且有辅助招式池 → 辅助向
      */
     private String determineBuild(Map<Integer, Integer> statMap) {
         int atk = statMap.getOrDefault(2, 50);
         int spa = statMap.getOrDefault(4, 50);
+        int hp = statMap.getOrDefault(1, 80);
+        int def = statMap.getOrDefault(3, 60);
+        int spd = statMap.getOrDefault(5, 60);
+        int spe = statMap.getOrDefault(6, 80);
 
+        int offensivePower = Math.max(atk, spa);
+        int bulk = hp + def + spd;
+
+        // 坦克判定：耐久种族值总和 > 250 且攻击不高
+        if (bulk >= 255 && offensivePower < 100) {
+            return "tank";
+        }
+        // 辅助判定：速度慢（<70）且攻击不高
+        if (spe < 70 && offensivePower < 90 && bulk >= 220) {
+            return "support";
+        }
         if (atk >= spa * 1.15)
             return "physical";
         if (spa >= atk * 1.15)
@@ -290,17 +309,25 @@ public class AIService {
     }
 
     /**
-     * 确定性格
+     * 确定性格（D2：坦克/辅助使用防御性格）
      */
     private String determineNature(String build, Map<Integer, Integer> statMap) {
         int spe = statMap.getOrDefault(6, 80);
 
-        if ("physical".equals(build)) {
-            return spe >= 90 ? "jolly" : "adamant";
-        } else if ("special".equals(build)) {
-            return spe >= 90 ? "timid" : "modest";
-        } else {
-            return "serious";
+        switch (build) {
+            case "physical":
+                return spe >= 90 ? "jolly" : "adamant";
+            case "special":
+                return spe >= 90 ? "timid" : "modest";
+            case "tank":
+                // 坦克：根据物防/特防哪个更低来决定加哪边
+                int def = statMap.getOrDefault(3, 60);
+                int spd = statMap.getOrDefault(5, 60);
+                return def <= spd ? "bold" : "calm";
+            case "support":
+                return "calm"; // 辅助偏特防（多数辅助招是特攻端威胁）
+            default:
+                return "serious";
         }
     }
 
@@ -366,6 +393,24 @@ public class AIService {
                 evs.put("spd", 0);
                 evs.put("spe", 252);
             }
+        } else if ("tank".equals(build)) {
+            // 坦克：全HP + 物防或特防（取较低方补强）
+            int def = baseStats.getOrDefault(3, 60);
+            int spd = baseStats.getOrDefault(5, 60);
+            evs.put("hp", 252);
+            evs.put("atk", 0);
+            evs.put("def", def <= spd ? 252 : 0);
+            evs.put("spa", 0);
+            evs.put("spd", def > spd ? 252 : 4);
+            evs.put("spe", def <= spd ? 4 : 0);
+        } else if ("support".equals(build)) {
+            // 辅助：全HP + 双防分散，不需要速度
+            evs.put("hp", 252);
+            evs.put("atk", 0);
+            evs.put("def", 128);
+            evs.put("spa", 0);
+            evs.put("spd", 128);
+            evs.put("spe", 0);
         } else {
             // 混合攻击手
             evs.put("hp", 4);
@@ -464,11 +509,19 @@ public class AIService {
             // 高速：讲究围巾或讲究头带/眼镜
             selectedItem = isPhysical ? "choice-band" : "choice-specs";
         } else if (spe < 60) {
-            // 低速：气势披带或突击背心
+            // 低速：突击背心
             selectedItem = "assault-vest";
         } else {
-            // 中速：随机选择
-            selectedItem = itemPool.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(itemPool.size()));
+            // 中速：根据防御端倾向选择
+            int def = stats != null ? toInt(stats.get("defense"), 0) : 0;
+            int spd = stats != null ? toInt(stats.get("specialDefense"), 0) : 0;
+            int hp = stats != null ? toInt(stats.get("hp"), 0) : 0;
+            if (hp >= 160 || (def + spd) >= 200) {
+                // 高耐久：吃剩饭或突击背心
+                selectedItem = "leftovers";
+            } else {
+                selectedItem = itemPool.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(itemPool.size()));
+            }
         }
 
         // 从道具池中移除已选道具，避免重复
@@ -618,7 +671,9 @@ public class AIService {
             int damageClassId = toInt(move.get("damage_class_id"), 0);
             // 本数据库 damage_class_id: 1=物理, 2=特殊, 3=变化/状态
             if (("physical".equals(build) && damageClassId == 1) || ("special".equals(build) && damageClassId == 2)
-                    || ("mixed".equals(build) && damageClassId <= 2)) {
+                    || ("mixed".equals(build) && damageClassId <= 2)
+                    || ("tank".equals(build) && damageClassId <= 2)
+                    || ("support".equals(build) && damageClassId <= 2)) {
                 attacks.add(normalizeMove(move));
             }
         }

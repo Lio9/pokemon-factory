@@ -1930,6 +1930,21 @@ final class BattleRoundSupport {
             actionLogs.add(targetLog);
             return true;
         }
+        // String Shot：降速 1 级（群体 target_id=11 已由 spread 循环处理每个目标）
+        if (engine.isStringShot(move)) {
+            conditionSupport.applySpeedDropBy(actor, target, 1, targetLog, events);
+            targetLog.put("result", "string-shot");
+            actionLogs.add(targetLog);
+            return true;
+        }
+        // Tickle：降攻 1 级 + 降防 1 级
+        if (engine.isTickle(move)) {
+            boolean atkDrop = conditionSupport.applyAttackDropBy(actor, target, 1, targetLog, events);
+            boolean defDrop = conditionSupport.applyDefenseDropBy(actor, target, 1, targetLog, events);
+            targetLog.put("result", (atkDrop || defDrop) ? "tickle" : "failed");
+            actionLogs.add(targetLog);
+            return true;
+        }
         if (engine.isConfuseRay(move)) {
             conditionSupport.applyConfusion(actor, target, targetLog, events, random);
             actionLogs.add(targetLog);

@@ -566,6 +566,14 @@ public class BattleEngine {
         return MoveRegistry.isCharm(move);
     }
 
+    boolean isStringShot(Map<String, Object> move) {
+        return MoveRegistry.isStringShot(move);
+    }
+
+    boolean isTickle(Map<String, Object> move) {
+        return MoveRegistry.isTickle(move);
+    }
+
     boolean isLeechSeed(Map<String, Object> move) {
         return MoveRegistry.isLeechSeed(move);
     }

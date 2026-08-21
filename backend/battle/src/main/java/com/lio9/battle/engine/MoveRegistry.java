@@ -123,6 +123,8 @@ public final class MoveRegistry {
     private static final Set<String> COTTON_SPORE_MOVES = Set.of("cotton spore", "cotton-spore");
     private static final Set<String> FEATHER_DANCE_MOVES = Set.of("feather dance", "feather-dance");
     private static final Set<String> CHARM_MOVES = Set.of("charm");
+    private static final Set<String> STRING_SHOT_MOVES = Set.of("string shot", "string-shot");
+    private static final Set<String> TICKLE_MOVES = Set.of("tickle");
 
     // === 轮换类招式 ===
     private static final Set<String> U_TURN_MOVES = Set.of("u turn", "u-turn");
@@ -801,6 +803,14 @@ public final class MoveRegistry {
 
     public static boolean isCharm(Map<String, Object> move) {
         return matchesAny(move, CHARM_MOVES);
+    }
+
+    public static boolean isStringShot(Map<String, Object> move) {
+        return matchesAny(move, STRING_SHOT_MOVES);
+    }
+
+    public static boolean isTickle(Map<String, Object> move) {
+        return matchesAny(move, TICKLE_MOVES);
     }
 
     /**
