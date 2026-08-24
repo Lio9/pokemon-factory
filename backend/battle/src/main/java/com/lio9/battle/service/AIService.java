@@ -182,7 +182,7 @@ public class AIService {
         List<Map<String, Object>> stats = battleDexMapper.selectFormStats(formId);
         List<Map<String, Object>> types = battleDexMapper.selectFormTypes(formId);
         List<Map<String, Object>> abilities = battleDexMapper.selectFormAbilities(formId);
-        List<Map<String, Object>> movePool = battleDexMapper.selectCompetitiveMoves(formId, 36);
+        List<Map<String, Object>> movePool = battleDexMapper.selectCompetitiveMoves(formId, 60);
         if (stats == null || stats.isEmpty() || types == null || types.isEmpty() || movePool == null
                 || movePool.isEmpty()) {
             return null;

@@ -107,7 +107,10 @@ public interface BattleDexMapper {
             "'protect','detect','wide-guard','quick-guard','tailwind','trick-room','rain-dance','sunny-day','sandstorm','snowscape'," +
             "'electric-terrain','psychic-terrain','grassy-terrain','misty-terrain','reflect','light-screen','aurora-veil','safeguard','taunt','disable','heal-block','torment','encore','yawn','spore'," +
             "'helping-hand','follow-me','rage-powder','will-o-wisp','thunder-wave','icy-wind','electroweb','snarl','fake-tears'," +
-            "'parting-shot','ally-switch','feint','recover','roost','slack-off','soft-boiled','moonlight','synthesis','morning-sun'" +
+            "'parting-shot','ally-switch','feint','recover','roost','slack-off','soft-boiled','moonlight','synthesis','morning-sun'," +
+            "'swords-dance','nasty-plot','dragon-dance','calm-mind','bulk-up','quiver-dance','agility','iron-defense'," +
+            "'stealth-rock','spikes','toxic-spikes','sticky-web'," +
+            "'knock-off','trick','switcheroo','uturn','volt-switch','flip-turn'" +
             ") OR (m.damage_class_id IN (1, 2) AND COALESCE(m.power, 0) > 0)" +
             ") " +
             "GROUP BY m.id, m.name, m.name_en, m.type_id, m.damage_class_id, m.target_id, m.power, m.pp, m.accuracy, m.priority, " +

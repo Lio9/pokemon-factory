@@ -565,6 +565,11 @@ body { background: #e8e8e8; color: #333; }
 .log-cnt { font-size: 8pt; color: #999; background: #ddd; padding: 0 3px; border-radius: 2px; }
 .log-evts { padding: 0 0 4px 16px; }
 .log-evt { font-size: 9pt; color: #333; padding: 1px 0; line-height: 1.4; border-bottom: 1px solid #e0e0e0; }
+.log-evt-switch { color: #2277bb; font-weight: bold; }
+.log-evt-damage { color: #cc4422; }
+.log-evt-heal { color: #33aa00; }
+.log-evt-debuff { color: #996633; }
+.log-evt-field { color: #6666aa; font-style: italic; }
 
 /* 响应式：移动端战场缩放 */
 @media (max-width: 660px) {
