@@ -723,4 +723,20 @@ body { background: var(--bg-page); color: var(--text); }
   .bf-hp-num { right: -30px; width: 28px; }
   .bf-my-row .bf-hp-num { left: -30px; }
 }
+
+/* 入场动画 */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.bf { animation: fadeSlideIn 0.4s ease-out; }
+.panel { animation: fadeSlideIn 0.3s ease-out; }
+.log { animation: fadeSlideIn 0.3s ease-out 0.1s both; }
+
+/* 招式按钮入场动画 */
+.mv-btn { animation: fadeSlideIn 0.2s ease-out both; }
+.mv-grid .mv-btn:nth-child(1) { animation-delay: 0.05s; }
+.mv-grid .mv-btn:nth-child(2) { animation-delay: 0.1s; }
+.mv-grid .mv-btn:nth-child(3) { animation-delay: 0.15s; }
+.mv-grid .mv-btn:nth-child(4) { animation-delay: 0.2s; }
 </style>
