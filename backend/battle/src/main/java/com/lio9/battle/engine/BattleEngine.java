@@ -394,6 +394,18 @@ public class BattleEngine {
         return decisionSupport.selectAIMove(mon, random, state, playerSide, currentRound);
     }
 
+    /** 设置 AI 难度（根据玩家段位：0=EASY, 1=NORMAL, 2=HARD, 3=EXPERT） */
+    public void setAIDifficulty(int tier) {
+        AIDifficulty d = switch (tier) {
+            case 0 -> AIDifficulty.EASY;
+            case 1 -> AIDifficulty.NORMAL;
+            case 2 -> AIDifficulty.HARD;
+            case 3 -> AIDifficulty.EXPERT;
+            default -> AIDifficulty.NORMAL;
+        };
+        decisionSupport.setDifficulty(d);
+    }
+
     Map<String, Object> defaultMoveSelection(Map<String, Object> mon, int currentRound) {
         return decisionSupport.defaultMoveSelection(mon, currentRound);
     }

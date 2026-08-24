@@ -198,6 +198,15 @@ public class AIService {
 
         // 智能判断定位
         String build = determineBuild(statMap);
+
+        // 段位过滤：低段位排除过强宝可梦，高段位排除过弱宝可梦
+        int bst = statMap.values().stream().mapToInt(Integer::intValue).sum();
+        int minBst = 400 + rank * 30;  // 0→400, 1→430, 2→460, 3→490
+        int maxBst = 520 + rank * 30;  // 0→520, 1→550, 2→580, 3→610
+        if (bst < minBst || bst > maxBst) {
+            return null; // 不符合段位强度范围，跳过
+        }
+
         List<Map<String, Object>> selectedMoves = pickMoves(movePool, build, random, statMap.getOrDefault(6, 80), types);
         if (selectedMoves.size() < 4) {
             return null;

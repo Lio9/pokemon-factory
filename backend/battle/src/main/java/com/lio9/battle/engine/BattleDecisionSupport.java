@@ -17,12 +17,17 @@ import java.util.Random;
 final class BattleDecisionSupport {
     private final BattleEngine engine;
     private final BattleAISupport aiSupport;
-    private final AIDifficulty difficulty;
+    private AIDifficulty difficulty;
 
     BattleDecisionSupport(BattleEngine engine, BattleAISupport aiSupport) {
         this.engine = engine;
         this.aiSupport = aiSupport;
         this.difficulty = AIDifficulty.NORMAL;
+    }
+
+    /** 设置 AI 难度（根据玩家段位） */
+    void setDifficulty(AIDifficulty difficulty) {
+        this.difficulty = difficulty != null ? difficulty : AIDifficulty.NORMAL;
     }
 
     /** AI 难度影响战略招式选择概率 */

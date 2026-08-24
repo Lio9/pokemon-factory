@@ -91,6 +91,9 @@ public class BattleService {
         Map<String, Object> playerProfile = playerMapper.findByUsername(username);
         int playerRank = playerProfile == null ? 0 : toInt(playerProfile.get("rank"), 0);
 
+        // 段位驱动 AI 难度
+        battleEngine.setAIDifficulty(playerRank);
+
         long seed = System.currentTimeMillis();
         String requestedTeamJson = req.get("teamJson") instanceof String ? req.get("teamJson").toString() : null;
         Map<String, Object> playerTeam = resolvePlayerTeam(playerId, playerRank, seed, requestedTeamJson);
