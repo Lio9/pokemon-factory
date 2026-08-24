@@ -586,10 +586,11 @@ body { background: var(--bg-page); color: var(--text); }
   cursor: pointer; min-width: 60px; transition: all 0.12s; position: relative;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
-.r-card:hover { border-color: #999; box-shadow: 0 2px 6px rgba(0,0,0,0.12); transform: translateY(-1px); }
-.r-card-opp { cursor: default; opacity: 0.5; }
-.r-card-opp:hover { transform: none; box-shadow: none; }
-.r-picked { border-color: var(--green) !important; background: linear-gradient(180deg, #e8ffe0, #d4f5cc) !important; box-shadow: 0 2px 8px rgba(90,158,60,0.2); }
+.r-card:hover { border-color: #999; box-shadow: 0 3px 8px rgba(0,0,0,0.15); transform: translateY(-2px); }
+.r-card-opp { cursor: default; opacity: 0.5; background: linear-gradient(180deg, #f4f4f4, #e8e8e8); }
+.r-card-opp:hover { transform: none; box-shadow: none; opacity: 0.5; }
+.r-picked { border-color: var(--green) !important; background: linear-gradient(135deg, #e0ffe0, #c8f0c8) !important; box-shadow: 0 3px 10px rgba(90,158,60,0.25); }
+.r-picked:hover { box-shadow: 0 4px 14px rgba(90,158,60,0.35); }
 .r-dim { opacity: 0.3; }
 .r-star { position: absolute; top: 1px; right: 3px; font-size: 10px; color: var(--gold); text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
 .r-img { width: 42px; height: 32px; object-fit: contain; image-rendering: pixelated; }
