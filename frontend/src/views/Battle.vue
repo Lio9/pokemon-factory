@@ -438,15 +438,15 @@ watch(() => summary.value?.rounds?.length, (n) => {
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg-page); color: var(--text); }
-.sd-page { max-width: 956px; margin: 0 auto; padding: 8px; font-family: Verdana, Geneva, Tahoma, sans-serif; font-size: 10pt; }
+.sd-page { max-width: 956px; margin: 0 auto; padding: 10px; font-family: Verdana, Geneva, Tahoma, sans-serif; font-size: 10pt; }
 
 /* ===== 开始面板 ===== */
 .sd-start {
-  background: linear-gradient(180deg, #f0f0f0, #e4e4e4);
+  background: linear-gradient(180deg, #f4f4f4, #e8e8e8);
   border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  border-radius: 6px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
 }
 .sd-format-row { display: flex; gap: 0; margin-bottom: 10px; }
 .sd-fmt-btn {
@@ -501,7 +501,7 @@ body { background: var(--bg-page); color: var(--text); }
     radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.15) 0%, transparent 50%),
     radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.08) 0%, transparent 40%),
     linear-gradient(180deg, #87b56b 0%, #6a9e50 30%, #588a44 60%, #4a7a3a 100%);
-  border: 2px solid #3a5a2a;
+  border: 3px solid #2a4a1a;
   border-radius: 6px;
   width: 640px; height: 360px;
   overflow: hidden; position: relative;
