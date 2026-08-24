@@ -2,6 +2,10 @@
   <div class="sd-page">
     <!-- ===== 无战斗时：开始面板 ===== -->
     <div v-if="!summary && !factoryRun" class="sd-start">
+      <div style="text-align:center;margin-bottom:12px;">
+        <div style="font-size:16pt;font-weight:bold;color:#333;letter-spacing:0.02em;">⚔️ 对战工厂</div>
+        <div style="font-size:9pt;color:#888;margin-top:2px;">Battle Factory</div>
+      </div>
       <div class="sd-format-row">
         <button
           v-for="f in formats"
@@ -13,13 +17,13 @@
       </div>
       <div class="sd-btn-row">
         <button class="sd-btn sd-btn-blue" :disabled="isBusy" @click="startBattle">
-          {{ busyAction === 'start-manual' ? '...' : '手动对战' }}
+          ⚔️ {{ busyAction === 'start-manual' ? '创建中...' : '手动对战' }}
         </button>
         <button v-if="isAuthenticated" class="sd-btn sd-btn-purple" :disabled="isBusy" @click="startFactoryChallenge">
-          {{ busyAction === 'factory-start' ? '...' : '工厂挑战' }}
+          🏟️ {{ busyAction === 'factory-start' ? '创建中...' : '工厂挑战' }}
         </button>
         <button v-if="isAuthenticated" class="sd-btn sd-btn-green" :disabled="isBusy" @click="startAsyncBattle">
-          异步模拟
+          ⏩ 异步模拟
         </button>
       </div>
       <p v-if="!isAuthenticated" class="sd-hint">游客模式：可直接手动对战</p>
