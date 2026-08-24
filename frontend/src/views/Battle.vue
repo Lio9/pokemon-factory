@@ -497,13 +497,16 @@ body { background: var(--bg-page); color: var(--text); }
 
 /* ===== 战场 ===== */
 .bf {
-  background: linear-gradient(180deg, #87b56b 0%, #6a9e50 30%, #588a44 60%, #4a7a3a 100%);
+  background: 
+    radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.08) 0%, transparent 40%),
+    linear-gradient(180deg, #87b56b 0%, #6a9e50 30%, #588a44 60%, #4a7a3a 100%);
   border: 2px solid #3a5a2a;
   border-radius: 6px;
   width: 640px; height: 360px;
   overflow: hidden; position: relative;
   margin: 0 auto;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2), inset 0 2px 8px rgba(255,255,255,0.15);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25), inset 0 2px 10px rgba(255,255,255,0.1), inset 0 -2px 8px rgba(0,0,0,0.1);
 }
 .bf-row { display: flex; position: absolute; gap: 10px; }
 .bf-opp-row { top: 24px; left: 24px; }
@@ -693,11 +696,16 @@ body { background: var(--bg-page); color: var(--text); }
   border-radius: 0 0 5px 5px;
 }
 .log-hdr {
-  display: flex; justify-content: space-between; padding: 5px 10px;
-  background: linear-gradient(180deg, #ddd, #d0d0d0);
-  border-bottom: 1px solid var(--border); font-size: 9pt; font-weight: bold; color: #555;
+  display: flex; justify-content: space-between; padding: 6px 12px;
+  background: linear-gradient(180deg, #e0e0e0, #d4d4d4);
+  border-bottom: 1px solid var(--border); font-size: 9pt; font-weight: bold; color: #444;
+  letter-spacing: 0.02em;
 }
-.log-body { max-height: 220px; overflow-y: auto; padding: 4px 10px; }
+.log-body { max-height: 220px; overflow-y: auto; padding: 4px 10px; scrollbar-width: thin; scrollbar-color: #ccc transparent; }
+.log-body::-webkit-scrollbar { width: 6px; }
+.log-body::-webkit-scrollbar-track { background: transparent; }
+.log-body::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+.log-body::-webkit-scrollbar-thumb:hover { background: #aaa; }
 .log-rhdr {
   display: flex; align-items: center; gap: 5px; padding: 3px 0;
   font-size: 9pt; font-weight: bold; color: #444; cursor: pointer;
@@ -730,9 +738,20 @@ body { background: var(--bg-page); color: var(--text); }
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.bf { animation: fadeSlideIn 0.4s ease-out; }
+.bf { animation: fadeSlideIn 0.5s ease-out; }
 .panel { animation: fadeSlideIn 0.3s ease-out; }
 .log { animation: fadeSlideIn 0.3s ease-out 0.1s both; }
+
+/* 战场光线反射 */
+.bf::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
 
 /* 招式按钮入场动画 */
 .mv-btn { animation: fadeSlideIn 0.2s ease-out both; }
