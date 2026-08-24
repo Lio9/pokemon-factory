@@ -20,6 +20,8 @@ import java.util.Map;
 public interface BattleDexMapper {
     /**
      * 随机抽取可用于工厂组队的默认形态。
+     * 优先选最终进化型（排除被其他 species 指向 evolves_from_species_id 的），
+     * 除非使用进化奇石的辅助型宝可梦。
      */
     @Select("SELECT pf.id AS form_id, ps.id AS species_id, COALESCE(ps.name_en, ps.name) AS name_en, ps.name AS name, pf.base_experience, pf.official_artwork_url " +
             "FROM pokemon_form pf " +
@@ -32,6 +34,7 @@ public interface BattleDexMapper {
             "AND COALESCE(ps.is_baby, 0) = 0 " +
             "AND COALESCE(ps.is_mythical, 0) = 0 " +
             "AND COALESCE(ps.is_legendary, 0) = 0 " +
+            "AND NOT EXISTS (SELECT 1 FROM pokemon_species child WHERE child.evolves_from_species_id = ps.id) " +
             "ORDER BY RANDOM() LIMIT #{limit}")
     List<Map<String, Object>> selectRandomDefaultForms(@Param("limit") int limit);
 

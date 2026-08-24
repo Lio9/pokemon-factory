@@ -219,7 +219,7 @@
           <template v-if="summary.rounds?.length">
             <div v-for="(r,ri) in summary.rounds" :key="ri" class="log-round">
               <div class="log-rhdr" @click="togRound(ri)"><span class="log-arw" :class="expRounds.has(ri)?'open':''">▶</span> {{ r.round===0?'开场':'Turn '+r.round }} <span class="log-cnt">{{ (r.events||[]).length }}</span></div>
-              <div v-if="expRounds.has(ri)" class="log-evts"><div v-for="(e,ei) in r.events||[]" :key="ei" class="log-evt">{{ e }}</div></div>
+              <div v-if="expRounds.has(ri)" class="log-evts"><div v-for="(e,ei) in r.events||[]" :key="ei" class="log-evt" :class="logEvtClass(e)">{{ e }}</div></div>
             </div>
           </template>
           <div v-else class="sd-empty">等待战斗开始...</div>
@@ -397,6 +397,14 @@ function showDetail(p) { detailMon.value = p; detailVis.value = true }
 const expRounds = ref(new Set())
 const logEl = ref(null)
 function togRound(i) { const s = new Set(expRounds.value); s.has(i) ? s.delete(i) : s.add(i); expRounds.value = s }
+function logEvtClass(e) {
+  if (/收回|派出|换人/.test(e)) return 'log-evt-switch'
+  if (/造成了.*点伤害|伤害/.test(e)) return 'log-evt-damage'
+  if (/回复|恢复|治愈/.test(e)) return 'log-evt-heal'
+  if (/下降|降低/.test(e)) return 'log-evt-debuff'
+  if (/展开了|场地/.test(e)) return 'log-evt-field'
+  return ''
+}
 watch(() => summary.value?.rounds?.length, (n) => {
   if (!n) return
   const s = new Set(); for (let i = Math.max(0, n - 2); i < n; i++) s.add(i); expRounds.value = s
