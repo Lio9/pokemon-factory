@@ -611,7 +611,12 @@ body { background: var(--bg-page); color: var(--text); }
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 .sw-btn:hover { border-color: #999; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-.sw-on { border-color: var(--accent) !important; background: linear-gradient(180deg, #e8f0ff, #d0e0ff) !important; }
+.sw-on {
+  border-color: var(--accent) !important;
+  background: linear-gradient(180deg, #e8f0ff, #d0e0ff) !important;
+  box-shadow: 0 2px 8px rgba(72,143,206,0.25);
+  transform: scale(1.02);
+}
 .sw-img { width: 32px; height: 24px; object-fit: contain; image-rendering: pixelated; }
 .sw-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sw-name { font-size: 9pt; color: #333; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -659,7 +664,11 @@ body { background: var(--bg-page); color: var(--text); }
 }
 .mv-btn:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.3); }
 .mv-btn:active:not(:disabled) { transform: translateY(0); }
-.mv-sel { border-color: var(--gold) !important; box-shadow: 0 0 10px rgba(212,160,23,0.5), 0 2px 4px rgba(0,0,0,0.2); }
+.mv-sel {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 12px rgba(212,160,23,0.5), 0 0 24px rgba(212,160,23,0.2), 0 2px 4px rgba(0,0,0,0.2);
+  transform: scale(1.02);
+}
 .mv-top { display: flex; justify-content: space-between; align-items: center; }
 .mv-name { font-weight: bold; font-size: 11pt; }
 .mv-tgt { font-size: 8px; background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px; }
@@ -678,7 +687,7 @@ body { background: var(--bg-page); color: var(--text); }
   transition: all 0.1s;
 }
 .tgt-btn:hover { background: linear-gradient(180deg, #fff, #f0f0f0); }
-.tgt-on { border-color: #c44; background: #ffe5e0; color: #c44; }
+.tgt-on { border-color: #c44; background: #ffe5e0; color: #c44; box-shadow: 0 2px 8px rgba(204,68,68,0.2); }
 .sp-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .sp-btn {
   padding: 3px 10px; font-size: 9pt; font-family: inherit; font-weight: bold;
