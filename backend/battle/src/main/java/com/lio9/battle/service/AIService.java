@@ -488,7 +488,7 @@ public class AIService {
     }
 
     /**
-     * 智能选择道具
+     * 智能选择道具（更多样化、更合理）
      */
     @SuppressWarnings("unchecked")
     private String selectBestItem(List<String> itemPool, Map<String, Object> pokemon,
@@ -499,39 +499,41 @@ public class AIService {
 
         Map<String, Object> stats = (Map<String, Object>) pokemon.get("stats");
         int spe = stats != null ? toInt(stats.get("speed"), 0) : 0;
-
-        boolean hasSetupMove = moves.stream().anyMatch(this::isSetupMove);
-        // 物理/特殊定位：按修正后种族值比较攻击 vs 特攻（避免 toInt(nature) 恒为 0 的 bug）
-        // 修正：判断物理/特殊应看该宝可梦的物攻与特攻基础能力，而非字符串 nature
         int atk = stats != null ? toInt(stats.get("attack"), 0) : 0;
         int spa = stats != null ? toInt(stats.get("specialAttack"), 0) : 0;
-        boolean isPhysical = atk >= spa;  // 物攻不弱于特攻 → 偏向物理
+        int hp = stats != null ? toInt(stats.get("hp"), 0) : 0;
+        int def = stats != null ? toInt(stats.get("defense"), 0) : 0;
+        int spd = stats != null ? toInt(stats.get("specialDefense"), 0) : 0;
+        boolean isPhysical = atk >= spa;
+        boolean hasSetupMove = moves.stream().anyMatch(this::isSetupMove);
+        boolean hasStatusMoves = moves.stream().anyMatch(m -> toInt(m.get("damage_class_id"), 0) == 3
+                && !"protect".equalsIgnoreCase(String.valueOf(m.get("name_en"))));
+        boolean isBulky = hp >= 150 || (def + spd) >= 190;
 
-        // 根据定位选择道具
+        // 策略化道具选择
         String selectedItem;
 
-        if (hasSetupMove) {
-            // 有强化技能：生命宝珠
+        if (hasSetupMove && !hasStatusMoves) {
+            // 强化攻击手：生命宝珠
             selectedItem = "life-orb";
-        } else if (spe >= 100) {
-            // 高速：讲究围巾或讲究头带/眼镜
+        } else if (spe >= 105 && !isBulky) {
+            // 高速攻击手：讲究围巾/头带/眼镜
             selectedItem = isPhysical ? "choice-band" : "choice-specs";
-        } else if (spe < 60) {
-            // 低速：突击背心（但有变化招式时改用剩饭，因为突击背心禁用变化招）
-            boolean hasStatusMoves = moves.stream().anyMatch(m -> toInt(m.get("damage_class_id"), 0) == 3
-                    && !"protect".equalsIgnoreCase(String.valueOf(m.get("name_en"))));
+        } else if (spe < 55 && isBulky) {
+            // 低速坦克：突击背心（无变化招）或吃剩饭（有变化招）
             selectedItem = hasStatusMoves ? "leftovers" : "assault-vest";
+        } else if (isBulky && hasStatusMoves) {
+            // 耐久辅助：吃剩饭
+            selectedItem = "leftovers";
+        } else if (isBulky) {
+            // 耐久攻击手：突击背心或吃剩饭
+            selectedItem = random.nextBoolean() ? "assault-vest" : "leftovers";
+        } else if (spe >= 80 && spe < 105) {
+            // 中速攻击手：气势披带或生命宝珠
+            selectedItem = random.nextBoolean() ? "focus-sash" : "life-orb";
         } else {
-            // 中速：根据防御端倾向选择
-            int def = stats != null ? toInt(stats.get("defense"), 0) : 0;
-            int spd = stats != null ? toInt(stats.get("specialDefense"), 0) : 0;
-            int hp = stats != null ? toInt(stats.get("hp"), 0) : 0;
-            if (hp >= 160 || (def + spd) >= 200) {
-                // 高耐久：吃剩饭或突击背心
-                selectedItem = "leftovers";
-            } else {
-                selectedItem = itemPool.get(random.nextInt(itemPool.size()));
-            }
+            // 其他：从道具池随机
+            selectedItem = itemPool.get(random.nextInt(itemPool.size()));
         }
 
         // 从道具池中移除已选道具，避免重复

@@ -20,12 +20,16 @@ import java.util.Map;
 public interface BattleDexMapper {
     /**
      * 随机抽取可用于工厂组队的默认形态。
-     * 优先选最终进化型（排除被其他 species 指向 evolves_from_species_id 的），
-     * 除非使用进化奇石的辅助型宝可梦。
+     * 条件：
+     * 1. 最终进化型（没有子进化指向它）
+     * 2. 非传说/幻兽/宝宝
+     * 3. BST 450-600（合理的对战强度范围）
+     * 4. base_experience ≤ 250（排除 UB/二级神等数据标记遗漏的强宝可梦）
      */
     @Select("SELECT pf.id AS form_id, ps.id AS species_id, COALESCE(ps.name_en, ps.name) AS name_en, ps.name AS name, pf.base_experience, pf.official_artwork_url " +
             "FROM pokemon_form pf " +
             "JOIN pokemon_species ps ON ps.id = pf.species_id " +
+            "JOIN (SELECT form_id, SUM(base_stat) AS bst FROM pokemon_form_stat GROUP BY form_id) bst ON bst.form_id = pf.id " +
             "WHERE pf.is_default = 1 " +
             "AND COALESCE(pf.is_battle_only, 0) = 0 " +
             "AND COALESCE(pf.is_mega, 0) = 0 " +
@@ -35,6 +39,8 @@ public interface BattleDexMapper {
             "AND COALESCE(ps.is_mythical, 0) = 0 " +
             "AND COALESCE(ps.is_legendary, 0) = 0 " +
             "AND NOT EXISTS (SELECT 1 FROM pokemon_species child WHERE child.evolves_from_species_id = ps.id) " +
+            "AND bst.bst BETWEEN 450 AND 600 " +
+            "AND COALESCE(pf.base_experience, 0) <= 250 " +
             "ORDER BY RANDOM() LIMIT #{limit}")
     List<Map<String, Object>> selectRandomDefaultForms(@Param("limit") int limit);
 
