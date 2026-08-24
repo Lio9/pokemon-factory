@@ -232,6 +232,80 @@
       </div>
     </template>
 
+    <!-- ===== 胜后交换面板（工厂模式） ===== -->
+    <div v-if="showExchange && exchangeCandidates.length" class="panel" style="border-color: #578534;">
+      <div class="panel-hdr">
+        <span class="panel-title">🎁 胜利奖励：交换宝可梦</span>
+        <span class="panel-sub">选择对手队伍中的一只替换你的某只宝可梦</span>
+      </div>
+      <div class="roster-row">
+        <span class="roster-label roster-label-red">可交换的宝可梦</span>
+        <div class="roster-cards">
+          <button v-for="(p,i) in exchangeCandidates" :key="'ex'+i" type="button"
+            class="r-card" :class="replacedIndex===i?'r-picked':''"
+            @click="replacedIndex = i">
+            <img :src="spr(p)" class="r-img" @error="imgErr2($event,p)">
+            <span class="r-name">{{ p.name || p.name_en }}</span>
+            <span class="r-types">{{ (p.types||[]).map(t=>t.name||t.name_en).join('/') }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="roster-row">
+        <span class="roster-label roster-label-green">你的队伍 · 选择要替换的位置</span>
+        <div class="roster-cards">
+          <button v-for="(p,i) in playerRoster" :key="'myex'+i" type="button"
+            class="r-card" :class="replacedIndex===i?'r-picked':''">
+            <img :src="spr(p)" class="r-img" @error="imgErr2($event,p)">
+            <span class="r-name">{{ p.name || p.name_en }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="sd-btn-row" style="margin-top:8px;">
+        <button class="sd-btn sd-btn-green" :disabled="isBusy" @click="onConfirmExchange">
+          {{ busyAction==='confirm-exchange' ? '交换中...' : '确认交换' }}
+        </button>
+        <button class="sd-btn" @click="showExchange = false">跳过</button>
+      </div>
+    </div>
+
+    <!-- ===== 结算面板（工厂模式） ===== -->
+    <div v-if="settlement" class="panel" style="border-color: #488fce;">
+      <div class="panel-hdr">
+        <span class="panel-title">🏆 挑战结算</span>
+      </div>
+      <div style="padding:8px 0;">
+        <div v-if="settlement.won" style="color:#578534;font-weight:bold;font-size:11pt;">✅ 胜利！</div>
+        <div v-else style="color:#c44;font-weight:bold;font-size:11pt;">❌ 失败</div>
+        <div v-if="settlement.pointsDelta != null" style="margin-top:4px;font-size:10pt;">
+          积分变化：<span :style="{color: settlement.pointsDelta >= 0 ? '#578534' : '#c44'}">{{ settlement.pointsDelta >= 0 ? '+' : '' }}{{ settlement.pointsDelta }}</span>
+        </div>
+        <div v-if="settlement.tierChange" style="margin-top:4px;font-size:10pt;">
+          段位：<span style="font-weight:bold;">{{ settlement.newTierName }}</span>
+        </div>
+      </div>
+      <div class="sd-btn-row">
+        <button v-if="factoryRun" class="sd-btn sd-btn-blue" :disabled="isBusy" @click="prepareNextFactoryStage">继续下一轮</button>
+        <button class="sd-btn" @click="settlement = null">关闭</button>
+      </div>
+    </div>
+
+    <!-- ===== 排行榜 ===== -->
+    <div v-if="showLeaderboard" class="panel">
+      <div class="panel-hdr">
+        <span class="panel-title">📊 排行榜</span>
+        <button class="sd-btn sd-btn-sm" @click="showLeaderboard = false">关闭</button>
+      </div>
+      <div v-if="leaderboardLoading" class="sd-empty">加载中...</div>
+      <div v-else-if="leaderboardData.length">
+        <div v-for="(entry, i) in leaderboardData" :key="i" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #eee;font-size:9pt;">
+          <span style="font-weight:bold;color:#555;min-width:20px;">#{{ i + 1 }}</span>
+          <span style="flex:1;font-weight:bold;">{{ entry.username || entry.name }}</span>
+          <span style="color:#888;">{{ entry.totalPoints || entry.points || 0 }} pts</span>
+        </div>
+      </div>
+      <div v-else class="sd-empty">暂无数据</div>
+    </div>
+
     <!-- 详情弹窗 -->
     <PokemonDetailPopover v-model:visible="detailVis" :pokemon="detailMon" />
   </div>

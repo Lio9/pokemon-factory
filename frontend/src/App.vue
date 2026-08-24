@@ -236,7 +236,6 @@
       </div>
     </footer>
 
-    <ErrorHandler />
   </div>
 </template>
 
@@ -252,7 +251,6 @@
  */
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import ErrorHandler from './components/ErrorHandler.vue'
 import { useAuth } from './composables/useAuth'
 import { useLocale } from './composables/useLocale'
 

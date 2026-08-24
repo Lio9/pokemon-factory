@@ -477,6 +477,10 @@ export function useBattlePageState() {
         if (!summary.value && currentBattleId.value) {
           currentBattleId.value = null
           clearManualBattle()
+          resultText.value = translate(
+            '对战已中断（后端可能已重启），已自动清除旧状态。请重新开始。',
+            'Battle interrupted (server may have restarted). Old state cleared. Please start a new battle.'
+          )
         }
       }
       return
@@ -831,10 +835,10 @@ export function useBattlePageState() {
       await refreshStatus(true)
       return
     }
-    // 恢复手动对战（刷新页面后续接）
+    // 恢复手动对战（刷新页面或关闭浏览器后续接）
     let manualBattleId = null
     try {
-      manualBattleId = sessionStorage.getItem(MANUAL_BATTLE_KEY)
+      manualBattleId = localStorage.getItem(MANUAL_BATTLE_KEY)
     } catch { /* ignore */ }
     if (manualBattleId) {
       currentBattleId.value = manualBattleId
@@ -854,22 +858,22 @@ export function useBattlePageState() {
     showDebugPanel.value = Boolean(value)
   }
 
-  // ===== 手动对战刷新持久化（sessionStorage）=====
-  const MANUAL_BATTLE_KEY = 'pokemon-factory-manual-battle'
+  // ===== 手动对战持久化（localStorage：关浏览器后不丢失）=====
+  const MANUAL_BATTLE_KEY = 'pokemon-factory-battle'
 
   function persistManualBattle() {
     try {
       if (currentBattleId.value && !factoryRun.value) {
-        sessionStorage.setItem(MANUAL_BATTLE_KEY, String(currentBattleId.value))
+        localStorage.setItem(MANUAL_BATTLE_KEY, String(currentBattleId.value))
       } else {
-        sessionStorage.removeItem(MANUAL_BATTLE_KEY)
+        localStorage.removeItem(MANUAL_BATTLE_KEY)
       }
     } catch { /* ignore */ }
   }
 
   function clearManualBattle() {
     try {
-      sessionStorage.removeItem(MANUAL_BATTLE_KEY)
+      localStorage.removeItem(MANUAL_BATTLE_KEY)
     } catch { /* ignore */ }
   }
 
