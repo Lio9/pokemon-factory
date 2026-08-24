@@ -211,45 +211,6 @@ final class BattleAnalysisSupport {
         return total;
     }
     
-    /**
-     * Evaluate threat level of opposing active Pokemon
-     * Returns 0-100 score (higher = more threatening)
-     */
-    double evaluateThreatLevel(Map<String, Object> state, boolean playerSide, Map<String, Object> opponent) {
-        double threatScore = 0.0;
-        
-        // HP factor - healthier Pokemon are more threatening
-        int currentHp = engine.toInt(opponent.get("currentHp"), 0);
-        int maxHp = engine.toInt(engine.castMap(opponent.get("stats")).get("hp"), 1);
-        double hpRatio = currentHp / (double) maxHp;
-        threatScore += hpRatio * 25;
-        
-        // Offensive stats
-        Map<String, Object> stats = engine.castMap(opponent.get("stats"));
-        int attack = engine.toInt(stats.get("attack"), 0);
-        int spAttack = engine.toInt(stats.get("specialAttack"), 0);
-        int speed = engine.toInt(stats.get("speed"), 0);
-        
-        threatScore += Math.max(attack, spAttack) / 5.0; // Up to ~30 points
-        threatScore += speed / 10.0; // Speed is valuable
-        
-        // Stat boosts increase threat significantly
-        int totalBoosts = countPositiveStages(opponent);
-        threatScore += totalBoosts * 8; // Each boost stage adds 8 points
-        
-        // Status conditions reduce threat
-        String condition = String.valueOf(opponent.get("condition"));
-        if ("sleep".equals(condition) || "freeze".equals(condition)) {
-            threatScore *= 0.3;
-        } else if ("paralysis".equals(condition) || "burn".equals(condition)) {
-            threatScore *= 0.6;
-        } else if ("poison".equals(condition) || "toxic".equals(condition)) {
-            threatScore *= 0.7;
-        }
-        
-        return Math.min(100.0, threatScore);
-    }
-
     boolean opposingSideLikelyUsingPriority(Map<String, Object> state, boolean playerSide) {
         for (Integer slot : engine.activeSlots(state, !playerSide)) {
             if (slot == null || slot < 0 || slot >= engine.team(state, !playerSide).size()) {

@@ -34,7 +34,6 @@ import java.util.Set;
 public class BattleService {
     private static final Logger log = LoggerFactory.getLogger(BattleService.class);
     private static final int FACTORY_TEAM_SIZE = 6;
-    private static final int FACTORY_ROUND_LIMIT = 12;
 
     private final PlayerMapper playerMapper;
     private final TeamMapper teamMapper;
@@ -118,7 +117,7 @@ public class BattleService {
         // 读取格式参数，默认为双打
         String format = req.get("format") instanceof String f ? f : "vgc-doubles";
         Map<String, Object> state = battleEngine.createPreviewState(playerTeamJson, opponentTeamJson,
-                FACTORY_ROUND_LIMIT, seed, format);
+                config.getMaxRounds(), seed, format);
         enrichStateMetadata(state, "manual", username, playerRank, String.valueOf(opponentTeam.get("source")));
 
         Integer factoryRunId = req.get("factoryRunId") instanceof Number n ? n.intValue() : null;
@@ -199,7 +198,7 @@ public class BattleService {
                 existingState = battleEngine.createBattleState(
                         String.valueOf(row.getOrDefault("player_team_json", "[]")),
                         String.valueOf(row.getOrDefault("opponent_team_json", "[]")),
-                        FACTORY_ROUND_LIMIT,
+                        config.getMaxRounds(),
                         System.currentTimeMillis());
             }
 

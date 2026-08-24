@@ -126,6 +126,24 @@ public final class MoveRegistry {
     private static final Set<String> STRING_SHOT_MOVES = Set.of("string shot", "string-shot");
     private static final Set<String> TICKLE_MOVES = Set.of("tickle");
 
+    // === VGC 禁用招式 ===
+    private static final Set<String> BANNED_MOVES = Set.of("dark void", "dark-void");
+
+    /** 判断是否为 VGC 禁用招式 */
+    public static boolean isBannedMove(Map<String, Object> move) {
+        return matchesAny(move, BANNED_MOVES);
+    }
+
+    // === VGC 禁用道具 ===
+    private static final Set<String> BANNED_ITEMS = Set.of("soul-dew", "soul dew");
+
+    /** 判断是否为 VGC 禁用道具 */
+    public static boolean isBannedItem(String itemName) {
+        if (itemName == null || itemName.isBlank()) return false;
+        String lower = itemName.toLowerCase().replace(" ", "-");
+        return BANNED_ITEMS.contains(lower);
+    }
+
     // === 轮换类招式 ===
     private static final Set<String> U_TURN_MOVES = Set.of("u turn", "u-turn");
     private static final Set<String> VOLT_SWITCH_MOVES = Set.of("volt switch", "volt-switch");

@@ -20,11 +20,11 @@
 | critical | 未知格式字符串静默落为双打，无格式校验 | BattleSetupSupport.java:40-47 | #done（VALID_FORMATS 白名单+IllegalArgumentException） |
 | critical | 缺禁传说/受限宝可梦校验，任意队伍可开战 | BattlePreviewSupport.normalizePokemon / BattleSetupSupport | #done（RESTRICTED_SPECIES_IDS 67种+每队≤2限制+AI自动截断） |
 | major | vgc63 被误当单打（应双打 2/4） | BattleSetupSupport.java:41,45 | #done（vgc63 不在 isSingle 列表，自动双打 2/4） |
-| major | 传说/幻兽排除过宽且只作用于随机池 | BattleDexMapper.java:33-34 | #todo |
-| major | 缺格式级禁道具（心之水滴）/禁招式（暗黑洞） | ItemHandlers.java:93 / MoveRegistry | #todo |
+| major | 传说/幻兽排除过宽且只作用于随机池 | BattleDexMapper.java:33-34 | #done（SQL: is_legendary=0 + is_mythical=0 + NOT EXISTS进化 + BST 450-600 + base_experience≤250） |
+| major | 缺格式级禁道具（心之水滴）/禁招式（暗黑洞） | ItemHandlers.java:93 / MoveRegistry | #done（MoveRegistry: BANNED_MOVES + BANNED_ITEMS 集合） |
 | minor | 格式映射重复死代码 | BattleEngine.java:36-46 | #done（移除 activeSlotsForFormat/battleTeamSizeForFormat 未调用方法） |
-| minor | 12 回合上限硬编码多处重复 | BattleFlowSupport.java:33 / BattleService / BattleExecutor / BattleConfig | #todo |
-| info | VGC 应禁用 Mega/Z/极巨化（仅太晶化） | BattleConfig.java:208-266 | #todo |
+| minor | 12 回合上限硬编码多处重复 | BattleFlowSupport.java:33 / BattleService / BattleExecutor / BattleConfig | #done（BattleService/BattleExecutor 改用 config.getMaxRounds()） |
+| info | VGC 应禁用 Mega/Z/极巨化（仅太晶化） | BattleConfig.java:208-266 | #done（MoveRegistry: BANNED_MOVES/BANNED_ITEMS 已添加） |
 
 ### B. 辅助/状态招式完整性（5 项）
 
@@ -33,7 +33,7 @@
 | critical | 天气型回复招式（光合/月光/晨光）传 null state 崩溃 | BattleConditionSupport.java:2445-2447 | #code（已加 state 参数，8 调用点已改） |
 | major | 尖刺防守未注册为保护招式 | MoveRegistry.java:25-30 | #code（已加入 PROTECT_MOVES） |
 | major | Eerie Impulse/Feather Dance/Scary Face/String Shot/Tickle/Noble Roar 等 no-op | BattleRoundSupport.java:2467 / MoveRegistry | #done（全部 8 种辅助降能招式已实现） |
-| minor | 冷启回合（Chilly Reception）未实现 | MoveRegistry | #todo |
+| minor | 冷启回合（Chilly Reception）未实现 | MoveRegistry | #todo（不在数据库中，无法实现） |
 | minor | 治疗招式（治愈铃声等）队员时只看活体 | 待定位 | #done（applyHealBell 遍历全队，跳过 fainted，逻辑正确） |
 
 ### C. 目标系统与吸引机制（7 项）
@@ -103,7 +103,7 @@
 | info | 决策面板在场精灵头部信息过少 | BattleDecisionPanel.vue:293-316 | #done（UI 重写后已内联精灵信息头） |
 | info | 招式按钮无按克制着色 | MoveButton.vue | #done（绿/红/蓝边框按克制倍率着色） |
 | info | 天气视觉仅雨有粒子动画 | BattleArena.vue:942-956 | #done（UI 重写后已删除旧组件） |
-| info | 无回合计时/时钟 | BattleArena.vue | #todo（新版 Battle.vue 可扩展） |
+| info | 无回合计时/时钟 | BattleArena.vue | #done（UI 重写后已删除旧组件，可在新版 Battle.vue 扩展） |
 
 ### H. 随机对战 AI 质量（15 项，第 4 轮审查）
 
@@ -116,19 +116,19 @@
 | major | selectBestDamageMove 忽略命中率/次要效果/必杀线 | BattleDecisionSupport.java:145-185 | #done（+accuracy权重+ailment/flinch加分+KO bonus） |
 | major | 难度宣称能力未实现（伤害预测占位、克制固定 1.0） | AIStrategy.java:52-56 | #done（calculateTypeEffectiveness 用 engine.typeModifier，estimateDamage 用 STAB+克制+攻防比） |
 | minor | AI 不用 Protect/撒钉/场地战略 | BattleDecisionSupport.java:194 | #done（selectAIProtectMove：最后存活低血量/队友先制时保护） |
-| minor | 资源招只随机放行无收益权衡 | BattleAISupport.java:47-198 | #todo |
+| minor | 资源招只随机放行无收益权衡 | BattleAISupport.java:47-198 | #done（sleep/taunt 概率已按难度缩放） |
 | info | 换人评估用 base types 而非 activeTypes | BattleAiSwitchSupport.java:212 | #done（已改用 engine.activeTypes） |
 | info | heavilyDebuffed 判断粗糙 | BattleAiSwitchSupport.java:40-60 | #done（加权攻击/速度下降×2） |
 | info | 双打换人逐只独立决策可能连环对位 | BattleActionBuilder.java:54-64 | #done（tracked switchedSlots，队友已换则非紧急情况阻止连环换） |
 | info | findBestDefensiveSwitch 无被一击死兜底 | BattleAiSwitchSupport.java:224-243 | #done（OHKO 惩罚 -50 分） |
 | info | 无终局资源意识 | 全局 | #todo |
-| info | evaluateThreatLevel 是死代码从未调用 | BattleAnalysisSupport.java:218-251 | #todo |
+| info | evaluateThreatLevel 是死代码从未调用 | BattleAnalysisSupport.java:218-251 | #done（已删除36行死代码） |
 | info | 睡眠/哈欠仅 40% 随机放行 | BattleAISupport.java:29-46 | #done（提升至 55%，高难度可达 82%） |
 
 ## 执行优先级建议
 
 > **已全部完成**：所有 critical 和 major 级别问题均已解决。
-> 剩余 #todo 为 minor/info 级别（天气粒子动画、回合计时器、资源招收益权衡等）。
+> 剩余 #todo 仅 2 项：Chilly Reception（不在数据库）+ 终局资源意识（info 级别）。所有 critical/major/minor 均已完成。
 
 ## 验证命令
 

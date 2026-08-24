@@ -31,7 +31,6 @@ import java.util.concurrent.Executors;
 @Component
 public class BattleExecutor {
     private static final Logger log = LoggerFactory.getLogger(BattleExecutor.class);
-    private static final int FACTORY_ROUND_LIMIT = 12;
 
     private final BattleMapper battleMapper;
     private final TeamMapper teamMapper;
@@ -41,12 +40,13 @@ public class BattleExecutor {
     private final OpponentPoolService poolService;
     private final AIService aiService;
     private final ObjectMapper mapper;
+    private final com.lio9.battle.config.BattleConfig config;
     private ExecutorService executor;
 
     /**
      * 组装异步对战执行链依赖。
      */
-    public BattleExecutor(BattleMapper battleMapper, TeamMapper teamMapper, BattleRoundMapper roundMapper, JobMapper jobMapper, BattleEngine engine, OpponentPoolService poolService, AIService aiService, ObjectMapper mapper) {
+    public BattleExecutor(BattleMapper battleMapper, TeamMapper teamMapper, BattleRoundMapper roundMapper, JobMapper jobMapper, BattleEngine engine, OpponentPoolService poolService, AIService aiService, ObjectMapper mapper, com.lio9.battle.config.BattleConfig config) {
         this.battleMapper = battleMapper;
         this.teamMapper = teamMapper;
         this.roundMapper = roundMapper;
@@ -55,6 +55,7 @@ public class BattleExecutor {
         this.poolService = poolService;
         this.aiService = aiService;
         this.mapper = mapper;
+        this.config = config;
     }
 
     /**
@@ -127,7 +128,7 @@ public class BattleExecutor {
             String opponentTeamJson = String.valueOf(opponent.get("teamJson"));
 
             Map<String, String> playerMoveMap = parseMoveMap(battleId);
-            Map<String, Object> initialState = engine.createBattleState(playerTeamJson, opponentTeamJson, FACTORY_ROUND_LIMIT, seed);
+            Map<String, Object> initialState = engine.createBattleState(playerTeamJson, opponentTeamJson, config.getMaxRounds(), seed);
             Map<String, Object> factory = initialState.containsKey("factory") && initialState.get("factory") instanceof Map ? (Map<String, Object>) initialState.get("factory") : new java.util.LinkedHashMap<>();
             factory.put("mode", "auto");
             factory.put("opponentSource", opponent.get("source"));
