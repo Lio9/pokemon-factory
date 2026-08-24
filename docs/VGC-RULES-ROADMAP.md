@@ -99,11 +99,11 @@
 | major | 键盘快捷键 L 标记首发起死代码 | Battle.vue:490-494 | #done（L键循环切换首发标记） |
 | minor | 移动端战场横向溢出 | BattleArena.vue:817 | #done（max-w-full + overflow-hidden） |
 | minor | 回合日志不可折叠、无限加长 | BattleArena.vue:363-431 | #done（details/summary 折叠，默认展开最近2回合） |
-| minor | 队伍预览放大镜按钮视觉噪音 | BattleDecisionPanel.vue:62-87 | #todo |
-| info | 决策面板在场精灵头部信息过少 | BattleDecisionPanel.vue:293-316 | #todo |
+| minor | 队伍预览放大镜按钮视觉噪音 | BattleDecisionPanel.vue:62-87 | #done（UI 重写后已不存在） |
+| info | 决策面板在场精灵头部信息过少 | BattleDecisionPanel.vue:293-316 | #done（UI 重写后已内联精灵信息头） |
 | info | 招式按钮无按克制着色 | MoveButton.vue | #done（绿/红/蓝边框按克制倍率着色） |
-| info | 天气视觉仅雨有粒子动画 | BattleArena.vue:942-956 | #todo |
-| info | 无回合计时/时钟 | BattleArena.vue | #todo |
+| info | 天气视觉仅雨有粒子动画 | BattleArena.vue:942-956 | #done（UI 重写后已删除旧组件） |
+| info | 无回合计时/时钟 | BattleArena.vue | #todo（新版 Battle.vue 可扩展） |
 
 ### H. 随机对战 AI 质量（15 项，第 4 轮审查）
 
