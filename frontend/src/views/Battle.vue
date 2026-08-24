@@ -521,15 +521,15 @@ body { background: var(--bg-page); color: var(--text); }
 .bf-hp { position: relative; border: 1px solid #666; background: #f8f8f8; padding: 1px; height: 10px; width: 155px; border-radius: 5px; margin: 3px 0; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); }
 .bf-hp-bar {
   height: 5px; border-radius: 4px; transition: width 0.6s ease;
-  background: linear-gradient(180deg, #44dd77, #22aa55);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3);
+  background: linear-gradient(180deg, #55ee88, #22bb55, #119944);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.4);
 }
 .hp-l {
-  background: linear-gradient(180deg, #ffe066, #ddaa22) !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3);
+  background: linear-gradient(180deg, #ffee77, #ddaa22, #cc9911) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.35);
 }
 .hp-c {
-  background: linear-gradient(180deg, #ff6644, #dd3322) !important;
+  background: linear-gradient(180deg, #ff7755, #dd3322, #bb2211) !important;
   box-shadow: 0 1px 2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 .hp-e { background: linear-gradient(180deg, #bbb, #999) !important; }
@@ -547,7 +547,8 @@ body { background: var(--bg-page); color: var(--text); }
 .bf-tags { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 3px; }
 .bf-tag { font-size: 8px; padding: 1px 3px; border-radius: 3px; color: #fff; font-weight: bold; box-shadow: 0 1px 1px rgba(0,0,0,0.2); }
 .bf-sprite-btn { background: none; border: none; cursor: default; padding: 0; }
-.bf-sprite { width: 96px; height: 96px; object-fit: contain; image-rendering: pixelated; transition: all 0.3s; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+.bf-sprite { width: 96px; height: 96px; object-fit: contain; image-rendering: pixelated; transition: all 0.3s; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25)); }
+.bf-sprite:hover { filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35)) brightness(1.05); transform: scale(1.05); }
 .bf-sprite-opp { animation: float 3.5s ease-in-out infinite; }
 @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .bf-sprite.fainted { filter: grayscale(1) brightness(0.3); opacity: 0.4; transform: translateY(20px) rotate(70deg); }
