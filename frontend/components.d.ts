@@ -11,9 +11,6 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    BanModal: typeof import('./src/components/BanModal.vue')['default']
-    BattleLeaderboardModal: typeof import('./src/components/BattleLeaderboardModal.vue')['default']
-    BattleSettlementModal: typeof import('./src/components/BattleSettlementModal.vue')['default']
     CatalogPageHeader: typeof import('./src/components/CatalogPageHeader.vue')['default']
     CatalogSkeleton: typeof import('./src/components/CatalogSkeleton.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
@@ -31,7 +28,6 @@ declare module 'vue' {
     ElSkeletonItem: typeof import('element-plus/es')['ElSkeletonItem']
     EmptyState: typeof import('./src/components/EmptyState.vue')['default']
     EvolutionChainPanel: typeof import('./src/components/EvolutionChainPanel.vue')['default']
-    ExchangeModal: typeof import('./src/components/ExchangeModal.vue')['default']
     FavoriteButton: typeof import('./src/components/FavoriteButton.vue')['default']
     ItemDetailDialog: typeof import('./src/components/ItemDetailDialog.vue')['default']
     LoadMoreTrigger: typeof import('./src/components/LoadMoreTrigger.vue')['default']

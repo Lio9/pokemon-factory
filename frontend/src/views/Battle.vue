@@ -3,8 +3,7 @@
     <!-- ===== 无战斗时：开始面板 ===== -->
     <div v-if="!summary && !factoryRun" class="sd-start">
       <div style="text-align:center;margin-bottom:12px;">
-        <div style="font-size:16pt;font-weight:bold;color:#333;letter-spacing:0.02em;">⚔️ 对战工厂</div>
-        <div style="font-size:9pt;color:#888;margin-top:2px;">Battle Factory</div>
+        <div style="font-size:16pt;font-weight:bold;color:#333;letter-spacing:0.02em;">⚔️ {{ t('对战工厂', 'Battle Factory') }}</div>
       </div>
       <div class="sd-format-row">
         <button
@@ -17,23 +16,23 @@
       </div>
       <div class="sd-btn-row">
         <button class="sd-btn sd-btn-blue" :disabled="isBusy" @click="startBattle">
-          ⚔️ {{ busyAction === 'start-manual' ? '创建中...' : '手动对战' }}
+          ⚔️ {{ busyAction === 'start-manual' ? t('创建中...','Starting...') : t('手动对战','Manual Battle') }}
         </button>
         <button v-if="isAuthenticated" class="sd-btn sd-btn-purple" :disabled="isBusy" @click="startFactoryChallenge">
-          🏟️ {{ busyAction === 'factory-start' ? '创建中...' : '工厂挑战' }}
+          🏟️ {{ busyAction === 'factory-start' ? t('创建中...','Starting...') : t('工厂挑战','Factory Run') }}
         </button>
         <button v-if="isAuthenticated" class="sd-btn sd-btn-green" :disabled="isBusy" @click="startAsyncBattle">
-          ⏩ 异步模拟
+          ⏩ {{ t('异步模拟','Async Sim') }}
         </button>
       </div>
-      <p v-if="!isAuthenticated" class="sd-hint">游客模式：可直接手动对战</p>
+      <p v-if="!isAuthenticated" class="sd-hint">{{ t('游客模式：可直接手动对战', 'Guest mode: manual battle available') }}</p>
     </div>
 
     <!-- ===== 工厂挑战：无当前战斗 ===== -->
     <div v-if="factoryRun && !summary" class="sd-factory-bar">
-      <span>工厂 {{ factoryRun.wins || 0 }}W/{{ factoryRun.losses || 0 }}L · {{ factoryRun.current_battle || 0 }}/{{ factoryRun.max_battles || 9 }}</span>
-      <button class="sd-btn sd-btn-blue sd-btn-sm" :disabled="isBusy" @click="nextFactoryBattle">下一轮</button>
-      <button class="sd-btn sd-btn-red sd-btn-sm" :disabled="isBusy" @click="abandonFactoryRun">放弃</button>
+      <span>{{ t('工厂','Factory') }} {{ factoryRun.wins||0 }}W/{{ factoryRun.losses||0 }}L · {{ factoryRun.current_battle||0 }}/{{ factoryRun.max_battles||9 }}</span>
+      <button class="sd-btn sd-btn-blue sd-btn-sm" :disabled="isBusy" @click="nextFactoryBattle">{{ t('下一轮','Next Round') }}</button>
+      <button class="sd-btn sd-btn-red sd-btn-sm" :disabled="isBusy" @click="abandonFactoryRun">{{ t('放弃','Abandon') }}</button>
     </div>
 
     <!-- ===== 错误提示 ===== -->
@@ -43,39 +42,32 @@
     <template v-if="summary">
       <!-- 战场 -->
       <div class="bf">
-        <!-- 对手区 -->
         <div class="bf-row bf-opp-row">
           <div v-for="(mon, i) in oppMons" :key="'o'+i" class="bf-mon">
             <div class="bf-info">
               <div class="bf-name">{{ mon.name || mon.name_en }} <span class="bf-lv">L{{ mon.level }}</span></div>
               <div class="bf-hp"><div class="bf-hp-bar" :class="hpColor(mon)" :style="{width: hpPct(mon)}" /></div>
               <div class="bf-hp-num">{{ mon.currentHp }}/{{ mon.maxHp }}</div>
-              <div class="bf-tags">
-                <span v-for="b in badges(mon)" :key="b.t" class="bf-tag" :style="{background:b.c}">{{ b.t }}</span>
-              </div>
+              <div class="bf-tags"><span v-for="b in badges(mon)" :key="b.t" class="bf-tag" :style="{background:b.c}">{{ b.t }}</span></div>
             </div>
             <button class="bf-sprite-btn" @click="onOppClick(mon)" @contextmenu.prevent="showDetail(mon)">
-              <img :src="sprite(mon, false)" class="bf-sprite bf-sprite-opp" :class="{fainted:mon.fainted}" @error="imgErr($event,mon,false)">
+              <img :src="sprite(mon, false)" class="bf-sprite bf-sprite-opp" :class="[mon.fainted?'fainted':'', getAnimClass('opp',i)]" @error="imgErr($event,mon,false)">
             </button>
           </div>
         </div>
-        <!-- 我方区 -->
         <div class="bf-row bf-my-row">
           <div v-for="(mon, i) in myMons" :key="'m'+i" class="bf-mon">
             <button class="bf-sprite-btn" @contextmenu.prevent="showDetail(mon)">
-              <img :src="sprite(mon, true)" class="bf-sprite bf-sprite-my" :class="{fainted:mon.fainted}" @error="imgErr($event,mon,true)">
+              <img :src="sprite(mon, true)" class="bf-sprite bf-sprite-my" :class="[mon.fainted?'fainted':'', getAnimClass('player',i)]" @error="imgErr($event,mon,true)">
             </button>
             <div class="bf-info">
               <div class="bf-name">{{ mon.name || mon.name_en }} <span class="bf-lv">L{{ mon.level }}</span></div>
               <div class="bf-hp"><div class="bf-hp-bar" :class="hpColor(mon)" :style="{width: hpPct(mon)}" /></div>
               <div class="bf-hp-num">{{ mon.currentHp }}/{{ mon.maxHp }}</div>
-              <div class="bf-tags">
-                <span v-for="b in badges(mon)" :key="b.t" class="bf-tag" :style="{background:b.c}">{{ b.t }}</span>
-              </div>
+              <div class="bf-tags"><span v-for="b in badges(mon)" :key="b.t" class="bf-tag" :style="{background:b.c}">{{ b.t }}</span></div>
             </div>
           </div>
         </div>
-        <!-- 场地效果 -->
         <div v-if="fieldChips.length" class="bf-field">
           <span v-for="c in fieldChips" :key="c.l" class="bf-chip" :class="c.cls">{{ c.l }}</span>
         </div>
@@ -84,12 +76,11 @@
       <!-- ===== 预览阶段 ===== -->
       <div v-if="isPreviewPhase" class="panel">
         <div class="panel-hdr">
-          <span class="panel-title">队伍预览</span>
-          <span class="panel-sub">选{{ rosterLimit }}出战 · {{ leadLimit }}首发 · 已选{{ selectedRosterIndexes.length }}/{{ rosterLimit }} · 首发{{ leadRosterIndexes.length }}/{{ leadLimit }}</span>
+          <span class="panel-title">{{ t('队伍预览','Team Preview') }}</span>
+          <span class="panel-sub">{{ t('选{r}出战 · {l}首发 · 已选','Pick {r} · {l} leads · Selected',{r:rosterLimit,l:leadLimit}) }} {{ selectedRosterIndexes.length }}/{{ rosterLimit }} · {{ t('首发','Lead') }} {{ leadRosterIndexes.length }}/{{ leadLimit }}</span>
         </div>
-        <!-- 对手 -->
         <div class="roster-row">
-          <span class="roster-label roster-label-red">⚔️ 对手队伍</span>
+          <span class="roster-label roster-label-red">⚔️ {{ t('对手队伍','Opponent team') }}</span>
           <div class="roster-cards">
             <div v-for="(p,i) in opponentRoster" :key="'or'+i" class="r-card r-card-opp" @click="showDetail(p)">
               <img :src="spr(p)" class="r-img" @error="imgErr2($event,p)">
@@ -98,9 +89,8 @@
             </div>
           </div>
         </div>
-        <!-- 我方 -->
         <div class="roster-row">
-          <span class="roster-label roster-label-green">🟢 你的队伍 · 点击选择，右键标记首发</span>
+          <span class="roster-label roster-label-green">🟢 {{ t('你的队伍 · 点击选择，右键标记首发','Your team · click to pick, right-click for lead') }}</span>
           <div class="roster-cards">
             <button v-for="(p,i) in playerRoster" :key="'pr'+i" type="button"
               class="r-card" :class="isPicked(i)?'r-picked':'r-dim'" :style="isLead(i)?'border-color:#fbbf24':''"
@@ -112,13 +102,13 @@
           </div>
         </div>
         <button class="sd-btn sd-btn-blue sd-btn-full" :disabled="!canConfirmPreview||isBusy" @click="confirmPreview">
-          {{ busyAction==='confirm-preview' ? '确认中...' : '确认出战' }}
+          {{ busyAction==='confirm-preview' ? t('确认中...','Confirming...') : t('确认出战','Confirm Team') }}
         </button>
       </div>
 
       <!-- ===== 补位阶段 ===== -->
       <div v-if="isReplacementPhase" class="panel">
-        <div class="panel-hdr"><span class="panel-title">补位</span><span class="panel-sub">选{{ pendingReplacementCount }}只上场</span></div>
+        <div class="panel-hdr"><span class="panel-title">{{ t('补位','Replacement') }}</span><span class="panel-sub">{{ t('选{n}只上场','Choose {n} to send in',{n:pendingReplacementCount}) }}</span></div>
         <div class="sw-grid">
           <button v-for="o in replacementBenchOptions" :key="o.value" type="button"
             class="sw-btn" :class="selectedReplacementIndexes.includes(o.value)?'sw-on':''"
@@ -128,14 +118,13 @@
             <div class="sw-hp"><div class="sw-hp-bar" :style="{width:hpPct2(o),background:hpCol2(o)}" /></div></div>
           </button>
         </div>
-        <button class="sd-btn sd-btn-red sd-btn-full" :disabled="!canConfirmReplacement||isBusy" @click="confirmReplacement">确认替补</button>
+        <button class="sd-btn sd-btn-red sd-btn-full" :disabled="!canConfirmReplacement||isBusy" @click="confirmReplacement">{{ t('确认替补','Confirm') }}</button>
       </div>
 
       <!-- ===== 战斗操作阶段 ===== -->
       <div v-if="!isPreviewPhase && !isReplacementPhase" class="panel">
         <div v-if="myMons.length">
           <div v-for="mon in myMons" :key="'act'+mon.fieldSlot" class="act-section">
-            <!-- 精灵信息头（Showdown 风格：sprite + 名字 + HP） -->
             <div class="act-header">
               <img :src="sprite(mon, true)" class="act-sprite" :class="{fainted:mon.fainted}" @error="imgErr($event,mon,true)">
               <div class="act-info">
@@ -143,18 +132,12 @@
                 <div class="act-hp-bar"><div class="act-hp-fill" :class="hpColor(mon)" :style="{width: hpPct(mon)}" /></div>
                 <div class="act-hp-text">HP {{ mon.currentHp }}/{{ mon.maxHp }}</div>
               </div>
-              <div class="act-tags">
-                <span v-for="b in badges(mon)" :key="b.t" class="bf-tag" :style="{background:b.c}">{{ b.t }}</span>
-              </div>
+              <div class="act-tags"><span v-for="b in badges(mon)" :key="b.t" class="bf-tag" :style="{background:b.c}">{{ b.t }}</span></div>
             </div>
-
-            <!-- 招式/换人 切换 -->
             <div class="act-toggle">
-              <button class="act-tog" :class="(selectedActions['action-slot-'+mon.fieldSlot]||'move')==='move'?'act-tog-on':''" @click="setSelectedAction(mon.fieldSlot,'move')">⚔️ 招式</button>
-              <button class="act-tog" :class="selectedActions['action-slot-'+mon.fieldSlot]==='switch'?'act-tog-on':''" :disabled="!playerBenchOptions.length" @click="setSelectedAction(mon.fieldSlot,'switch')">🔄 换人</button>
+              <button class="act-tog" :class="(selectedActions['action-slot-'+mon.fieldSlot]||'move')==='move'?'act-tog-on':''" @click="setSelectedAction(mon.fieldSlot,'move')">⚔️ {{ t('招式','Moves') }}</button>
+              <button class="act-tog" :class="selectedActions['action-slot-'+mon.fieldSlot]==='switch'?'act-tog-on':''" :disabled="!playerBenchOptions.length" @click="setSelectedAction(mon.fieldSlot,'switch')">🔄 {{ t('换人','Switch') }}</button>
             </div>
-
-            <!-- 招式面板 -->
             <template v-if="(selectedActions['action-slot-'+mon.fieldSlot]||'move')==='move'">
               <div class="mv-grid">
                 <button v-for="(mv,mi) in mon.moves" :key="mv.name_en||mv.name" type="button"
@@ -163,139 +146,148 @@
                   @click="setSelectedMove(mon.fieldSlot, mv.name_en||mv.name)">
                   <div class="mv-top"><span class="mv-name">{{ mv.name || mv.name_en }}</span><span v-if="mv.target_id&&mv.target_id!==10" class="mv-tgt">{{ tgtLabel(mv.target_id) }}</span></div>
                   <div class="mv-bot">
-                    <span v-if="mv.power" class="mv-stat">威力 {{ mv.power }}</span>
-                    <span v-if="mv.accuracy && mv.accuracy < 100" class="mv-stat">命中 {{ mv.accuracy }}%</span>
+                    <span v-if="mv.power" class="mv-stat">{{ t('威力','Pwr') }} {{ mv.power }}</span>
+                    <span v-if="mv.accuracy && mv.accuracy < 100" class="mv-stat">{{ t('命中','Acc') }} {{ mv.accuracy }}%</span>
                     <span class="mv-pp">PP {{ mv.currentPp!=null ? mv.currentPp+'/'+(mv.maxPp||mv.pp||'?') : '--' }}</span>
                     <span class="mv-type">{{ typeName(mv.type_id) }}</span>
                   </div>
                 </button>
               </div>
-              <!-- 目标选择 -->
               <div v-if="moveNeedsOpponentTarget(selMoveObj(mon)) && oppMons.length" class="tgt-row">
-                <span class="tgt-label">选择目标 →</span>
+                <span class="tgt-label">{{ t('选择目标 →','Select target →') }}</span>
                 <button v-for="t in oppMons" :key="t.fieldSlot" type="button"
                   class="tgt-btn" :class="selectedTargets['target-slot-'+mon.fieldSlot]===t.fieldSlot?'tgt-on':''"
-                  @click="setSelectedTarget(mon.fieldSlot, t.fieldSlot)">
-                  {{ t.name || t.name_en }}
-                </button>
+                  @click="setSelectedTarget(mon.fieldSlot, t.fieldSlot)">{{ t.name || t.name_en }}</button>
               </div>
-              <!-- 特殊系统 -->
               <div v-if="availableSpecialSystems(mon).length" class="sp-row">
-                <button class="sp-btn" :class="!selectedSpecialSystems['special-slot-'+mon.fieldSlot]?'sp-on':''" @click="setSelectedSpecialSystem(mon.fieldSlot,undefined)">不发动</button>
+                <button class="sp-btn" :class="!selectedSpecialSystems['special-slot-'+mon.fieldSlot]?'sp-on':''" @click="setSelectedSpecialSystem(mon.fieldSlot,undefined)">{{ t('不发动','None') }}</button>
                 <button v-for="s in availableSpecialSystems(mon)" :key="s" class="sp-btn" :class="selectedSpecialSystems['special-slot-'+mon.fieldSlot]===s?'sp-on':''" @click="setSelectedSpecialSystem(mon.fieldSlot,s)">{{ specialSystemLabel(s) }}<template v-if="s==='tera'"> · {{ teraTypeLabel(mon) }}</template></button>
               </div>
             </template>
-
-            <!-- 换人面板 -->
             <template v-else>
               <div class="sw-grid">
-                <button v-for="t in playerBenchOptions" :key="t.value" type="button"
-                  class="sw-btn" :class="selectedSwitchTargets['switch-slot-'+mon.fieldSlot]===t.value?'sw-on':''"
-                  @click="setSelectedSwitchTarget(mon.fieldSlot, t.value)">
-                  <img :src="spr(t.pokemon||t)" class="sw-img" @error="imgErr2($event,t.pokemon||t)">
-                  <div class="sw-info"><span class="sw-name">{{ t.label }}</span>
-                  <div class="sw-hp"><div class="sw-hp-bar" :style="{width:hpPct2(t),background:hpCol2(t)}" /></div>
-                  <span class="sw-hp-num">{{ t.hp }}/{{ t.maxHp || '?' }}</span></div>
+                <button v-for="bt in playerBenchOptions" :key="bt.value" type="button"
+                  class="sw-btn" :class="selectedSwitchTargets['switch-slot-'+mon.fieldSlot]===bt.value?'sw-on':''"
+                  @click="setSelectedSwitchTarget(mon.fieldSlot, bt.value)">
+                  <img :src="spr(bt.pokemon||bt)" class="sw-img" @error="imgErr2($event,bt.pokemon||bt)">
+                  <div class="sw-info"><span class="sw-name">{{ bt.label }}</span>
+                  <div class="sw-hp"><div class="sw-hp-bar" :style="{width:hpPct2(bt),background:hpCol2(bt)}" /></div>
+                  <span class="sw-hp-num">{{ bt.hp }}/{{ bt.maxHp || '?' }}</span></div>
                 </button>
               </div>
             </template>
           </div>
-
-          <!-- 提交 -->
           <button class="sd-btn sd-btn-blue sd-btn-full" :disabled="!canSubmitMove||isBusy" @click="submitMove">
-            {{ busyAction==='submit-move' ? '提交中...' : '✅ 提交回合' }}
+            {{ busyAction==='submit-move' ? t('提交中...','Submitting...') : '✅ ' + t('提交回合','End Turn') }}
           </button>
         </div>
-        <div v-else class="sd-empty">开始对战后这里会显示招式选择</div>
+        <div v-else class="sd-empty">{{ t('开始对战后这里会显示招式选择','Start a battle to see move options') }}</div>
       </div>
 
       <!-- 操作栏 -->
       <div class="sd-bar">
-        <button v-if="summary.status!=='completed'" class="sd-btn sd-btn-sm" :disabled="isBusy" @click="refreshStatus">🔄 刷新</button>
-        <button v-if="summary.status==='running'" class="sd-btn sd-btn-red sd-btn-sm" :disabled="isBusy" @click="forfeitBattle">投降</button>
-        <button v-if="showContinueFactoryButton" class="sd-btn sd-btn-blue sd-btn-sm" :disabled="isBusy" @click="prepareNextFactoryStage">下一轮</button>
-        <button v-if="showResetBattleButton" class="sd-btn sd-btn-sm" :disabled="isBusy" @click="resetBattleState({keepFactoryRun:false})">重置</button>
+        <button v-if="summary.status!=='completed'" class="sd-btn sd-btn-sm" :disabled="isBusy" @click="refreshStatus">🔄 {{ t('刷新','Refresh') }}</button>
+        <button v-if="summary.status==='running'" class="sd-btn sd-btn-red sd-btn-sm" :disabled="isBusy" @click="forfeitBattle">{{ t('投降','Forfeit') }}</button>
+        <button v-if="showContinueFactoryButton" class="sd-btn sd-btn-blue sd-btn-sm" :disabled="isBusy" @click="prepareNextFactoryStage">{{ t('下一轮','Next Round') }}</button>
+        <button v-if="showResetBattleButton" class="sd-btn sd-btn-sm" :disabled="isBusy" @click="resetBattleState({keepFactoryRun:false})">{{ t('重置','Reset') }}</button>
+      </div>
+
+      <!-- ===== 数据可视化面板 ===== -->
+      <div v-if="summary.status==='running' || summary.status==='completed'" class="panel">
+        <div class="panel-hdr"><span class="panel-title">📊 {{ t('对战统计','Battle Stats') }}</span></div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">{{ t('回合','Round') }}</div>
+            <div class="stat-value">{{ summary.currentRound || 0 }}/{{ summary.roundLimit || 12 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">{{ t('我方存活','Your alive') }}</div>
+            <div class="stat-value" :style="{color: summary.playerRemaining > 0 ? '#578534' : '#c44'}">{{ summary.playerRemaining || 0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">{{ t('对方存活','Foe alive') }}</div>
+            <div class="stat-value" :style="{color: summary.opponentRemaining > 0 ? '#c44' : '#578534'}">{{ summary.opponentRemaining || 0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">{{ t('我方战力','Your power') }}</div>
+            <div class="stat-value">{{ summary.playerStrength || 0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">{{ t('对方战力','Foe power') }}</div>
+            <div class="stat-value">{{ summary.opponentStrength || 0 }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">{{ t('格式','Format') }}</div>
+            <div class="stat-value" style="font-size:9pt;">{{ summary.format || 'vgc-doubles' }}</div>
+          </div>
+        </div>
       </div>
 
       <!-- 日志 -->
       <div class="log">
-        <div class="log-hdr"><span>战斗日志</span><span v-if="summary.currentRound">回合 {{ summary.currentRound }}</span></div>
+        <div class="log-hdr"><span>{{ t('战斗日志','Battle Log') }}</span><span v-if="summary.currentRound">{{ t('回合','Turn') }} {{ summary.currentRound }}</span></div>
         <div class="log-body" ref="logEl">
           <template v-if="summary.rounds?.length">
             <div v-for="(r,ri) in summary.rounds" :key="ri" class="log-round">
-              <div class="log-rhdr" @click="togRound(ri)"><span class="log-arw" :class="expRounds.has(ri)?'open':''">▶</span> {{ r.round===0?'开场':'Turn '+r.round }} <span class="log-cnt">{{ (r.events||[]).length }}</span></div>
+              <div class="log-rhdr" @click="togRound(ri)"><span class="log-arw" :class="expRounds.has(ri)?'open':''">▶</span> {{ r.round===0?t('开场','Start'):t('第 {n} 回合','Turn {n}',{n:r.round}) }} <span class="log-cnt">{{ (r.events||[]).length }}</span></div>
               <div v-if="expRounds.has(ri)" class="log-evts"><div v-for="(e,ei) in r.events||[]" :key="ei" class="log-evt" :class="logEvtClass(e)">{{ e }}</div></div>
             </div>
           </template>
-          <div v-else class="sd-empty">等待战斗开始...</div>
+          <div v-else class="sd-empty">{{ t('等待战斗开始...','Waiting for battle...') }}</div>
         </div>
       </div>
     </template>
 
-    <!-- ===== 胜后交换面板（工厂模式） ===== -->
+    <!-- ===== 胜后交换面板 ===== -->
     <div v-if="showExchange && exchangeCandidates.length" class="panel" style="border-color: #578534;">
       <div class="panel-hdr">
-        <span class="panel-title">🎁 胜利奖励：交换宝可梦</span>
-        <span class="panel-sub">选择对手队伍中的一只替换你的某只宝可梦</span>
+        <span class="panel-title">🎁 {{ t('胜利奖励：交换宝可梦','Victory reward: exchange Pokemon') }}</span>
       </div>
       <div class="roster-row">
-        <span class="roster-label roster-label-red">可交换的宝可梦</span>
+        <span class="roster-label roster-label-red">{{ t('可交换的宝可梦','Available to exchange') }}</span>
         <div class="roster-cards">
           <button v-for="(p,i) in exchangeCandidates" :key="'ex'+i" type="button"
-            class="r-card" :class="replacedIndex===i?'r-picked':''"
-            @click="replacedIndex = i">
+            class="r-card" :class="replacedIndex===i?'r-picked':''" @click="replacedIndex = i">
             <img :src="spr(p)" class="r-img" @error="imgErr2($event,p)">
             <span class="r-name">{{ p.name || p.name_en }}</span>
             <span class="r-types">{{ (p.types||[]).map(t=>t.name||t.name_en).join('/') }}</span>
           </button>
         </div>
       </div>
-      <div class="roster-row">
-        <span class="roster-label roster-label-green">你的队伍 · 选择要替换的位置</span>
-        <div class="roster-cards">
-          <button v-for="(p,i) in playerRoster" :key="'myex'+i" type="button"
-            class="r-card" :class="replacedIndex===i?'r-picked':''">
-            <img :src="spr(p)" class="r-img" @error="imgErr2($event,p)">
-            <span class="r-name">{{ p.name || p.name_en }}</span>
-          </button>
-        </div>
-      </div>
       <div class="sd-btn-row" style="margin-top:8px;">
         <button class="sd-btn sd-btn-green" :disabled="isBusy" @click="onConfirmExchange">
-          {{ busyAction==='confirm-exchange' ? '交换中...' : '确认交换' }}
+          {{ busyAction==='confirm-exchange' ? t('交换中...','Exchanging...') : t('确认交换','Confirm Exchange') }}
         </button>
-        <button class="sd-btn" @click="showExchange = false">跳过</button>
+        <button class="sd-btn" @click="showExchange = false">{{ t('跳过','Skip') }}</button>
       </div>
     </div>
 
-    <!-- ===== 结算面板（工厂模式） ===== -->
+    <!-- ===== 结算面板 ===== -->
     <div v-if="settlement" class="panel" style="border-color: #488fce;">
-      <div class="panel-hdr">
-        <span class="panel-title">🏆 挑战结算</span>
-      </div>
+      <div class="panel-hdr"><span class="panel-title">🏆 {{ t('挑战结算','Challenge Results') }}</span></div>
       <div style="padding:8px 0;">
-        <div v-if="settlement.won" style="color:#578534;font-weight:bold;font-size:11pt;">✅ 胜利！</div>
-        <div v-else style="color:#c44;font-weight:bold;font-size:11pt;">❌ 失败</div>
+        <div v-if="settlement.won" style="color:#578534;font-weight:bold;font-size:11pt;">✅ {{ t('胜利！','Victory!') }}</div>
+        <div v-else style="color:#c44;font-weight:bold;font-size:11pt;">❌ {{ t('失败','Defeat') }}</div>
         <div v-if="settlement.pointsDelta != null" style="margin-top:4px;font-size:10pt;">
-          积分变化：<span :style="{color: settlement.pointsDelta >= 0 ? '#578534' : '#c44'}">{{ settlement.pointsDelta >= 0 ? '+' : '' }}{{ settlement.pointsDelta }}</span>
+          {{ t('积分','Points') }}：<span :style="{color: settlement.pointsDelta >= 0 ? '#578534' : '#c44'}">{{ settlement.pointsDelta >= 0 ? '+' : '' }}{{ settlement.pointsDelta }}</span>
         </div>
         <div v-if="settlement.tierChange" style="margin-top:4px;font-size:10pt;">
-          段位：<span style="font-weight:bold;">{{ settlement.newTierName }}</span>
+          {{ t('段位','Tier') }}：<span style="font-weight:bold;">{{ settlement.newTierName }}</span>
         </div>
       </div>
       <div class="sd-btn-row">
-        <button v-if="factoryRun" class="sd-btn sd-btn-blue" :disabled="isBusy" @click="prepareNextFactoryStage">继续下一轮</button>
-        <button class="sd-btn" @click="settlement = null">关闭</button>
+        <button v-if="factoryRun" class="sd-btn sd-btn-blue" :disabled="isBusy" @click="prepareNextFactoryStage">{{ t('继续下一轮','Continue') }}</button>
+        <button class="sd-btn" @click="settlement = null">{{ t('关闭','Close') }}</button>
       </div>
     </div>
 
     <!-- ===== 排行榜 ===== -->
     <div v-if="showLeaderboard" class="panel">
       <div class="panel-hdr">
-        <span class="panel-title">📊 排行榜</span>
-        <button class="sd-btn sd-btn-sm" @click="showLeaderboard = false">关闭</button>
+        <span class="panel-title">📊 {{ t('排行榜','Leaderboard') }}</span>
+        <button class="sd-btn sd-btn-sm" @click="showLeaderboard = false">{{ t('关闭','Close') }}</button>
       </div>
-      <div v-if="leaderboardLoading" class="sd-empty">加载中...</div>
+      <div v-if="leaderboardLoading" class="sd-empty">{{ t('加载中...','Loading...') }}</div>
       <div v-else-if="leaderboardData.length">
         <div v-for="(entry, i) in leaderboardData" :key="i" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #eee;font-size:9pt;">
           <span style="font-weight:bold;color:#555;min-width:20px;">#{{ i + 1 }}</span>
@@ -303,7 +295,7 @@
           <span style="color:#888;">{{ entry.totalPoints || entry.points || 0 }} pts</span>
         </div>
       </div>
-      <div v-else class="sd-empty">暂无数据</div>
+      <div v-else class="sd-empty">{{ t('暂无数据','No data') }}</div>
     </div>
 
     <!-- 详情弹窗 -->
@@ -312,7 +304,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useBattlePageState } from '../composables/useBattlePageState'
 import { useLocale } from '../composables/useLocale'
 import { sprites } from '../services/sprites'
@@ -321,7 +313,8 @@ import { normalizeFactoryRun } from '../services/contracts/battleContract'
 import api from '../services/api'
 import PokemonDetailPopover from '../components/PokemonDetailPopover.vue'
 
-const { translate: tr } = useLocale()
+const { translate: tr, locale } = useLocale()
+const t = (zh, en, params) => tr(zh, en, '', params || {})
 
 const {
   actionHeadline, actionDescription, abandonFactoryRun, availableActionCount,
@@ -343,28 +336,20 @@ const {
   setShowDebugPanel, showContinueFactoryButton, showExchange, showLeaderboard,
   showResetBattleButton, startAsyncBattle, startBattle,
   startFactoryChallenge, statusText, statusTone, submitMove, summary,
-  prepareNextFactoryStage, toggleLead, toggleReplacement, toggleRoster
+  prepareNextFactoryStage, toggleLead, toggleReplacement, toggleRoster,
+  leaderboardData, leaderboardLoading
 } = useBattlePageState()
+
+// ===== 格式选项 =====
 const formats = [
-  { id: 'vgc-doubles', label: '双打 (64)' },
-  { id: 'vgc63', label: '63 单打' },
-  { id: 'gen9singles', label: '9代单打' }
+  { id: 'vgc-doubles', label: t('双打 (64)', 'Doubles (64)') },
+  { id: 'vgc63', label: t('63 单打', 'Singles (63)') },
+  { id: 'gen9singles', label: t('9代单打', 'Gen9 Singles') }
 ]
 
-// ===== 特殊系统标签 =====
-function teraTypeLabel(mon) {
-  const tt = mon?.teraType || {}
-  return tt.name || tt.name_en || `Type ${tt.type_id || mon?.teraTypeId || '?'}`
-}
-function specialSystemLabel(sys) {
-  switch (sys) {
-    case 'tera': return '太晶化'
-    case 'mega': return 'Mega'
-    case 'z-move': return 'Z招式'
-    case 'dynamax': return '极巨化'
-    default: return sys || ''
-  }
-}
+// ===== 特殊系统 =====
+function teraTypeLabel(mon) { const tt = mon?.teraType || {}; return tt.name || tt.name_en || `Type ${tt.type_id || mon?.teraTypeId || '?'}` }
+function specialSystemLabel(sys) { const m = { tera: t('太晶化','Terastallize'), mega: t('Mega进化','Mega Evolution'), 'z-move': t('Z招式','Z-Move'), dynamax: t('极巨化','Dynamax') }; return m[sys] || sys || '' }
 function availableSpecialSystems(mon) {
   return (mon?.specialSystems || []).filter((sys) => {
     if (sys === 'tera') return !mon?.terastallized && Number(mon?.teraTypeId || mon?.teraType?.type_id || 0) > 0 && !summary.value?.playerTeraUsed
@@ -375,45 +360,20 @@ function availableSpecialSystems(mon) {
     return false
   })
 }
-function selMoveObj(mon) {
-  const moveName = selectedMoves.value[`slot-${mon.fieldSlot}`]
-  return (mon?.moves || []).find((m) => (m.name_en || m.name) === moveName) || null
-}
 
 // ===== 精灵数据 =====
 const myTeam = computed(() => summary.value?.playerTeam || [])
 const oppTeam = computed(() => summary.value?.opponentTeam || [])
-const myMons = computed(() => {
-  const slots = summary.value?.playerActiveSlots || []
-  return slots.map((ti, fs) => {
-    const m = myTeam.value?.[ti]
-    return m ? { ...m, teamIndex: ti, fieldSlot: fs, maxHp: m?.stats?.hp || m?.currentHp || 0 } : null
-  }).filter(Boolean)
-})
-const oppMons = computed(() => {
-  const slots = summary.value?.opponentActiveSlots || []
-  return slots.map((ti, fs) => {
-    const m = oppTeam.value?.[ti]
-    return m ? { ...m, teamIndex: ti, fieldSlot: fs, maxHp: m?.stats?.hp || m?.currentHp || 0 } : null
-  }).filter(Boolean)
-})
+const myMons = computed(() => { const s = summary.value?.playerActiveSlots || []; return s.map((ti, fs) => { const m = myTeam.value?.[ti]; return m ? { ...m, teamIndex: ti, fieldSlot: fs, maxHp: m?.stats?.hp || m?.currentHp || 0 } : null }).filter(Boolean) })
+const oppMons = computed(() => { const s = summary.value?.opponentActiveSlots || []; return s.map((ti, fs) => { const m = oppTeam.value?.[ti]; return m ? { ...m, teamIndex: ti, fieldSlot: fs, maxHp: m?.stats?.hp || m?.currentHp || 0 } : null }).filter(Boolean) })
 
 // ===== HP =====
-function hpPct(mon) {
-  if (!mon.maxHp) return mon.fainted ? '0%' : '100%'
-  return Math.max(0, Math.min(100, (mon.currentHp / mon.maxHp) * 100)) + '%'
-}
-function hpColor(mon) {
-  const p = mon.maxHp > 0 ? (mon.currentHp / mon.maxHp) * 100 : 100
-  if (p <= 0) return 'hp-e'
-  if (p <= 20) return 'hp-c'
-  if (p <= 50) return 'hp-l'
-  return 'hp-h'
-}
+function hpPct(mon) { if (!mon.maxHp) return mon.fainted ? '0%' : '100%'; return Math.max(0, Math.min(100, (mon.currentHp / mon.maxHp) * 100)) + '%' }
+function hpColor(mon) { const p = mon.maxHp > 0 ? (mon.currentHp / mon.maxHp) * 100 : 100; if (p <= 0) return 'hp-e'; if (p <= 20) return 'hp-c'; if (p <= 50) return 'hp-l'; return 'hp-h' }
 function hpPct2(o) { return o.maxHp > 0 ? Math.max(2, (o.hp / o.maxHp) * 100) + '%' : '100%' }
 function hpCol2(o) { return o.maxHp > 0 && o.hp / o.maxHp <= 0.25 ? '#ef4444' : o.maxHp > 0 && o.hp / o.maxHp <= 0.5 ? '#fbbf24' : '#4ade80' }
 
-// ===== 状态徽章 =====
+// ===== 状态 =====
 const COND = { paralysis:'PAR', burn:'BRN', freeze:'FRZ', sleep:'SLP', poison:'PSN', toxic:'TOX', confusion:'CNF', taunt:'TNT' }
 const CONDC = { paralysis:'#a16207', burn:'#c2410c', freeze:'#0369a1', sleep:'#6d28d9', poison:'#7e22ce', toxic:'#7e22ce', confusion:'#b45309', taunt:'#a16207' }
 function badges(mon) {
@@ -437,40 +397,32 @@ function badges(mon) {
 const fieldChips = computed(() => {
   const fe = summary.value?.fieldEffects || {}
   const cs = []
-  const p = (l, k, cls) => { const v = Number(fe[k] || 0); if (v > 0) cs.push({ l: v > 1 ? l + ' ' + v + 'T' : l, cls }) }
+  const p = (l, k, cls) => { const v = Number(fe[k] || 0); if (v > 0) cs.push({ l: v > 1 ? `${l} ${v}T` : l, cls }) }
   p('TW', 'playerTailwindTurns', 'chip-blue'); p('TW', 'opponentTailwindTurns', 'chip-red')
   p('TR', 'trickRoomTurns', 'chip-purple'); p('Rain', 'rainTurns', 'chip-cyan')
   p('Sun', 'sunTurns', 'chip-amber'); p('Sand', 'sandTurns', 'chip-orange')
   p('Snow', 'snowTurns', 'chip-sky'); p('E-T', 'electricTerrainTurns', 'chip-yellow')
   p('P-T', 'psychicTerrainTurns', 'chip-purple'); p('G-T', 'grassyTerrainTurns', 'chip-green')
-  p('Reflect', 'playerReflectTurns', 'chip-blue'); p('LS', 'playerLightScreenTurns', 'chip-blue')
   return cs
 })
 
 // ===== Sprite =====
-function sprite(mon, back) {
-  const id = mon?.form_id || mon?.species_id || mon?.pokemon_id || mon?.id
-  if (!id) return sprites.default
-  return back ? sprites.pokemonBack(id) : sprites.pokemon(id)
-}
+function sprite(mon, back) { const id = mon?.form_id || mon?.species_id || mon?.pokemon_id || mon?.id; if (!id) return sprites.default; return back ? sprites.pokemonBack(id) : sprites.pokemon(id) }
 function spr(p) { const id = p?.form_id || p?.species_id || p?.pokemon_id || p?.id; return id ? sprites.pokemon(id) : sprites.default }
 function imgErr(e, mon, back) { const id = mon?.form_id || mon?.species_id || mon?.id; e.target.src = back ? sprites.fallbackPokemonBack(id) : sprites.fallbackPokemon(id) }
 function imgErr2(e, p) { const id = p?.form_id || p?.species_id || p?.id; e.target.src = sprites.fallbackPokemon(id) }
 
-// ===== 招式辅助 =====
+// ===== 招式 =====
 function typeCol(id) { return typeColFn(id) }
 function typeName(id) { return tr(typeNameZh(id), typeNameEn(id)) }
-function tgtLabel(tid) {
-  switch (tid) { case 4: case 7: return '自身'; case 8: return '随机'; case 9: return '全体'; case 11: return '群'; case 13: return '己方'; case 14: return '全场'; default: return '' }
-}
-
-// ===== 目标点击 =====
-function onOppClick(mon) { /* could be used for target selection */ }
+function tgtLabel(tid) { const m = {4:'Self',7:'Self',8:'Rnd',9:'All',11:'Foes',13:'Field',14:'All'}; return m[tid] || '' }
+function selMoveObj(mon) { const n = selectedMoves.value[`slot-${mon.fieldSlot}`]; return (mon?.moves || []).find(m => (m.name_en || m.name) === n) || null }
 
 // ===== 详情弹窗 =====
 const detailVis = ref(false)
 const detailMon = ref(null)
 function showDetail(p) { detailMon.value = p; detailVis.value = true }
+function onOppClick(mon) { /* target selection */ }
 
 // ===== 日志 =====
 const expRounds = ref(new Set())
@@ -489,99 +441,85 @@ watch(() => summary.value?.rounds?.length, (n) => {
   const s = new Set(); for (let i = Math.max(0, n - 2); i < n; i++) s.add(i); expRounds.value = s
   nextTick(() => { if (logEl.value) logEl.value.scrollTop = logEl.value.scrollHeight })
 })
+
+// ===== G11: 战斗动画 =====
+const animClasses = ref({})
+function applyAnim(key, cls, dur = 600) { animClasses.value = { ...animClasses.value, [key]: cls }; setTimeout(() => { const n = { ...animClasses.value }; delete n[key]; animClasses.value = n }, dur) }
+function getAnimClass(side, slot) { return animClasses.value[`${side}-${slot}`] || '' }
+
+// ===== 音效系统 =====
+const SFX = {
+  hit: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=',
+  heal: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=',
+  faint: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+}
+const sfxEnabled = ref(true)
+function playSfx(name) {
+  if (!sfxEnabled.value || !SFX[name]) return
+  try { const a = new Audio(SFX[name]); a.volume = 0.3; a.play().catch(() => {}) } catch {}
+}
+
+// 监听回合变化触发动画+音效
+watch(() => summary.value?.rounds?.length, (n, o) => {
+  if (!n || n <= (o || 0)) return
+  const latest = summary.value.rounds[n - 1]
+  if (!latest?.events) return
+  const text = latest.events.join(' ')
+  const hasDmg = /伤害|damage|造成了/.test(text)
+  const hasHeal = /回复|恢复|治愈|heal/.test(text)
+  const hasFaint = /倒下了|fainted/.test(text)
+  const opp = summary.value?.opponentActiveSlots || []
+  const plr = summary.value?.playerActiveSlots || []
+  if (hasDmg) {
+    opp.forEach((_, i) => { if (Math.random() < 0.5) applyAnim(`opp-${i}`, 'bf-anim-hit') })
+    plr.forEach((_, i) => { if (Math.random() < 0.5) applyAnim(`player-${i}`, 'bf-anim-hit') })
+    playSfx('hit')
+  }
+  if (hasHeal) { plr.forEach((_, i) => applyAnim(`player-${i}`, 'bf-anim-heal')); playSfx('heal') }
+  if (hasFaint) { playSfx('faint') }
+})
 </script>
 
 <style>
 /* ===== Pokemon Showdown 精致风格 ===== */
 :root {
-  --bg-page: #d8d8d0;
-  --bg-panel: #ececec;
-  --bg-control: #e4e4e4;
-  --border: #b8b8b8;
-  --border-light: #d0d0d0;
-  --text: #333;
-  --text-dim: #888;
-  --accent: #488fce;
-  --accent-dark: #3774af;
-  --green: #5a9e3c;
-  --green-dark: #4a8430;
-  --red: #c44;
-  --red-dark: #a33;
-  --gold: #d4a017;
+  --bg-page: #d8d8d0; --bg-panel: #ececec; --bg-control: #e4e4e4;
+  --border: #b8b8b8; --border-light: #d0d0d0;
+  --text: #333; --text-dim: #888;
+  --accent: #488fce; --accent-dark: #3774af;
+  --green: #5a9e3c; --red: #c44; --gold: #d4a017;
 }
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg-page); color: var(--text); }
 .sd-page { max-width: 956px; margin: 0 auto; padding: 10px; font-family: Verdana, Geneva, Tahoma, sans-serif; font-size: 10pt; }
-
-/* ===== 开始面板 ===== */
-.sd-start {
-  background: linear-gradient(180deg, #f4f4f4, #e8e8e8);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-}
+.sd-start { background: linear-gradient(180deg, #f4f4f4, #e8e8e8); border: 1px solid var(--border); border-radius: 6px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 .sd-format-row { display: flex; gap: 0; margin-bottom: 10px; }
-.sd-fmt-btn {
-  padding: 5px 14px; font-size: 9pt; font-family: inherit;
-  border: 1px solid var(--border); border-right: 0;
-  background: linear-gradient(180deg, #f8f8f8, #e8e8e8);
-  color: #666; cursor: pointer; transition: all 0.12s;
-}
+.sd-fmt-btn { padding: 5px 14px; font-size: 9pt; font-family: inherit; border: 1px solid var(--border); border-right: 0; background: linear-gradient(180deg, #f8f8f8, #e8e8e8); color: #666; cursor: pointer; transition: all 0.12s; }
 .sd-fmt-btn:last-child { border-right: 1px solid var(--border); border-radius: 0 4px 4px 0; }
 .sd-fmt-btn:first-child { border-radius: 4px 0 0 4px; }
 .sd-fmt-btn:hover { background: linear-gradient(180deg, #fff, #f0f0f0); color: #333; }
 .sd-fmt-on { background: linear-gradient(180deg, #5a9ee0, #3a7cc0) !important; color: #fff !important; border-color: #3a7cc0 !important; text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
 .sd-btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.sd-btn {
-  padding: 7px 14px; font-size: 9pt; font-family: inherit;
-  border: 1px solid var(--border); border-radius: 5px; cursor: pointer;
-  background: linear-gradient(180deg, #f8f8f8, #e4e4e4);
-  color: var(--text); transition: all 0.12s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-}
+.sd-btn { padding: 7px 14px; font-size: 9pt; font-family: inherit; border: 1px solid var(--border); border-radius: 5px; cursor: pointer; background: linear-gradient(180deg, #f8f8f8, #e4e4e4); color: var(--text); transition: all 0.12s; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
 .sd-btn:hover { background: linear-gradient(180deg, #fff, #eee); box-shadow: 0 2px 4px rgba(0,0,0,0.1); transform: translateY(-1px); }
-.sd-btn:active { transform: translateY(0); box-shadow: 0 1px 1px rgba(0,0,0,0.08); }
+.sd-btn:active { transform: translateY(0); }
 .sd-btn:disabled { background: #e8e8e8; color: #aaa; cursor: not-allowed; transform: none; box-shadow: none; }
 .sd-btn-blue { background: linear-gradient(180deg, #5a9ee0, #3a7cc0); color: #fff; border-color: #3a7cc0; text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
 .sd-btn-blue:hover { background: linear-gradient(180deg, #6aaef0, #4a8cd0); }
 .sd-btn-purple { background: linear-gradient(180deg, #9090d0, #7070b0); color: #fff; border-color: #6060a0; }
-.sd-btn-purple:hover { background: linear-gradient(180deg, #a0a0e0, #8080c0); }
-.sd-btn-green { background: linear-gradient(180deg, #6a9e40, #588430); color: #fff; border-color: #4a7420; text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
-.sd-btn-green:hover { background: linear-gradient(180deg, #7aae50, #689440); }
+.sd-btn-green { background: linear-gradient(180deg, #6a9e40, #588430); color: #fff; border-color: #4a7420; }
 .sd-btn-red { background: linear-gradient(180deg, #d45, #b33); color: #fff; border-color: #a22; }
-.sd-btn-red:hover { background: linear-gradient(180deg, #e56, #c44); }
 .sd-btn-sm { padding: 4px 10px; font-size: 9pt; }
 .sd-btn-full { width: 100%; margin-top: 8px; }
 .sd-hint { margin-top: 8px; font-size: 9pt; color: var(--text-dim); }
 .sd-error { padding: 8px 12px; background: #ffe5e0; border: 1px solid #c44; border-radius: 4px; color: #c44; font-size: 9pt; }
 .sd-empty { padding: 16px; text-align: center; font-size: 9pt; color: var(--text-dim); }
-.sd-factory-bar {
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-  background: linear-gradient(180deg, #f0f0f0, #e4e4e4);
-  border: 1px solid var(--border); border-radius: 5px; font-size: 9pt;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
-}
-.sd-bar {
-  display: flex; align-items: center; gap: 6px; padding: 6px 10px;
-  background: linear-gradient(180deg, #f0f0f0, #e4e4e4);
-  border: 1px solid var(--border); border-top: 0; border-radius: 0 0 5px 5px; font-size: 9pt;
-}
+.sd-factory-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: linear-gradient(180deg, #f0f0f0, #e4e4e4); border: 1px solid var(--border); border-radius: 5px; font-size: 9pt; }
+.sd-bar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: linear-gradient(180deg, #f0f0f0, #e4e4e4); border: 1px solid var(--border); border-top: 0; border-radius: 0 0 5px 5px; font-size: 9pt; }
 
-/* ===== 战场 ===== */
-.bf {
-  background: 
-    radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.08) 0%, transparent 40%),
-    linear-gradient(180deg, #87b56b 0%, #6a9e50 30%, #588a44 60%, #4a7a3a 100%);
-  border: 3px solid #2a4a1a;
-  border-radius: 6px;
-  width: 640px; height: 360px;
-  overflow: hidden; position: relative;
-  margin: 0 auto;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.25), inset 0 2px 10px rgba(255,255,255,0.1), inset 0 -2px 8px rgba(0,0,0,0.1);
-}
+/* 战场 */
+.bf { background: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.12) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.06) 0%, transparent 40%), linear-gradient(180deg, #8ab870 0%, #6ea052 25%, #5a8c44 50%, #4a7a3a 75%, #3a6a2a 100%); border: 3px solid #2a4a1a; border-radius: 8px; width: 640px; height: 360px; overflow: hidden; position: relative; margin: 0 auto; box-shadow: 0 6px 24px rgba(0,0,0,0.3), inset 0 2px 10px rgba(255,255,255,0.1); animation: fadeSlideIn 0.5s ease-out; }
+.bf::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 40%; background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 100%); pointer-events: none; z-index: 1; }
 .bf-row { display: flex; position: absolute; gap: 10px; }
 .bf-opp-row { top: 24px; left: 24px; }
 .bf-my-row { bottom: 24px; right: 24px; }
@@ -590,34 +528,13 @@ body { background: var(--bg-page); color: var(--text); }
 .bf-info { min-width: 155px; }
 .bf-name { font-size: 11pt; font-weight: bold; color: #222; text-shadow: #fff 1px 1px 0, #fff 1px -1px 0, #fff -1px 1px 0, #fff -1px -1px 0; }
 .bf-lv { font-size: 9pt; font-weight: normal; color: #555; margin-left: 2px; }
-
-/* Showdown 3D HP 条 */
 .bf-hp { position: relative; border: 1px solid #666; background: #f8f8f8; padding: 1px; height: 10px; width: 155px; border-radius: 5px; margin: 3px 0; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); }
-.bf-hp-bar {
-  height: 5px; border-radius: 4px; transition: width 0.6s ease;
-  background: linear-gradient(180deg, #55ee88, #22bb55, #119944);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.4);
-}
-.hp-l {
-  background: linear-gradient(180deg, #ffee77, #ddaa22, #cc9911) !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.35);
-}
-.hp-c {
-  background: linear-gradient(180deg, #ff7755, #dd3322, #bb2211) !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
-}
+.bf-hp-bar { height: 5px; border-radius: 4px; transition: width 0.6s ease; background: linear-gradient(180deg, #55ee88, #22bb55, #119944); box-shadow: 0 1px 2px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.4); }
+.hp-l { background: linear-gradient(180deg, #ffee77, #ddaa22, #cc9911) !important; }
+.hp-c { background: linear-gradient(180deg, #ff7755, #dd3322, #bb2211) !important; }
 .hp-e { background: linear-gradient(180deg, #bbb, #999) !important; }
-
-.bf-hp-num {
-  position: absolute; background: linear-gradient(180deg, #666, #555);
-  color: #eee; text-shadow: #000 0 1px 0; font-size: 9px;
-  width: 36px; height: 14px; top: -2px; text-align: center;
-  border-radius: 0 5px 5px 0; right: -37px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-  border: 1px solid #444;
-}
+.bf-hp-num { position: absolute; background: linear-gradient(180deg, #666, #555); color: #eee; text-shadow: #000 0 1px 0; font-size: 9px; width: 36px; height: 14px; top: -2px; text-align: center; border-radius: 0 5px 5px 0; right: -37px; box-shadow: 0 1px 2px rgba(0,0,0,0.2); border: 1px solid #444; }
 .bf-my-row .bf-hp-num { right: auto; left: -37px; border-radius: 5px 0 0 5px; }
-
 .bf-tags { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 3px; }
 .bf-tag { font-size: 8px; padding: 1px 3px; border-radius: 3px; color: #fff; font-weight: bold; box-shadow: 0 1px 1px rgba(0,0,0,0.2); }
 .bf-sprite-btn { background: none; border: none; cursor: default; padding: 0; }
@@ -626,11 +543,8 @@ body { background: var(--bg-page); color: var(--text); }
 .bf-sprite-opp { animation: float 3.5s ease-in-out infinite; }
 @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .bf-sprite.fainted { filter: grayscale(1) brightness(0.3); opacity: 0.4; transform: translateY(20px) rotate(70deg); }
-.bf-field { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; flex-wrap: wrap; }
-.bf-chip {
-  font-size: 9px; font-weight: bold; padding: 2px 6px; border-radius: 3px;
-  border: 1px solid; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
+.bf-field { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; flex-wrap: wrap; z-index: 2; }
+.bf-chip { font-size: 9px; font-weight: bold; padding: 2px 6px; border-radius: 3px; border: 1px solid; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
 .chip-blue { background: #ddeeff; color: #246; border-color: #88bbee; }
 .chip-red { background: #ffe0e0; color: #822; border-color: #eeaaaa; }
 .chip-purple { background: #e8ddff; color: #446; border-color: #bbaadd; }
@@ -641,34 +555,30 @@ body { background: var(--bg-page); color: var(--text); }
 .chip-yellow { background: #ffffdd; color: #553; border-color: #dddd88; }
 .chip-green { background: #ddffdd; color: #262; border-color: #88cc88; }
 
-/* ===== 面板 ===== */
-.panel {
-  background: linear-gradient(180deg, #f4f4f4, #e8e8e8);
-  border: 1px solid var(--border); border-top: 0;
-  padding: 10px 12px; font-size: 10pt;
-  border-radius: 0 0 5px 5px;
-}
+/* 动画 */
+.bf-anim-hit { animation: bf-hit 0.4s ease-out; }
+@keyframes bf-hit { 0% { filter: brightness(1); transform: translateX(0); } 20% { filter: brightness(2.5); transform: translateX(-6px); } 40% { filter: brightness(1.2); transform: translateX(6px); } 60% { filter: brightness(2); transform: translateX(-3px); } 100% { filter: brightness(1); transform: translateX(0); } }
+.bf-anim-heal { animation: bf-heal 0.5s ease-out; }
+@keyframes bf-heal { 0% { filter: brightness(1); } 40% { filter: brightness(1.4) hue-rotate(90deg); } 100% { filter: brightness(1) hue-rotate(0deg); } }
+@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.panel { animation: fadeSlideIn 0.3s ease-out; }
+
+/* 面板 */
+.panel { background: linear-gradient(180deg, #f4f4f4, #e8e8e8); border: 1px solid var(--border); border-top: 0; padding: 10px 12px; font-size: 10pt; border-radius: 0 0 5px 5px; }
 .panel-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--border-light); }
 .panel-title { font-size: 11pt; font-weight: bold; color: #222; }
 .panel-sub { font-size: 9pt; color: var(--text-dim); }
 
-/* 队伍预览 */
+/* 预览 */
 .roster-row { margin-bottom: 10px; }
-.roster-label { display: block; font-size: 9pt; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.02em; }
+.roster-label { display: block; font-size: 9pt; font-weight: bold; margin-bottom: 5px; }
 .roster-label-red { color: #c44; } .roster-label-green { color: var(--green); }
 .roster-cards { display: flex; flex-wrap: wrap; gap: 4px; }
-.r-card {
-  display: flex; flex-direction: column; align-items: center; padding: 5px 6px;
-  border: 2px solid var(--border-light); border-radius: 5px;
-  background: linear-gradient(180deg, #fff, #f4f4f4);
-  cursor: pointer; min-width: 60px; transition: all 0.12s; position: relative;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
+.r-card { display: flex; flex-direction: column; align-items: center; padding: 5px 6px; border: 2px solid var(--border-light); border-radius: 5px; background: linear-gradient(180deg, #fff, #f4f4f4); cursor: pointer; min-width: 60px; transition: all 0.12s; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 .r-card:hover { border-color: #999; box-shadow: 0 3px 8px rgba(0,0,0,0.15); transform: translateY(-2px); }
 .r-card-opp { cursor: default; opacity: 0.5; background: linear-gradient(180deg, #f4f4f4, #e8e8e8); }
 .r-card-opp:hover { transform: none; box-shadow: none; opacity: 0.5; }
 .r-picked { border-color: var(--green) !important; background: linear-gradient(135deg, #e0ffe0, #c8f0c8) !important; box-shadow: 0 3px 10px rgba(90,158,60,0.25); }
-.r-picked:hover { box-shadow: 0 4px 14px rgba(90,158,60,0.35); }
 .r-dim { opacity: 0.3; }
 .r-star { position: absolute; top: 1px; right: 3px; font-size: 10px; color: var(--gold); text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
 .r-img { width: 42px; height: 32px; object-fit: contain; image-rendering: pixelated; }
@@ -676,128 +586,72 @@ body { background: var(--bg-page); color: var(--text); }
 .r-name { font-size: 8pt; color: #555; max-width: 54px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
 .r-types { font-size: 7px; color: #999; max-width: 54px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 补位/换人 */
+/* 换人 */
 .sw-grid { display: flex; flex-wrap: wrap; gap: 4px; }
-.sw-btn {
-  display: flex; align-items: center; gap: 6px; padding: 5px 10px;
-  border: 2px solid var(--border-light); border-radius: 5px;
-  background: linear-gradient(180deg, #fff, #f4f4f4);
-  cursor: pointer; transition: all 0.12s; font-size: 9pt;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
+.sw-btn { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border: 2px solid var(--border-light); border-radius: 5px; background: linear-gradient(180deg, #fff, #f4f4f4); cursor: pointer; transition: all 0.12s; font-size: 9pt; }
 .sw-btn:hover { border-color: #999; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-.sw-on {
-  border-color: var(--accent) !important;
-  background: linear-gradient(180deg, #e8f0ff, #d0e0ff) !important;
-  box-shadow: 0 2px 8px rgba(72,143,206,0.25);
-  transform: scale(1.02);
-}
+.sw-on { border-color: var(--accent) !important; background: linear-gradient(180deg, #e8f0ff, #d0e0ff) !important; box-shadow: 0 2px 8px rgba(72,143,206,0.25); transform: scale(1.02); }
 .sw-img { width: 32px; height: 24px; object-fit: contain; image-rendering: pixelated; }
 .sw-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sw-name { font-size: 9pt; color: #333; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sw-hp { height: 5px; background: #ddd; border-radius: 3px; overflow: hidden; width: 64px; box-shadow: inset 0 1px 1px rgba(0,0,0,0.1); }
+.sw-hp { height: 5px; background: #ddd; border-radius: 3px; overflow: hidden; width: 64px; }
 .sw-hp-bar { height: 100%; transition: width 0.3s; background: linear-gradient(180deg, #44dd77, #22aa55); border-radius: 3px; }
 .sw-hp-num { font-size: 8pt; color: var(--text-dim); }
 
 /* 操作区 */
-.act-section {
-  background: linear-gradient(180deg, #fafafa, #f0f0f0);
-  border: 1px solid var(--border-light); border-radius: 6px;
-  padding: 12px; margin-bottom: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  transition: box-shadow 0.2s;
-}
-.act-section:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06); }
+.act-section { background: linear-gradient(180deg, #fafafa, #f0f0f0); border: 1px solid var(--border-light); border-radius: 6px; padding: 12px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
 .act-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid var(--border-light); }
 .act-sprite { width: 44px; height: 33px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15)); }
 .act-sprite.fainted { filter: grayscale(1) brightness(0.3); opacity: 0.5; }
 .act-info { flex: 1; min-width: 0; }
 .act-name { font-size: 11pt; font-weight: bold; color: #222; }
-.act-hp-bar { position: relative; border: 1px solid #666; background: #f8f8f8; padding: 1px; height: 10px; border-radius: 5px; margin: 3px 0; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); }
-.act-hp-fill { height: 5px; border-radius: 4px; transition: width 0.4s; background: linear-gradient(180deg, #44dd77, #22aa55); box-shadow: 0 1px 2px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.3); }
+.act-hp-bar { position: relative; border: 1px solid #666; background: #f8f8f8; padding: 1px; height: 10px; border-radius: 5px; margin: 3px 0; }
+.act-hp-fill { height: 5px; border-radius: 4px; transition: width 0.4s; background: linear-gradient(180deg, #55ee88, #22bb55, #119944); }
 .act-hp-text { font-size: 9pt; color: #555; }
 .act-tags { display: flex; flex-wrap: wrap; gap: 2px; align-self: flex-start; }
 .act-toggle { display: flex; gap: 0; margin-bottom: 8px; }
-.act-tog {
-  flex: 1; padding: 5px 10px; font-size: 10pt; font-family: inherit; font-weight: bold;
-  border: 1px solid var(--border); background: linear-gradient(180deg, #f8f8f8, #e8e8e8);
-  color: #555; cursor: pointer; transition: all 0.12s;
-}
+.act-tog { flex: 1; padding: 5px 10px; font-size: 10pt; font-family: inherit; font-weight: bold; border: 1px solid var(--border); background: linear-gradient(180deg, #f8f8f8, #e8e8e8); color: #555; cursor: pointer; transition: all 0.12s; }
 .act-tog:first-child { border-radius: 5px 0 0 5px; }
 .act-tog:last-child { border-radius: 0 5px 5px 0; border-left: 0; }
-.act-tog-on { background: linear-gradient(180deg, #5a9ee0, #3a7cc0) !important; color: #fff !important; border-color: #3a7cc0 !important; text-shadow: 0 1px 1px rgba(0,0,0,0.2); }
+.act-tog-on { background: linear-gradient(180deg, #5a9ee0, #3a7cc0) !important; color: #fff !important; border-color: #3a7cc0 !important; }
 .act-tog:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* 招式按钮 */
+/* 招式 */
 .mv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.mv-btn {
-  display: flex; flex-direction: column; gap: 2px; padding: 6px 8px;
-  border: 2px solid rgba(255,255,255,0.2); border-radius: 5px;
-  background: var(--tc, #888); color: #fff; cursor: pointer; text-align: left;
-  font-size: 10pt; font-family: inherit; font-weight: bold;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  min-height: 44px; transition: all 0.12s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15);
-}
+.mv-btn { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 2px solid rgba(255,255,255,0.2); border-radius: 5px; background: var(--tc, #888); color: #fff; cursor: pointer; text-align: left; font-size: 10pt; font-family: inherit; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5); min-height: 44px; transition: all 0.12s; box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15); animation: fadeSlideIn 0.2s ease-out both; }
+.mv-grid .mv-btn:nth-child(1) { animation-delay: 0.05s; } .mv-grid .mv-btn:nth-child(2) { animation-delay: 0.1s; } .mv-grid .mv-btn:nth-child(3) { animation-delay: 0.15s; } .mv-grid .mv-btn:nth-child(4) { animation-delay: 0.2s; }
 .mv-btn:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.3); }
-.mv-btn:active:not(:disabled) { transform: translateY(0); }
-.mv-sel {
-  border-color: var(--gold) !important;
-  box-shadow: 0 0 12px rgba(212,160,23,0.5), 0 0 24px rgba(212,160,23,0.2), 0 2px 4px rgba(0,0,0,0.2);
-  transform: scale(1.02);
-}
+.mv-sel { border-color: var(--gold) !important; box-shadow: 0 0 12px rgba(212,160,23,0.5), 0 0 24px rgba(212,160,23,0.2), 0 2px 4px rgba(0,0,0,0.2); transform: scale(1.02); }
 .mv-top { display: flex; justify-content: space-between; align-items: center; }
 .mv-name { font-weight: bold; font-size: 11pt; }
 .mv-tgt { font-size: 8px; background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px; }
 .mv-bot { display: flex; align-items: center; gap: 5px; font-size: 9px; opacity: 0.9; }
 .mv-stat { font-weight: bold; }
 .mv-pp { margin-left: auto; font-weight: normal; opacity: 0.7; }
-.mv-type { background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px; font-size: 8px; text-transform: uppercase; letter-spacing: 0.03em; }
-
-/* 目标/特殊系统 */
+.mv-type { background: rgba(0,0,0,0.3); padding: 1px 4px; border-radius: 3px; font-size: 8px; text-transform: uppercase; }
 .tgt-row { display: flex; align-items: center; gap: 5px; margin-top: 8px; }
 .tgt-label { font-size: 9pt; color: #555; font-weight: bold; }
-.tgt-btn {
-  padding: 4px 10px; font-size: 9pt; font-family: inherit; font-weight: bold;
-  border: 1px solid var(--border); border-radius: 4px;
-  background: linear-gradient(180deg, #f8f8f8, #e8e8e8); color: #333; cursor: pointer;
-  transition: all 0.1s;
-}
+.tgt-btn { padding: 4px 10px; font-size: 9pt; font-family: inherit; font-weight: bold; border: 1px solid var(--border); border-radius: 4px; background: linear-gradient(180deg, #f8f8f8, #e8e8e8); color: #333; cursor: pointer; transition: all 0.1s; }
 .tgt-btn:hover { background: linear-gradient(180deg, #fff, #f0f0f0); }
 .tgt-on { border-color: #c44; background: #ffe5e0; color: #c44; box-shadow: 0 2px 8px rgba(204,68,68,0.2); }
 .sp-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
-.sp-btn {
-  padding: 3px 10px; font-size: 9pt; font-family: inherit; font-weight: bold;
-  border: 1px solid var(--border); border-radius: 4px;
-  background: linear-gradient(180deg, #f8f8f8, #e8e8e8); color: #555; cursor: pointer;
-  transition: all 0.1s;
-}
+.sp-btn { padding: 3px 10px; font-size: 9pt; font-family: inherit; font-weight: bold; border: 1px solid var(--border); border-radius: 4px; background: linear-gradient(180deg, #f8f8f8, #e8e8e8); color: #555; cursor: pointer; transition: all 0.1s; }
 .sp-btn:hover { background: linear-gradient(180deg, #fff, #f0f0f0); }
 .sp-on { background: linear-gradient(180deg, #5a9ee0, #3a7cc0) !important; color: #fff !important; border-color: #3a7cc0 !important; }
 
-/* ===== 日志 ===== */
-.log {
-  background: linear-gradient(180deg, #f0f0f0, #e4e4e4);
-  border: 1px solid var(--border); border-top: 0;
-  border-radius: 0 0 5px 5px;
-}
-.log-hdr {
-  display: flex; justify-content: space-between; padding: 6px 12px;
-  background: linear-gradient(180deg, #e0e0e0, #d4d4d4);
-  border-bottom: 1px solid var(--border); font-size: 9pt; font-weight: bold; color: #444;
-  letter-spacing: 0.02em;
-}
+/* 数据可视化 */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat-card { background: linear-gradient(180deg, #fff, #f4f4f4); border: 1px solid var(--border-light); border-radius: 5px; padding: 8px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.stat-label { font-size: 8pt; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-value { font-size: 14pt; font-weight: bold; color: #222; margin-top: 2px; }
+
+/* 日志 */
+.log { background: linear-gradient(180deg, #f0f0f0, #e4e4e4); border: 1px solid var(--border); border-top: 0; border-radius: 0 0 5px 5px; }
+.log-hdr { display: flex; justify-content: space-between; padding: 6px 12px; background: linear-gradient(180deg, #e0e0e0, #d4d4d4); border-bottom: 1px solid var(--border); font-size: 9pt; font-weight: bold; color: #444; }
 .log-body { max-height: 220px; overflow-y: auto; padding: 4px 10px; scrollbar-width: thin; scrollbar-color: #ccc transparent; }
-.log-body::-webkit-scrollbar { width: 6px; }
-.log-body::-webkit-scrollbar-track { background: transparent; }
-.log-body::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
-.log-body::-webkit-scrollbar-thumb:hover { background: #aaa; }
-.log-rhdr {
-  display: flex; align-items: center; gap: 5px; padding: 3px 0;
-  font-size: 9pt; font-weight: bold; color: #444; cursor: pointer;
-  border-bottom: 1px solid transparent; transition: all 0.1s;
-}
-.log-rhdr:hover { background: #e8e8e8; border-bottom-color: #ddd; }
+.log-body::-webkit-scrollbar { width: 6px; } .log-body::-webkit-scrollbar-track { background: transparent; } .log-body::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+.log-rhdr { display: flex; align-items: center; gap: 5px; padding: 3px 0; font-size: 9pt; font-weight: bold; color: #444; cursor: pointer; transition: all 0.1s; }
+.log-rhdr:hover { background: #e8e8e8; }
 .log-arw { font-size: 8px; transition: transform 0.2s; color: #888; }
 .log-arw.open { transform: rotate(90deg); }
 .log-cnt { font-size: 8px; color: #999; background: #ddd; padding: 0 4px; border-radius: 3px; }
@@ -810,39 +664,12 @@ body { background: var(--bg-page); color: var(--text); }
 .log-evt-debuff { color: #963; }
 .log-evt-field { color: #66a; font-style: italic; }
 
-/* 响应式 */
 @media (max-width: 660px) {
   .bf { width: 100%; height: auto; min-height: 300px; }
   .bf-sprite { width: 72px; height: 72px; }
   .bf-hp { width: 120px; }
   .bf-hp-num { right: -30px; width: 28px; }
   .bf-my-row .bf-hp-num { left: -30px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
-
-/* 入场动画 */
-@keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.bf { animation: fadeSlideIn 0.5s ease-out; }
-.panel { animation: fadeSlideIn 0.3s ease-out; }
-.log { animation: fadeSlideIn 0.3s ease-out 0.1s both; }
-
-/* 战场光线反射 */
-.bf::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 40%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* 招式按钮入场动画 */
-.mv-btn { animation: fadeSlideIn 0.2s ease-out both; }
-.mv-grid .mv-btn:nth-child(1) { animation-delay: 0.05s; }
-.mv-grid .mv-btn:nth-child(2) { animation-delay: 0.1s; }
-.mv-grid .mv-btn:nth-child(3) { animation-delay: 0.15s; }
-.mv-grid .mv-btn:nth-child(4) { animation-delay: 0.2s; }
 </style>
