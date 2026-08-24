@@ -47,6 +47,8 @@ public class BattleService {
     private final FactoryRunService factoryRunService;
     private final ObjectMapper objectMapper;
     private final BattleConfig config;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private BattleNotificationService notificationService;
 
     /**
      * 组装手动对战主链依赖。
@@ -267,6 +269,8 @@ public class BattleService {
             response.put("summary", updatedState);
             response.put("battleId", battleId);
             response.put("newRounds", roundsCount(updatedState) - previousRounds);
+            // G: WebSocket 实时推送
+            notifyBattleUpdate(battleId, updatedState);
             return response;
         } catch (Exception e) {
             log.error("推进对战失败, battleId={}", battleId, e);
@@ -739,6 +743,17 @@ public class BattleService {
             }
         }
         return fallback;
+    }
+
+    /** 推送 WebSocket 更新（G: 实时推送） */
+    private void notifyBattleUpdate(Long battleId, Map<String, Object> summary) {
+        if (notificationService != null && battleId != null && summary != null) {
+            try {
+                notificationService.pushBattleUpdate(battleId, summary);
+            } catch (Exception e) {
+                log.warn("WebSocket 推送失败, battleId={}: {}", battleId, e.getMessage());
+            }
+        }
     }
 
     private String toJson(Object value) {

@@ -1,7 +1,8 @@
 /**
- * 对战轮询管理模块
+ * 对战状态更新管理模块
  *
- * 封装对战状态轮询的起停逻辑，支持错误边界和指数退避。
+ * G: 优先使用 WebSocket 实时推送，回退到轮询。
+ * WebSocket 连接失败或断开时自动降级为 2 秒轮询。
  *
  * @module composables/battle/useBattlePolling
  */
@@ -13,55 +14,95 @@ const BASE_INTERVAL_MS = 2000
 const MAX_BACKOFF_MS = 16000
 
 /**
- * 创建轮询管理器
- * @param {Function} onPoll - 每次轮询触发的回调
- * @param {number} intervalMs - 基础轮询间隔（默认 2000ms）
+ * 创建状态更新管理器
+ * @param {Function} onUpdate - 收到更新时触发的回调
+ * @param {number} intervalMs - 轮询间隔（WebSocket 不可用时使用）
  * @returns {Object} { pollingActive, startPolling, stopPolling }
  */
-export function useBattlePolling(onPoll, intervalMs = BASE_INTERVAL_MS) {
+export function useBattlePolling(onUpdate, intervalMs = BASE_INTERVAL_MS) {
   const pollingActive = ref(false)
   let pollTimer = null
   let consecutiveFailures = 0
+  let wsConnection = null
 
   function stopPolling() {
     if (pollTimer) {
-      clearInterval(pollTimer)
+      clearTimeout(pollTimer)
       pollTimer = null
     }
     pollingActive.value = false
     consecutiveFailures = 0
+    if (wsConnection) {
+      try { wsConnection.close() } catch {}
+      wsConnection = null
+    }
   }
 
   function startPolling() {
     stopPolling()
     pollingActive.value = true
-    scheduleNext(intervalMs)
+    // 尝试 WebSocket，失败则回退到轮询
+    tryWebSocket()
   }
 
-  function scheduleNext(delay) {
+  function tryWebSocket() {
+    if (!pollingActive.value) return
+    try {
+      const wsUrl = window.location.protocol === 'https:' ? 'wss:' : 'ws:' + '//' + window.location.host + '/ws-battle'
+      const ws = new WebSocket(wsUrl)
+      wsConnection = ws
+
+      ws.onopen = () => {
+        consecutiveFailures = 0
+      }
+
+      ws.onmessage = async (event) => {
+        if (!pollingActive.value) return
+        try {
+          const data = JSON.parse(event.data)
+          if (data.type === 'battle_update' && data.summary) {
+            await onUpdate(data.summary)
+          }
+        } catch {}
+      }
+
+      ws.onerror = () => {
+        ws.close()
+      }
+
+      ws.onclose = () => {
+        wsConnection = null
+        if (pollingActive.value) {
+          // WebSocket 失败，回退到轮询
+          schedulePoll(intervalMs)
+        }
+      }
+    } catch {
+      // WebSocket 不支持，直接轮询
+      schedulePoll(intervalMs)
+    }
+  }
+
+  function schedulePoll(delay) {
     if (!pollingActive.value) return
     pollTimer = setTimeout(async () => {
       if (!pollingActive.value) return
       try {
-        await onPoll()
+        await onUpdate()
         consecutiveFailures = 0
-        // 成功后恢复基础间隔
-        scheduleNext(intervalMs)
+        schedulePoll(intervalMs)
       } catch (e) {
         consecutiveFailures++
         if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-          // 连续失败过多，停止轮询
           stopPolling()
           return
         }
-        // 指数退避：失败后逐步增大间隔
         const backoff = Math.min(intervalMs * Math.pow(2, consecutiveFailures), MAX_BACKOFF_MS)
-        scheduleNext(backoff)
+        schedulePoll(backoff)
       }
     }, delay)
   }
 
-  // 组件卸载时自动清理
   onBeforeUnmount(stopPolling)
 
   return {
