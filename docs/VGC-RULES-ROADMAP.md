@@ -127,23 +127,19 @@
 
 ## 执行优先级建议
 
-1. **编译验证已改代码**（#code 标记多处）：恢复环境后 `mvn compile -pl battle -am`，
-   通过后提交。
-2. A 类格式校验与 vgc63 双打化（critical/major）。
-3. B 类辅助招式补全（Feather Dance/Eerie Impulse/Scary Face 等用现有 applyXxxDrop）。
-4. E 类剩余（Pressure PP、Aftermath 时机）+ F 类场地震子接地。
-5. D 类随机组队系统（坦克构建、强度评分、生命宝珠误拒）。
-6. 回归验证 + UI 完善 + 代码解耦。
+> **已全部完成**：所有 critical 和 major 级别问题均已解决。
+> 剩余 #todo 为 minor/info 级别（天气粒子动画、回合计时器、资源招收益权衡等）。
 
-## 环境恢复后的验证命令
+## 验证命令
 
 ```powershell
 # 编译验证
 cd backend && mvn compile -pl battle -am -DskipTests -q
-# 打包重启
-Remove-Item battle\target\battle-0.0.1-SNAPSHOT.jar -Force
+# 打包
+Remove-Item battle\target\battle-0.0.1-SNAPSHOT.jar -Force -ErrorAction SilentlyContinue
 mvn package -pl battle -am -DskipTests "-Dmaven.test.skip=true" -q
+# 启动
 java -jar battle\target\battle-0.0.1-SNAPSHOT.jar
-# git 提交
-git add -A && git commit -m "feat(battle): ..."
+# 前端
+cd frontend && npm run dev
 ```

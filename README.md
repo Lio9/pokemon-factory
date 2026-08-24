@@ -1,6 +1,6 @@
 # Pokemon Factory 宝可梦工厂
 
-> 一体化宝可梦对战平台 — 图鉴 + 对战引擎 + AI 对手
+> 一体化宝可梦对战平台 — 图鉴 + 对战引擎 + AI 对手 + 工厂挑战
 
 ---
 
@@ -23,10 +23,54 @@ Start-Process -WindowStyle Hidden -FilePath "cmd.exe" -ArgumentList '/c','cd /d 
 cd frontend
 npm run dev
 
-# 5️⃣ 打开 http://localhost:7894
+# 5️⃣ 打开 http://localhost:7894/battle
 ```
 
 等后端日志出现 `Started BattleFactoryApplication` 后即可访问。
+
+---
+
+## 对战系统
+
+### 引擎特性（对标 Pokemon Showdown / VGC）
+
+- **双打/单打格式**：vgc-doubles（6选4双打）、vgc63（6选3单打）、gen9singles
+- **招式目标系统**：对单体/对全体对手/对场上全部/对己方场地，spread 0.75x 衰减
+- **特性系统**：威吓/避雷针/引水/坚硬脑袋/怪力钳/心灵感应/干燥皮肤/雪之力 等 20+ 特性
+- **道具系统**：抗性树果/颊囊/节拍器/红牌/突击背心/弱点保险 等完整实现
+- **辅助招式**：守住/顺风/戏法空间/光墙/反射壁/电磁波/鬼火/蘑菇孢子 等 40+ 招式
+- **太晶化/Mega/Z招式/极巨化**：完整支持，AI 会智能使用
+- **受限传说限制**：VGC 规则每队最多 2 只受限传说（67 种覆盖全世代）
+
+### AI 系统
+
+- **4 档难度**：Easy/Normal/Hard/Expert，通过 `strategicChance()` 缩放概率
+- **强化招式 AI**：剑舞/诡计/龙舞/冥想 等 16 种，HP>60% 且无 OHKO 威胁时使用
+- **智能换人**：多维评分（类型抵抗+HP+攻击存在感+OHKO 惩罚），双打防连环换
+- **智能目标**：双打按类型克制+低血量补刀优先，不再随机
+- **Protect 策略**：最后存活低血量时使用保护争取回合
+- **伤害预测**：STAB+类型克制+命中率+追加效果+KO bonus 综合评分
+
+### 随机组队
+
+- **最终进化型**：SQL 过滤确保只出最终进化（NOT EXISTS 子查询）
+- **BST 范围 450-600**：排除太弱和过强的宝可梦
+- **base_experience ≤ 250**：排除遗漏标记的 UB/二级神
+- **STAB 招式优先**：本系招式优先选择
+- **多样化构建**：物理/特殊/混合/坦克/辅助 5 种定位
+- **多样化道具**：生命宝珠/讲究/突击背心/剩饭/气势披带/弱点保险等
+
+### 对战 UI（Showdown 风格）
+
+- **浅灰控件区** + Verdana 字体（照抄 Showdown）
+- **3D HP 条**：三色渐变（绿/黄/红）+ 内阴影 + 高光
+- **属性色招式按钮**：火红/水蓝/草绿，按属性着色
+- **精灵 sprite**：正面/背面、float 动画、hit/heal 特效
+- **状态标签**：BRN/PSN/PAR/SLP/FRZ + 能力阶级（+2Atk/-1SpD）
+- **场地效果**：显示剩余回合数（Rain 3T、Reflect 5T 等）
+- **回合日志**：可折叠、颜色区分（蓝=换人/红=伤害/绿=回复）
+- **队伍预览**：Showdown 风格卡片选择 + 首发标记
+- **精灵详情弹窗**：点击在场精灵查看完整配置
 
 ### 补充完整数据（含中文名、描述、效果，需联网，约 20-40 分钟）
 
@@ -46,14 +90,16 @@ python scripts/data_maintenance.py
 ## 架构
 
 ```
-┌──────────────┐     ┌──────────────────────────────────────┐
-│  前端(7894)  │────▶│  battle (8084)                       │
-│  Vue 3+Vite  │     │  ├── battle: 对战引擎、AI、访客模式   │
-│  Element Plus│     │  ├── pokedex: 图鉴查询、伤害计算      │
-│  Tailwind    │     │  ├── user: 登录注册、JWT 认证          │
-│  PWA + 缓存  │     │  └── common: 数据库、CSV 导入          │
-└──────────────┘     └──────────────────────────────────────┘
-                         SQLite (backend/pokemon-factory.db)
+┌──────────────────┐     ┌──────────────────────────────────────┐
+│  前端 (7894)     │────▶│  battle (8084)                       │
+│  Vue 3 + Vite    │     │  ├── engine/ 对战引擎（Showdown 规则）│
+│  Showdown 风格 UI│     │  ├── AI: 4档难度/强化/智能换人/目标   │
+│                  │     │  ├── 随机组队（BST过滤/STAB优先）     │
+│                  │     │  ├── pokedex: 图鉴查询、伤害计算      │
+│                  │     │  ├── user: 登录注册、JWT 认证          │
+│                  │     │  └── common: 数据库、CSV 导入          │
+└──────────────────┘     └──────────────────────────────────────┘
+                           SQLite (backend/pokemon-factory.db)
 ```
 
 - **单 JAR** 启动全部功能（端口 8084）
@@ -198,8 +244,8 @@ docker compose up -d
 | ORM | MyBatis + MyBatis-Plus | 4.0 + 3.5.9 |
 | 数据库 | SQLite (xerial JDBC) | 3.47 |
 | 前端 | Vue 3 + Vite | 6.x |
-| UI | Element Plus + Tailwind CSS | 2.x + 3.x |
-| 状态管理 | Pinia + Vue Router | — |
+| UI | Showdown 风格原生 CSS | — |
+| 状态管理 | Vue Composables + Vue Router | — |
 | 认证 | JWT (HS256) | — |
 | 图片 | 本地优先 → PokeAPI 回退 → 默认图 | — |
 | 部署 | Docker Compose (Nginx + JAR) | — |
