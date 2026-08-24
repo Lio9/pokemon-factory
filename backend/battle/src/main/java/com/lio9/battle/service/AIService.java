@@ -198,7 +198,7 @@ public class AIService {
 
         // 智能判断定位
         String build = determineBuild(statMap);
-        List<Map<String, Object>> selectedMoves = pickMoves(movePool, build, random, statMap.getOrDefault(6, 80));
+        List<Map<String, Object>> selectedMoves = pickMoves(movePool, build, random, statMap.getOrDefault(6, 80), types);
         if (selectedMoves.size() < 4) {
             return null;
         }
@@ -213,20 +213,7 @@ public class AIService {
 
         // 智能选择道具（D6: 使用 seeded Random 而非 ThreadLocalRandom）
         String heldItem = selectBestItem(itemPool, pokemon, selectedMoves, random);
-
-        // 特殊系统分配（Mega/Z/极巨化）— 必须在 heldItem 设定之前，因为 Z 会覆盖道具
-        assignSpecialSystemProfile(pokemon, random);
-
-        // 使用最终道具（Z 招式可能覆盖为 normalium-z）
-        heldItem = String.valueOf(pokemon.getOrDefault("heldItem", heldItem));
         pokemon.put("heldItem", heldItem == null ? "" : heldItem);
-        // 道具展示信息（仅供前端预览，引擎仍读 heldItem 字符串）
-        if (heldItem != null && !heldItem.isBlank()) {
-            Map<String, Object> itemInfo = battleDexMapper.selectItemInfo(heldItem);
-            if (itemInfo != null && !itemInfo.isEmpty()) {
-                pokemon.put("heldItemInfo", itemInfo);
-            }
-        }
 
         Map<String, Object> teraType = pickTeraType(types, selectedMoves, random);
         pokemon.put("teraType", teraType);
@@ -242,6 +229,20 @@ public class AIService {
 
         // 构建战斗属性
         pokemon.put("stats", buildBattleStats(statMap, evSpread, nature));
+
+        // 特殊系统分配（Mega/Z/极巨化）— 必须在 stats 之后，因为需要读取 stats
+        assignSpecialSystemProfile(pokemon, random);
+
+        // 更新道具（Z 招式可能覆盖为 normalium-z）
+        heldItem = String.valueOf(pokemon.getOrDefault("heldItem", heldItem));
+        pokemon.put("heldItem", heldItem == null ? "" : heldItem);
+        // 道具展示信息（仅供前端预览，引擎仍读 heldItem 字符串）
+        if (heldItem != null && !heldItem.isBlank()) {
+            Map<String, Object> itemInfo = battleDexMapper.selectItemInfo(heldItem);
+            if (itemInfo != null && !itemInfo.isEmpty()) {
+                pokemon.put("heldItemInfo", itemInfo);
+            }
+        }
 
         // 计算战斗力评分
         double strength = balanceEvaluator.evaluatePokemonStrength(pokemon);
@@ -616,119 +617,142 @@ public class AIService {
         return stats;
     }
 
+    /**
+     * 智能选招（重写）：
+     * 1. 保证至少 1-2 个 STAB 招式（本系高威力）
+     * 2. 补充覆盖招式（不同属性的攻击）
+     * 3. 加一个实用辅助招式（保护/顺风/控速等）
+     * 4. 不足 4 个时用次优攻击补满
+     */
     private List<Map<String, Object>> pickMoves(List<Map<String, Object>> movePool, String build, Random random,
-            int baseSpeed) {
+            int baseSpeed, List<Map<String, Object>> pokemonTypes) {
+        // 收集本系 type_id
+        Set<Integer> stabTypeIds = new LinkedHashSet<>();
+        if (pokemonTypes != null) {
+            for (Map<String, Object> t : pokemonTypes) {
+                stabTypeIds.add(toInt(t.get("type_id"), 0));
+            }
+        }
+        // 分类招式
         List<Map<String, Object>> attacks = new ArrayList<>();
         Map<String, Object> protect = null;
         List<Map<String, Object>> utilities = new ArrayList<>();
+        List<Map<String, Object>> setupMoves = new ArrayList<>();
+
         for (Map<String, Object> move : movePool) {
-            String nameEn = String.valueOf(move.getOrDefault("name_en", ""));
-            if ("protect".equalsIgnoreCase(nameEn)) {
+            String nameEn = String.valueOf(move.getOrDefault("name_en", "")).toLowerCase().replace(" ", "-");
+            int damageClassId = toInt(move.get("damage_class_id"), 0);
+            int power = toInt(move.get("power"), 0);
+
+            // 保护
+            if ("protect".equalsIgnoreCase(nameEn) || "detect".equalsIgnoreCase(nameEn)) {
                 protect = normalizeMove(move);
                 continue;
             }
-            if ("tailwind".equalsIgnoreCase(nameEn)
-                    || "trick-room".equalsIgnoreCase(nameEn)
-                    || "trick room".equalsIgnoreCase(nameEn)
-                    || "wide-guard".equalsIgnoreCase(nameEn)
-                    || "wide guard".equalsIgnoreCase(nameEn)
-                    || "quick-guard".equalsIgnoreCase(nameEn)
-                    || "quick guard".equalsIgnoreCase(nameEn)
-                    || "rain-dance".equalsIgnoreCase(nameEn)
-                    || "rain dance".equalsIgnoreCase(nameEn)
-                    || "sunny-day".equalsIgnoreCase(nameEn)
-                    || "sunny day".equalsIgnoreCase(nameEn)
-                    || "aurora-veil".equalsIgnoreCase(nameEn)
-                    || "aurora veil".equalsIgnoreCase(nameEn)
-                    || "electric-terrain".equalsIgnoreCase(nameEn)
-                    || "electric terrain".equalsIgnoreCase(nameEn)
-                    || "psychic-terrain".equalsIgnoreCase(nameEn)
-                    || "psychic terrain".equalsIgnoreCase(nameEn)
-                    || "reflect".equalsIgnoreCase(nameEn)
-                    || "safeguard".equalsIgnoreCase(nameEn)
-                    || "light-screen".equalsIgnoreCase(nameEn)
-                    || "light screen".equalsIgnoreCase(nameEn)
-                    || "taunt".equalsIgnoreCase(nameEn)
-                    || "disable".equalsIgnoreCase(nameEn)
-                    || "heal-block".equalsIgnoreCase(nameEn)
-                    || "heal block".equalsIgnoreCase(nameEn)
-                    || "torment".equalsIgnoreCase(nameEn)
-                    || "encore".equalsIgnoreCase(nameEn)
-                    || "yawn".equalsIgnoreCase(nameEn)
-                    || "spore".equalsIgnoreCase(nameEn)
-                    || "helping-hand".equalsIgnoreCase(nameEn)
-                    || "helping hand".equalsIgnoreCase(nameEn)
-                    || "ally-switch".equalsIgnoreCase(nameEn)
-                    || "ally switch".equalsIgnoreCase(nameEn)
-                    || "fake-tears".equalsIgnoreCase(nameEn)
-                    || "fake tears".equalsIgnoreCase(nameEn)
-                    || "parting-shot".equalsIgnoreCase(nameEn)
-                    || "parting shot".equalsIgnoreCase(nameEn)
-                    || "follow-me".equalsIgnoreCase(nameEn)
-                    || "follow me".equalsIgnoreCase(nameEn)
-                    || "rage-powder".equalsIgnoreCase(nameEn)
-                    || "rage powder".equalsIgnoreCase(nameEn)
-                    || "will-o-wisp".equalsIgnoreCase(nameEn)
-                    || "will o wisp".equalsIgnoreCase(nameEn)
-                    || "thunder-wave".equalsIgnoreCase(nameEn)
-                    || "thunder wave".equalsIgnoreCase(nameEn)
-                    || "icy-wind".equalsIgnoreCase(nameEn)
-                    || "icy wind".equalsIgnoreCase(nameEn)) {
+
+            // 强化招式
+            if (isSetupMove(move)) {
+                setupMoves.add(normalizeMove(move));
+                continue;
+            }
+
+            // 辅助/控速/场地/状态招式
+            if (isUtilityMove(nameEn)) {
                 utilities.add(normalizeMove(move));
                 continue;
             }
-            int damageClassId = toInt(move.get("damage_class_id"), 0);
-            // 本数据库 damage_class_id: 1=物理, 2=特殊, 3=变化/状态
-            if (("physical".equals(build) && damageClassId == 1) || ("special".equals(build) && damageClassId == 2)
-                    || ("mixed".equals(build) && damageClassId <= 2)
-                    || ("tank".equals(build) && damageClassId <= 2)
-                    || ("support".equals(build) && damageClassId <= 2)) {
-                attacks.add(normalizeMove(move));
+
+            // 攻击招式（按 build 过滤）
+            if (power > 0) {
+                if ("physical".equals(build) && damageClassId == 1) attacks.add(normalizeMove(move));
+                else if ("special".equals(build) && damageClassId == 2) attacks.add(normalizeMove(move));
+                else if ("mixed".equals(build) && damageClassId <= 2) attacks.add(normalizeMove(move));
+                else if (("tank".equals(build) || "support".equals(build)) && damageClassId <= 2) attacks.add(normalizeMove(move));
             }
         }
 
-        attacks.sort(Comparator.comparingInt((Map<String, Object> move) -> toInt(move.get("power"), 0)).reversed()
-                .thenComparingInt(move -> toInt(move.get("accuracy"), 100)).reversed());
+        // 按威力降序排列
+        attacks.sort(Comparator.comparingInt((Map<String, Object> m) -> toInt(m.get("power"), 0)).reversed()
+                .thenComparingInt(m -> toInt(m.get("accuracy"), 100)).reversed());
 
         List<Map<String, Object>> selected = new ArrayList<>();
-        Map<String, Object> utility = preferredUtility(utilities, baseSpeed);
-        int desiredAttacks = Math.max(1, 4 - (protect == null ? 0 : 1) - (utility == null ? 0 : 1));
         Set<Integer> usedTypes = new LinkedHashSet<>();
+
+        // ① 优先选 STAB 招式（本系攻击，威力 ≥ 50）
         for (Map<String, Object> move : attacks) {
-            if (selected.size() >= desiredAttacks) {
-                break;
-            }
+            if (selected.size() >= 2) break;
             int typeId = toInt(move.get("type_id"), 0);
-            if (usedTypes.add(typeId) || selected.isEmpty()) {
+            int power = toInt(move.get("power"), 0);
+            if (power >= 50 && stabTypeIds.contains(typeId) && usedTypes.add(typeId)) {
                 selected.add(move);
             }
         }
 
+        // ② 补充覆盖招式（不同属性，威力 ≥ 50）
         for (Map<String, Object> move : attacks) {
-            if (selected.size() >= desiredAttacks) {
-                break;
-            }
-            if (selected.stream().noneMatch(existing -> existing.get("name_en").equals(move.get("name_en")))) {
+            if (selected.size() >= 3) break;
+            int typeId = toInt(move.get("type_id"), 0);
+            int power = toInt(move.get("power"), 0);
+            if (power >= 50 && usedTypes.add(typeId)) {
                 selected.add(move);
             }
         }
 
-        if (utility != null) {
-            selected.add(utility);
+        // ③ 加一个强化招式（如果有）
+        if (!setupMoves.isEmpty() && selected.size() < 4) {
+            selected.add(setupMoves.get(random.nextInt(setupMoves.size())));
         }
 
-        if (protect != null) {
+        // ④ 加一个辅助招式（如果有空间）
+        if (selected.size() < 4) {
+            Map<String, Object> utility = preferredUtility(utilities, baseSpeed);
+            if (utility != null) {
+                selected.add(utility);
+            }
+        }
+
+        // ⑤ 加保护（如果有空间）
+        if (protect != null && selected.size() < 4) {
             selected.add(protect);
         }
 
+        // ⑥ 不足 4 个 → 用剩余攻击补满
+        for (Map<String, Object> move : attacks) {
+            if (selected.size() >= 4) break;
+            if (selected.stream().noneMatch(s -> s.get("name_en").equals(move.get("name_en")))) {
+                selected.add(move);
+            }
+        }
+
+        // ⑦ 还不够 → 随机补
         List<Map<String, Object>> remaining = new ArrayList<>(attacks);
         remaining.removeIf(m -> selected.stream().anyMatch(s -> s.get("name_en").equals(m.get("name_en"))));
         while (selected.size() < 4 && !remaining.isEmpty()) {
-            int idx = random.nextInt(remaining.size());
-            selected.add(remaining.remove(idx));
+            selected.add(remaining.remove(random.nextInt(remaining.size())));
+        }
+
+        // 确保至少有 1 个招式
+        if (selected.isEmpty() && !attacks.isEmpty()) {
+            selected.add(attacks.get(0));
         }
 
         return selected;
+    }
+
+    /** 判断是否为辅助/控速/场地类招式 */
+    private boolean isUtilityMove(String nameEn) {
+        return switch (nameEn) {
+            case "tailwind", "trick-room", "wide-guard", "quick-guard",
+                 "rain-dance", "sunny-day", "aurora-veil",
+                 "electric-terrain", "psychic-terrain", "grassy-terrain", "misty-terrain",
+                 "reflect", "safeguard", "light-screen",
+                 "taunt", "disable", "encore", "yawn", "spore",
+                 "helping-hand", "ally-switch", "fake-tears", "parting-shot",
+                 "follow-me", "rage-powder", "will-o-wisp", "thunder-wave", "icy-wind",
+                 "heal-bell", "aromatherapy", "trick", "knock-off",
+                 "stealth-rock", "spikes", "toxic-spikes", "sticky-web" -> true;
+            default -> false;
+        };
     }
 
     private Map<String, Object> pickTeraType(List<Map<String, Object>> types, List<Map<String, Object>> moves,
