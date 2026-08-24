@@ -89,17 +89,18 @@
         </div>
         <!-- 对手 -->
         <div class="roster-row">
-          <span class="roster-label roster-label-red">对手</span>
+          <span class="roster-label roster-label-red">⚔️ 对手队伍</span>
           <div class="roster-cards">
             <div v-for="(p,i) in opponentRoster" :key="'or'+i" class="r-card r-card-opp" @click="showDetail(p)">
               <img :src="spr(p)" class="r-img" @error="imgErr2($event,p)">
               <span class="r-name">{{ p.name || p.name_en }}</span>
+              <span class="r-types">{{ (p.types||[]).map(t=>t.name||t.name_en).join('/') }}</span>
             </div>
           </div>
         </div>
         <!-- 我方 -->
         <div class="roster-row">
-          <span class="roster-label roster-label-green">你的队伍</span>
+          <span class="roster-label roster-label-green">🟢 你的队伍 · 点击选择，右键标记首发</span>
           <div class="roster-cards">
             <button v-for="(p,i) in playerRoster" :key="'pr'+i" type="button"
               class="r-card" :class="isPicked(i)?'r-picked':'r-dim'" :style="isLead(i)?'border-color:#fbbf24':''"
@@ -594,6 +595,7 @@ body { background: var(--bg-page); color: var(--text); }
 .r-img { width: 42px; height: 32px; object-fit: contain; image-rendering: pixelated; }
 .r-img-dim { filter: grayscale(0.7) brightness(0.4); }
 .r-name { font-size: 8pt; color: #555; max-width: 54px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+.r-types { font-size: 7px; color: #999; max-width: 54px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 补位/换人 */
 .sw-grid { display: flex; flex-wrap: wrap; gap: 4px; }
