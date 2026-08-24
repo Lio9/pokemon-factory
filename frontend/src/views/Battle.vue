@@ -627,12 +627,14 @@ body { background: var(--bg-page); color: var(--text); }
 
 /* 操作区 */
 .act-section {
-  background: linear-gradient(180deg, #f8f8f8, #f0f0f0);
-  border: 1px solid var(--border-light); border-radius: 5px;
-  padding: 10px; margin-bottom: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  background: linear-gradient(180deg, #fafafa, #f0f0f0);
+  border: 1px solid var(--border-light); border-radius: 6px;
+  padding: 12px; margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s;
 }
-.act-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 2px solid var(--border-light); }
+.act-section:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06); }
+.act-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid var(--border-light); }
 .act-sprite { width: 44px; height: 33px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15)); }
 .act-sprite.fainted { filter: grayscale(1) brightness(0.3); opacity: 0.5; }
 .act-info { flex: 1; min-width: 0; }
