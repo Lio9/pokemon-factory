@@ -235,7 +235,6 @@
         </p>
       </div>
     </footer>
-
   </div>
 </template>
 

@@ -1,9 +1,14 @@
 <template>
   <div class="sd-page">
     <!-- ===== 无战斗时：开始面板 ===== -->
-    <div v-if="!summary && !factoryRun" class="sd-start">
+    <div
+      v-if="!summary && !factoryRun"
+      class="sd-start"
+    >
       <div style="text-align:center;margin-bottom:12px;">
-        <div style="font-size:16pt;font-weight:bold;color:#333;letter-spacing:0.02em;">⚔️ {{ t('对战工厂', 'Battle Factory') }}</div>
+        <div style="font-size:16pt;font-weight:bold;color:#333;letter-spacing:0.02em;">
+          ⚔️ {{ t('对战工厂', 'Battle Factory') }}
+        </div>
       </div>
       <div class="sd-format-row">
         <button
@@ -12,69 +17,180 @@
           class="sd-fmt-btn"
           :class="battleFormat === f.id ? 'sd-fmt-on' : ''"
           @click="setBattleFormat(f.id)"
-        >{{ f.label }}</button>
+        >
+          {{ f.label }}
+        </button>
       </div>
       <div class="sd-btn-row">
-        <button class="sd-btn sd-btn-blue" :disabled="isBusy" @click="startBattle">
+        <button
+          class="sd-btn sd-btn-blue"
+          :disabled="isBusy"
+          @click="startBattle"
+        >
           ⚔️ {{ busyAction === 'start-manual' ? t('创建中...','Starting...') : t('手动对战','Manual Battle') }}
         </button>
-        <button v-if="isAuthenticated" class="sd-btn sd-btn-purple" :disabled="isBusy" @click="startFactoryChallenge">
+        <button
+          v-if="isAuthenticated"
+          class="sd-btn sd-btn-purple"
+          :disabled="isBusy"
+          @click="startFactoryChallenge"
+        >
           🏟️ {{ busyAction === 'factory-start' ? t('创建中...','Starting...') : t('工厂挑战','Factory Run') }}
         </button>
-        <button v-if="isAuthenticated" class="sd-btn sd-btn-green" :disabled="isBusy" @click="startAsyncBattle">
+        <button
+          v-if="isAuthenticated"
+          class="sd-btn sd-btn-green"
+          :disabled="isBusy"
+          @click="startAsyncBattle"
+        >
           ⏩ {{ t('异步模拟','Async Sim') }}
         </button>
       </div>
-      <p v-if="!isAuthenticated" class="sd-hint">{{ t('游客模式：可直接手动对战', 'Guest mode: manual battle available') }}</p>
+      <p
+        v-if="!isAuthenticated"
+        class="sd-hint"
+      >
+        {{ t('游客模式：可直接手动对战', 'Guest mode: manual battle available') }}
+      </p>
     </div>
 
     <!-- ===== 工厂挑战：无当前战斗 ===== -->
-    <div v-if="factoryRun && !summary" class="sd-factory-bar">
+    <div
+      v-if="factoryRun && !summary"
+      class="sd-factory-bar"
+    >
       <span>{{ t('工厂','Factory') }} {{ factoryRun.wins||0 }}W/{{ factoryRun.losses||0 }}L · {{ factoryRun.current_battle||0 }}/{{ factoryRun.max_battles||9 }}</span>
-      <button class="sd-btn sd-btn-blue sd-btn-sm" :disabled="isBusy" @click="nextFactoryBattle">{{ t('下一轮','Next Round') }}</button>
-      <button class="sd-btn sd-btn-red sd-btn-sm" :disabled="isBusy" @click="abandonFactoryRun">{{ t('放弃','Abandon') }}</button>
+      <button
+        class="sd-btn sd-btn-blue sd-btn-sm"
+        :disabled="isBusy"
+        @click="nextFactoryBattle"
+      >
+        {{ t('下一轮','Next Round') }}
+      </button>
+      <button
+        class="sd-btn sd-btn-red sd-btn-sm"
+        :disabled="isBusy"
+        @click="abandonFactoryRun"
+      >
+        {{ t('放弃','Abandon') }}
+      </button>
     </div>
 
     <!-- ===== 错误提示 ===== -->
-    <div v-if="requestError" class="sd-error">{{ requestError }}</div>
+    <div
+      v-if="requestError"
+      class="sd-error"
+    >
+      {{ requestError }}
+    </div>
 
     <!-- ===== 战斗界面 ===== -->
     <template v-if="summary">
       <!-- 战场 -->
       <div class="bf">
         <div class="bf-row bf-opp-row">
-          <div v-for="(mon, i) in oppMons" :key="'o'+i" class="bf-mon">
+          <div
+            v-for="(mon, i) in oppMons"
+            :key="'o'+i"
+            class="bf-mon"
+          >
             <div class="bf-info">
-              <div class="bf-name">{{ mon.name || mon.name_en }} <span class="bf-lv">L{{ mon.level }}</span></div>
-              <div class="bf-hp"><div class="bf-hp-bar" :class="hpColor(mon)" :style="{width: hpPct(mon)}" /></div>
-              <div class="bf-hp-num">{{ mon.currentHp }}/{{ mon.maxHp }}</div>
-              <div class="bf-tags"><span v-for="b in badges(mon)" :key="b.t" class="bf-tag" :style="{background:b.c}">{{ b.t }}</span></div>
+              <div class="bf-name">
+                {{ mon.name || mon.name_en }} <span class="bf-lv">L{{ mon.level }}</span>
+              </div>
+              <div class="bf-hp">
+                <div
+                  class="bf-hp-bar"
+                  :class="hpColor(mon)"
+                  :style="{width: hpPct(mon)}"
+                />
+              </div>
+              <div class="bf-hp-num">
+                {{ mon.currentHp }}/{{ mon.maxHp }}
+              </div>
+              <div class="bf-tags">
+                <span
+                  v-for="b in badges(mon)"
+                  :key="b.t"
+                  class="bf-tag"
+                  :style="{background:b.c}"
+                >{{ b.t }}</span>
+              </div>
             </div>
-            <button class="bf-sprite-btn" @click="onOppClick(mon)" @contextmenu.prevent="showDetail(mon)">
-              <img :src="sprite(mon, false)" class="bf-sprite bf-sprite-opp" :class="[mon.fainted?'fainted':'', getAnimClass('opp',i)]" @error="imgErr($event,mon,false)">
+            <button
+              class="bf-sprite-btn"
+              @click="onOppClick(mon)"
+              @contextmenu.prevent="showDetail(mon)"
+            >
+              <img
+                :src="sprite(mon, false)"
+                class="bf-sprite bf-sprite-opp"
+                :class="[mon.fainted?'fainted':'', getAnimClass('opp',i)]"
+                @error="imgErr($event,mon,false)"
+              >
             </button>
           </div>
         </div>
         <div class="bf-row bf-my-row">
-          <div v-for="(mon, i) in myMons" :key="'m'+i" class="bf-mon">
-            <button class="bf-sprite-btn" @contextmenu.prevent="showDetail(mon)">
-              <img :src="sprite(mon, true)" class="bf-sprite bf-sprite-my" :class="[mon.fainted?'fainted':'', getAnimClass('player',i)]" @error="imgErr($event,mon,true)">
+          <div
+            v-for="(mon, i) in myMons"
+            :key="'m'+i"
+            class="bf-mon"
+          >
+            <button
+              class="bf-sprite-btn"
+              @contextmenu.prevent="showDetail(mon)"
+            >
+              <img
+                :src="sprite(mon, true)"
+                class="bf-sprite bf-sprite-my"
+                :class="[mon.fainted?'fainted':'', getAnimClass('player',i)]"
+                @error="imgErr($event,mon,true)"
+              >
             </button>
             <div class="bf-info">
-              <div class="bf-name">{{ mon.name || mon.name_en }} <span class="bf-lv">L{{ mon.level }}</span></div>
-              <div class="bf-hp"><div class="bf-hp-bar" :class="hpColor(mon)" :style="{width: hpPct(mon)}" /></div>
-              <div class="bf-hp-num">{{ mon.currentHp }}/{{ mon.maxHp }}</div>
-              <div class="bf-tags"><span v-for="b in badges(mon)" :key="b.t" class="bf-tag" :style="{background:b.c}">{{ b.t }}</span></div>
+              <div class="bf-name">
+                {{ mon.name || mon.name_en }} <span class="bf-lv">L{{ mon.level }}</span>
+              </div>
+              <div class="bf-hp">
+                <div
+                  class="bf-hp-bar"
+                  :class="hpColor(mon)"
+                  :style="{width: hpPct(mon)}"
+                />
+              </div>
+              <div class="bf-hp-num">
+                {{ mon.currentHp }}/{{ mon.maxHp }}
+              </div>
+              <div class="bf-tags">
+                <span
+                  v-for="b in badges(mon)"
+                  :key="b.t"
+                  class="bf-tag"
+                  :style="{background:b.c}"
+                >{{ b.t }}</span>
+              </div>
             </div>
           </div>
         </div>
-        <div v-if="fieldChips.length" class="bf-field">
-          <span v-for="c in fieldChips" :key="c.l" class="bf-chip" :class="c.cls">{{ c.l }}</span>
+        <div
+          v-if="fieldChips.length"
+          class="bf-field"
+        >
+          <span
+            v-for="c in fieldChips"
+            :key="c.l"
+            class="bf-chip"
+            :class="c.cls"
+          >{{ c.l }}</span>
         </div>
       </div>
 
       <!-- ===== 预览阶段 ===== -->
-      <div v-if="isPreviewPhase" class="panel">
+      <div
+        v-if="isPreviewPhase"
+        class="panel"
+      >
         <div class="panel-hdr">
           <span class="panel-title">{{ t('队伍预览','Team Preview') }}</span>
           <span class="panel-sub">{{ t('选{r}出战 · {l}首发 · 已选','Pick {r} · {l} leads · Selected',{r:rosterLimit,l:leadLimit}) }} {{ selectedRosterIndexes.length }}/{{ rosterLimit }} · {{ t('首发','Lead') }} {{ leadRosterIndexes.length }}/{{ leadLimit }}</span>
@@ -82,8 +198,17 @@
         <div class="roster-row">
           <span class="roster-label roster-label-red">⚔️ {{ t('对手队伍','Opponent team') }}</span>
           <div class="roster-cards">
-            <div v-for="(p,i) in opponentRoster" :key="'or'+i" class="r-card r-card-opp" @click="showDetail(p)">
-              <img :src="spr(p)" class="r-img" @error="imgErr2($event,p)">
+            <div
+              v-for="(p,i) in opponentRoster"
+              :key="'or'+i"
+              class="r-card r-card-opp"
+              @click="showDetail(p)"
+            >
+              <img
+                :src="spr(p)"
+                class="r-img"
+                @error="imgErr2($event,p)"
+              >
               <span class="r-name">{{ p.name || p.name_en }}</span>
               <span class="r-types">{{ (p.types||[]).map(t=>t.name||t.name_en).join('/') }}</span>
             </div>
@@ -92,214 +217,557 @@
         <div class="roster-row">
           <span class="roster-label roster-label-green">🟢 {{ t('你的队伍 · 点击选择，右键标记首发','Your team · click to pick, right-click for lead') }}</span>
           <div class="roster-cards">
-            <button v-for="(p,i) in playerRoster" :key="'pr'+i" type="button"
-              class="r-card" :class="isPicked(i)?'r-picked':'r-dim'" :style="isLead(i)?'border-color:#fbbf24':''"
-              @click="toggleRoster(i)" @contextmenu.prevent="toggleLead(i)">
-              <img :src="spr(p)" class="r-img" :class="isPicked(i)?'':'r-img-dim'" @error="imgErr2($event,p)">
+            <button
+              v-for="(p,i) in playerRoster"
+              :key="'pr'+i"
+              type="button"
+              class="r-card"
+              :class="isPicked(i)?'r-picked':'r-dim'"
+              :style="isLead(i)?'border-color:#fbbf24':''"
+              @click="toggleRoster(i)"
+              @contextmenu.prevent="toggleLead(i)"
+            >
+              <img
+                :src="spr(p)"
+                class="r-img"
+                :class="isPicked(i)?'':'r-img-dim'"
+                @error="imgErr2($event,p)"
+              >
               <span class="r-name">{{ p.name || p.name_en }}</span>
-              <span v-if="isLead(i)" class="r-star">★</span>
+              <span
+                v-if="isLead(i)"
+                class="r-star"
+              >★</span>
             </button>
           </div>
         </div>
-        <button class="sd-btn sd-btn-blue sd-btn-full" :disabled="!canConfirmPreview||isBusy" @click="confirmPreview">
+        <button
+          class="sd-btn sd-btn-blue sd-btn-full"
+          :disabled="!canConfirmPreview||isBusy"
+          @click="confirmPreview"
+        >
           {{ busyAction==='confirm-preview' ? t('确认中...','Confirming...') : t('确认出战','Confirm Team') }}
         </button>
       </div>
 
       <!-- ===== 补位阶段 ===== -->
-      <div v-if="isReplacementPhase" class="panel">
-        <div class="panel-hdr"><span class="panel-title">{{ t('补位','Replacement') }}</span><span class="panel-sub">{{ t('选{n}只上场','Choose {n} to send in',{n:pendingReplacementCount}) }}</span></div>
+      <div
+        v-if="isReplacementPhase"
+        class="panel"
+      >
+        <div class="panel-hdr">
+          <span class="panel-title">{{ t('补位','Replacement') }}</span><span class="panel-sub">{{ t('选{n}只上场','Choose {n} to send in',{n:pendingReplacementCount}) }}</span>
+        </div>
         <div class="sw-grid">
-          <button v-for="o in replacementBenchOptions" :key="o.value" type="button"
-            class="sw-btn" :class="selectedReplacementIndexes.includes(o.value)?'sw-on':''"
-            @click="toggleReplacement(o.value)">
-            <img :src="spr(o.pokemon||o)" class="sw-img" @error="imgErr2($event,o.pokemon||o)">
-            <div class="sw-info"><span class="sw-name">{{ o.label }}</span>
-            <div class="sw-hp"><div class="sw-hp-bar" :style="{width:hpPct2(o),background:hpCol2(o)}" /></div></div>
+          <button
+            v-for="o in replacementBenchOptions"
+            :key="o.value"
+            type="button"
+            class="sw-btn"
+            :class="selectedReplacementIndexes.includes(o.value)?'sw-on':''"
+            @click="toggleReplacement(o.value)"
+          >
+            <img
+              :src="spr(o.pokemon||o)"
+              class="sw-img"
+              @error="imgErr2($event,o.pokemon||o)"
+            >
+            <div class="sw-info">
+              <span class="sw-name">{{ o.label }}</span>
+              <div class="sw-hp">
+                <div
+                  class="sw-hp-bar"
+                  :style="{width:hpPct2(o),background:hpCol2(o)}"
+                />
+              </div>
+            </div>
           </button>
         </div>
-        <button class="sd-btn sd-btn-red sd-btn-full" :disabled="!canConfirmReplacement||isBusy" @click="confirmReplacement">{{ t('确认替补','Confirm') }}</button>
+        <button
+          class="sd-btn sd-btn-red sd-btn-full"
+          :disabled="!canConfirmReplacement||isBusy"
+          @click="confirmReplacement"
+        >
+          {{ t('确认替补','Confirm') }}
+        </button>
       </div>
 
       <!-- ===== 战斗操作阶段 ===== -->
-      <div v-if="!isPreviewPhase && !isReplacementPhase" class="panel">
+      <div
+        v-if="!isPreviewPhase && !isReplacementPhase"
+        class="panel"
+      >
         <div v-if="myMons.length">
-          <div v-for="mon in myMons" :key="'act'+mon.fieldSlot" class="act-section">
+          <div
+            v-for="mon in myMons"
+            :key="'act'+mon.fieldSlot"
+            class="act-section"
+          >
             <div class="act-header">
-              <img :src="sprite(mon, true)" class="act-sprite" :class="{fainted:mon.fainted}" @error="imgErr($event,mon,true)">
+              <img
+                :src="sprite(mon, true)"
+                class="act-sprite"
+                :class="{fainted:mon.fainted}"
+                @error="imgErr($event,mon,true)"
+              >
               <div class="act-info">
-                <div class="act-name">{{ mon.name || mon.name_en }}</div>
-                <div class="act-hp-bar"><div class="act-hp-fill" :class="hpColor(mon)" :style="{width: hpPct(mon)}" /></div>
-                <div class="act-hp-text">HP {{ mon.currentHp }}/{{ mon.maxHp }}</div>
+                <div class="act-name">
+                  {{ mon.name || mon.name_en }}
+                </div>
+                <div class="act-hp-bar">
+                  <div
+                    class="act-hp-fill"
+                    :class="hpColor(mon)"
+                    :style="{width: hpPct(mon)}"
+                  />
+                </div>
+                <div class="act-hp-text">
+                  HP {{ mon.currentHp }}/{{ mon.maxHp }}
+                </div>
               </div>
-              <div class="act-tags"><span v-for="b in badges(mon)" :key="b.t" class="bf-tag" :style="{background:b.c}">{{ b.t }}</span></div>
+              <div class="act-tags">
+                <span
+                  v-for="b in badges(mon)"
+                  :key="b.t"
+                  class="bf-tag"
+                  :style="{background:b.c}"
+                >{{ b.t }}</span>
+              </div>
             </div>
             <div class="act-toggle">
-              <button class="act-tog" :class="(selectedActions['action-slot-'+mon.fieldSlot]||'move')==='move'?'act-tog-on':''" @click="setSelectedAction(mon.fieldSlot,'move')">⚔️ {{ t('招式','Moves') }}</button>
-              <button class="act-tog" :class="selectedActions['action-slot-'+mon.fieldSlot]==='switch'?'act-tog-on':''" :disabled="!playerBenchOptions.length" @click="setSelectedAction(mon.fieldSlot,'switch')">🔄 {{ t('换人','Switch') }}</button>
+              <button
+                class="act-tog"
+                :class="(selectedActions['action-slot-'+mon.fieldSlot]||'move')==='move'?'act-tog-on':''"
+                @click="setSelectedAction(mon.fieldSlot,'move')"
+              >
+                ⚔️ {{ t('招式','Moves') }}
+              </button>
+              <button
+                class="act-tog"
+                :class="selectedActions['action-slot-'+mon.fieldSlot]==='switch'?'act-tog-on':''"
+                :disabled="!playerBenchOptions.length"
+                @click="setSelectedAction(mon.fieldSlot,'switch')"
+              >
+                🔄 {{ t('换人','Switch') }}
+              </button>
             </div>
             <template v-if="(selectedActions['action-slot-'+mon.fieldSlot]||'move')==='move'">
               <div class="mv-grid">
-                <button v-for="(mv,mi) in mon.moves" :key="mv.name_en||mv.name" type="button"
-                  class="mv-btn" :class="selectedMoves['slot-'+mon.fieldSlot]===(mv.name_en||mv.name)?'mv-sel':''"
+                <button
+                  v-for="(mv,mi) in mon.moves"
+                  :key="mv.name_en||mv.name"
+                  type="button"
+                  class="mv-btn"
+                  :class="selectedMoves['slot-'+mon.fieldSlot]===(mv.name_en||mv.name)?'mv-sel':''"
                   :style="{'--tc': typeCol(mv.type_id)}"
-                  @click="setSelectedMove(mon.fieldSlot, mv.name_en||mv.name)">
-                  <div class="mv-top"><span class="mv-name">{{ mv.name || mv.name_en }}</span><span v-if="mv.target_id&&mv.target_id!==10" class="mv-tgt">{{ tgtLabel(mv.target_id) }}</span></div>
+                  @click="setSelectedMove(mon.fieldSlot, mv.name_en||mv.name)"
+                >
+                  <div class="mv-top">
+                    <span class="mv-name">{{ mv.name || mv.name_en }}</span><span
+                      v-if="mv.target_id&&mv.target_id!==10"
+                      class="mv-tgt"
+                    >{{ tgtLabel(mv.target_id) }}</span>
+                  </div>
                   <div class="mv-bot">
-                    <span v-if="mv.power" class="mv-stat">{{ t('威力','Pwr') }} {{ mv.power }}</span>
-                    <span v-if="mv.accuracy && mv.accuracy < 100" class="mv-stat">{{ t('命中','Acc') }} {{ mv.accuracy }}%</span>
+                    <span
+                      v-if="mv.power"
+                      class="mv-stat"
+                    >{{ t('威力','Pwr') }} {{ mv.power }}</span>
+                    <span
+                      v-if="mv.accuracy && mv.accuracy < 100"
+                      class="mv-stat"
+                    >{{ t('命中','Acc') }} {{ mv.accuracy }}%</span>
                     <span class="mv-pp">PP {{ mv.currentPp!=null ? mv.currentPp+'/'+(mv.maxPp||mv.pp||'?') : '--' }}</span>
                     <span class="mv-type">{{ typeName(mv.type_id) }}</span>
                   </div>
                 </button>
               </div>
-              <div v-if="moveNeedsOpponentTarget(selMoveObj(mon)) && oppMons.length" class="tgt-row">
+              <div
+                v-if="moveNeedsOpponentTarget(selMoveObj(mon)) && oppMons.length"
+                class="tgt-row"
+              >
                 <span class="tgt-label">{{ t('选择目标 →','Select target →') }}</span>
-                <button v-for="t in oppMons" :key="t.fieldSlot" type="button"
-                  class="tgt-btn" :class="selectedTargets['target-slot-'+mon.fieldSlot]===t.fieldSlot?'tgt-on':''"
-                  @click="setSelectedTarget(mon.fieldSlot, t.fieldSlot)">{{ t.name || t.name_en }}</button>
+                <button
+                  v-for="t in oppMons"
+                  :key="t.fieldSlot"
+                  type="button"
+                  class="tgt-btn"
+                  :class="selectedTargets['target-slot-'+mon.fieldSlot]===t.fieldSlot?'tgt-on':''"
+                  @click="setSelectedTarget(mon.fieldSlot, t.fieldSlot)"
+                >
+                  {{ t.name || t.name_en }}
+                </button>
               </div>
-              <div v-if="availableSpecialSystems(mon).length" class="sp-row">
-                <button class="sp-btn" :class="!selectedSpecialSystems['special-slot-'+mon.fieldSlot]?'sp-on':''" @click="setSelectedSpecialSystem(mon.fieldSlot,undefined)">{{ t('不发动','None') }}</button>
-                <button v-for="s in availableSpecialSystems(mon)" :key="s" class="sp-btn" :class="selectedSpecialSystems['special-slot-'+mon.fieldSlot]===s?'sp-on':''" @click="setSelectedSpecialSystem(mon.fieldSlot,s)">{{ specialSystemLabel(s) }}<template v-if="s==='tera'"> · {{ teraTypeLabel(mon) }}</template></button>
+              <div
+                v-if="availableSpecialSystems(mon).length"
+                class="sp-row"
+              >
+                <button
+                  class="sp-btn"
+                  :class="!selectedSpecialSystems['special-slot-'+mon.fieldSlot]?'sp-on':''"
+                  @click="setSelectedSpecialSystem(mon.fieldSlot,undefined)"
+                >
+                  {{ t('不发动','None') }}
+                </button>
+                <button
+                  v-for="s in availableSpecialSystems(mon)"
+                  :key="s"
+                  class="sp-btn"
+                  :class="selectedSpecialSystems['special-slot-'+mon.fieldSlot]===s?'sp-on':''"
+                  @click="setSelectedSpecialSystem(mon.fieldSlot,s)"
+                >
+                  {{ specialSystemLabel(s) }}<template v-if="s==='tera'">
+                    · {{ teraTypeLabel(mon) }}
+                  </template>
+                </button>
               </div>
             </template>
             <template v-else>
               <div class="sw-grid">
-                <button v-for="bt in playerBenchOptions" :key="bt.value" type="button"
-                  class="sw-btn" :class="selectedSwitchTargets['switch-slot-'+mon.fieldSlot]===bt.value?'sw-on':''"
-                  @click="setSelectedSwitchTarget(mon.fieldSlot, bt.value)">
-                  <img :src="spr(bt.pokemon||bt)" class="sw-img" @error="imgErr2($event,bt.pokemon||bt)">
-                  <div class="sw-info"><span class="sw-name">{{ bt.label }}</span>
-                  <div class="sw-hp"><div class="sw-hp-bar" :style="{width:hpPct2(bt),background:hpCol2(bt)}" /></div>
-                  <span class="sw-hp-num">{{ bt.hp }}/{{ bt.maxHp || '?' }}</span></div>
+                <button
+                  v-for="bt in playerBenchOptions"
+                  :key="bt.value"
+                  type="button"
+                  class="sw-btn"
+                  :class="selectedSwitchTargets['switch-slot-'+mon.fieldSlot]===bt.value?'sw-on':''"
+                  @click="setSelectedSwitchTarget(mon.fieldSlot, bt.value)"
+                >
+                  <img
+                    :src="spr(bt.pokemon||bt)"
+                    class="sw-img"
+                    @error="imgErr2($event,bt.pokemon||bt)"
+                  >
+                  <div class="sw-info">
+                    <span class="sw-name">{{ bt.label }}</span>
+                    <div class="sw-hp">
+                      <div
+                        class="sw-hp-bar"
+                        :style="{width:hpPct2(bt),background:hpCol2(bt)}"
+                      />
+                    </div>
+                    <span class="sw-hp-num">{{ bt.hp }}/{{ bt.maxHp || '?' }}</span>
+                  </div>
                 </button>
               </div>
             </template>
           </div>
-          <button class="sd-btn sd-btn-blue sd-btn-full" :disabled="!canSubmitMove||isBusy" @click="submitMove">
+          <button
+            class="sd-btn sd-btn-blue sd-btn-full"
+            :disabled="!canSubmitMove||isBusy"
+            @click="submitMove"
+          >
             {{ busyAction==='submit-move' ? t('提交中...','Submitting...') : '✅ ' + t('提交回合','End Turn') }}
           </button>
         </div>
-        <div v-else class="sd-empty">{{ t('开始对战后这里会显示招式选择','Start a battle to see move options') }}</div>
+        <div
+          v-else
+          class="sd-empty"
+        >
+          {{ t('开始对战后这里会显示招式选择','Start a battle to see move options') }}
+        </div>
       </div>
 
       <!-- 操作栏 -->
       <div class="sd-bar">
-        <button v-if="summary.status!=='completed'" class="sd-btn sd-btn-sm" :disabled="isBusy" @click="refreshStatus">🔄 {{ t('刷新','Refresh') }}</button>
-        <button v-if="summary.status==='running'" class="sd-btn sd-btn-red sd-btn-sm" :disabled="isBusy" @click="forfeitBattle">{{ t('投降','Forfeit') }}</button>
-        <button v-if="showContinueFactoryButton" class="sd-btn sd-btn-blue sd-btn-sm" :disabled="isBusy" @click="prepareNextFactoryStage">{{ t('下一轮','Next Round') }}</button>
-        <button v-if="showResetBattleButton" class="sd-btn sd-btn-sm" :disabled="isBusy" @click="resetBattleState({keepFactoryRun:false})">{{ t('重置','Reset') }}</button>
+        <button
+          v-if="summary.status!=='completed'"
+          class="sd-btn sd-btn-sm"
+          :disabled="isBusy"
+          @click="refreshStatus"
+        >
+          🔄 {{ t('刷新','Refresh') }}
+        </button>
+        <button
+          v-if="summary.status==='running'"
+          class="sd-btn sd-btn-red sd-btn-sm"
+          :disabled="isBusy"
+          @click="forfeitBattle"
+        >
+          {{ t('投降','Forfeit') }}
+        </button>
+        <button
+          v-if="showContinueFactoryButton"
+          class="sd-btn sd-btn-blue sd-btn-sm"
+          :disabled="isBusy"
+          @click="prepareNextFactoryStage"
+        >
+          {{ t('下一轮','Next Round') }}
+        </button>
+        <button
+          v-if="showResetBattleButton"
+          class="sd-btn sd-btn-sm"
+          :disabled="isBusy"
+          @click="resetBattleState({keepFactoryRun:false})"
+        >
+          {{ t('重置','Reset') }}
+        </button>
       </div>
 
       <!-- ===== 数据可视化面板 ===== -->
-      <div v-if="summary.status==='running' || summary.status==='completed'" class="panel">
-        <div class="panel-hdr"><span class="panel-title">📊 {{ t('对战统计','Battle Stats') }}</span></div>
+      <div
+        v-if="summary.status==='running' || summary.status==='completed'"
+        class="panel"
+      >
+        <div class="panel-hdr">
+          <span class="panel-title">📊 {{ t('对战统计','Battle Stats') }}</span>
+        </div>
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-label">{{ t('回合','Round') }}</div>
-            <div class="stat-value">{{ summary.currentRound || 0 }}/{{ summary.roundLimit || 12 }}</div>
+            <div class="stat-label">
+              {{ t('回合','Round') }}
+            </div>
+            <div class="stat-value">
+              {{ summary.currentRound || 0 }}/{{ summary.roundLimit || 12 }}
+            </div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">{{ t('我方存活','Your alive') }}</div>
-            <div class="stat-value" :style="{color: summary.playerRemaining > 0 ? '#578534' : '#c44'}">{{ summary.playerRemaining || 0 }}</div>
+            <div class="stat-label">
+              {{ t('我方存活','Your alive') }}
+            </div>
+            <div
+              class="stat-value"
+              :style="{color: summary.playerRemaining > 0 ? '#578534' : '#c44'}"
+            >
+              {{ summary.playerRemaining || 0 }}
+            </div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">{{ t('对方存活','Foe alive') }}</div>
-            <div class="stat-value" :style="{color: summary.opponentRemaining > 0 ? '#c44' : '#578534'}">{{ summary.opponentRemaining || 0 }}</div>
+            <div class="stat-label">
+              {{ t('对方存活','Foe alive') }}
+            </div>
+            <div
+              class="stat-value"
+              :style="{color: summary.opponentRemaining > 0 ? '#c44' : '#578534'}"
+            >
+              {{ summary.opponentRemaining || 0 }}
+            </div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">{{ t('我方战力','Your power') }}</div>
-            <div class="stat-value">{{ summary.playerStrength || 0 }}</div>
+            <div class="stat-label">
+              {{ t('我方战力','Your power') }}
+            </div>
+            <div class="stat-value">
+              {{ summary.playerStrength || 0 }}
+            </div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">{{ t('对方战力','Foe power') }}</div>
-            <div class="stat-value">{{ summary.opponentStrength || 0 }}</div>
+            <div class="stat-label">
+              {{ t('对方战力','Foe power') }}
+            </div>
+            <div class="stat-value">
+              {{ summary.opponentStrength || 0 }}
+            </div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">{{ t('格式','Format') }}</div>
-            <div class="stat-value" style="font-size:9pt;">{{ summary.format || 'vgc-doubles' }}</div>
+            <div class="stat-label">
+              {{ t('格式','Format') }}
+            </div>
+            <div
+              class="stat-value"
+              style="font-size:9pt;"
+            >
+              {{ summary.format || 'vgc-doubles' }}
+            </div>
           </div>
         </div>
       </div>
 
       <!-- 日志 -->
       <div class="log">
-        <div class="log-hdr"><span>{{ t('战斗日志','Battle Log') }}</span><span v-if="summary.currentRound">{{ t('回合','Turn') }} {{ summary.currentRound }}</span></div>
-        <div class="log-body" ref="logEl">
+        <div class="log-hdr">
+          <span>{{ t('战斗日志','Battle Log') }}</span><span v-if="summary.currentRound">{{ t('回合','Turn') }} {{ summary.currentRound }}</span>
+        </div>
+        <div
+          ref="logEl"
+          class="log-body"
+        >
           <template v-if="summary.rounds?.length">
-            <div v-for="(r,ri) in summary.rounds" :key="ri" class="log-round">
-              <div class="log-rhdr" @click="togRound(ri)"><span class="log-arw" :class="expRounds.has(ri)?'open':''">▶</span> {{ r.round===0?t('开场','Start'):t('第 {n} 回合','Turn {n}',{n:r.round}) }} <span class="log-cnt">{{ (r.events||[]).length }}</span></div>
-              <div v-if="expRounds.has(ri)" class="log-evts"><div v-for="(e,ei) in r.events||[]" :key="ei" class="log-evt" :class="logEvtClass(e)">{{ e }}</div></div>
+            <div
+              v-for="(r,ri) in summary.rounds"
+              :key="ri"
+              class="log-round"
+            >
+              <div
+                class="log-rhdr"
+                @click="togRound(ri)"
+              >
+                <span
+                  class="log-arw"
+                  :class="expRounds.has(ri)?'open':''"
+                >▶</span> {{ r.round===0?t('开场','Start'):t('第 {n} 回合','Turn {n}',{n:r.round}) }} <span class="log-cnt">{{ (r.events||[]).length }}</span>
+              </div>
+              <div
+                v-if="expRounds.has(ri)"
+                class="log-evts"
+              >
+                <div
+                  v-for="(e,ei) in r.events||[]"
+                  :key="ei"
+                  class="log-evt"
+                  :class="logEvtClass(e)"
+                >
+                  {{ e }}
+                </div>
+              </div>
             </div>
           </template>
-          <div v-else class="sd-empty">{{ t('等待战斗开始...','Waiting for battle...') }}</div>
+          <div
+            v-else
+            class="sd-empty"
+          >
+            {{ t('等待战斗开始...','Waiting for battle...') }}
+          </div>
         </div>
       </div>
     </template>
 
     <!-- ===== 胜后交换面板 ===== -->
-    <div v-if="showExchange && exchangeCandidates.length" class="panel" style="border-color: #578534;">
+    <div
+      v-if="showExchange && exchangeCandidates.length"
+      class="panel"
+      style="border-color: #578534;"
+    >
       <div class="panel-hdr">
         <span class="panel-title">🎁 {{ t('胜利奖励：交换宝可梦','Victory reward: exchange Pokemon') }}</span>
       </div>
       <div class="roster-row">
         <span class="roster-label roster-label-red">{{ t('可交换的宝可梦','Available to exchange') }}</span>
         <div class="roster-cards">
-          <button v-for="(p,i) in exchangeCandidates" :key="'ex'+i" type="button"
-            class="r-card" :class="replacedIndex===i?'r-picked':''" @click="replacedIndex = i">
-            <img :src="spr(p)" class="r-img" @error="imgErr2($event,p)">
+          <button
+            v-for="(p,i) in exchangeCandidates"
+            :key="'ex'+i"
+            type="button"
+            class="r-card"
+            :class="replacedIndex===i?'r-picked':''"
+            @click="replacedIndex = i"
+          >
+            <img
+              :src="spr(p)"
+              class="r-img"
+              @error="imgErr2($event,p)"
+            >
             <span class="r-name">{{ p.name || p.name_en }}</span>
             <span class="r-types">{{ (p.types||[]).map(t=>t.name||t.name_en).join('/') }}</span>
           </button>
         </div>
       </div>
-      <div class="sd-btn-row" style="margin-top:8px;">
-        <button class="sd-btn sd-btn-green" :disabled="isBusy" @click="onConfirmExchange">
+      <div
+        class="sd-btn-row"
+        style="margin-top:8px;"
+      >
+        <button
+          class="sd-btn sd-btn-green"
+          :disabled="isBusy"
+          @click="onConfirmExchange"
+        >
           {{ busyAction==='confirm-exchange' ? t('交换中...','Exchanging...') : t('确认交换','Confirm Exchange') }}
         </button>
-        <button class="sd-btn" @click="showExchange = false">{{ t('跳过','Skip') }}</button>
+        <button
+          class="sd-btn"
+          @click="showExchange = false"
+        >
+          {{ t('跳过','Skip') }}
+        </button>
       </div>
     </div>
 
     <!-- ===== 结算面板 ===== -->
-    <div v-if="settlement" class="panel" style="border-color: #488fce;">
-      <div class="panel-hdr"><span class="panel-title">🏆 {{ t('挑战结算','Challenge Results') }}</span></div>
+    <div
+      v-if="settlement"
+      class="panel"
+      style="border-color: #488fce;"
+    >
+      <div class="panel-hdr">
+        <span class="panel-title">🏆 {{ t('挑战结算','Challenge Results') }}</span>
+      </div>
       <div style="padding:8px 0;">
-        <div v-if="settlement.won" style="color:#578534;font-weight:bold;font-size:11pt;">✅ {{ t('胜利！','Victory!') }}</div>
-        <div v-else style="color:#c44;font-weight:bold;font-size:11pt;">❌ {{ t('失败','Defeat') }}</div>
-        <div v-if="settlement.pointsDelta != null" style="margin-top:4px;font-size:10pt;">
+        <div
+          v-if="settlement.won"
+          style="color:#578534;font-weight:bold;font-size:11pt;"
+        >
+          ✅ {{ t('胜利！','Victory!') }}
+        </div>
+        <div
+          v-else
+          style="color:#c44;font-weight:bold;font-size:11pt;"
+        >
+          ❌ {{ t('失败','Defeat') }}
+        </div>
+        <div
+          v-if="settlement.pointsDelta != null"
+          style="margin-top:4px;font-size:10pt;"
+        >
           {{ t('积分','Points') }}：<span :style="{color: settlement.pointsDelta >= 0 ? '#578534' : '#c44'}">{{ settlement.pointsDelta >= 0 ? '+' : '' }}{{ settlement.pointsDelta }}</span>
         </div>
-        <div v-if="settlement.tierChange" style="margin-top:4px;font-size:10pt;">
+        <div
+          v-if="settlement.tierChange"
+          style="margin-top:4px;font-size:10pt;"
+        >
           {{ t('段位','Tier') }}：<span style="font-weight:bold;">{{ settlement.newTierName }}</span>
         </div>
       </div>
       <div class="sd-btn-row">
-        <button v-if="factoryRun" class="sd-btn sd-btn-blue" :disabled="isBusy" @click="prepareNextFactoryStage">{{ t('继续下一轮','Continue') }}</button>
-        <button class="sd-btn" @click="settlement = null">{{ t('关闭','Close') }}</button>
+        <button
+          v-if="factoryRun"
+          class="sd-btn sd-btn-blue"
+          :disabled="isBusy"
+          @click="prepareNextFactoryStage"
+        >
+          {{ t('继续下一轮','Continue') }}
+        </button>
+        <button
+          class="sd-btn"
+          @click="settlement = null"
+        >
+          {{ t('关闭','Close') }}
+        </button>
       </div>
     </div>
 
     <!-- ===== 排行榜 ===== -->
-    <div v-if="showLeaderboard" class="panel">
+    <div
+      v-if="showLeaderboard"
+      class="panel"
+    >
       <div class="panel-hdr">
         <span class="panel-title">📊 {{ t('排行榜','Leaderboard') }}</span>
-        <button class="sd-btn sd-btn-sm" @click="showLeaderboard = false">{{ t('关闭','Close') }}</button>
+        <button
+          class="sd-btn sd-btn-sm"
+          @click="showLeaderboard = false"
+        >
+          {{ t('关闭','Close') }}
+        </button>
       </div>
-      <div v-if="leaderboardLoading" class="sd-empty">{{ t('加载中...','Loading...') }}</div>
+      <div
+        v-if="leaderboardLoading"
+        class="sd-empty"
+      >
+        {{ t('加载中...','Loading...') }}
+      </div>
       <div v-else-if="leaderboardData.length">
-        <div v-for="(entry, i) in leaderboardData" :key="i" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #eee;font-size:9pt;">
+        <div
+          v-for="(entry, i) in leaderboardData"
+          :key="i"
+          style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #eee;font-size:9pt;"
+        >
           <span style="font-weight:bold;color:#555;min-width:20px;">#{{ i + 1 }}</span>
           <span style="flex:1;font-weight:bold;">{{ entry.username || entry.name }}</span>
           <span style="color:#888;">{{ entry.totalPoints || entry.points || 0 }} pts</span>
         </div>
       </div>
-      <div v-else class="sd-empty">{{ t('暂无数据','No data') }}</div>
+      <div
+        v-else
+        class="sd-empty"
+      >
+        {{ t('暂无数据','No data') }}
+      </div>
     </div>
 
     <!-- 详情弹窗 -->
-    <PokemonDetailPopover v-model:visible="detailVis" :pokemon="detailMon" />
+    <PokemonDetailPopover
+      v-model:visible="detailVis"
+      :pokemon="detailMon"
+    />
   </div>
 </template>
 
