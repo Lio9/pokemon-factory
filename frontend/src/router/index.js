@@ -125,6 +125,15 @@ const routes = [
       }
     },
   {
+    path: '/battle3d',
+    name: 'Battle3D',
+    component: () => import('../views/Battle3D.vue'),
+    meta: {
+      title: { zh: '3D 对战工厂', en: '3D Battle Factory' },
+      requiresAuth: true
+    }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('../views/Login.vue'),
