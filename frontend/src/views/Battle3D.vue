@@ -3,6 +3,19 @@
     <!-- 3D 场景画布 -->
     <div ref="canvasContainer" class="battle3d-canvas" />
 
+    <!-- 加载屏幕 -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-content">
+        <div class="loading-icon">⚔️</div>
+        <h2 class="loading-title">{{ t('正在加载 3D 对战', 'Loading 3D Battle') }}</h2>
+        <div class="loading-bar">
+          <div class="loading-fill" :style="{ width: loadingProgress + '%' }" />
+        </div>
+        <p class="loading-message">{{ loadingMessage }}</p>
+        <p class="loading-tip">{{ t('提示：使用鼠标拖拽旋转视角', 'Tip: Drag to rotate view') }}</p>
+      </div>
+    </div>
+
     <!-- 调试面板 -->
     <DebugPanel
       v-if="showDebugPanel"
@@ -20,8 +33,17 @@
         <span v-if="summary" class="topbar-status" :class="statusClass">
           {{ statusText }}
         </span>
+        <span v-if="isMobile" class="topbar-mobile-badge">📱</span>
       </div>
       <div class="topbar-right">
+        <!-- 音频控制 -->
+        <button class="topbar-btn" @click="toggleMute" :title="isMuted ? t('开启音效', 'Unmute') : t('关闭音效', 'Mute')">
+          {{ isMuted ? '🔇' : '🔊' }}
+        </button>
+        <!-- 性能等级 -->
+        <button class="topbar-btn perf-btn" @click="cyclePerformanceLevel" :title="t('性能等级', 'Performance')">
+          ⚡ {{ performanceLevels[currentPerfLevelIndex] }}
+        </button>
         <button class="topbar-btn" @click="showDebugPanel = !showDebugPanel">
           🐛 {{ t('调试', 'Debug') }}
         </button>
@@ -292,15 +314,24 @@
  *
  * 整合 Three.js 3D 场景与对战逻辑的主入口组件。
  * 将原有 DOM-based 对战升级为沉浸式 3D 体验。
+ *
+ * 增强功能：
+ * - 自适应性能等级
+ * - 音效系统
+ * - 移动端触摸支持
+ * - 增强光照和雾效
  */
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useThreeScene } from '../composables/battle3d/useThreeScene'
+import { useThreeSceneEnhanced } from '../composables/battle3d/useThreeSceneEnhanced'
+import { useAudioSystem } from '../composables/battle3d/useAudioSystem'
+import { useMobileInteraction } from '../composables/battle3d/useMobileInteraction'
 import { useBattleEngine } from '../composables/battle3d/useBattleEngine'
 import { useBattlePageState } from '../composables/useBattlePageState'
 import { useLocale } from '../composables/useLocale'
 import { debugLogger } from './battle3d/utils/debug'
 import DebugPanel from './battle3d/components/DebugPanel.vue'
 import SettlementModal from './battle3d/components/SettlementModal.vue'
+import type { PerformanceLevel } from '../composables/battle3d/useThreeSceneEnhanced'
 
 // ===== 国际化 =====
 const localeResult = useLocale() as any
@@ -346,12 +377,36 @@ const {
 const selectedTargets = rawSelectedTargets as Record<string, any>
 const selectedSpecialSystems = rawSelectedSpecialSystems as Record<string, any>
 
-// ===== Three.js 场景 =====
+// ===== 增强版 Three.js 场景 =====
 const {
-  scene, camera, renderer, controls, fps,
+  scene, camera, renderer, controls, fps, performanceStats,
   addToScene, removeFromScene, startRenderLoop, stopRenderLoop, dispose: disposeScene,
-  isReady: sceneReady
-} = useThreeScene(canvasContainer)
+  isReady: sceneReady, setPerformanceLevel, getPerformanceLevel
+} = useThreeSceneEnhanced(canvasContainer, {
+  enableShadows: true,
+  fov: 60,
+  enableFog: true,
+  enableSkybox: true,
+  performanceLevel: 'high'
+})
+
+// ===== 音效系统 =====
+const {
+  isInitialized: audioReady, isMuted, masterVolume,
+  init: initAudio, playSound, playAttackSound,
+  setMasterVolume, toggleMute
+} = useAudioSystem()
+
+// ===== 移动端交互 =====
+const {
+  isMobile, hasTouch, orientation,
+  triggerHaptic, onGesture, requestFullscreen
+} = useMobileInteraction()
+
+// ===== 加载状态 =====
+const isLoading = ref(true)
+const loadingProgress = ref(0)
+const loadingMessage = ref(t('正在初始化...', 'Initializing...'))
 
 // ===== 3D 战场实例 =====
 import { Battlefield } from './battle3d/core/BattleField'
@@ -367,7 +422,17 @@ const {
 
 // ===== 调试日志 =====
 const debugLogs = computed(() => debugLogger.getRecentLogs(50))
-const debugStats = computed(() => debugLogger.getStats())
+const debugStats = computed(() => ({
+  ...debugLogger.getStats(),
+  fps: fps.value,
+  drawCalls: performanceStats.value.drawCalls,
+  triangles: performanceStats.value.triangles,
+  memoryUsage: performanceStats.value.memoryUsage,
+  performanceLevel: getPerformanceLevel(),
+  audioReady: audioReady.value,
+  isMobile: isMobile.value,
+  orientation: orientation.value
+}))
 
 // ===== 状态文本 =====
 const statusText = computed(() => {
@@ -569,27 +634,130 @@ function gameLoop(time: number) {
   animationFrameId = requestAnimationFrame(gameLoop)
 }
 
+// ===== 音效触发 =====
+function playAttackSfx(moveType?: string) {
+  if (!audioReady.value) return
+  playAttackSound(moveType || 'normal')
+  triggerHaptic('medium')
+}
+
+function playHealSfx() {
+  if (!audioReady.value) return
+  playSound('heal')
+  triggerHaptic('light')
+}
+
+function playFaintSfx() {
+  if (!audioReady.value) return
+  playSound('faint')
+  triggerHaptic('heavy')
+}
+
+function playVictorySfx() {
+  if (!audioReady.value) return
+  playSound('victory')
+  triggerHaptic('success')
+}
+
+function playDefeatSfx() {
+  if (!audioReady.value) return
+  playSound('defeat')
+  triggerHaptic('warning')
+}
+
+// ===== 移动端手势 =====
+function setupMobileGestures() {
+  if (!hasTouch.value) return
+
+  onGesture('battle3d', (gesture, data) => {
+    switch (gesture) {
+      case 'double_tap':
+        // 双击提交回合
+        if (canSubmitMove.value) {
+          submitMove()
+        }
+        break
+      case 'swipe_up':
+        // 上滑显示日志
+        showLog.value = !showLog.value
+        break
+      case 'swipe_down':
+        // 下滑隐藏日志
+        showLog.value = false
+        break
+      case 'swipe_left':
+        // 左滑切换招式
+        break
+      case 'swipe_right':
+        // 右滑切换招式
+        break
+      case 'long_press':
+        // 长按显示详情
+        break
+    }
+  })
+}
+
+// ===== 性能等级切换 =====
+const performanceLevels: PerformanceLevel[] = ['low', 'medium', 'high', 'ultra']
+const currentPerfLevelIndex = ref(2) // Default: high
+
+function cyclePerformanceLevel() {
+  currentPerfLevelIndex.value = (currentPerfLevelIndex.value + 1) % performanceLevels.length
+  const level = performanceLevels[currentPerfLevelIndex.value]
+  setPerformanceLevel(level)
+  debugLogger.log('info', 'performance', `性能等级切换: ${level}`)
+}
+
 // ===== 生命周期 =====
 onMounted(async () => {
   debugLogger.log('info', 'scene', 'Battle3D 组件挂载')
+
+  // 更新加载状态
+  loadingMessage.value = t('正在初始化 3D 场景...', 'Initializing 3D scene...')
+  loadingProgress.value = 20
 
   // 等待场景就绪
   await nextTick()
 
   // 初始化 3D 场景
-  if (sceneReady.value && scene.value) {
+  if (scene.value) {
     // 创建战场
+    loadingMessage.value = t('正在创建战场...', 'Creating battlefield...')
+    loadingProgress.value = 40
     battlefield.value = new Battlefield(scene.value)
 
     // 初始化战斗引擎
+    loadingMessage.value = t('正在初始化战斗引擎...', 'Initializing battle engine...')
+    loadingProgress.value = 60
     initEngine()
 
+    // 初始化音效系统
+    loadingMessage.value = t('正在加载音效...', 'Loading audio...')
+    loadingProgress.value = 80
+    try {
+      await initAudio()
+    } catch (e) {
+      debugLogger.log('warn', 'audio', '音效初始化失败（用户未交互）')
+    }
+
+    // 设置移动端手势
+    setupMobileGestures()
+
     // 启动渲染循环
+    loadingMessage.value = t('正在启动渲染...', 'Starting renderer...')
+    loadingProgress.value = 90
     startRenderLoop()
 
     // 启动游戏循环
     lastTime = performance.now()
     animationFrameId = requestAnimationFrame(gameLoop)
+
+    // 加载完成
+    loadingProgress.value = 100
+    setTimeout(() => {
+      isLoading.value = false
+    }, 500)
 
     debugLogger.log('info', 'scene', '3D 场景初始化完成')
   }
@@ -1304,6 +1472,84 @@ watch(sceneReady, (ready) => {
   margin-top: 16px;
   font-size: 12px;
   color: rgba(255,255,255,0.5);
+}
+
+/* ===== 加载屏幕 ===== */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0a0a2a 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.loading-content {
+  text-align: center;
+  padding: 40px;
+}
+
+.loading-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.loading-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 24px;
+}
+
+.loading-bar {
+  width: 300px;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0 auto 16px;
+}
+
+.loading-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.loading-message {
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 12px;
+}
+
+.loading-tip {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+}
+
+/* ===== 移动端标识 ===== */
+.topbar-mobile-badge {
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+/* ===== 性能按钮 ===== */
+.perf-btn {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* ===== 响应式 ===== */

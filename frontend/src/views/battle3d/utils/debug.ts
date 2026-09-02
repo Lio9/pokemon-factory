@@ -24,9 +24,9 @@ type LogLevel = 'info' | 'warn' | 'error' | 'debug'
 /**
  * 日志分类类型
  * Log category type
- * @typedef {'scene' | 'battle' | 'interaction' | 'effects' | 'api'} LogCategory
+ * @typedef {'scene' | 'battle' | 'interaction' | 'effects' | 'api' | 'performance' | 'audio'} LogCategory
  */
-type LogCategory = 'scene' | 'battle' | 'interaction' | 'effects' | 'api'
+type LogCategory = 'scene' | 'battle' | 'interaction' | 'effects' | 'api' | 'performance' | 'audio'
 
 /**
  * 日志条目接口
