@@ -286,7 +286,24 @@ export function useThreeSceneEnhanced(
     // Setup resize handler
     window.addEventListener('resize', handleResize)
 
+    // Setup visibility change handler (pause when tab is hidden)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     console.log(`[useThreeSceneEnhanced] Initialized with ${currentPerformanceLevel} performance level`)
+  }
+
+  /**
+   * 处理页面可见性变化
+   * Handle page visibility change
+   */
+  const handleVisibilityChange = (): void => {
+    if (document.hidden) {
+      // Page hidden - pause rendering
+      stopRenderLoop()
+    } else {
+      // Page visible - resume rendering
+      startRenderLoop()
+    }
   }
 
   /**
@@ -628,6 +645,7 @@ export function useThreeSceneEnhanced(
 
     // Remove resize listener
     window.removeEventListener('resize', handleResize)
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
 
     // Reset state
     scene.value = null

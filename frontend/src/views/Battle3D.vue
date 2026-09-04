@@ -118,6 +118,7 @@
                 :disabled="isBusy"
                 @click="selectMove(slotIdx, moveIdx, move)"
               >
+                <span class="mv-shortcut" v-if="slotIdx === 0">{{ moveIdx + 1 }}</span>
                 <span class="mv-name">{{ move.name || move.name_en }}</span>
                 <span class="mv-type-badge" :style="{ background: getTypeColor(move.type_name || move.name_en) }">
                   {{ move.type_name || '?' }}
@@ -174,15 +175,18 @@
         <div class="action-row">
           <button v-if="canSubmitMove" class="btn btn-primary" :disabled="isBusy" @click="submitMove">
             {{ isBusy ? '...' : t('提交回合', 'Submit') }}
+            <span class="btn-shortcut">Enter</span>
           </button>
           <button v-if="isPreviewPhase" class="btn btn-primary" :disabled="isBusy || !canConfirmPreview" @click="confirmPreview">
             {{ t('确认预览', 'Confirm') }}
+            <span class="btn-shortcut">Enter</span>
           </button>
           <button v-if="isReplacementPhase" class="btn btn-primary" :disabled="isBusy || !canConfirmReplacement" @click="confirmReplacement">
             {{ t('确认替补', 'Confirm') }}
+            <span class="btn-shortcut">Enter</span>
           </button>
-          <button class="btn btn-secondary" :disabled="isBusy" @click="refreshStatus">🔄</button>
-          <button v-if="summary?.status === 'running'" class="btn btn-danger" :disabled="isBusy" @click="forfeitBattle">🏳️</button>
+          <button class="btn btn-secondary" :disabled="isBusy" @click="refreshStatus" :title="t('刷新 (R)', 'Refresh (R)')">🔄</button>
+          <button v-if="summary?.status === 'running'" class="btn btn-danger" :disabled="isBusy" @click="forfeitBattle" :title="t('认输 (F)', 'Forfeit (F)')">🏳️</button>
         </div>
 
         <!-- 战斗日志（右侧底部） -->
@@ -560,15 +564,65 @@ onMounted(() => {
 
     // 检查是否有未完成的对战（登录用户）
     checkExistingBattle()
+
+    // 添加键盘快捷键监听
+    window.addEventListener('keydown', handleKeydown)
   }
 })
 
 onBeforeUnmount(() => {
+  // 移除键盘监听
+  window.removeEventListener('keydown', handleKeydown)
+
   if (animId !== null) cancelAnimationFrame(animId)
   disposeEngine()
   if (battlefield.value) battlefield.value.dispose()
   disposeScene()
 })
+
+// ===== 键盘快捷键 =====
+function handleKeydown(e: KeyboardEvent) {
+  // 忽略输入框内的按键
+  if ((e.target as HTMLElement).tagName === 'INPUT') return
+
+  switch (e.key) {
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+      // 选择第一个宝可梦的对应招式
+      if (isActionPhase.value && playerActiveMons.value.length > 0) {
+        const moveIdx = parseInt(e.key) - 1
+        const mon = playerActiveMons.value[0]
+        if (mon?.moves?.[moveIdx]) {
+          selectMove(0, moveIdx, mon.moves[moveIdx])
+        }
+      }
+      break
+    case 'Enter':
+    case ' ':
+      // 提交回合
+      e.preventDefault()
+      if (canSubmitMove.value) submitMove()
+      else if (isPreviewPhase.value && canConfirmPreview.value) confirmPreview()
+      else if (isReplacementPhase.value && canConfirmReplacement.value) confirmReplacement()
+      break
+    case 'r':
+    case 'R':
+      // 刷新状态
+      refreshStatus()
+      break
+    case 'f':
+    case 'F':
+      // 认输
+      if (summary.value?.status === 'running') forfeitBattle()
+      break
+    case 'Escape':
+      // 取消选择
+      selectedMoveIndexes.value = {}
+      break
+  }
+}
 
 // ===== 监听回合计数 =====
 watch(() => summary.value?.rounds?.length, (n, o) => {
@@ -920,6 +974,22 @@ watch(() => summary.value?.rounds?.length, (n, o) => {
   line-height: 1.2;
 }
 
+.mv-shortcut {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.5);
+  color: rgba(255,255,255,0.8);
+  font-size: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .mv-info {
   font-size: 10px;
   opacity: 0.9;
@@ -1018,8 +1088,26 @@ watch(() => summary.value?.rounds?.length, (n, o) => {
 }
 
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background: #3b82f6; color: #fff; flex: 1; }
+.btn-primary {
+  background: #3b82f6;
+  color: #fff;
+  flex: 1;
+  position: relative;
+}
 .btn-primary:hover:not(:disabled) { background: #2563eb; }
+
+.btn-shortcut {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.7);
+  color: rgba(255,255,255,0.8);
+  font-size: 9px;
+  font-weight: bold;
+}
+
 .btn-secondary { background: rgba(255,255,255,0.1); color: #fff; }
 .btn-danger { background: rgba(239,68,68,0.3); color: #ef4444; }
 .btn-purple { background: #7c3aed; color: #fff; flex: 1; }
@@ -1157,12 +1245,83 @@ watch(() => summary.value?.rounds?.length, (n, o) => {
   }
 
   .battle3d-scene-area {
-    height: 50vh;
+    height: 45vh;
   }
 
   .battle3d-panel {
     width: 100%;
-    height: 50vh;
+    height: 55vh;
+  }
+
+  .panel-content {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .teams-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .team-card {
+    padding: 6px;
+  }
+
+  .move-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+
+  .move-btn {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .mv-name {
+    font-size: 11px;
+  }
+
+  .mv-type-badge {
+    font-size: 8px;
+    padding: 1px 4px;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .scene-controls {
+    bottom: 8px;
+    left: 8px;
+  }
+
+  .scene-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .battle3d-scene-area {
+    height: 40vh;
+  }
+
+  .battle3d-panel {
+    height: 60vh;
+  }
+
+  .move-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-header {
+    padding: 8px 12px;
+  }
+
+  .panel-title {
+    font-size: 13px;
   }
 }
 </style>
