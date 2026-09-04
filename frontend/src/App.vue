@@ -310,10 +310,16 @@ async function handleLogout() {
 /* 对战页面全屏布局 */
 .battle-main {
   width: 100%;
-  height: calc(100vh - 56px); /* 减去 header 高度 */
+  height: calc(100vh - 64px); /* 减去 header 高度 (h-16 = 64px) */
   padding: 0;
   margin: 0;
   overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .battle-main {
+    height: calc(100vh - 56px); /* 移动端 header 高度 (h-14 = 56px) */
+  }
 }
 
 /* 页面切换动画 */
