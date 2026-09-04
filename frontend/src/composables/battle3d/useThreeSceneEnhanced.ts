@@ -13,7 +13,7 @@
  * @module composables/battle3d/useThreeSceneEnhanced
  */
 
-import { ref, type Ref, onUnmounted, watch, computed } from 'vue'
+import { ref, shallowRef, type Ref, onUnmounted, watch, computed } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
@@ -131,10 +131,10 @@ export function useThreeSceneEnhanced(
   } = options
 
   // ===== 核心对象 =====
-  const scene = ref<THREE.Scene | null>(null)
-  const camera = ref<THREE.PerspectiveCamera | null>(null)
-  const renderer = ref<THREE.WebGLRenderer | null>(null)
-  const controls = ref<OrbitControls | null>(null)
+  const scene = shallowRef<THREE.Scene | null>(null)
+  const camera = shallowRef<THREE.PerspectiveCamera | null>(null)
+  const renderer = shallowRef<THREE.WebGLRenderer | null>(null)
+  const controls = shallowRef<OrbitControls | null>(null)
   const raycaster = new THREE.Raycaster()
 
   // ===== 状态 =====
