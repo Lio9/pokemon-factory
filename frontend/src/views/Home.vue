@@ -301,8 +301,7 @@ const cards = computed(() => [
   { name: tr('特性列表', 'Abilities'), desc: tr('查看特性效果', 'Ability details'), path: '/abilities', icon: '✨', color: '#705898', colorLight: '#A78BFA' },
   { name: tr('物品列表', 'Items'), desc: tr('道具数据一览', 'Item catalog'), path: '/items', icon: '🎒', color: '#E0C068', colorLight: '#FDE68A' },
   { name: tr('伤害计算器', 'Damage Calc'), desc: tr('模拟招式伤害', 'Simulate move damage'), path: '/damage-calculator', icon: '📊', color: '#6890F0', colorLight: '#93C5FD' },
-  { name: tr('对战工厂', 'Battle'), desc: tr('双打对战模拟', 'Doubles battle sim'), path: '/battle', icon: '🏟️', color: '#78C850', colorLight: '#86EFAC' },
-  { name: tr('3D对战工厂', '3D Battle'), desc: tr('全新3D对战体验', 'Immersive 3D battle experience'), path: '/battle3d', icon: '🎮', color: '#6366F1', colorLight: '#818CF8' },
+  { name: tr('对战工厂', 'Battle'), desc: tr('3D 对战体验', '3D battle experience'), path: '/battle', icon: '🏟️', color: '#78C850', colorLight: '#86EFAC' },
 ])
 
 const stats = ref([

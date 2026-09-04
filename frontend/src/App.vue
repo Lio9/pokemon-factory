@@ -269,8 +269,7 @@ const navItems = computed(() => [
   { name: tr('特性', 'Abilities'), path: '/abilities' },
   { name: tr('物品', 'Items'), path: '/items' },
   { name: tr('伤害计算', 'Calc'), path: '/damage-calculator' },
-  { name: tr('对战工厂', 'Battle'), path: '/battle' },
-  { name: tr('3D对战', '3D Battle'), path: '/battle3d' }
+  { name: tr('对战工厂', 'Battle'), path: '/battle' }
 ])
 
 function isActiveRoute(path) {
