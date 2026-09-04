@@ -119,7 +119,13 @@
                 @click="selectMove(slotIdx, moveIdx, move)"
               >
                 <span class="mv-name">{{ move.name || move.name_en }}</span>
-                <span class="mv-info">{{ move.power ? 'P'+move.power : '' }} PP{{ move.current_pp ?? move.pp }}</span>
+                <span class="mv-type-badge" :style="{ background: getTypeColor(move.type_name || move.name_en) }">
+                  {{ move.type_name || '?' }}
+                </span>
+                <span class="mv-info">
+                  <span v-if="move.power">威力 {{ move.power }}</span>
+                  <span>PP {{ move.current_pp ?? move.pp }}/{{ move.pp }}</span>
+                </span>
               </button>
             </div>
             <!-- 目标选择 -->
@@ -816,23 +822,73 @@ watch(() => summary.value?.rounds?.length, (n, o) => {
 .move-btn {
   display: flex;
   flex-direction: column;
-  padding: 6px 8px;
-  border: 2px solid transparent;
-  border-radius: 6px;
+  padding: 8px 10px;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-radius: 8px;
   background: var(--tc, #555);
   color: #fff;
   cursor: pointer;
   text-align: left;
   font-size: 11px;
   transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 
-.move-btn:hover:not(:disabled) { filter: brightness(1.2); transform: translateY(-1px); }
-.move-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.move-btn.selected { border-color: #fbbf24; box-shadow: 0 0 8px rgba(251,191,36,0.4); }
+.move-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.15), transparent);
+  pointer-events: none;
+}
 
-.mv-name { font-weight: bold; }
-.mv-info { font-size: 10px; opacity: 0.8; }
+.move-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.move-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.move-btn.selected {
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 12px rgba(251,191,36,0.5), 0 4px 8px rgba(0,0,0,0.3);
+  transform: scale(1.02);
+}
+
+.mv-name {
+  font-weight: bold;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.mv-info {
+  font-size: 10px;
+  opacity: 0.9;
+  margin-top: 2px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.mv-type-badge {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-top: 3px;
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: fit-content;
+}
 
 /* 目标选择 */
 .target-row {
