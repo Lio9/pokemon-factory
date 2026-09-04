@@ -287,7 +287,7 @@ const selectedSpecialSystems = rawSelectedSpecialSystems as Record<string, any>
 // ===== 3D 场景 =====
 const {
   scene, camera, renderer, controls, fps, performanceStats,
-  addToScene, removeFromScene, startRenderLoop, stopRenderLoop, dispose: disposeScene,
+  initScene, addToScene, removeFromScene, startRenderLoop, stopRenderLoop, dispose: disposeScene,
   isReady: sceneReady, setPerformanceLevel, getPerformanceLevel
 } = useThreeSceneEnhanced(canvasContainer, {
   enableShadows: true, fov: 60, enableFog: true, enableSkybox: true, performanceLevel: 'high'
@@ -473,28 +473,35 @@ function gameLoop(time: number) {
 }
 
 // ===== 生命周期 =====
-onMounted(async () => {
+onMounted(() => {
+  // 快速初始化 - 不阻塞
   loadingMessage.value = t('初始化场景...', 'Init scene...')
   loadingProgress.value = 30
-  await nextTick()
+
+  // 初始化 Three.js 场景
+  initScene()
+  loadingProgress.value = 50
 
   if (scene.value) {
-    loadingProgress.value = 50
+    // 创建战场
     battlefield.value = new Battlefield(scene.value)
-
     loadingProgress.value = 70
+
+    // 初始化战斗引擎
     initEngine()
-
     loadingProgress.value = 85
-    try { await initAudio() } catch (e) { /* 用户未交互 */ }
 
-    loadingProgress.value = 95
+    // 启动渲染循环
     startRenderLoop()
     lastTime = performance.now()
     animId = requestAnimationFrame(gameLoop)
-
     loadingProgress.value = 100
-    setTimeout(() => { isLoading.value = false }, 300)
+
+    // 音频延迟初始化（非阻塞）
+    initAudio().catch(() => { /* 用户未交互时正常 */ })
+
+    // 立即隐藏加载屏幕
+    isLoading.value = false
   }
 })
 
