@@ -57,7 +57,7 @@
           </div>
         </div>
         <div class="start-actions">
-          <button class="btn btn-primary btn-large" :disabled="isBusy" @click="startBattle">
+          <button class="btn btn-primary btn-large" :disabled="isBusy" @click="handleStartBattle">
             ⚔️ {{ busyAction === 'start-manual' ? t('创建中...', 'Starting...') : t('手动对战', 'Manual') }}
           </button>
           <button v-if="isAuthenticated" class="btn btn-purple" :disabled="isBusy" @click="startFactoryChallenge">
@@ -115,7 +115,7 @@
 
         <!-- 操作按钮 -->
         <div class="action-row">
-          <button v-if="canSubmitMove" class="btn btn-primary" :disabled="isBusy" @click="submitMove">
+          <button v-if="canSubmitMove" class="btn btn-primary" :disabled="isBusy" @click="handleSubmitMove">
             {{ isBusy ? '...' : t('提交回合', 'Submit') }}
             <span class="btn-shortcut">Enter</span>
           </button>
@@ -128,7 +128,7 @@
             <span class="btn-shortcut">Enter</span>
           </button>
           <button class="btn btn-secondary" :disabled="isBusy" @click="refreshStatus" :title="t('刷新 (R)', 'Refresh (R)')">🔄</button>
-          <button v-if="summary?.status === 'running'" class="btn btn-danger" :disabled="isBusy" @click="forfeitBattle" :title="t('认输 (F)', 'Forfeit (F)')">🏳️</button>
+          <button v-if="summary?.status === 'running'" class="btn btn-danger" :disabled="isBusy" @click="handleForfeit" :title="t('认输 (F)', 'Forfeit (F)')">🏳️</button>
         </div>
 
         <!-- 战斗日志（右侧底部） -->
@@ -365,6 +365,8 @@ function selectMove(s: number | string, m: number | string, move: any) {
   selectedMoveObjects.value[slot] = move
   setSelectedMove(`slot-${slot}`, move.name_en || move.name)
   if (Number(move.target_id || 10) !== 10) setSelectedAction(`action-slot-${slot}`, 'move')
+  // 音效反馈
+  playSound('button_click')
 }
 
 function needsTarget(s: number | string): boolean {
@@ -452,21 +454,32 @@ function checkExistingBattle() {
 function handleResumeBattle() {
   showResumeModal.value = false
   if (pendingBattleId.value) {
-    // 恢复对战
     currentBattleId.value = pendingBattleId.value
     refreshStatus(true)
+    playSound('switch')
   }
 }
 
 function handleNewBattle() {
   showResumeModal.value = false
   pendingBattleId.value = null
-  // 清除旧记录
-  try {
-    localStorage.removeItem(BATTLE_STORAGE_KEY)
-  } catch { /* ignore */ }
-  // 重置状态
+  try { localStorage.removeItem(BATTLE_STORAGE_KEY) } catch { /* ignore */ }
   resetBattleState({ keepFactoryRun: false })
+}
+
+function handleStartBattle() {
+  startBattle()
+  playSound('switch')
+}
+
+function handleSubmitMove() {
+  submitMove()
+  playSound('attack_normal')
+}
+
+function handleForfeit() {
+  forfeitBattle()
+  playSound('faint')
 }
 
 // ===== 生命周期 =====
@@ -541,23 +554,25 @@ function handleKeydown(e: KeyboardEvent) {
     case ' ':
       // 提交回合
       e.preventDefault()
-      if (canSubmitMove.value) submitMove()
-      else if (isPreviewPhase.value && canConfirmPreview.value) confirmPreview()
-      else if (isReplacementPhase.value && canConfirmReplacement.value) confirmReplacement()
+      if (canSubmitMove.value) handleSubmitMove()
+      else if (isPreviewPhase.value && canConfirmPreview.value) { confirmPreview(); playSound('switch') }
+      else if (isReplacementPhase.value && canConfirmReplacement.value) { confirmReplacement(); playSound('switch') }
       break
     case 'r':
     case 'R':
       // 刷新状态
       refreshStatus()
+      playSound('button_click')
       break
     case 'f':
     case 'F':
       // 认输
-      if (summary.value?.status === 'running') forfeitBattle()
+      if (summary.value?.status === 'running') handleForfeit()
       break
     case 'Escape':
       // 取消选择
       selectedMoveIndexes.value = {}
+      playSound('button_click')
       break
   }
 }
