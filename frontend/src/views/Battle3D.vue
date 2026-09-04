@@ -72,90 +72,32 @@
 
       <!-- 有战斗时：信息和操作 -->
       <div v-if="summary" class="panel-content battle-panel">
-        <!-- 双方信息（紧凑并排） -->
-        <div class="teams-row">
-          <!-- 对手 -->
-          <div class="team-card opponent">
-            <div class="team-label">🔴 {{ t('对手', 'Opponent') }}</div>
-            <div v-for="(mon, i) in opponentActiveMons" :key="'o'+i" class="mon-mini">
-              <span class="mon-name">{{ mon.name || mon.name_en }}</span>
-              <div class="mini-hp">
-                <div class="mini-hp-bar" :style="{ width: hpPercent(mon)+'%', background: hpColor(mon) }" />
-              </div>
-              <span class="mon-hp-num">{{ mon.currentHp }}</span>
-            </div>
-          </div>
-          <!-- 我方 -->
-          <div class="team-card player">
-            <div class="team-label">🟢 {{ t('我方', 'Player') }}</div>
-            <div v-for="(mon, i) in playerActiveMons" :key="'p'+i" class="mon-mini">
-              <span class="mon-name">{{ mon.name || mon.name_en }}</span>
-              <div class="mini-hp">
-                <div class="mini-hp-bar" :style="{ width: hpPercent(mon)+'%', background: hpColor(mon) }" />
-              </div>
-              <span class="mon-hp-num">{{ mon.currentHp }}</span>
-            </div>
-          </div>
-        </div>
+        <!-- 双方信息（使用子组件） -->
+        <TeamInfo :player-mons="playerActiveMons" :opponent-mons="opponentActiveMons" />
 
         <!-- 场地效果 -->
         <div v-if="fieldChips.length" class="field-row">
           <span v-for="(chip, i) in fieldChips" :key="i" class="chip" :class="chip.cls">{{ chip.l }}</span>
         </div>
 
-        <!-- 招式选择 -->
-        <div v-if="isActionPhase" class="moves-section">
-          <div class="section-label">⚔️ {{ t('选择招式', 'Select Move') }}</div>
-          <div v-for="(mon, slotIdx) in playerActiveMons" :key="'m'+slotIdx" class="move-block">
-            <div class="move-block-name">{{ mon.name || mon.name_en }}</div>
-            <div class="move-grid">
-              <button
-                v-for="(move, moveIdx) in (mon.moves || [])"
-                :key="moveIdx"
-                class="move-btn"
-                :class="{ selected: isMoveSelected(slotIdx, moveIdx) }"
-                :style="{ '--tc': getTypeColor(move.type_name || move.name_en) }"
-                :disabled="isBusy"
-                @click="selectMove(slotIdx, moveIdx, move)"
-              >
-                <span class="mv-shortcut" v-if="slotIdx === 0">{{ moveIdx + 1 }}</span>
-                <span class="mv-name">{{ move.name || move.name_en }}</span>
-                <span class="mv-type-badge" :style="{ background: getTypeColor(move.type_name || move.name_en) }">
-                  {{ move.type_name || '?' }}
-                </span>
-                <span class="mv-info">
-                  <span v-if="move.power">威力 {{ move.power }}</span>
-                  <span>PP {{ move.current_pp ?? move.pp }}/{{ move.pp }}</span>
-                </span>
-              </button>
-            </div>
-            <!-- 目标选择 -->
-            <div v-if="needsTarget(slotIdx)" class="target-row">
-              <span class="target-label">🎯</span>
-              <button
-                v-for="(opp, oi) in opponentActiveMons"
-                :key="oi"
-                class="target-btn"
-                :class="{ active: selectedTargets[`target-slot-${slotIdx}`] === opp.fieldSlot }"
-                @click="selectTarget(slotIdx, opp.fieldSlot)"
-              >
-                {{ opp.name || opp.name_en }}
-              </button>
-            </div>
-            <!-- 特殊系统 -->
-            <div v-if="hasSpecialSystem(mon)" class="special-row">
-              <button
-                v-for="sys in availableSpecialSystems(mon)"
-                :key="sys"
-                class="special-btn"
-                :class="{ active: selectedSpecialSystems[`special-slot-${slotIdx}`] === sys }"
-                @click="toggleSpecialSystem(slotIdx, sys)"
-              >
-                {{ specialSystemLabel(sys) }}
-              </button>
-            </div>
-          </div>
-        </div>
+        <!-- 招式选择（使用子组件） -->
+        <MoveSelector
+          v-if="isActionPhase"
+          :player-active-mons="playerActiveMons"
+          :opponent-active-mons="opponentActiveMons"
+          :selected-slot="selectedSlot"
+          :selected-move-index="selectedMoveIdx"
+          :selected-targets="selectedTargets"
+          :selected-special-systems="selectedSpecialSystems"
+          :disabled="isBusy"
+          :needs-target="needsTarget"
+          :has-special-system="hasSpecialSystem"
+          :available-special-systems="availableSpecialSystems"
+          :special-system-label="specialSystemLabel"
+          @select-move="selectMove"
+          @select-target="selectTarget"
+          @toggle-special="toggleSpecialSystem"
+        />
 
         <!-- 替补选择 -->
         <div v-if="isReplacementPhase" class="replacement-section">
@@ -191,24 +133,12 @@
 
         <!-- 战斗日志（右侧底部） -->
         <div class="log-section">
-          <div class="log-header" @click="showLog = !showLog">
-            📜 {{ t('日志', 'Log') }}
-            <span class="log-toggle">{{ showLog ? '▼' : '▲' }}</span>
-          </div>
-          <div v-if="showLog" class="log-body" ref="logContainer">
-            <div v-for="(round, ri) in (summary.rounds || [])" :key="ri" class="log-round">
-              <div class="log-round-h" @click="toggleRound(ri)">
-                <span class="log-arrow" :class="{ open: expandedRounds.has(Number(ri)) }">▶</span>
-                {{ t('第', 'T') }}{{ Number(ri)+1 }}{{ t('回合', '') }}
-                <span class="log-count">{{ (round.events || []).length }}</span>
-              </div>
-              <div v-if="expandedRounds.has(Number(ri))" class="log-events">
-                <div v-for="(evt, ei) in (round.events || [])" :key="ei" class="log-evt" :class="logEventClass(evt)">
-                  {{ evt }}
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- 战斗日志（使用子组件） -->
+          <BattleLog
+            :rounds="summary.rounds || []"
+            :current-round="summary.currentRound"
+            :auto-expand="true"
+          />
         </div>
       </div>
     </div>
@@ -239,6 +169,12 @@
       @resume="handleResumeBattle"
       @new="handleNewBattle"
     />
+
+    <!-- 首次教程 -->
+    <BattleTutorial
+      :show="showTutorial"
+      @close="showTutorial = false"
+    />
   </div>
 </template>
 
@@ -251,9 +187,14 @@ import { useBattleEngine } from '../composables/battle3d/useBattleEngine'
 import { useBattlePageState } from '../composables/useBattlePageState'
 import { useLocale } from '../composables/useLocale'
 import { debugLogger } from './battle3d/utils/debug'
+import { getTypeColor } from './battle3d/utils/typeColors'
 import DebugPanel from './battle3d/components/DebugPanel.vue'
 import SettlementModal from './battle3d/components/SettlementModal.vue'
 import ResumeBattleModal from './battle3d/components/ResumeBattleModal.vue'
+import BattleTutorial, { shouldShowTutorial } from './battle3d/components/BattleTutorial.vue'
+import TeamInfo from './battle3d/components/TeamInfo.vue'
+import MoveSelector from './battle3d/components/MoveSelector.vue'
+import BattleLog from './battle3d/components/BattleLog.vue'
 import { Battlefield } from './battle3d/core/BattleField'
 import type { PerformanceLevel } from '../composables/battle3d/useThreeSceneEnhanced'
 
@@ -275,6 +216,7 @@ const loadingMessage = ref('')
 const expandedRounds = ref(new Set<number>())
 const showResumeModal = ref(false)
 const pendingBattleId = ref<string | null>(null)
+const showTutorial = ref(shouldShowTutorial())
 
 // ===== 格式 =====
 const formats = [
@@ -391,17 +333,6 @@ function hpColor(mon: any): string {
   return '#4ade80'
 }
 
-function getTypeColor(typeName: string): string {
-  const m: Record<string, string> = {
-    Normal: '#A8A77A', Fire: '#EE8130', Water: '#6390F0', Electric: '#F7D02C',
-    Grass: '#7AC74C', Ice: '#96D9D6', Fighting: '#C22E28', Poison: '#A33EA1',
-    Ground: '#E2BF65', Flying: '#A98FF3', Psychic: '#F95587', Bug: '#A6B91A',
-    Rock: '#B6A136', Ghost: '#735797', Dragon: '#6F35FC', Dark: '#705746',
-    Steel: '#B7B7CE', Fairy: '#D685AD'
-  }
-  return m[typeName] || '#A8A77A'
-}
-
 function statusLabel(c: string): string {
   const m: Record<string, string> = { paralysis: 'PAR', burn: 'BRN', freeze: 'FRZ', sleep: 'SLP', poison: 'PSN', toxic: 'TOX' }
   return m[c] || c
@@ -418,6 +349,13 @@ function availableSpecialSystems(mon: any): string[] { return getAvailableSpecia
 // ===== 招式选择 =====
 const selectedMoveIndexes = ref<Record<number, number>>({})
 const selectedMoveObjects = ref<Record<number, any>>({})
+const selectedSlot = computed(() => {
+  const slots = Object.keys(selectedMoveIndexes.value)
+  return slots.length > 0 ? Number(slots[0]) : -1
+})
+const selectedMoveIdx = computed(() => {
+  return selectedSlot.value >= 0 ? selectedMoveIndexes.value[selectedSlot.value] : -1
+})
 
 function isMoveSelected(s: number | string, m: number | string) { return selectedMoveIndexes.value[Number(s)] === Number(m) }
 
