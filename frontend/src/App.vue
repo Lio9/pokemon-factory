@@ -183,7 +183,7 @@
     </header>
 
     <!-- 主内容区 -->
-    <main class="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+    <main :class="isBattleRoute ? 'battle-main' : 'mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8'">
       <router-view v-slot="{ Component }">
         <transition
           name="page"
@@ -195,8 +195,8 @@
       </router-view>
     </main>
 
-    <!-- 页脚 -->
-    <footer class="px-4 py-6 text-center text-xs text-slate-400 border-t border-slate-100">
+    <!-- 页脚（对战页面不显示） -->
+    <footer v-if="!isBattleRoute" class="px-4 py-6 text-center text-xs text-slate-400 border-t border-slate-100">
       <div class="mx-auto max-w-7xl flex flex-col items-center gap-2">
         <!-- Pokeball 装饰 -->
         <svg
@@ -272,6 +272,9 @@ const navItems = computed(() => [
   { name: tr('对战工厂', 'Battle'), path: '/battle' }
 ])
 
+// 判断是否为对战路由（需要全屏布局）
+const isBattleRoute = computed(() => route.path === '/battle')
+
 function isActiveRoute(path) {
   if (path === '/') return route.path === '/'
   return route.path.startsWith(path)
@@ -302,6 +305,15 @@ async function handleLogout() {
     radial-gradient(circle at 50% 100%, rgba(59, 130, 246, 0.03), transparent 40%),
     linear-gradient(180deg, #f8fafc 0%, #fef7ee 50%, #fff7ed 100%);
   min-height: 100vh;
+}
+
+/* 对战页面全屏布局 */
+.battle-main {
+  width: 100%;
+  height: calc(100vh - 56px); /* 减去 header 高度 */
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
 }
 
 /* 页面切换动画 */

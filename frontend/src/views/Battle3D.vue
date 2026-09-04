@@ -529,8 +529,8 @@ watch(() => summary.value?.rounds?.length, (n, o) => {
 /* ===== 全局容器：左右布局 ===== */
 .battle3d-container {
   display: flex;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: #0a0a1a;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -608,8 +608,8 @@ watch(() => summary.value?.rounds?.length, (n, o) => {
 
 /* ===== 右侧：控制面板 ===== */
 .battle3d-panel {
-  width: 380px;
-  height: 100vh;
+  width: 360px;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: #111827;
