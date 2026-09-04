@@ -60,6 +60,7 @@
 
 <script setup lang="ts">
 import { getTypeColor } from '../utils/typeColors'
+import { useLocale } from '../../../composables/useLocale'
 
 interface Props {
   playerMons: any[]
@@ -68,7 +69,7 @@ interface Props {
 
 defineProps<Props>()
 
-const localeResult = (await import('../../../composables/useLocale')).useLocale() as any
+const localeResult = useLocale() as any
 const tr = localeResult.translate
 const t = (zh: string, en: string) => tr(zh, en)
 
