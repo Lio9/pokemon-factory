@@ -228,6 +228,13 @@
       @continue="nextFactoryBattle"
       @reset="resetBattleState({ keepFactoryRun: false })"
     />
+
+    <!-- 恢复对战弹窗 -->
+    <ResumeBattleModal
+      v-if="showResumeModal"
+      @resume="handleResumeBattle"
+      @new="handleNewBattle"
+    />
   </div>
 </template>
 
@@ -242,6 +249,7 @@ import { useLocale } from '../composables/useLocale'
 import { debugLogger } from './battle3d/utils/debug'
 import DebugPanel from './battle3d/components/DebugPanel.vue'
 import SettlementModal from './battle3d/components/SettlementModal.vue'
+import ResumeBattleModal from './battle3d/components/ResumeBattleModal.vue'
 import { Battlefield } from './battle3d/core/BattleField'
 import type { PerformanceLevel } from '../composables/battle3d/useThreeSceneEnhanced'
 
@@ -261,6 +269,8 @@ const isLoading = ref(true)
 const loadingProgress = ref(0)
 const loadingMessage = ref('')
 const expandedRounds = ref(new Set<number>())
+const showResumeModal = ref(false)
+const pendingBattleId = ref<string | null>(null)
 
 // ===== 格式 =====
 const formats = [
@@ -272,7 +282,7 @@ const formats = [
 // ===== 战斗状态 =====
 const battleState = useBattlePageState() as any
 const {
-  summary, battleFormat, busyAction, isBusy, isAuthenticated,
+  summary, battleFormat, busyAction, isBusy, isAuthenticated, currentBattleId,
   factoryRun, settlement,
   startBattle, startAsyncBattle, startFactoryChallenge,
   setBattleFormat, confirmPreview, confirmReplacement,
@@ -478,6 +488,45 @@ function gameLoop(time: number) {
   animId = requestAnimationFrame(gameLoop)
 }
 
+// ===== 恢复对战逻辑 =====
+const BATTLE_STORAGE_KEY = 'pokemon-factory-battle'
+
+function checkExistingBattle() {
+  try {
+    const savedBattleId = localStorage.getItem(BATTLE_STORAGE_KEY)
+    if (savedBattleId && isAuthenticated.value) {
+      // 登录用户：显示恢复弹窗
+      pendingBattleId.value = savedBattleId
+      showResumeModal.value = true
+      return true
+    } else if (savedBattleId) {
+      // 游客：清除旧记录
+      localStorage.removeItem(BATTLE_STORAGE_KEY)
+    }
+  } catch { /* ignore */ }
+  return false
+}
+
+function handleResumeBattle() {
+  showResumeModal.value = false
+  if (pendingBattleId.value) {
+    // 恢复对战
+    currentBattleId.value = pendingBattleId.value
+    refreshStatus(true)
+  }
+}
+
+function handleNewBattle() {
+  showResumeModal.value = false
+  pendingBattleId.value = null
+  // 清除旧记录
+  try {
+    localStorage.removeItem(BATTLE_STORAGE_KEY)
+  } catch { /* ignore */ }
+  // 重置状态
+  resetBattleState({ keepFactoryRun: false })
+}
+
 // ===== 生命周期 =====
 onMounted(() => {
   // 快速初始化 - 不阻塞
@@ -508,6 +557,9 @@ onMounted(() => {
 
     // 立即隐藏加载屏幕
     isLoading.value = false
+
+    // 检查是否有未完成的对战（登录用户）
+    checkExistingBattle()
   }
 })
 
