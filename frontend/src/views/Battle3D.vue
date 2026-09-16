@@ -72,8 +72,39 @@
 
       <!-- 有战斗时：信息和操作 -->
       <div v-if="summary" class="panel-content battle-panel">
+        <!-- 预览阶段：选择宝可梦 -->
+        <div v-if="isPreviewPhase" class="preview-section">
+          <div class="section-label">📋 {{ t('选择参战宝可梦', 'Select Pokemon') }} ({{ selectedRosterIndexes.length }}/{{ rosterLimit }})</div>
+          <div class="roster-grid">
+            <button
+              v-for="(p, i) in playerRoster"
+              :key="i"
+              class="roster-card"
+              :class="{ selected: selectedRosterIndexes.includes(i), lead: leadRosterIndexes.includes(i) }"
+              @click="toggleRoster(i)"
+            >
+              <img :src="getSpriteUrl(p)" :alt="p.name" class="roster-img" @error="handleImgError" />
+              <div class="roster-name">{{ p.name || p.name_en }}</div>
+              <div class="roster-types">
+                <span
+                  v-for="type in (p.types || []).slice(0, 2)"
+                  :key="type.type_id"
+                  class="type-mini"
+                  :style="{ background: getTypeColor(type.name_en || type.name) }"
+                >
+                  {{ type.name || type.name_en }}
+                </span>
+              </div>
+              <div v-if="leadRosterIndexes.includes(i)" class="lead-badge">⭐ {{ t('首发', 'Lead') }}</div>
+            </button>
+          </div>
+          <div class="preview-hint">
+            {{ t('点击选择宝可梦，再次点击取消', 'Click to select, click again to deselect') }}
+          </div>
+        </div>
+
         <!-- 双方信息（使用子组件） -->
-        <TeamInfo :player-mons="playerActiveMons" :opponent-mons="opponentActiveMons" />
+        <TeamInfo v-if="!isPreviewPhase" :player-mons="playerActiveMons" :opponent-mons="opponentActiveMons" />
 
         <!-- 场地效果 -->
         <div v-if="fieldChips.length" class="field-row">
@@ -198,6 +229,17 @@ import BattleLog from './battle3d/components/BattleLog.vue'
 import { Battlefield } from './battle3d/core/BattleField'
 import type { PerformanceLevel } from '../composables/battle3d/useThreeSceneEnhanced'
 
+// 精灵图 URL
+function getSpriteUrl(pokemon: any): string {
+  const id = pokemon?.form_id || pokemon?.species_id || pokemon?.pokemon_id || pokemon?.id
+  return id ? `/api/pokedex/images/pokemon/${id}.png` : '/pokemon-placeholder.png'
+}
+
+function handleImgError(e: Event) {
+  const img = e.target as HTMLImageElement
+  if (img) img.src = '/pokemon-placeholder.png'
+}
+
 // ===== 国际化 =====
 const localeResult = useLocale() as any
 const tr = localeResult.translate
@@ -234,12 +276,13 @@ const {
   setBattleFormat, confirmPreview, confirmReplacement,
   submitMove, refreshStatus, forfeitBattle,
   resetBattleState, nextFactoryBattle, onSettlementClose,
-  playerActiveMons, opponentActiveMons, replacementBenchOptions,
+  playerActiveMons, opponentActiveMons, playerRoster, replacementBenchOptions,
   selectedActions, selectedMoves, selectedTargets: rawSelectedTargets, selectedSpecialSystems: rawSelectedSpecialSystems,
-  selectedReplacementIndexes, setSelectedAction, setSelectedMove,
-  setSelectedTarget, setSelectedSpecialSystem, toggleReplacement,
+  selectedRosterIndexes, leadRosterIndexes, selectedReplacementIndexes,
+  setSelectedAction, setSelectedMove, setSelectedTarget, setSelectedSpecialSystem,
+  toggleRoster, toggleLead, toggleReplacement,
   canSubmitMove, canConfirmPreview, canConfirmReplacement,
-  isPreviewPhase, isReplacementPhase,
+  isPreviewPhase, isReplacementPhase, rosterLimit,
   availableSpecialSystems: getAvailableSpecialSystems
 } = battleState
 
@@ -852,6 +895,101 @@ watch(() => summary.value?.rounds?.length, (n, o) => {
 .c-orange { background: #7c2d12; color: #fdba74; }
 
 /* 招式选择 */
+/* ===== 预览阶段选人 ===== */
+.preview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.roster-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.roster-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.roster-card:hover {
+  border-color: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.1);
+  transform: translateY(-2px);
+}
+
+.roster-card.selected {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.15);
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.3);
+}
+
+.roster-card.lead {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.15);
+}
+
+.roster-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.roster-name {
+  font-size: 11px;
+  font-weight: bold;
+  color: #fff;
+  margin-top: 4px;
+  text-align: center;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-types {
+  display: flex;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.type-mini {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.lead-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(251, 191, 36, 0.8);
+  color: #000;
+  font-weight: bold;
+}
+
+.preview-hint {
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  text-align: center;
+}
+
+/* ===== 招式选择 ===== */
 .moves-section { display: flex; flex-direction: column; gap: 6px; }
 
 .section-label {

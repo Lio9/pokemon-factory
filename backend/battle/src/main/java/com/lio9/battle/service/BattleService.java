@@ -90,7 +90,8 @@ public class BattleService {
         playerMapper.insertIgnore(username);
         Integer playerId = playerMapper.findIdByUsername(username);
         Map<String, Object> playerProfile = playerMapper.findByUsername(username);
-        int playerRank = playerProfile == null ? 0 : toInt(playerProfile.get("rank"), 0);
+        // 游客模式默认 Normal 难度（rank 1），登录用户根据段位决定
+        int playerRank = playerProfile == null ? 1 : toInt(playerProfile.get("rank"), 0);
 
         // 段位驱动 AI 难度
         battleEngine.setAIDifficulty(playerRank);
