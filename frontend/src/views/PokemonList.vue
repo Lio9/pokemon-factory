@@ -71,9 +71,12 @@ import { pokemonApi, typeApi, sprites } from '../services/api'
 import { dataCache } from '../services/cache'
 import { registerShortcuts } from '../services/keyboard'
 import { perfMonitor } from '../services/performance'
+import { useLocale } from '../composables/useLocale'
 import PokemonSearchFilters from '../components/PokemonSearchFilters.vue'
 import PokemonCardGrid from '../components/PokemonCardGrid.vue'
 import CatalogPageHeader from '../components/CatalogPageHeader.vue'
+
+const { translate: tr } = useLocale()
 
 const listContainer = ref(null)
 const cardGridRef = ref(null)
