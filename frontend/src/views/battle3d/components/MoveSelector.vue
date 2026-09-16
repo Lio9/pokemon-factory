@@ -1,8 +1,14 @@
 <template>
   <div class="moves-section">
-    <div class="section-label">⚔️ {{ t('选择招式', 'Select Move') }}</div>
+    <div class="section-header">
+      <span class="section-icon">⚔️</span>
+      <span class="section-title">{{ t('选择招式', 'Select Move') }}</span>
+    </div>
     <div v-for="(mon, slotIdx) in playerActiveMons" :key="'m'+slotIdx" class="move-block">
-      <div class="move-block-name">{{ mon.name || mon.name_en }}</div>
+      <div class="move-block-header">
+        <span class="block-name">{{ mon.name || mon.name_en }}</span>
+        <span class="block-hp">{{ mon.currentHp }}/{{ mon.stats?.hp || mon.currentHp }} HP</span>
+      </div>
       <div class="move-grid">
         <button
           v-for="(move, moveIdx) in (mon.moves || [])"
@@ -15,28 +21,30 @@
         >
           <span class="mv-shortcut" v-if="Number(slotIdx) === 0">{{ Number(moveIdx) + 1 }}</span>
           <span class="mv-name">{{ move.name || move.name_en }}</span>
-          <span class="mv-type-badge" :style="{ background: getTypeColor(move.type_name || move.name_en) }">
+          <span class="mv-type" :style="{ background: getTypeColor(move.type_name || move.name_en) }">
             {{ move.type_name || '?' }}
           </span>
-          <span class="mv-info">
-            <span v-if="move.power">威力 {{ move.power }}</span>
-            <span>PP {{ move.current_pp ?? move.pp }}/{{ move.pp }}</span>
+          <span class="mv-stats">
+            <span v-if="move.power" class="mv-power">⚡{{ move.power }}</span>
+            <span class="mv-pp">PP {{ move.current_pp ?? move.pp }}/{{ move.pp }}</span>
           </span>
         </button>
       </div>
 
       <!-- 目标选择 -->
       <div v-if="needsTarget && needsTarget(slotIdx)" class="target-row">
-        <span class="target-label">🎯</span>
-        <button
-          v-for="(opp, oi) in opponentActiveMons"
-          :key="oi"
-          class="target-btn"
-          :class="{ active: selectedTargets[`target-slot-${slotIdx}`] === opp.fieldSlot }"
-          @click="$emit('select-target', slotIdx, opp.fieldSlot)"
-        >
-          {{ opp.name || opp.name_en }}
-        </button>
+        <span class="target-label">🎯 {{ t('选择目标', 'Select Target') }}:</span>
+        <div class="target-buttons">
+          <button
+            v-for="(opp, oi) in opponentActiveMons"
+            :key="oi"
+            class="target-btn"
+            :class="{ active: selectedTargets[`target-slot-${slotIdx}`] === opp.fieldSlot }"
+            @click="$emit('select-target', Number(slotIdx), opp.fieldSlot)"
+          >
+            {{ opp.name || opp.name_en }}
+          </button>
+        </div>
       </div>
 
       <!-- 特殊系统 -->
@@ -46,7 +54,7 @@
           :key="sys"
           class="special-btn"
           :class="{ active: selectedSpecialSystems[`special-slot-${slotIdx}`] === sys }"
-          @click="$emit('toggle-special', slotIdx, sys)"
+          @click="$emit('toggle-special', Number(slotIdx), sys)"
         >
           {{ specialSystemLabel ? specialSystemLabel(sys) : sys }}
         </button>
@@ -58,6 +66,10 @@
 <script setup lang="ts">
 import { getTypeColor } from '../utils/typeColors'
 import { useLocale } from '../../../composables/useLocale'
+
+const localeResult = useLocale() as any
+const tr = localeResult.translate
+const t = (zh: string, en: string) => tr(zh, en)
 
 interface Props {
   playerActiveMons: any[]
@@ -73,7 +85,7 @@ interface Props {
   specialSystemLabel?: ((sys: string) => string) | null
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   selectedSlot: -1,
   selectedMoveIndex: -1,
   selectedTargets: () => ({}),
@@ -90,59 +102,79 @@ defineEmits<{
   'select-target': [slot: number, targetSlot: number]
   'toggle-special': [slot: number, sys: string]
 }>()
-
-const localeResult = useLocale() as any
-const tr = localeResult.translate
-const t = (zh: string, en: string) => tr(zh, en)
 </script>
 
 <style scoped>
 .moves-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
-.section-label {
-  font-size: 12px;
-  font-weight: bold;
-  color: rgba(255,255,255,0.7);
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.section-icon { font-size: 16px; }
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.8);
 }
 
 .move-block {
-  background: rgba(255,255,255,0.03);
-  border-radius: 6px;
-  padding: 6px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.04);
 }
 
-.move-block-name {
-  font-size: 11px;
-  color: rgba(255,255,255,0.5);
-  margin-bottom: 4px;
+.move-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.block-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.block-hp {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  font-weight: 600;
 }
 
 .move-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  gap: 8px;
 }
 
 .move-btn {
   display: flex;
   flex-direction: column;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 12px;
   border: 2px solid rgba(0,0,0,0.2);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--tc, #555);
   color: #fff;
   cursor: pointer;
   text-align: left;
-  font-size: 11px;
-  transition: all 0.15s;
+  font-size: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
 .move-btn::before {
@@ -152,149 +184,156 @@ const t = (zh: string, en: string) => tr(zh, en)
   left: 0;
   right: 0;
   height: 50%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.15), transparent);
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%);
   pointer-events: none;
 }
 
 .move-btn:hover:not(:disabled) {
   filter: brightness(1.15);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 
 .move-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
   transform: none;
 }
 
 .move-btn.selected {
   border-color: #fbbf24 !important;
-  box-shadow: 0 0 12px rgba(251,191,36,0.5), 0 4px 8px rgba(0,0,0,0.3);
-  transform: scale(1.02);
+  box-shadow: 0 0 20px rgba(251,191,36,0.5), 0 8px 20px rgba(0,0,0,0.3);
+  transform: scale(1.03);
 }
 
 .mv-shortcut {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  background: rgba(0,0,0,0.5);
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.6);
   color: rgba(255,255,255,0.8);
-  font-size: 10px;
-  font-weight: bold;
+  font-size: 12px;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
 .mv-name {
-  font-weight: bold;
-  font-size: 12px;
-  line-height: 1.2;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.3;
 }
 
-.mv-type-badge {
+.mv-type {
   display: inline-block;
-  font-size: 9px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  margin-top: 3px;
-  background: rgba(0,0,0,0.3);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 6px;
   color: #fff;
-  font-weight: bold;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   width: fit-content;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.mv-info {
-  font-size: 10px;
-  opacity: 0.9;
-  margin-top: 2px;
+.mv-stats {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  opacity: 0.8;
 }
 
+.mv-power { font-weight: 700; }
+.mv-pp { color: rgba(255,255,255,0.6); }
+
 .target-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 4px;
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
 .target-label {
   font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.target-buttons {
+  display: flex;
+  gap: 6px;
 }
 
 .target-btn {
   flex: 1;
-  padding: 4px 8px;
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 4px;
-  background: rgba(255,255,255,0.1);
+  padding: 8px 12px;
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
 }
 
 .target-btn:hover {
-  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.1);
 }
 
 .target-btn.active {
-  background: rgba(239,68,68,0.4);
+  background: rgba(239,68,68,0.3);
   border-color: #ef4444;
+  box-shadow: 0 0 16px rgba(239,68,68,0.3);
 }
 
 .special-row {
   display: flex;
-  gap: 4px;
-  margin-top: 4px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .special-btn {
-  padding: 3px 8px;
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 4px;
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-  font-size: 10px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.7);
+  font-size: 11px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
 }
 
 .special-btn:hover {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
 }
 
 .special-btn.active {
-  background: rgba(99,102,241,0.5);
+  background: rgba(99,102,241,0.3);
   border-color: #6366f1;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(99,102,241,0.3);
 }
 
 @media (max-width: 768px) {
-  .move-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 4px;
-  }
-
-  .move-btn {
-    padding: 6px 8px;
-    font-size: 10px;
-  }
-
-  .mv-name {
-    font-size: 11px;
-  }
+  .move-grid { gap: 6px; }
+  .move-btn { padding: 10px; }
 }
 
 @media (max-width: 480px) {
-  .move-grid {
-    grid-template-columns: 1fr;
-  }
+  .move-grid { grid-template-columns: 1fr; }
 }
 </style>

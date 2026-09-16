@@ -156,7 +156,11 @@ export function useBattleEngine(
    */
   function createPokemonEntity(pokemon: any, side: 'player' | 'opponent', slot: number): PokemonEntity | null {
     try {
+      // 获取宝可梦 ID 用于加载精灵图
+      const pokemonId = pokemon.form_id || pokemon.species_id || pokemon.pokemon_id || pokemon.id
+      
       const entity = new PokemonEntity({
+        id: pokemonId,
         name: pokemon.name || pokemon.name_en || `Pokemon ${slot + 1}`,
         type: (pokemon.types?.[0]?.name_en || pokemon.types?.[0]?.name || 'Normal'),
         currentHp: pokemon.currentHp || 0,

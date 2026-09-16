@@ -138,7 +138,7 @@ async function runBattle() {
         }
       } else {
         // 可能是替补阶段
-        const replaceBtns = await page.$$('.replace-btn');
+        const replaceBtns = await page.$$('.replace-card, .replace-btn');
         if (replaceBtns.length > 0) {
           console.log('   检测到替补阶段');
           await replaceBtns[0].click();
