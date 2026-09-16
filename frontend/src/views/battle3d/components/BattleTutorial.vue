@@ -106,9 +106,12 @@ function close() {
   }
   emit('close')
 }
+</script>
 
-// 检查是否应该显示教程
+<script lang="ts">
+// 检查是否应该显示教程（必须在 script 标签中导出，不能在 script setup 中）
 export function shouldShowTutorial(): boolean {
+  const TUTORIAL_KEY = 'pokemon-battle3d-tutorial-seen'
   try {
     return !localStorage.getItem(TUTORIAL_KEY)
   } catch {
