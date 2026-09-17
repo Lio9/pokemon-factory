@@ -31,6 +31,7 @@ declare module 'vue' {
     FavoriteButton: typeof import('./src/components/FavoriteButton.vue')['default']
     ItemDetailDialog: typeof import('./src/components/ItemDetailDialog.vue')['default']
     LoadMoreTrigger: typeof import('./src/components/LoadMoreTrigger.vue')['default']
+    ModernNavbar: typeof import('./src/components/ModernNavbar.vue')['default']
     MoveDetailDialog: typeof import('./src/components/MoveDetailDialog.vue')['default']
     PokemonAbilitiesPanel: typeof import('./src/components/PokemonAbilitiesPanel.vue')['default']
     PokemonCalcPanel: typeof import('./src/components/PokemonCalcPanel.vue')['default']

@@ -294,10 +294,6 @@ async function handleLogout() {
 }
 </script>
 
-
-<style>
-@import './styles/global.css';
-</style>
 <style>
 .app-shell {
   background:

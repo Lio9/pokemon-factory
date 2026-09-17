@@ -1,0 +1,79 @@
+{
+  "timestamp": "2026-09-17T07:16:35.436Z",
+  "summary": {
+    "total": 16,
+    "passed": 7,
+    "failed": 9,
+    "warnings": 0,
+    "errors": 0,
+    "successRate": "43.8%"
+  },
+  "details": [
+    {
+      "test": "浏览器初始化",
+      "status": "PASS"
+    },
+    {
+      "test": "导航菜单",
+      "status": "PASS",
+      "details": "6个"
+    },
+    {
+      "test": "页面跳转",
+      "status": "PASS"
+    },
+    {
+      "test": "主要内容区域",
+      "status": "PASS"
+    },
+    {
+      "test": "图鉴列表",
+      "status": "FAIL"
+    },
+    {
+      "test": "搜索框",
+      "status": "FAIL"
+    },
+    {
+      "test": "对战界面",
+      "status": "FAIL"
+    },
+    {
+      "test": "工厂挑战界面",
+      "status": "FAIL"
+    },
+    {
+      "test": "用户界面",
+      "status": "FAIL"
+    },
+    {
+      "test": "主题切换按钮",
+      "status": "FAIL"
+    },
+    {
+      "test": "桌面端显示",
+      "status": "FAIL"
+    },
+    {
+      "test": "平板端显示",
+      "status": "FAIL"
+    },
+    {
+      "test": "移动端显示",
+      "status": "FAIL"
+    },
+    {
+      "test": "键盘导航",
+      "status": "PASS",
+      "details": "焦点在A"
+    },
+    {
+      "test": "Enter键",
+      "status": "PASS"
+    },
+    {
+      "test": "Escape键",
+      "status": "PASS"
+    }
+  ]
+}

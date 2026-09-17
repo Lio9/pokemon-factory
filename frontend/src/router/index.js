@@ -53,7 +53,7 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('../views/Home.vue'),
+    component: () => import('../views/HomeModern.vue'),
     meta: {
       title: { zh: '项目概览', en: 'Project Overview' }
     }
@@ -61,7 +61,7 @@ const routes = [
   {
     path: '/pokemon',
     name: 'PokemonList',
-    component: () => import('../views/PokemonList.vue'),
+    component: () => import('../views/PokedexModern.vue'),
     meta: {
       title: { zh: '宝可梦图鉴', en: 'Pokemon Dex' }
     }
